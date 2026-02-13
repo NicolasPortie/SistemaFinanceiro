@@ -16,6 +16,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Garantir que a pasta public existe
+RUN mkdir -p /app/public
+
 # Build arguments
 ARG API_PROXY_TARGET=http://api:5000
 ENV NEXT_TELEMETRY_DISABLED=1
