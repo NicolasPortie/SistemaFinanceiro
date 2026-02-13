@@ -3,12 +3,13 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
 env:
-  DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION: '10.0.x'
   NODE_VERSION: '20.x'
 
 jobs:
@@ -24,6 +25,7 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
+        dotnet-quality: 'preview'
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -51,11 +53,15 @@ jobs:
     name: Deploy para Produção
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
     - name: Checkout código
       uses: actions/checkout@v4
+
+    - name: Extrair versão da tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
     - name: Setup SSH
       uses: webfactory/ssh-agent@v0.9.0
@@ -66,10 +72,6 @@ jobs:
       run: |
         mkdir -p ~/.ssh
         ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-
-    - name: Criar diretório de deploy no servidor
-      run: |
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ~/controlfinance"
 
     - name: Copiar arquivos para servidor
       run: |
@@ -87,21 +89,42 @@ jobs:
         ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           cd ~/controlfinance
           
-          # Parar containers antigos
-          docker compose -f docker-compose.prod.yml down
+          echo "=== Deploy ${{ steps.version.outputs.VERSION }} ==="
           
-          # Limpar imagens antigas
+          # Build novos containers
+          docker compose -f docker-compose.prod.yml build --no-cache
+          
+          # Parar containers antigos e iniciar novos
+          docker compose -f docker-compose.prod.yml down
+          docker compose -f docker-compose.prod.yml up -d
+          
+          # Limpar imagens não utilizadas
           docker image prune -f
           
-          # Build e iniciar novos containers
-          docker compose -f docker-compose.prod.yml up -d --build
-          
           # Verificar status
+          echo "=== Status dos containers ==="
           docker compose -f docker-compose.prod.yml ps
         EOF
 
-    - name: Verificar saúde da aplicação
+    - name: Aguardar inicialização
+      run: sleep 40
+
+    - name: Verificar saúde da API
       run: |
-        echo "Aguardando aplicação inicializar..."
-        sleep 30
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} "curl -f http://localhost:5000/api/telegram/health || exit 1"
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} "curl -sf http://localhost:5000/api/telegram/health || exit 1"
+        echo "API está respondendo!"
+
+    - name: Verificar saúde do Frontend
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} "curl -sf -o /dev/null http://localhost:3000 || exit 1"
+        echo "Frontend está respondendo!"
+
+    - name: Resumo do deploy
+      if: success()
+      run: |
+        echo "## Deploy concluído com sucesso! ✅" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Versão:** ${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **API:** https://api.nicolasportie.com" >> $GITHUB_STEP_SUMMARY
+        echo "- **Frontend:** https://finance.nicolasportie.com" >> $GITHUB_STEP_SUMMARY
+        echo "- **Timestamp:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
