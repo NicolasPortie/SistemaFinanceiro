@@ -1,0 +1,108 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: controlfinance-db-prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-controlfinance}
+      POSTGRES_USER: ${POSTGRES_USER:-cf_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    networks:
+      - controlfinance-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cf_user} -d ${POSTGRES_DB:-controlfinance}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Não expor porta externamente em produção
+    expose:
+      - "5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: src/ControlFinance.Api/Dockerfile
+      args:
+        CONFIGURATION: Release
+    image: controlfinance-api:latest
+    container_name: controlfinance-api-prod
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-controlfinance};Username=${POSTGRES_USER:-cf_user};Password=${POSTGRES_PASSWORD}
+      Jwt__Secret: ${JWT_SECRET}
+      Jwt__Issuer: ${JWT_ISSUER:-ControlFinance}
+      Jwt__Audience: ${JWT_AUDIENCE:-ControlFinanceApp}
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN}
+      Telegram__WebhookUrl: ${TELEGRAM_WEBHOOK_URL}
+      Telegram__WebhookSecretToken: ${TELEGRAM_WEBHOOK_SECRET}
+      Gemini__ApiKey: ${GEMINI_API_KEY}
+      Gemini__Model: ${GEMINI_MODEL:-gemini-2.0-flash}
+      Groq__ApiKey: ${GROQ_API_KEY}
+      Groq__Model: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      Groq__FallbackModels: ${GROQ_FALLBACK_MODELS:-llama-3.1-8b-instant}
+      Email__Enabled: ${EMAIL_ENABLED:-false}
+      Email__FromEmail: ${EMAIL_FROM_EMAIL}
+      Email__FromName: ${EMAIL_FROM_NAME:-ControlFinance}
+      Email__TimeoutSeconds: ${EMAIL_TIMEOUT_SECONDS:-20}
+      Email__Smtp__Host: ${EMAIL_SMTP_HOST}
+      Email__Smtp__Port: ${EMAIL_SMTP_PORT:-465}
+      Email__Smtp__Username: ${EMAIL_SMTP_USERNAME}
+      Email__Smtp__Password: ${EMAIL_SMTP_PASSWORD}
+      Email__Smtp__UseSsl: ${EMAIL_SMTP_USE_SSL:-true}
+    networks:
+      - controlfinance-network
+    expose:
+      - "5000"
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/telegram/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  web:
+    build:
+      context: ./web-next
+      dockerfile: Dockerfile
+      target: production
+      args:
+        API_PROXY_TARGET: http://api:5000
+    image: controlfinance-web:latest
+    container_name: controlfinance-web-prod
+    restart: always
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      API_PROXY_TARGET: http://api:5000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+    networks:
+      - controlfinance-network
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  pgdata_prod:
+    driver: local
+
+networks:
+  controlfinance-network:
+    driver: bridge

@@ -21,9 +21,17 @@ secrets.json
 
 ## Environment
 .env
+.env.local
+.env.production
 appsettings.Development.json
 appsettings.Production.json
 appsettings.*.local.json
+
+## SSH Keys
+*.pem
+*-deploy
+*-deploy.pub
+controlfinance-deploy*
 
 ## OS
 Thumbs.db

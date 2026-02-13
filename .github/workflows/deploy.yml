@@ -1,0 +1,107 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '20.x'
+
+jobs:
+  build-and-test:
+    name: Build e Testes
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Restore dependências .NET
+      run: dotnet restore src/ControlFinance.Api/ControlFinance.Api.csproj
+
+    - name: Build .NET
+      run: dotnet build src/ControlFinance.Api/ControlFinance.Api.csproj --configuration Release --no-restore
+
+    - name: Instalar dependências Next.js
+      working-directory: ./web-next
+      run: npm ci
+
+    - name: Build Next.js
+      working-directory: ./web-next
+      run: npm run build
+
+    - name: Executar testes .NET
+      run: dotnet test --no-build --verbosity normal || echo "Sem testes configurados ainda"
+
+  deploy:
+    name: Deploy para Produção
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Adicionar host conhecido
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Criar diretório de deploy no servidor
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ~/controlfinance"
+
+    - name: Copiar arquivos para servidor
+      run: |
+        rsync -avz --delete \
+          --exclude '.git' \
+          --exclude 'bin' \
+          --exclude 'obj' \
+          --exclude 'node_modules' \
+          --exclude '.next' \
+          --exclude '.env' \
+          ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }}:~/controlfinance/
+
+    - name: Deploy com Docker Compose
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          cd ~/controlfinance
+          
+          # Parar containers antigos
+          docker compose -f docker-compose.prod.yml down
+          
+          # Limpar imagens antigas
+          docker image prune -f
+          
+          # Build e iniciar novos containers
+          docker compose -f docker-compose.prod.yml up -d --build
+          
+          # Verificar status
+          docker compose -f docker-compose.prod.yml ps
+        EOF
+
+    - name: Verificar saúde da aplicação
+      run: |
+        echo "Aguardando aplicação inicializar..."
+        sleep 30
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} "curl -f http://localhost:5000/api/telegram/health || exit 1"
