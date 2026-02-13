@@ -154,12 +154,20 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// === Aplicar migrations automaticamente (apenas Development) ===
-if (app.Environment.IsDevelopment())
+// === Aplicar migrations automaticamente ===
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    try
+    {
+        app.Logger.LogInformation("Aplicando migrations do banco de dados...");
+        await db.Database.MigrateAsync();
+        app.Logger.LogInformation("Migrations aplicadas com sucesso.");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Erro ao aplicar migrations. A aplicação continuará, mas pode haver problemas.");
+    }
 
     // Migrar dados sensíveis para criptografia (executar uma vez via: dotnet run -- --encrypt-data)
     if (args.Contains("--encrypt-data"))
