@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: controlfinance-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-controlfinance}
+      POSTGRES_USER: ${POSTGRES_USER:-cf_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cf_password_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cf_user} -d ${POSTGRES_DB:-controlfinance}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: src/ControlFinance.Api/Dockerfile
+    container_name: controlfinance-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-controlfinance};Username=${POSTGRES_USER:-cf_user};Password=${POSTGRES_PASSWORD:-cf_password_dev}
+      Jwt__Secret: ${JWT_SECRET:-CHANGE_ME_DOCKER_JWT_SECRET_WITH_AT_LEAST_64_BYTES_FOR_HS512_2026}
+      Jwt__Issuer: ${JWT_ISSUER:-ControlFinance}
+      Jwt__Audience: ${JWT_AUDIENCE:-ControlFinanceApp}
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      Telegram__WebhookUrl: ${TELEGRAM_WEBHOOK_URL:-https://finance.nicolasportie.com/api/telegram/webhook}
+      Telegram__WebhookSecretToken: ${TELEGRAM_WEBHOOK_SECRET:-}
+      Gemini__ApiKey: ${GEMINI_API_KEY:-}
+      Gemini__Model: ${GEMINI_MODEL:-gemini-2.0-flash}
+      Groq__ApiKey: ${GROQ_API_KEY:-}
+      Groq__Model: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      Groq__FallbackModels: ${GROQ_FALLBACK_MODELS:-llama-3.1-8b-instant}
+      Email__Enabled: ${EMAIL_ENABLED:-false}
+      Email__FromEmail: ${EMAIL_FROM_EMAIL:-sistema@nicolasportie.com}
+      Email__FromName: ${EMAIL_FROM_NAME:-ControlFinance}
+      Email__TimeoutSeconds: ${EMAIL_TIMEOUT_SECONDS:-20}
+      Email__Smtp__Host: ${EMAIL_SMTP_HOST:-smtp.hostinger.com}
+      Email__Smtp__Port: ${EMAIL_SMTP_PORT:-465}
+      Email__Smtp__Username: ${EMAIL_SMTP_USERNAME:-}
+      Email__Smtp__Password: ${EMAIL_SMTP_PASSWORD:-}
+      Email__Smtp__UseSsl: ${EMAIL_SMTP_USE_SSL:-true}
+    ports:
+      - "${API_PORT:-5000}:5000"
+
+  web:
+    build:
+      context: ./web-next
+      dockerfile: Dockerfile
+      args:
+        API_PROXY_TARGET: http://api:5000
+    container_name: controlfinance-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      PORT: 5173
+      HOSTNAME: 0.0.0.0
+      API_PROXY_TARGET: http://api:5000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+
+volumes:
+  pgdata:

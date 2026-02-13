@@ -1,0 +1,78 @@
+"use client";
+
+import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { api, type Usuario } from "@/lib/api";
+
+interface AuthContextType {
+  usuario: Usuario | null;
+  loading: boolean;
+  login: (email: string, senha: string) => Promise<void>;
+  registrar: (nome: string, email: string, senha: string, codigoConvite: string) => Promise<void>;
+  logout: () => void;
+  atualizarPerfil: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+function getStoredUsuario(): Usuario | null {
+  if (typeof window === "undefined") return null;
+  const stored = localStorage.getItem("cf_user");
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored) as Usuario;
+  } catch {
+    localStorage.removeItem("cf_user");
+    return null;
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [usuario, setUsuario] = useState<Usuario | null>(getStoredUsuario);
+  const loading = false;
+
+  const login = useCallback(async (email: string, senha: string) => {
+    const res = await api.auth.login({ email, senha });
+    localStorage.setItem("cf_token", res.token);
+    localStorage.setItem("cf_refresh_token", res.refreshToken);
+    localStorage.setItem("cf_user", JSON.stringify(res.usuario));
+    setUsuario(res.usuario);
+  }, []);
+
+  const registrar = useCallback(async (nome: string, email: string, senha: string, codigoConvite: string) => {
+    const res = await api.auth.registrar({ nome, email, senha, codigoConvite });
+    localStorage.setItem("cf_token", res.token);
+    localStorage.setItem("cf_refresh_token", res.refreshToken);
+    localStorage.setItem("cf_user", JSON.stringify(res.usuario));
+    setUsuario(res.usuario);
+  }, []);
+
+  const logout = useCallback(() => {
+    api.auth.logout().catch(() => {});
+    localStorage.removeItem("cf_token");
+    localStorage.removeItem("cf_refresh_token");
+    localStorage.removeItem("cf_user");
+    setUsuario(null);
+  }, []);
+
+  const atualizarPerfil = useCallback(async () => {
+    try {
+      const perfil = await api.auth.perfil();
+      localStorage.setItem("cf_user", JSON.stringify(perfil));
+      setUsuario(perfil);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ usuario, loading, login, registrar, logout, atualizarPerfil }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth deve ser usado dentro de AuthProvider");
+  return ctx;
+}

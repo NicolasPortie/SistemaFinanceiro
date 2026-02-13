@@ -1,0 +1,372 @@
+using ControlFinance.Application.DTOs;
+using ControlFinance.Domain.Entities;
+using ControlFinance.Domain.Enums;
+using ControlFinance.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
+
+namespace ControlFinance.Application.Services;
+
+/// <summary>
+/// Motor de decisão: resposta rápida vs simulação completa.
+/// Calcula saldo livre real do mês, considerando compromissos e metas.
+/// </summary>
+public class DecisaoGastoService
+{
+    private readonly PerfilFinanceiroService _perfilService;
+    private readonly PrevisaoCompraService _previsaoService;
+    private readonly ILancamentoRepository _lancamentoRepo;
+    private readonly ILimiteCategoriaRepository _limiteRepo;
+    private readonly IMetaFinanceiraRepository _metaRepo;
+    private readonly ICategoriaRepository _categoriaRepo;
+    private readonly IParcelaRepository _parcelaRepo;
+    private readonly ILogger<DecisaoGastoService> _logger;
+
+    // Thresholds configuráveis
+    private const decimal ThresholdPercentualReceita = 0.05m;  // 5% da receita
+    private const decimal ThresholdPercentualSaldoLivre = 0.15m; // 15% do saldo livre
+
+    public DecisaoGastoService(
+        PerfilFinanceiroService perfilService,
+        PrevisaoCompraService previsaoService,
+        ILancamentoRepository lancamentoRepo,
+        ILimiteCategoriaRepository limiteRepo,
+        IMetaFinanceiraRepository metaRepo,
+        ICategoriaRepository categoriaRepo,
+        IParcelaRepository parcelaRepo,
+        ILogger<DecisaoGastoService> logger)
+    {
+        _perfilService = perfilService;
+        _previsaoService = previsaoService;
+        _lancamentoRepo = lancamentoRepo;
+        _limiteRepo = limiteRepo;
+        _metaRepo = metaRepo;
+        _categoriaRepo = categoriaRepo;
+        _parcelaRepo = parcelaRepo;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Decide se a compra merece resposta rápida ou simulação completa.
+    /// Retorna true para rápida, false para completa.
+    /// </summary>
+    public async Task<bool> DeveUsarRespostaRapidaAsync(int usuarioId, decimal valor, bool parcelado)
+    {
+        // Parcelado → sempre simulação completa
+        if (parcelado) return false;
+
+        var perfil = await _perfilService.ObterOuCalcularAsync(usuarioId);
+
+        if (perfil.ReceitaMensalMedia <= 0) return true; // Sem dados → resposta rápida genérica
+
+        var percentualReceita = valor / perfil.ReceitaMensalMedia;
+
+        // Calcular saldo livre real do mês atual
+        var saldoLivre = await CalcularSaldoLivreMesAsync(usuarioId, perfil);
+        var percentualSaldoLivre = saldoLivre > 0 ? valor / saldoLivre : 1m;
+
+        // Resposta rápida: valor pequeno E impacto baixo no saldo livre E não parcelado
+        return percentualReceita < ThresholdPercentualReceita
+            && percentualSaldoLivre < ThresholdPercentualSaldoLivre;
+    }
+
+    /// <summary>
+    /// Gera resposta rápida para microgastos: "pode", "cautela" ou "segurar".
+    /// </summary>
+    public async Task<DecisaoGastoResultDto> AvaliarGastoRapidoAsync(
+        int usuarioId, decimal valor, string? descricao, string? categoriaNome)
+    {
+        var perfil = await _perfilService.ObterOuCalcularAsync(usuarioId);
+        var hoje = DateTime.UtcNow;
+        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fimMes = inicioMes.AddMonths(1).AddDays(-1);
+        var diasRestantes = Math.Max(1, (fimMes - hoje).Days + 1);
+        var diasNoMes = DateTime.DaysInMonth(hoje.Year, hoje.Month);
+
+        // Gastos já realizados no mês
+        var gastosMes = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
+            usuarioId, TipoLancamento.Gasto, inicioMes, fimMes.AddDays(1));
+
+        // Receitas do mês (real se houver, senão média)
+        var receitasMes = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
+            usuarioId, TipoLancamento.Receita, inicioMes, fimMes.AddDays(1));
+        var receitaPrevista = receitasMes > 0 ? receitasMes : perfil.ReceitaMensalMedia;
+
+        // Compromissos futuros no mês (parcelas)
+        var compromissosMes = await CalcularCompromissosMesAtualAsync(usuarioId);
+
+        // Reserva de metas ativas
+        var reservaMetas = await CalcularReservaMetasMesAsync(usuarioId);
+
+        // Saldo livre real
+        var saldoLivre = receitaPrevista - gastosMes - compromissosMes - reservaMetas;
+
+        var percentualSaldoLivre = saldoLivre > 0 ? valor / saldoLivre : 1m;
+
+        // Verificar limite de categoria
+        string? alertaLimite = null;
+        if (!string.IsNullOrWhiteSpace(categoriaNome))
+        {
+            alertaLimite = await VerificarLimiteCategoriaAsync(usuarioId, categoriaNome, valor);
+        }
+
+        // Classificar parecer
+        string parecer;
+        bool podeGastar;
+
+        if (saldoLivre <= 0)
+        {
+            parecer = "segurar";
+            podeGastar = false;
+        }
+        else if (valor > saldoLivre)
+        {
+            parecer = "segurar";
+            podeGastar = false;
+        }
+        else if (percentualSaldoLivre > 0.30m || (saldoLivre - valor) / diasRestantes < receitaPrevista / diasNoMes * 0.20m)
+        {
+            parecer = "cautela";
+            podeGastar = true;
+        }
+        else
+        {
+            parecer = "pode";
+            podeGastar = true;
+        }
+
+        var resultado = new DecisaoGastoResultDto
+        {
+            PodeGastar = podeGastar,
+            Parecer = parecer,
+            GastoAcumuladoMes = gastosMes,
+            ReceitaPrevistoMes = receitaPrevista,
+            SaldoLivreMes = saldoLivre,
+            DiasRestantesMes = diasRestantes,
+            ValorCompra = valor,
+            PercentualSaldoLivre = Math.Round(percentualSaldoLivre * 100, 1),
+            ReservaMetas = reservaMetas,
+            AlertaLimite = alertaLimite
+        };
+
+        resultado.ResumoTexto = FormatarRespostaRapida(resultado, descricao);
+
+        _logger.LogInformation(
+            "Decisão gasto rápida: R$ {Valor} → {Parecer} (saldo livre R$ {Saldo}, {Dias} dias restantes)",
+            valor, parecer, saldoLivre, diasRestantes);
+
+        return resultado;
+    }
+
+    /// <summary>
+    /// Avaliação completa para compras grandes — redireciona para simulação 
+    /// mas inclui tabela comparativa à vista + parcelas.
+    /// </summary>
+    public async Task<string> AvaliarCompraCompletaAsync(
+        int usuarioId, decimal valor, string descricao, string? formaPagamento, int parcelas)
+    {
+        var perfil = await _perfilService.ObterOuCalcularAsync(usuarioId);
+        var hoje = DateTime.UtcNow;
+        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fimMes = inicioMes.AddMonths(1).AddDays(-1);
+        var diasRestantes = (fimMes - hoje).Days + 1;
+
+        var gastosMes = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
+            usuarioId, TipoLancamento.Gasto, inicioMes, fimMes.AddDays(1));
+        var receitasMes = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
+            usuarioId, TipoLancamento.Receita, inicioMes, fimMes.AddDays(1));
+        var receitaPrevista = receitasMes > 0 ? receitasMes : perfil.ReceitaMensalMedia;
+        var compromissos = await CalcularCompromissosMesAtualAsync(usuarioId);
+        var reservaMetas = await CalcularReservaMetasMesAsync(usuarioId);
+        var saldoLivre = receitaPrevista - gastosMes - compromissos - reservaMetas;
+
+        // Calcular cenários
+        var cenarios = new List<(int parcelas, decimal valorParcela, string risco, decimal saldoApos)>();
+
+        // À vista
+        var saldoAVista = saldoLivre - valor;
+        var riscoAVista = saldoAVista >= 0 ? (saldoAVista > receitaPrevista * 0.2m ? "🟢 Baixo" : "🟡 Médio") : "🔴 Alto";
+        cenarios.Add((1, valor, riscoAVista, saldoAVista));
+
+        // Parcelado
+        foreach (var numParcelas in new[] { 2, 3, 4, 6, 8, 10, 12 })
+        {
+            var valorParcela = Math.Round(valor / numParcelas, 2);
+
+            // Folga mensal: receita - gastos base (sem parcelas) - compromissos exist. - nova parcela
+            var folgaMensal = perfil.ReceitaMensalMedia - perfil.GastoMensalMedio - compromissos - valorParcela;
+
+            string risco;
+            if (folgaMensal >= perfil.ReceitaMensalMedia * 0.20m)
+                risco = "🟢 Baixo";
+            else if (folgaMensal >= perfil.ReceitaMensalMedia * 0.05m)
+                risco = "🟡 Médio";
+            else
+                risco = "🔴 Alto";
+
+            cenarios.Add((numParcelas, valorParcela, risco, Math.Round(folgaMensal, 2)));
+        }
+
+        // Montar resposta
+        var texto = $"📊 *{descricao} — R$ {valor:N2}*\n\n";
+        texto += $"💰 Receita: R$ {receitaPrevista:N2} | Gastos mês: R$ {gastosMes:N2}\n";
+        texto += $"📅 Sobram R$ {saldoLivre:N2} para {diasRestantes} dias\n";
+
+        if (reservaMetas > 0)
+            texto += $"🎯 Reserva de metas: R$ {reservaMetas:N2}\n";
+
+        texto += $"\n*💳 À vista:* {cenarios[0].risco}\n";
+        if (saldoAVista < 0)
+            texto += $"❌ Não cabe — faltariam R$ {Math.Abs(saldoAVista):N2}\n";
+        else
+            texto += $"Sobraria R$ {saldoAVista:N2} este mês\n";
+
+        texto += "\n*📋 Parcelado:*\n";
+        foreach (var c in cenarios.Skip(1))
+        {
+            texto += $"  {c.parcelas}x R$ {c.valorParcela:N2} → {c.risco} (folga ~R$ {c.saldoApos:N2}/mês)\n";
+        }
+
+        // Recomendação
+        var melhorParcelado = cenarios.Skip(1).Where(c => c.risco.Contains("Baixo")).FirstOrDefault();
+        if (melhorParcelado.parcelas > 0)
+        {
+            texto += $"\n💡 *Recomendação:* A partir de {melhorParcelado.parcelas}x fica tranquilo.";
+        }
+        else
+        {
+            var menosArriscado = cenarios.Skip(1).Where(c => c.risco.Contains("Médio")).FirstOrDefault();
+            if (menosArriscado.parcelas > 0)
+                texto += $"\n⚠️ *Recomendação:* Em {menosArriscado.parcelas}x é viável, mas com cautela.";
+            else
+                texto += "\n🔴 *Recomendação:* Essa compra é arriscada no momento. Considere adiar.";
+        }
+
+        if (perfil.Confianca == NivelConfianca.Baixa)
+            texto += "\n\n⚠️ _Análise preliminar — com mais dados a precisão melhora._";
+
+        return texto;
+    }
+
+    // ===================== Métodos Auxiliares =====================
+
+    private async Task<decimal> CalcularSaldoLivreMesAsync(int usuarioId, PerfilFinanceiro perfil)
+    {
+        var hoje = DateTime.UtcNow;
+        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fimMes = inicioMes.AddMonths(1);
+
+        var gastosMes = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
+            usuarioId, TipoLancamento.Gasto, inicioMes, fimMes);
+        var receitasMes = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
+            usuarioId, TipoLancamento.Receita, inicioMes, fimMes);
+
+        var receitaPrevista = receitasMes > 0 ? receitasMes : perfil.ReceitaMensalMedia;
+        var compromissos = await CalcularCompromissosMesAtualAsync(usuarioId);
+        var reservaMetas = await CalcularReservaMetasMesAsync(usuarioId);
+
+        return receitaPrevista - gastosMes - compromissos - reservaMetas;
+    }
+
+    private async Task<decimal> CalcularCompromissosMesAtualAsync(int usuarioId)
+    {
+        var hoje = DateTime.UtcNow;
+        var fimMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1);
+
+        var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(usuarioId);
+        decimal total = 0;
+
+        foreach (var lanc in lancamentos.Where(l => l.NumeroParcelas > 1))
+        {
+            var parcelas = await _parcelaRepo.ObterPorLancamentoAsync(lanc.Id);
+            total += parcelas
+                .Where(p => !p.Paga && p.DataVencimento >= hoje && p.DataVencimento < fimMes)
+                .Sum(p => p.Valor);
+        }
+
+        return total;
+    }
+
+    private async Task<decimal> CalcularReservaMetasMesAsync(int usuarioId)
+    {
+        var metasAtivas = await _metaRepo.ObterPorUsuarioAsync(usuarioId, StatusMeta.Ativa);
+        decimal total = 0;
+
+        foreach (var meta in metasAtivas)
+        {
+            if (meta.Tipo == TipoMeta.ReservaMensal)
+            {
+                total += meta.ValorAlvo; // Reserva fixa
+            }
+            else if (meta.Tipo == TipoMeta.JuntarValor)
+            {
+                var restante = meta.ValorAlvo - meta.ValorAtual;
+                if (restante <= 0) continue;
+
+                var mesesAte = ((meta.Prazo.Year - DateTime.UtcNow.Year) * 12) +
+                               (meta.Prazo.Month - DateTime.UtcNow.Month);
+                if (mesesAte < 1) mesesAte = 1;
+
+                total += Math.Round(restante / mesesAte, 2);
+            }
+        }
+
+        return total;
+    }
+
+    private async Task<string?> VerificarLimiteCategoriaAsync(int usuarioId, string categoriaNome, decimal valorGasto)
+    {
+        var categoria = await _categoriaRepo.ObterPorNomeAsync(usuarioId, categoriaNome);
+        if (categoria == null) return null;
+
+        var limite = await _limiteRepo.ObterPorUsuarioECategoriaAsync(usuarioId, categoria.Id);
+        if (limite == null) return null;
+
+        var hoje = DateTime.UtcNow;
+        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fimMes = inicioMes.AddMonths(1);
+
+        var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(usuarioId, inicioMes, fimMes);
+        var gastoCategoria = lancamentos
+            .Where(l => l.CategoriaId == categoria.Id && l.Tipo == TipoLancamento.Gasto)
+            .Sum(l => l.Valor);
+
+        var gastoApos = gastoCategoria + valorGasto;
+        var percentual = gastoApos / limite.ValorLimite * 100;
+
+        if (gastoApos > limite.ValorLimite)
+            return $"🔴 Atenção! Com esse gasto você estouraria o limite de {categoriaNome} (R$ {gastoCategoria:N2} + R$ {valorGasto:N2} = R$ {gastoApos:N2} de R$ {limite.ValorLimite:N2}).";
+        if (percentual >= 90)
+            return $"🟡 Cuidado! Isso levaria {categoriaNome} a {percentual:N0}% do limite (R$ {gastoApos:N2} de R$ {limite.ValorLimite:N2}).";
+        if (percentual >= 70)
+            return $"📊 Aviso: {categoriaNome} ficaria em {percentual:N0}% do limite (R$ {gastoApos:N2} de R$ {limite.ValorLimite:N2}).";
+
+        return null;
+    }
+
+    private static string FormatarRespostaRapida(DecisaoGastoResultDto resultado, string? descricao)
+    {
+        var desc = !string.IsNullOrWhiteSpace(descricao) ? descricao : "esse gasto";
+
+        return resultado.Parecer switch
+        {
+            "pode" => $"✅ *Pode sim!* {desc} de R$ {resultado.ValorCompra:N2} tem baixo impacto.\n\n" +
+                       $"📊 Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}\n" +
+                       $"💰 Sobram R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias" +
+                       (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : ""),
+
+            "cautela" => $"⚠️ *Pode, mas com cautela.* {desc} de R$ {resultado.ValorCompra:N2} consome {resultado.PercentualSaldoLivre:N0}% do que resta.\n\n" +
+                          $"📊 Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}\n" +
+                          $"💰 Sobram R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias\n" +
+                          $"📅 Isso daria ~R$ {(resultado.SaldoLivreMes - resultado.ValorCompra) / Math.Max(1, resultado.DiasRestantesMes):N2}/dia restante" +
+                          (resultado.ReservaMetas > 0 ? $"\n🎯 Lembre: R$ {resultado.ReservaMetas:N2} reservados p/ metas" : "") +
+                          (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : ""),
+
+            _ => $"🔴 *Melhor segurar.* " +
+                 (resultado.SaldoLivreMes <= 0
+                     ? $"Seu saldo livre este mês já está negativo (R$ {resultado.SaldoLivreMes:N2})."
+                     : $"Só restam R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias — esse gasto de R$ {resultado.ValorCompra:N2} consumiria {resultado.PercentualSaldoLivre:N0}%.") +
+                 $"\n\n📊 Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}" +
+                 (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : "")
+        };
+    }
+}

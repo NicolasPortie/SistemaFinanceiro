@@ -1,0 +1,2143 @@
+﻿using System.Collections.Concurrent;
+using System.Globalization;
+using ControlFinance.Application.DTOs;
+using ControlFinance.Domain.Entities;
+using ControlFinance.Domain.Enums;
+using ControlFinance.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
+
+namespace ControlFinance.Application.Services;
+
+public class TelegramBotService
+{
+    private readonly IUsuarioRepository _usuarioRepo;
+    private readonly ICategoriaRepository _categoriaRepo;
+    private readonly ICartaoCreditoRepository _cartaoRepo;
+    private readonly ICodigoVerificacaoRepository _codigoRepo;
+    private readonly IGeminiService _gemini;
+    private readonly LancamentoService _lancamentoService;
+    private readonly ResumoService _resumoService;
+    private readonly FaturaService _faturaService;
+    private readonly PrevisaoCompraService _previsaoService;
+    private readonly PerfilFinanceiroService _perfilService;
+    private readonly DecisaoGastoService _decisaoService;
+    private readonly LimiteCategoriaService _limiteService;
+    private readonly MetaFinanceiraService _metaService;
+    private readonly ILancamentoRepository _lancamentoRepo;
+    private readonly ILembretePagamentoRepository _lembreteRepo;
+    private readonly ILogger<TelegramBotService> _logger;
+
+    // Cache de lançamentos pendentes de confirmação (chatId → dados)
+    private static readonly ConcurrentDictionary<long, LancamentoPendente> _pendentes = new();
+    // Cache de desvinculações pendentes de confirmação
+    private static readonly ConcurrentDictionary<long, DateTime> _desvinculacaoPendente = new();
+    // Cache de cartões pendentes de confirmação
+    private static readonly ConcurrentDictionary<long, CartaoPendente> _cartaoPendente = new();
+    // Teclados inline pendentes para enviar junto à próxima resposta (chatId → linhas de botões)
+    private static readonly ConcurrentDictionary<long, List<List<(string Label, string Data)>>> _tecladosPendentes = new();
+
+    /// <summary>
+    /// Estados possíveis no fluxo de lançamento em etapas
+    /// </summary>
+    private enum EstadoPendente
+    {
+        AguardandoFormaPagamento,
+        AguardandoCartao,
+        AguardandoCategoria,
+        AguardandoConfirmacao
+    }
+
+    private class CartaoPendente
+    {
+        public string Nome { get; set; } = null!;
+        public decimal Limite { get; set; }
+        public int DiaVencimento { get; set; }
+        public int UsuarioId { get; set; }
+        public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+    }
+
+    private class LancamentoPendente
+    {
+        public DadosLancamento Dados { get; set; } = null!;
+        public OrigemDado Origem { get; set; }
+        public int UsuarioId { get; set; }
+        public EstadoPendente Estado { get; set; } = EstadoPendente.AguardandoConfirmacao;
+        public List<CartaoCredito>? CartoesDisponiveis { get; set; }
+        public List<Categoria>? CategoriasDisponiveis { get; set; }
+        public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+    }
+
+    public TelegramBotService(
+        IUsuarioRepository usuarioRepo,
+        ICategoriaRepository categoriaRepo,
+        ICartaoCreditoRepository cartaoRepo,
+        ICodigoVerificacaoRepository codigoRepo,
+        IGeminiService gemini,
+        LancamentoService lancamentoService,
+        ResumoService resumoService,
+        FaturaService faturaService,
+        PrevisaoCompraService previsaoService,
+        PerfilFinanceiroService perfilService,
+        DecisaoGastoService decisaoService,
+        LimiteCategoriaService limiteService,
+        MetaFinanceiraService metaService,
+        ILancamentoRepository lancamentoRepo,
+        ILembretePagamentoRepository lembreteRepo,
+        ILogger<TelegramBotService> logger)
+    {
+        _usuarioRepo = usuarioRepo;
+        _categoriaRepo = categoriaRepo;
+        _cartaoRepo = cartaoRepo;
+        _codigoRepo = codigoRepo;
+        _gemini = gemini;
+        _lancamentoService = lancamentoService;
+        _resumoService = resumoService;
+        _faturaService = faturaService;
+        _previsaoService = previsaoService;
+        _perfilService = perfilService;
+        _decisaoService = decisaoService;
+        _limiteService = limiteService;
+        _metaService = metaService;
+        _lancamentoRepo = lancamentoRepo;
+        _lembreteRepo = lembreteRepo;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Consome (remove e retorna) o teclado inline pendente para um chat.
+    /// Usado pelo controller para enviar a mensagem com botões.
+    /// </summary>
+    public static List<List<(string Label, string Data)>>? ConsumirTeclado(long chatId)
+    {
+        _tecladosPendentes.TryRemove(chatId, out var teclado);
+        return teclado;
+    }
+
+    /// <summary>
+    /// Define um teclado inline a ser enviado com a próxima resposta.
+    /// Cada array interno representa uma linha de botões.
+    /// </summary>
+    private void DefinirTeclado(long chatId, params (string Label, string Data)[][] linhas)
+    {
+        _tecladosPendentes[chatId] = linhas.Select(l => l.ToList()).ToList();
+    }
+
+    public async Task<string> ProcessarMensagemAsync(long chatId, string mensagem, string nomeUsuario)
+    {
+        // Limpar teclado anterior para evitar botões obsoletos
+        _tecladosPendentes.TryRemove(chatId, out _);
+
+        // Comando /vincular funciona sem conta vinculada (aceita com ou sem /)
+        if (mensagem.StartsWith("/vincular") || mensagem.Trim().ToLower().StartsWith("vincular "))
+            return await ProcessarVinculacaoAsync(chatId, mensagem, nomeUsuario);
+
+        var usuario = await ObterUsuarioVinculadoAsync(chatId);
+        if (usuario == null)
+            return "🔒 Você ainda não tem conta vinculada!\n\n" +
+                   "1️⃣ Crie sua conta em finance.nicolasportie.com\n" +
+                   "2️⃣ No seu perfil, gere um código de vinculação\n" +
+                   "3️⃣ Envie aqui o código, por exemplo: vincular ABC123\n\n" +
+                   "É rápido e seguro! 🚀";
+
+        // Verificar confirmação de desvinculação pendente
+        var respostaDesvinc = await ProcessarConfirmacaoDesvinculacaoAsync(chatId, usuario, mensagem);
+        if (respostaDesvinc != null)
+            return respostaDesvinc;
+
+        // Verificar confirmação de cartão pendente
+        var respostaCartao = await ProcessarConfirmacaoCartaoAsync(chatId, mensagem);
+        if (respostaCartao != null)
+            return respostaCartao;
+
+        // Verificar se há lançamento pendente em etapas (forma, cartão, categoria, confirmação)
+        var respostaEtapa = await ProcessarEtapaPendenteAsync(chatId, usuario, mensagem);
+        if (respostaEtapa != null)
+            return respostaEtapa;
+
+        // Linguagem natural: desvincular
+        var msgLower = mensagem.Trim().ToLower();
+        if (msgLower.Contains("desvincul") || msgLower.Contains("desconectar") ||
+            msgLower is "desvincular" or "desvincular conta" or "desconectar telegram")
+            return ProcessarPedidoDesvinculacao(chatId);
+
+        if (mensagem.StartsWith("/"))
+            return await ProcessarComandoAsync(usuario, mensagem);
+
+        // Respostas diretas sem IA para mensagens simples (mais rápido e economiza cota)
+        var respostaDireta = await TentarRespostaDirectaAsync(usuario, msgLower);
+        if (respostaDireta != null)
+            return respostaDireta;
+
+        return await ProcessarComIAAsync(usuario, mensagem);
+    }
+
+    /// <summary>
+    /// Processa todas as etapas do fluxo pendente: forma de pagamento, cartão, categoria e confirmação.
+    /// Retorna null se não há pendente ou se o pendente foi descartado (mensagem não reconhecida).
+    /// </summary>
+    private async Task<string?> ProcessarEtapaPendenteAsync(long chatId, Usuario usuario, string mensagem)
+    {
+        // Limpar pendentes expirados (mais de 5 minutos)
+        foreach (var kv in _pendentes)
+        {
+            if ((DateTime.UtcNow - kv.Value.CriadoEm).TotalMinutes > 5)
+                _pendentes.TryRemove(kv.Key, out _);
+        }
+
+        if (!_pendentes.TryGetValue(chatId, out var pendente))
+            return null;
+
+        var msg = mensagem.Trim().ToLower();
+
+        // Cancelar a qualquer momento
+        if (msg is "cancelar" or "cancela" or "❌" or "👎")
+        {
+            _pendentes.TryRemove(chatId, out _);
+            return "❌ Cancelado! O lançamento não foi registrado.";
+        }
+
+        switch (pendente.Estado)
+        {
+            case EstadoPendente.AguardandoFormaPagamento:
+                return await ProcessarRespostaFormaPagamentoAsync(chatId, pendente, msg);
+
+            case EstadoPendente.AguardandoCartao:
+                return await ProcessarRespostaCartaoEscolhaAsync(chatId, pendente, msg);
+
+            case EstadoPendente.AguardandoCategoria:
+                return await ProcessarRespostaCategoriaAsync(chatId, pendente, usuario, msg);
+
+            case EstadoPendente.AguardandoConfirmacao:
+                return await ProcessarConfirmacaoFinalAsync(chatId, pendente, usuario, msg);
+
+            default:
+                _pendentes.TryRemove(chatId, out _);
+                return null;
+        }
+    }
+
+    private async Task<string?> ProcessarRespostaFormaPagamentoAsync(long chatId, LancamentoPendente pendente, string msg)
+    {
+        // Aceitar: 1, 2, 3, pix, debito, credito
+        string? formaPag = msg switch
+        {
+            "1" or "pix" => "pix",
+            "2" or "debito" or "débito" => "debito",
+            "3" or "credito" or "crédito" => "credito",
+            _ => null
+        };
+
+        if (formaPag == null)
+        {
+            // Se não reconheceu, descartar o pendente e processar como nova mensagem
+            _pendentes.TryRemove(chatId, out _);
+            return null;
+        }
+
+        pendente.Dados.FormaPagamento = formaPag;
+        pendente.CriadoEm = DateTime.UtcNow; // renovar timeout
+
+        // Se escolheu crédito, verificar se tem cartões
+        if (formaPag == "credito")
+        {
+            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(pendente.UsuarioId);
+            if (!cartoes.Any())
+            {
+                _pendentes.TryRemove(chatId, out _);
+                return "💳 Você não tem cartão cadastrado!\nMe diz o nome, limite e vencimento que eu cadastro.\nExemplo: \"cadastrar cartão Nubank limite 5000 vence dia 10\"";
+            }
+
+            if (cartoes.Count == 1)
+            {
+                // Apenas um cartão — selecionar automaticamente
+                pendente.Dados.FormaPagamento = "credito";
+                pendente.CartoesDisponiveis = cartoes;
+                // Avançar para categoria ou confirmação
+                return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
+            }
+
+            // Múltiplos cartões — perguntar qual
+            pendente.Estado = EstadoPendente.AguardandoCartao;
+            pendente.CartoesDisponiveis = cartoes;
+            var texto = "💳 Qual cartão?\n";
+            for (int i = 0; i < cartoes.Count; i++)
+            {
+                texto += $"\n{i + 1}️⃣ {cartoes[i].Nome}";
+            }
+            texto += "\n\nEscolha abaixo 👇";
+            var botoesCartao = cartoes.Select((c, i) => new (string, string)[] { ($"💳 {c.Nome}", (i + 1).ToString()) })
+                .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+            DefinirTeclado(chatId, botoesCartao);
+            return texto;
+        }
+
+        // Não é crédito — avançar
+        return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
+    }
+
+    private async Task<string?> ProcessarRespostaCartaoEscolhaAsync(long chatId, LancamentoPendente pendente, string msg)
+    {
+        if (pendente.CartoesDisponiveis == null || !pendente.CartoesDisponiveis.Any())
+        {
+            _pendentes.TryRemove(chatId, out _);
+            return null;
+        }
+
+        CartaoCredito? cartaoEscolhido = null;
+
+        // Tentar por número
+        if (int.TryParse(msg, out var idx) && idx >= 1 && idx <= pendente.CartoesDisponiveis.Count)
+        {
+            cartaoEscolhido = pendente.CartoesDisponiveis[idx - 1];
+        }
+        else
+        {
+            // Tentar por nome
+            cartaoEscolhido = pendente.CartoesDisponiveis
+                .FirstOrDefault(c => c.Nome.Contains(msg, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (cartaoEscolhido == null)
+        {
+            // Não reconheceu — re-perguntar (NÃO descartar o pendente!)
+            pendente.CriadoEm = DateTime.UtcNow;
+            var texto = "⚠️ Não entendi. Escolha um cartão:\n";
+            for (int i = 0; i < pendente.CartoesDisponiveis.Count; i++)
+                texto += $"\n{i + 1}️⃣ {pendente.CartoesDisponiveis[i].Nome}";
+            texto += "\n\nOu digite *cancelar* para cancelar.";
+            var botoesCard = pendente.CartoesDisponiveis.Select((c, i) => new (string, string)[] { ($"💳 {c.Nome}", (i + 1).ToString()) })
+                .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+            DefinirTeclado(chatId, botoesCard);
+            return texto;
+        }
+
+        // Armazenar cartão escolhido no campo extra (usamos o nome para resolver depois)
+        pendente.Dados.FormaPagamento = "credito";
+        // Guardar info do cartão no Dados usando um campo especial
+        pendente.CartoesDisponiveis = new List<CartaoCredito> { cartaoEscolhido };
+        pendente.CriadoEm = DateTime.UtcNow;
+
+        return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
+    }
+
+    private async Task<string?> ProcessarRespostaCategoriaAsync(long chatId, LancamentoPendente pendente, Usuario usuario, string msg)
+    {
+        if (pendente.CategoriasDisponiveis == null || !pendente.CategoriasDisponiveis.Any())
+        {
+            _pendentes.TryRemove(chatId, out _);
+            return null;
+        }
+
+        Categoria? categoriaEscolhida = null;
+
+        // Tentar por número
+        if (int.TryParse(msg, out var idx) && idx >= 1 && idx <= pendente.CategoriasDisponiveis.Count)
+        {
+            categoriaEscolhida = pendente.CategoriasDisponiveis[idx - 1];
+        }
+        else
+        {
+            // Tentar por nome
+            categoriaEscolhida = pendente.CategoriasDisponiveis
+                .FirstOrDefault(c => c.Nome.Contains(msg, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (categoriaEscolhida == null)
+        {
+            // Não reconheceu — re-perguntar (NÃO descartar o pendente!)
+            pendente.CriadoEm = DateTime.UtcNow;
+            var texto = "⚠️ Não entendi. Escolha uma categoria:\n";
+            for (int i = 0; i < pendente.CategoriasDisponiveis.Count; i++)
+                texto += $"\n{i + 1}️⃣ {pendente.CategoriasDisponiveis[i].Nome}";
+            texto += "\n\nOu digite *cancelar* para cancelar.";
+            var linhasCat = pendente.CategoriasDisponiveis.Select((c, i) => new (string, string)[] { ($"🏷️ {c.Nome}", (i + 1).ToString()) })
+                .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+            DefinirTeclado(chatId, linhasCat);
+            return texto;
+        }
+
+        pendente.Dados.Categoria = categoriaEscolhida.Nome;
+        pendente.CriadoEm = DateTime.UtcNow;
+
+        // Avançar para confirmação
+        pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+        var nomeCartaoPreview = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
+        return MontarPreviewLancamento(pendente.Dados, nomeCartaoPreview);
+    }
+
+    private async Task<string?> ProcessarConfirmacaoFinalAsync(long chatId, LancamentoPendente pendente, Usuario usuario, string msg)
+    {
+        // Confirmar
+        if (msg is "sim" or "s" or "confirmar" or "confirma" or "ok" or "✅" or "👍")
+        {
+            _pendentes.TryRemove(chatId, out _);
+            try
+            {
+                // Resolver cartão se for crédito
+                int? cartaoId = null;
+                if (pendente.Dados.FormaPagamento?.ToLower() is "credito" or "crédito")
+                {
+                    if (pendente.CartoesDisponiveis?.Any() == true)
+                    {
+                        cartaoId = pendente.CartoesDisponiveis.First().Id;
+                    }
+                    else
+                    {
+                        var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+                        cartaoId = cartoes.FirstOrDefault()?.Id;
+                    }
+                }
+
+                var resultado = await RegistrarLancamentoViaIA(usuario, pendente.Dados, pendente.Origem, cartaoId);
+                await _perfilService.InvalidarAsync(usuario.Id);
+
+                // Verificar alerta de limite da categoria
+                if (pendente.Dados.Tipo?.ToLower() == "gasto" && !string.IsNullOrWhiteSpace(pendente.Dados.Categoria))
+                {
+                    var cat = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, pendente.Dados.Categoria);
+                    if (cat != null)
+                    {
+                        var alerta = await _limiteService.VerificarAlertaAsync(usuario.Id, cat.Id, 0);
+                        if (alerta != null)
+                            resultado += alerta;
+                    }
+                }
+
+                return resultado;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao registrar lançamento confirmado");
+                return "❌ Erro ao registrar. Tente novamente.";
+            }
+        }
+
+        // Cancelar
+        if (msg is "nao" or "não" or "n")
+        {
+            _pendentes.TryRemove(chatId, out _);
+            return "❌ Cancelado! O lançamento não foi registrado.";
+        }
+
+        // Qualquer outra mensagem: descartar o pendente e processar normalmente
+        _pendentes.TryRemove(chatId, out _);
+        return null;
+    }
+
+    /// <summary>
+    /// Após resolver forma de pagamento (e cartão se crédito), verifica se precisa perguntar categoria.
+    /// Se categoria já está preenchida e faz sentido, vai direto para confirmação.
+    /// </summary>
+    private async Task<string> AvancarParaCategoriaOuConfirmacaoAsync(long chatId, LancamentoPendente pendente)
+    {
+        // Categoria ausente ou genérica? Perguntar.
+        var catNome = pendente.Dados.Categoria?.Trim();
+        var ehReceita = pendente.Dados.Tipo?.ToLower() == "receita";
+        var categoriaAusente = string.IsNullOrWhiteSpace(catNome) || catNome.Equals("Outros", StringComparison.OrdinalIgnoreCase);
+
+        // REGRA DE NEGÓCIO: Se categoria preenchida é de receita mas lançamento é gasto (ou vice-versa), forçar re-seleção
+        if (!categoriaAusente && !ehReceita && Categoria.NomeEhCategoriaReceita(catNome))
+        {
+            categoriaAusente = true; // Forçar escolha de categoria correta
+        }
+        if (!categoriaAusente && ehReceita && !Categoria.NomeEhCategoriaReceita(catNome) && catNome != "Outros")
+        {
+            categoriaAusente = true; // Forçar escolha de categoria de receita
+        }
+
+        if (categoriaAusente)
+        {
+            // Buscar categorias do usuário
+            var todasCategorias = await _categoriaRepo.ObterPorUsuarioAsync(pendente.UsuarioId);
+
+            // REGRA DE NEGÓCIO CRÍTICA: Filtrar categorias pelo tipo do lançamento
+            // Gasto → só mostra categorias de gasto (exclui Salário, Renda Extra, etc.)
+            // Receita → só mostra categorias de receita
+            var categorias = todasCategorias
+                .Where(c => ehReceita ? Categoria.NomeEhCategoriaReceita(c.Nome) : !c.EhCategoriaReceita)
+                .ToList();
+
+            // Se não sobrou nenhuma categoria filtrada, usar "Outros" para gasto ou "Renda Extra" para receita
+            if (!categorias.Any())
+            {
+                pendente.Dados.Categoria = ehReceita ? "Renda Extra" : "Outros";
+            }
+            else if (categorias.Any())
+            {
+                // IA pode sugerir uma categoria baseada na descrição
+                var sugerida = SugerirCategoria(pendente.Dados.Descricao, categorias);
+
+                pendente.Estado = EstadoPendente.AguardandoCategoria;
+                pendente.CategoriasDisponiveis = categorias;
+                pendente.CriadoEm = DateTime.UtcNow;
+
+                var texto = "🏷️ Qual a categoria deste lançamento?\n";
+                for (int i = 0; i < categorias.Count; i++)
+                {
+                    var marcador = categorias[i].Nome.Equals(sugerida, StringComparison.OrdinalIgnoreCase) ? " ⭐" : "";
+                    texto += $"\n{i + 1}️⃣ {categorias[i].Nome}{marcador}";
+                }
+
+                if (!string.IsNullOrEmpty(sugerida))
+                    texto += $"\n\n💡 Sugiro: *{sugerida}*";
+                else
+                    texto += "\n\nEscolha abaixo 👇";
+
+                var linhasCat = categorias.Select((c, i) => new (string, string)[] { ($"🏷️ {c.Nome}", (i + 1).ToString()) })
+                    .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+                DefinirTeclado(chatId, linhasCat);
+                return texto;
+            }
+
+            // Sem categorias — usar "Outros" e seguir
+            pendente.Dados.Categoria = "Outros";
+        }
+
+        // Tudo preenchido: ir para confirmação
+        pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+        );
+        var nomeCartaoPreview2 = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
+        return MontarPreviewLancamento(pendente.Dados, nomeCartaoPreview2);
+    }
+
+    /// <summary>
+    /// Sugere uma categoria baseada na descrição do lançamento, comparando com as categorias do usuário.
+    /// </summary>
+    private static string? SugerirCategoria(string descricao, List<Categoria> categorias)
+    {
+        if (string.IsNullOrWhiteSpace(descricao)) return null;
+
+        var desc = descricao.ToLower();
+        var mapeamento = new Dictionary<string, string[]>
+        {
+            ["Alimentação"] = new[] { "mercado", "supermercado", "restaurante", "lanche", "comida", "almoço", "jantar", "café", "padaria", "ifood", "pizza", "hamburger", "açougue", "feira", "hortifruti" },
+            ["Transporte"] = new[] { "uber", "99", "ônibus", "gasolina", "combustível", "estacionamento", "pedágio", "metrô", "taxi", "posto", "oficina" },
+            ["Moradia"] = new[] { "aluguel", "condomínio", "luz", "água", "gás", "iptu", "internet", "energia" },
+            ["Saúde"] = new[] { "farmácia", "remédio", "médico", "consulta", "hospital", "plano de saúde", "dentista", "exame" },
+            ["Lazer"] = new[] { "cinema", "netflix", "spotify", "jogo", "viagem", "bar", "festa", "show", "ingresso", "passeio" },
+            ["Educação"] = new[] { "curso", "faculdade", "escola", "livro", "mensalidade", "material escolar", "udemy" },
+            ["Vestuário"] = new[] { "roupa", "sapato", "tênis", "calça", "camisa", "blusa", "vestido", "loja" },
+            ["Assinaturas"] = new[] { "assinatura", "plano", "mensalidade", "streaming" },
+        };
+
+        foreach (var (categoria, palavras) in mapeamento)
+        {
+            if (palavras.Any(p => desc.Contains(p)))
+            {
+                // Verificar se o usuário tem essa categoria
+                var match = categorias.FirstOrDefault(c =>
+                    c.Nome.Contains(categoria, StringComparison.OrdinalIgnoreCase) ||
+                    categoria.Contains(c.Nome, StringComparison.OrdinalIgnoreCase));
+                return match?.Nome;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Tenta responder diretamente sem chamar IA para mensagens simples (saudações, ajuda, consultas diretas).
+    /// Retorna null se a mensagem precisa de IA.
+    /// </summary>
+    private async Task<string?> TentarRespostaDirectaAsync(Usuario usuario, string msgLower)
+    {
+        // Saudações simples
+        if (msgLower is "oi" or "olá" or "ola" or "hey" or "eae" or "e aí" or "e ai" or "fala" or "salve"
+            or "bom dia" or "boa tarde" or "boa noite" or "hello" or "hi" or "opa")
+        {
+            var saudacao = DateTime.UtcNow.AddHours(-3).Hour switch
+            {
+                >= 5 and < 12 => "Bom dia",
+                >= 12 and < 18 => "Boa tarde",
+                _ => "Boa noite"
+            };
+            return $"👋 {saudacao}, {usuario.Nome}!\n\n" +
+                   "Como posso te ajudar? Alguns exemplos:\n" +
+                   "💰 \"Gastei 50 no mercado\"\n" +
+                   "📊 \"Resumo financeiro\"\n" +
+                   "💳 \"Fatura do cartão\"\n" +
+                   "🤔 \"Posso gastar 200 em roupas?\"\n\n" +
+                   "Ou digite /ajuda para ver todos os comandos!";
+        }
+
+        // Ajuda
+        if (msgLower is "ajuda" or "help" or "socorro" or "comandos" or "menu"
+            or "o que voce faz" or "o que você faz" or "como funciona")
+        {
+            return "📋 *O que posso fazer por você:*\n\n" +
+                   "💰 *Lançamentos* — Me diga seus gastos ou receitas em linguagem natural\n" +
+                   "   Ex: \"Gastei 30 no almoço\" ou \"Recebi 1500 de salário\"\n\n" +
+                   "📊 *Resumo* — \"Resumo financeiro\" ou /resumo\n" +
+                   "💳 *Fatura* — \"Fatura do cartão\" ou /fatura\n" +
+                   "📂 *Categorias* — \"Ver categorias\" ou /categorias\n" +
+                   "🎯 *Metas* — \"Ver metas\" ou /metas\n" +
+                   "⚠️ *Limites* — \"Ver limites\" ou /limites\n" +
+                   "🤔 *Decisão* — \"Posso gastar X em Y?\"\n" +
+                   "🔮 *Previsão* — \"Quero comprar X de R$ Y em Z parcelas\"\n" +
+                   "💳 *Cartão* — \"Cadastrar cartão Nubank\"\n" +
+                   "🔔 *Lembretes* — /lembrete criar Internet;15/03/2026;99,90;mensal\n" +
+                   "💵 *Salário médio* — /salario_mensal\n" +
+                   "🎤 *Áudio* — Envie áudio que eu transcrevo!\n" +
+                   "📷 *Imagem* — Envie foto de nota fiscal!\n\n" +
+                   "Digite qualquer coisa e eu entendo! 🚀";
+        }
+
+        // Agradecimento
+        if (msgLower is "obrigado" or "obrigada" or "valeu" or "vlw" or "thanks" or "brigado" or "brigada"
+            or "obg" or "muito obrigado" or "muito obrigada")
+        {
+            return "😊 Por nada! Estou aqui sempre que precisar. 💙";
+        }
+
+        // Consultas diretas que não precisam de IA
+        if (msgLower is "resumo" or "resumo financeiro" or "meu resumo" or "como estou" or "como to")
+        {
+            _logger.LogInformation("Resposta direta: ver_resumo | Usuário: {Nome}", usuario.Nome);
+            return await GerarResumoFormatado(usuario);
+        }
+
+        if (msgLower is "fatura" or "fatura do cartão" or "fatura do cartao" or "ver fatura" or "fatura atual" or "minha fatura")
+        {
+            _logger.LogInformation("Resposta direta: ver_fatura | Usuário: {Nome}", usuario.Nome);
+            return await GerarFaturaFormatada(usuario, detalhada: false);
+        }
+
+        if (msgLower is "minhas faturas" or "listar faturas" or "todas faturas" or "todas as faturas" or "faturas pendentes")
+        {
+            _logger.LogInformation("Resposta direta: listar_faturas | Usuário: {Nome}", usuario.Nome);
+            return await GerarTodasFaturasFormatadas(usuario);
+        }
+
+        if (msgLower is "fatura detalhada" or "detalhar fatura" or "fatura completa")
+        {
+            _logger.LogInformation("Resposta direta: ver_fatura_detalhada | Usuário: {Nome}", usuario.Nome);
+            return await GerarFaturaFormatada(usuario, detalhada: true);
+        }
+
+        if (msgLower is "categorias" or "ver categorias" or "minhas categorias" or "listar categorias")
+        {
+            _logger.LogInformation("Resposta direta: ver_categorias | Usuário: {Nome}", usuario.Nome);
+            return await ListarCategorias(usuario);
+        }
+
+        if (msgLower is "limites" or "ver limites" or "meus limites" or "listar limites")
+        {
+            _logger.LogInformation("Resposta direta: consultar_limites | Usuário: {Nome}", usuario.Nome);
+            return await ListarLimitesFormatado(usuario);
+        }
+
+        if (msgLower is "metas" or "ver metas" or "minhas metas" or "listar metas")
+        {
+            _logger.LogInformation("Resposta direta: consultar_metas | Usuário: {Nome}", usuario.Nome);
+            return await ListarMetasFormatado(usuario);
+        }
+
+        if (msgLower.Contains("salario mensal") || msgLower.Contains("salário mensal")
+            || msgLower.Contains("quanto recebo por mes") || msgLower.Contains("quanto recebo por mês"))
+        {
+            _logger.LogInformation("Resposta direta: salario_mensal | Usuário: {Nome}", usuario.Nome);
+            return await ConsultarSalarioMensalAsync(usuario);
+        }
+
+        if (msgLower.StartsWith("lembrete") || msgLower.StartsWith("lembrar ") || msgLower.StartsWith("conta fixa"))
+        {
+            _logger.LogInformation("Resposta direta: lembrete | Usuário: {Nome}", usuario.Nome);
+            return await ProcessarComandoLembreteAsync(usuario, null);
+        }
+
+        return null;
+    }
+
+    public async Task<string> ProcessarAudioAsync(long chatId, byte[] audioData, string mimeType, string nomeUsuario)
+    {
+        var usuario = await ObterUsuarioVinculadoAsync(chatId);
+        if (usuario == null)
+            return "🔒 Vincule sua conta primeiro! Acesse finance.nicolasportie.com e envie \"vincular CODIGO\" aqui no bot.";
+
+        try
+        {
+            var texto = await _gemini.TranscreverAudioAsync(audioData, mimeType);
+            if (string.IsNullOrWhiteSpace(texto))
+                return "❌ Não consegui entender o áudio. Tente enviar em texto.";
+
+            var resultado = await ProcessarComIAAsync(usuario, texto, OrigemDado.Audio);
+            return $"🎤 Transcrição: \"{texto}\"\n\n{resultado}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar áudio");
+            return "❌ Erro ao processar o áudio. Tente novamente.";
+        }
+    }
+
+    public async Task<string> ProcessarImagemAsync(long chatId, byte[] imageData, string mimeType, string nomeUsuario)
+    {
+        var usuario = await ObterUsuarioVinculadoAsync(chatId);
+        if (usuario == null)
+            return "🔒 Vincule sua conta primeiro! Acesse finance.nicolasportie.com e envie \"vincular CODIGO\" aqui no bot.";
+
+        try
+        {
+            var texto = await _gemini.ExtrairTextoImagemAsync(imageData, mimeType);
+            if (string.IsNullOrWhiteSpace(texto))
+                return "❌ Não consegui extrair informações da imagem.";
+
+            var resultado = await ProcessarComIAAsync(usuario, texto, OrigemDado.Imagem);
+            return $"📷 Imagem processada!\n\n{resultado}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar imagem");
+            return "❌ Erro ao processar a imagem. Tente novamente.";
+        }
+    }
+
+    private async Task<string> ProcessarComIAAsync(Usuario usuario, string mensagem, OrigemDado origem = OrigemDado.Texto)
+    {
+        // Montar contexto financeiro do usuário (inclui categorias reais)
+        var contexto = await MontarContextoFinanceiroAsync(usuario);
+
+        // Uma única chamada ao Gemini que faz tudo
+        var resposta = await _gemini.ProcessarMensagemCompletaAsync(mensagem, contexto);
+
+        _logger.LogInformation("IA Intenção: {Intencao} | Usuário: {Nome}", resposta.Intencao, usuario.Nome);
+
+        // Se a IA identificou um lançamento financeiro, iniciar fluxo em etapas
+        if (resposta.Intencao == "registrar" && resposta.Lancamento != null)
+        {
+            return await IniciarFluxoLancamentoAsync(usuario, resposta.Lancamento, origem);
+        }
+
+        // Se a IA identificou previsão de compra
+        if (resposta.Intencao == "prever_compra" && resposta.Simulacao != null)
+        {
+            return await ProcessarPrevisaoCompraAsync(usuario, resposta.Simulacao);
+        }
+
+        // Se a IA identificou avaliação rápida de gasto ("posso gastar X?")
+        if (resposta.Intencao == "avaliar_gasto" && resposta.AvaliacaoGasto != null)
+        {
+            return await ProcessarAvaliacaoGastoAsync(usuario, resposta.AvaliacaoGasto);
+        }
+
+        // Se a IA identificou configuração de limite
+        if (resposta.Intencao == "configurar_limite" && resposta.Limite != null)
+        {
+            return await ProcessarConfigurarLimiteAsync(usuario, resposta.Limite);
+        }
+
+        // Se a IA identificou criação de meta
+        if (resposta.Intencao == "criar_meta" && resposta.Meta != null)
+        {
+            return await ProcessarCriarMetaAsync(usuario, resposta.Meta);
+        }
+
+        // Se a IA identificou cadastro de cartão com dados extraídos
+        if (resposta.Intencao == "cadastrar_cartao" && resposta.Cartao != null)
+        {
+            return await ProcessarCadastrarCartaoViaIAAsync(usuario, resposta.Cartao);
+        }
+
+        // Para intenções que precisam de dados do sistema
+        return resposta.Intencao?.ToLower() switch
+        {
+            "ver_resumo" => await GerarResumoFormatado(usuario),
+            "ver_fatura" => await GerarFaturaFormatada(usuario, detalhada: false, filtroCartao: resposta.Cartao?.Nome),
+            "ver_fatura_detalhada" => await GerarFaturaFormatada(usuario, detalhada: true, filtroCartao: resposta.Cartao?.Nome),
+            "listar_faturas" => await GerarTodasFaturasFormatadas(usuario),
+            "detalhar_categoria" => await DetalharCategoriaAsync(usuario, resposta.Resposta),
+            "ver_categorias" => await ListarCategorias(usuario),
+            "consultar_limites" => await ListarLimitesFormatado(usuario),
+            "consultar_metas" => await ListarMetasFormatado(usuario),
+            "cadastrar_cartao" => resposta.Resposta, // IA asks for missing data in natural language
+            _ => resposta.Resposta // Resposta conversacional da IA (saudação, ajuda, conversa, etc.)
+        };
+    }
+
+    /// <summary>
+    /// Inicia o fluxo de lançamento em etapas. Se faltam dados, pergunta; senão, vai direto para confirmação.
+    /// </summary>
+    private async Task<string> IniciarFluxoLancamentoAsync(Usuario usuario, DadosLancamento dados, OrigemDado origem)
+    {
+        var chatId = usuario.TelegramChatId!.Value;
+
+        var pendente = new LancamentoPendente
+        {
+            Dados = dados,
+            Origem = origem,
+            UsuarioId = usuario.Id,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        // Receita não precisa de forma de pagamento — pular direto pra confirmação
+        var ehReceita = dados.Tipo?.ToLower() == "receita";
+        if (ehReceita)
+        {
+            dados.FormaPagamento = "pix"; // default para receita
+            pendente.Dados = dados;
+            pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+            _pendentes[chatId] = pendente;
+
+            var preview = MontarPreviewLancamento(pendente.Dados);
+            DefinirTeclado(chatId,
+                new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+            );
+            return preview + "\n\nEscolha abaixo 👇";
+        }
+
+        // Verificar se forma de pagamento está ausente
+        var formaPag = dados.FormaPagamento?.ToLower();
+        var formaPagAusente = string.IsNullOrWhiteSpace(formaPag) ||
+                              formaPag == "nao_informado" ||
+                              formaPag == "nao informado";
+
+        if (formaPagAusente)
+        {
+            pendente.Estado = EstadoPendente.AguardandoFormaPagamento;
+            _pendentes[chatId] = pendente;
+
+            // Montar opções de forma de pagamento
+            var texto = $"💰 Registrar: *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n" +
+                        "💳 Qual a forma de pagamento?\n\n" +
+                        "1️⃣ PIX\n" +
+                        "2️⃣ Débito\n";
+
+            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+            if (cartoes.Any())
+            {
+                var nomes = string.Join(", ", cartoes.Select(c => c.Nome));
+                texto += $"3️⃣ Crédito ({nomes})\n";
+            }
+            else
+            {
+                texto += "3️⃣ Crédito\n";
+            }
+
+            texto += "\nEscolha abaixo 👇";
+            DefinirTeclado(chatId,
+                new[] { ("1️⃣ PIX", "pix"), ("2️⃣ Débito", "debito"), ("3️⃣ Crédito", "credito") },
+                new[] { ("❌ Cancelar", "cancelar") }
+            );
+            return texto;
+        }
+
+        // Forma preenchida — verificar se crédito precisa escolher cartão
+        if (formaPag is "credito" or "crédito")
+        {
+            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+            if (!cartoes.Any())
+            {
+                return "💳 Você mencionou crédito, mas não tem cartão cadastrado.\nMe diz o nome do cartão, limite e dia de vencimento que eu cadastro!\nExemplo: \"cadastrar cartão Nubank limite 5000 vencimento dia 10\"";
+            }
+
+            if (cartoes.Count > 1)
+            {
+                pendente.Estado = EstadoPendente.AguardandoCartao;
+                pendente.CartoesDisponiveis = cartoes;
+                _pendentes[chatId] = pendente;
+
+                var texto = $"💰 Registrar: *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n💳 Qual cartão?\n";
+                for (int i = 0; i < cartoes.Count; i++)
+                    texto += $"\n{i + 1}️⃣ {cartoes[i].Nome}";
+                texto += "\n\nEscolha abaixo 👇";
+                var botoesCard = cartoes.Select((c, i) => new (string, string)[] { ($"💳 {c.Nome}", (i + 1).ToString()) })
+                    .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+                DefinirTeclado(chatId, botoesCard);
+                return texto;
+            }
+
+            // Um só cartão — resolve automaticamente
+            pendente.CartoesDisponiveis = cartoes;
+        }
+
+        // Forma e cartão OK — verificar categoria
+        _pendentes[chatId] = pendente;
+        return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
+    }
+
+    private async Task<string> MontarContextoFinanceiroAsync(Usuario usuario)
+    {
+        try
+        {
+            var resumo = await _resumoService.GerarResumoMensalAsync(usuario.Id);
+            var ctx = $"Nome: {usuario.Nome}. ";
+            ctx += $"Total gastos do mês: R$ {resumo.TotalGastos:N2}. ";
+            ctx += $"Total receitas do mês: R$ {resumo.TotalReceitas:N2}. ";
+            ctx += $"Saldo: R$ {resumo.Saldo:N2}. ";
+
+            if (resumo.GastosPorCategoria.Any())
+            {
+                ctx += "Gastos por categoria: ";
+                ctx += string.Join(", ", resumo.GastosPorCategoria.Select(c => $"{c.Categoria}: R$ {c.Total:N2}"));
+                ctx += ". ";
+            }
+
+            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+            if (cartoes.Any())
+            {
+                ctx += "Cartões: " + string.Join(", ", cartoes.Select(c => c.Nome));
+                ctx += ". ";
+            }
+            else
+            {
+                ctx += "Sem cartões cadastrados. ";
+            }
+
+            // Incluir categorias do usuário para a IA usar
+            var categorias = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
+            if (categorias.Any())
+            {
+                ctx += "Categorias do usuário: " + string.Join(", ", categorias.Select(c => c.Nome));
+                ctx += ". ";
+            }
+
+            return ctx;
+        }
+        catch
+        {
+            return $"Nome: {usuario.Nome}. Sem dados financeiros ainda (usuário novo).";
+        }
+    }
+
+    private async Task<string> RegistrarLancamentoViaIA(Usuario usuario, DadosLancamento dados, OrigemDado origem, int? cartaoIdOverride = null)
+    {
+        var tipo = dados.Tipo?.ToLower() == "receita" ? TipoLancamento.Receita : TipoLancamento.Gasto;
+
+        var formaPag = dados.FormaPagamento?.ToLower() switch
+        {
+            "pix" => FormaPagamento.PIX,
+            "debito" or "débito" => FormaPagamento.Debito,
+            "credito" or "crédito" => FormaPagamento.Credito,
+            _ => FormaPagamento.PIX
+        };
+
+        int? cartaoId = cartaoIdOverride;
+        string? nomeCartao = null;
+        if (formaPag == FormaPagamento.Credito && cartaoId == null)
+        {
+            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+            if (cartoes.Any())
+            {
+                cartaoId = cartoes.First().Id;
+                nomeCartao = cartoes.First().Nome;
+            }
+            else
+            {
+                return "💳 Você mencionou crédito, mas não tem cartão cadastrado.\nMe diz o nome do cartão, limite e dia de vencimento que eu cadastro!\nExemplo: \"cadastrar cartão Nubank limite 5000 vencimento dia 10\"";
+            }
+        }
+        else if (formaPag == FormaPagamento.Credito && cartaoId != null)
+        {
+            var cartao = await _cartaoRepo.ObterPorIdAsync(cartaoId.Value);
+            nomeCartao = cartao?.Nome;
+        }
+
+        // Garantir que a data é UTC
+        DateTime dataLancamento;
+        if (dados.Data.HasValue)
+        {
+            var d = dados.Data.Value;
+            dataLancamento = d.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(d, DateTimeKind.Utc)
+                : d.ToUniversalTime();
+        }
+        else
+        {
+            dataLancamento = DateTime.UtcNow;
+        }
+
+        // REGRA DE NEGÓCIO: Corrigir categoria se incompatível com o tipo
+        var categoriaNome = dados.Categoria ?? "Outros";
+        if (tipo == TipoLancamento.Gasto && Categoria.NomeEhCategoriaReceita(categoriaNome))
+        {
+            _logger.LogWarning("Categoria de receita '{Cat}' usada em gasto. Reclassificando para 'Outros'.", categoriaNome);
+            categoriaNome = "Outros";
+        }
+        if (tipo == TipoLancamento.Receita && !Categoria.NomeEhCategoriaReceita(categoriaNome) && categoriaNome != "Outros")
+        {
+            _logger.LogWarning("Categoria de gasto '{Cat}' usada em receita. Reclassificando para 'Renda Extra'.", categoriaNome);
+            categoriaNome = "Renda Extra";
+        }
+
+        var dto = new RegistrarLancamentoDto
+        {
+            Valor = dados.Valor,
+            Descricao = dados.Descricao,
+            Data = dataLancamento,
+            Tipo = tipo,
+            FormaPagamento = formaPag,
+            Origem = origem,
+            Categoria = categoriaNome,
+            NumeroParcelas = dados.NumeroParcelas > 0 ? dados.NumeroParcelas : 1,
+            CartaoCreditoId = cartaoId
+        };
+
+        var lancamento = await _lancamentoService.RegistrarAsync(usuario.Id, dto);
+
+        var emoji = tipo == TipoLancamento.Receita ? "💰" : "💸";
+        var parcelaInfo = dto.NumeroParcelas > 1 ? $" em {dto.NumeroParcelas}x" : "";
+        var pagInfo = formaPag switch
+        {
+            FormaPagamento.PIX => "PIX",
+            FormaPagamento.Debito => "Débito",
+            FormaPagamento.Credito => !string.IsNullOrEmpty(nomeCartao) ? $"Crédito ({nomeCartao})" : "Crédito",
+            _ => ""
+        };
+
+        return $"{emoji} Registrado com sucesso!\n\n📝 {dto.Descricao}\n💵 R$ {dto.Valor:N2}{parcelaInfo}\n🏷️ {dto.Categoria}\n💳 {pagInfo}\n📅 {dto.Data:dd/MM/yyyy}";
+    }
+
+    private string MontarPreviewLancamento(DadosLancamento dados, string? nomeCartao = null)
+    {
+        var tipo = dados.Tipo?.ToLower() == "receita" ? "Receita" : "Gasto";
+        var emoji = tipo == "Receita" ? "💰" : "💸";
+        var formaPag = dados.FormaPagamento?.ToLower() switch
+        {
+            "pix" => "PIX",
+            "debito" or "débito" => "Débito",
+            "credito" or "crédito" => !string.IsNullOrEmpty(nomeCartao) ? $"Crédito ({nomeCartao})" : "Crédito",
+            _ => "PIX"
+        };
+        var parcelaInfo = dados.NumeroParcelas > 1 ? $" em {dados.NumeroParcelas}x" : "";
+        var data = dados.Data?.ToString("dd/MM/yyyy") ?? DateTime.UtcNow.ToString("dd/MM/yyyy");
+
+        var linhaFormaPag = tipo == "Receita" ? "" : $"💳 {formaPag}\n";
+        return $"📋 *Confirma este lançamento?*\n\n" +
+               $"{emoji} *{tipo}*\n" +
+               $"📝 {dados.Descricao}\n" +
+               $"💵 R$ {dados.Valor:N2}{parcelaInfo}\n" +
+               $"🏷️ {dados.Categoria}\n" +
+               linhaFormaPag +
+               $"📅 {data}";
+    }
+
+    private async Task<string> GerarResumoFormatado(Usuario usuario)
+    {
+        var resumo = await _resumoService.GerarResumoMensalAsync(usuario.Id);
+        return _resumoService.FormatarResumo(resumo);
+    }
+
+    private async Task<string> GerarFaturaFormatada(
+        Usuario usuario,
+        bool detalhada = false,
+        string? filtroCartao = null,
+        string? referenciaMes = null)
+    {
+        var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+
+        if (!cartoes.Any())
+            return "💳 Você não tem cartões cadastrados.\nMe diga o nome do cartão, limite e dia de vencimento que eu cadastro!\nExemplo: \"cadastrar cartão Nubank limite 5000 vence dia 10\"";
+
+        string? referenciaNormalizada = null;
+        if (!string.IsNullOrWhiteSpace(referenciaMes))
+        {
+            if (!TryParseMesReferencia(referenciaMes, out var referencia))
+                return "❌ Referência inválida. Use MM/yyyy. Exemplo: /fatura_detalhada 03/2026";
+
+            referenciaNormalizada = referencia.ToString("MM/yyyy", CultureInfo.InvariantCulture);
+        }
+
+        // Filtrar por nome do cartão se especificado
+        if (!string.IsNullOrWhiteSpace(filtroCartao))
+        {
+            var filtrados = cartoes.Where(c =>
+                c.Nome.Contains(filtroCartao, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (filtrados.Any())
+                cartoes = filtrados;
+        }
+
+        var resultado = "";
+        foreach (var cartao in cartoes)
+        {
+            var todasFaturas = await _faturaService.ObterFaturasAsync(cartao.Id);
+            var pendentes = todasFaturas
+                .Where(f => f.Status != "Paga")
+                .OrderByDescending(f => f.DataVencimento)
+                .ToList();
+
+            if (!pendentes.Any())
+            {
+                resultado += $"💳 {cartao.Nome}: Sem fatura pendente.\n\n";
+                continue;
+            }
+
+            FaturaResumoDto? faturaSelecionada;
+            if (!string.IsNullOrWhiteSpace(referenciaNormalizada))
+            {
+                faturaSelecionada = pendentes.FirstOrDefault(f =>
+                    string.Equals(f.MesReferencia, referenciaNormalizada, StringComparison.Ordinal));
+
+                if (faturaSelecionada == null)
+                {
+                    resultado += $"💳 {cartao.Nome}: Sem fatura pendente para {referenciaNormalizada}.\n\n";
+                    continue;
+                }
+            }
+            else
+            {
+                // Fatura atual = a mais recente (a que está acumulando compras agora)
+                faturaSelecionada = pendentes.First();
+            }
+
+            if (detalhada)
+                resultado += _faturaService.FormatarFaturaDetalhada(faturaSelecionada) + "\n\n";
+            else
+                resultado += _faturaService.FormatarFatura(faturaSelecionada) + "\n\n";
+
+            if (string.IsNullOrWhiteSpace(referenciaNormalizada))
+            {
+                // Avisar se há faturas anteriores pendentes/vencidas
+                var anteriores = pendentes.Skip(1).ToList();
+                if (anteriores.Any())
+                {
+                    var totalAnterior = anteriores.Sum(f => f.Total);
+                    resultado += $"⚠️ Você também tem {anteriores.Count} fatura(s) anterior(es) pendente(s) totalizando R$ {totalAnterior:N2}.\nUse /faturas para ver todas.\n\n";
+                }
+            }
+        }
+
+        return resultado.TrimEnd();
+    }
+
+    private async Task<string> ProcessarComandoFaturaAsync(Usuario usuario, string? parametros, bool detalhada)
+    {
+        if (string.IsNullOrWhiteSpace(parametros))
+            return await GerarFaturaFormatada(usuario, detalhada: detalhada);
+
+        var texto = parametros.Trim();
+        string? filtroCartao = null;
+        string? referenciaMes = null;
+
+        var tokens = texto.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var ultimoToken = tokens[^1];
+
+        if (LooksLikeMesReferencia(ultimoToken))
+        {
+            if (!TryParseMesReferencia(ultimoToken, out var referencia))
+                return "❌ Referência inválida. Use MM/yyyy. Exemplo: /fatura_detalhada 03/2026";
+
+            referenciaMes = referencia.ToString("MM/yyyy", CultureInfo.InvariantCulture);
+            if (tokens.Length > 1)
+                filtroCartao = string.Join(' ', tokens[..^1]);
+        }
+        else
+        {
+            filtroCartao = texto;
+        }
+
+        return await GerarFaturaFormatada(
+            usuario,
+            detalhada: detalhada,
+            filtroCartao: filtroCartao,
+            referenciaMes: referenciaMes);
+    }
+
+    private static bool LooksLikeMesReferencia(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+
+        var partes = input.Split('/');
+        if (partes.Length != 2)
+            return false;
+
+        return partes[0].Length is >= 1 and <= 2
+               && partes[1].Length == 4
+               && partes[0].All(char.IsDigit)
+               && partes[1].All(char.IsDigit);
+    }
+
+    private static bool TryParseMesReferencia(string input, out DateTime referencia)
+        => DateTime.TryParseExact(
+            input,
+            new[] { "M/yyyy", "MM/yyyy" },
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out referencia);
+    private async Task<string> GerarTodasFaturasFormatadas(Usuario usuario, bool detalhada = false)
+    {
+        var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+
+        if (!cartoes.Any())
+            return "💳 Você não tem cartões cadastrados.";
+
+        var resultado = "📋 *Todas as faturas pendentes:*\n\n";
+        var temFatura = false;
+
+        foreach (var cartao in cartoes)
+        {
+            var todasFaturas = await _faturaService.ObterFaturasAsync(cartao.Id);
+            var pendentes = todasFaturas
+                .Where(f => f.Status != "Paga")
+                .OrderBy(f => f.DataVencimento)
+                .ToList();
+
+            foreach (var fatura in pendentes)
+            {
+                temFatura = true;
+                if (detalhada)
+                    resultado += _faturaService.FormatarFaturaDetalhada(fatura) + "\n\n";
+                else
+                    resultado += _faturaService.FormatarFatura(fatura) + "\n\n";
+            }
+        }
+
+        if (!temFatura)
+            return "✅ Nenhuma fatura pendente! Tudo em dia.";
+
+        return resultado.TrimEnd();
+    }
+
+    /// <summary>
+    /// Detalha gastos de uma categoria específica no mês atual.
+    /// A IA envia o nome da categoria no campo "resposta".
+    /// </summary>
+    private async Task<string> DetalharCategoriaAsync(Usuario usuario, string? respostaIA)
+    {
+        // Extrair nome da categoria da resposta da IA (ex: "Alimentação" ou qualquer texto)
+        var nomeCategoria = respostaIA?.Trim();
+        if (string.IsNullOrWhiteSpace(nomeCategoria))
+            return "❌ Me diga qual categoria quer detalhar. Ex: \"detalhar Alimentação\"";
+
+        // Buscar categoria
+        var categoria = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, nomeCategoria);
+        if (categoria == null)
+        {
+            // Tentar match parcial
+            var categorias = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
+            categoria = categorias.FirstOrDefault(c =>
+                c.Nome.Contains(nomeCategoria, StringComparison.OrdinalIgnoreCase) ||
+                nomeCategoria.Contains(c.Nome, StringComparison.OrdinalIgnoreCase));
+
+            if (categoria == null)
+            {
+                var lista = categorias.Any()
+                    ? "\n\nSuas categorias: " + string.Join(", ", categorias.Select(c => c.Nome))
+                    : "";
+                return $"❌ Categoria \"{nomeCategoria}\" não encontrada.{lista}";
+            }
+        }
+
+        // Buscar lançamentos do mês atual nessa categoria
+        var hoje = DateTime.UtcNow;
+        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fimMes = inicioMes.AddMonths(1).AddDays(-1);
+
+        var lancamentos = await _lancamentoRepo.ObterPorUsuarioETipoAsync(
+            usuario.Id, TipoLancamento.Gasto, inicioMes, fimMes);
+
+        var lancamentosCat = lancamentos
+            .Where(l => l.CategoriaId == categoria.Id)
+            .OrderByDescending(l => l.Data)
+            .ToList();
+
+        if (!lancamentosCat.Any())
+            return $"🏷️ *{categoria.Nome}*\n\nSem gastos nesta categoria em {hoje:MM/yyyy}.";
+
+        var total = lancamentosCat.Sum(l => l.Valor);
+        var texto = $"🏷️ *Detalhes — {categoria.Nome}*\n📅 {inicioMes:MM/yyyy}\n\n";
+
+        foreach (var l in lancamentosCat)
+        {
+            var pagInfo = l.FormaPagamento switch
+            {
+                FormaPagamento.PIX => "PIX",
+                FormaPagamento.Debito => "Débito",
+                FormaPagamento.Credito => "Crédito",
+                _ => ""
+            };
+            texto += $"📅 {l.Data:dd/MM} — {l.Descricao} — R$ {l.Valor:N2} ({pagInfo})\n";
+        }
+
+        texto += $"\n💰 *Subtotal: R$ {total:N2}*";
+        return texto;
+    }
+
+    private async Task<string> ListarCategorias(Usuario usuario)
+    {
+        var categorias = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
+        if (!categorias.Any()) return "📁 Nenhuma categoria encontrada.";
+
+        var texto = "🏷️ Suas Categorias:\n";
+        foreach (var cat in categorias)
+        {
+            var ico = cat.Padrao ? "📌" : "📝";
+            texto += $"\n{ico} {cat.Nome}";
+        }
+        return texto;
+    }
+
+    private async Task<string> ProcessarComandoAsync(Usuario usuario, string mensagem)
+    {
+        var partes = mensagem.Split(' ', 2);
+        var comando = partes[0].ToLower().Split('@')[0];
+
+        return comando switch
+        {
+            "/start" => $"👋 Oi, {usuario.Nome}! Eu sou o ControlFinance!\n\nFala comigo naturalmente:\n💸 \"paguei 45 no mercado\"\n💰 \"recebi 5000 de salário\"\n❓ \"posso gastar 50 num lanche?\"\n🔍 \"se eu comprar uma TV de 3000 em 10x?\"\n📊 \"limitar alimentação em 800\"\n🎯 \"quero juntar 10 mil até dezembro\"\n\nPode mandar texto, áudio ou foto de cupom! 🚀",
+            "/ajuda" or "/help" => "📖 Fala comigo naturalmente! Exemplos:\n\n💸 \"gastei 50 no mercado\"\n💰 \"recebi 3000 de salário\"\n❓ \"posso gastar 80 no iFood?\"\n💳 \"ifood 89,90 no crédito 3x\"\n📊 \"quanto gastei esse mês?\"\n🧾 \"me mostra a fatura\" ou /fatura\n📋 \"listar faturas\" ou /faturas\n🧾 \"fatura detalhada\"\n📋 \"detalhar Alimentação\"\n🔍 \"se eu comprar um celular de 4000 em 12x?\"\n📊 \"limitar lazer em 500\"\n🎯 \"meta de juntar 5000 pra viagem até junho\"\n💳 \"cadastrar cartão Nubank limite 5000 vence dia 10\"\n\nÉ só falar normalmente que eu entendo! 🚀",
+            "/simular" => await ProcessarComandoSimularAsync(usuario, partes.Length > 1 ? partes[1] : null),
+            "/posso" => await ProcessarComandoPossoAsync(usuario, partes.Length > 1 ? partes[1] : null),
+            "/limite" => await ProcessarComandoLimiteAsync(usuario, partes.Length > 1 ? partes[1] : null),
+            "/limites" => await ListarLimitesFormatado(usuario),
+            "/meta" => await ProcessarComandoMetaAsync(usuario, partes.Length > 1 ? partes[1] : null),
+            "/metas" => await ListarMetasFormatado(usuario),
+            "/desvincular" => ProcessarPedidoDesvinculacao(usuario.TelegramChatId!.Value),
+            "/resumo" => await GerarResumoFormatado(usuario),
+            "/fatura" => await ProcessarComandoFaturaAsync(usuario, partes.Length > 1 ? partes[1] : null, detalhada: false),
+            "/faturas" => await GerarTodasFaturasFormatadas(usuario),
+            "/fatura_detalhada" or "/faturadetalhada" => await ProcessarComandoFaturaAsync(usuario, partes.Length > 1 ? partes[1] : null, detalhada: true),
+            "/lembrete" or "/lembretes" => await ProcessarComandoLembreteAsync(usuario, partes.Length > 1 ? partes[1] : null),
+            "/conta_fixa" => await ProcessarComandoContaFixaAsync(usuario, partes.Length > 1 ? partes[1] : null),
+            "/salario_mensal" => await ConsultarSalarioMensalAsync(usuario),
+            "/detalhar" => partes.Length > 1
+                ? await DetalharCategoriaAsync(usuario, partes[1])
+                : "📋 Use: /detalhar NomeCategoria\nExemplo: /detalhar Alimentação",
+            "/categorias" => await ListarCategorias(usuario),
+            "/cartao" => await ProcessarCartao(usuario, partes.Length > 1 ? partes[1] : null),
+            "/gasto" when partes.Length > 1 => await ProcessarComIAAsync(usuario, partes[1]),
+            "/receita" when partes.Length > 1 => await ProcessarComIAAsync(usuario, $"recebi {partes[1]}"),
+            _ => await ProcessarComIAAsync(usuario, mensagem) // Send unknown commands to AI instead of rejecting
+        };
+    }
+
+    private async Task<string> ProcessarCartao(Usuario usuario, string? parametros)
+    {
+        if (string.IsNullOrWhiteSpace(parametros))
+        {
+            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+            if (!cartoes.Any())
+                return "💳 Nenhum cartão cadastrado.\n\nMe diz o nome, limite e vencimento que eu cadastro!\nExemplo: \"cadastrar cartão Nubank limite 5000 vence dia 10\"";
+
+            var texto = "💳 Seus Cartões:\n";
+            foreach (var c in cartoes)
+                texto += $"\n• {c.Nome} — Limite: R$ {c.Limite:N2} — Venc.: dia {c.DiaVencimento}";
+            return texto;
+        }
+
+        var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 3)
+            return "❌ Me passe nome, limite e dia de vencimento.\nExemplo: \"cartao Nubank 5000 10\"";
+
+        if (!decimal.TryParse(parts[1].Replace(",", "."), System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var limite))
+            return "❌ Limite inválido. Use número (ex: 5000)";
+
+        if (!int.TryParse(parts[2], out var diaVenc) || diaVenc < 1 || diaVenc > 28)
+            return "❌ Dia de vencimento inválido (1 a 28).";
+
+        var chatId = usuario.TelegramChatId!.Value;
+        _cartaoPendente[chatId] = new CartaoPendente
+        {
+            Nome = parts[0],
+            Limite = limite,
+            DiaVencimento = diaVenc,
+            UsuarioId = usuario.Id,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+        );
+        return $"📋 *Confirma a criação deste cartão?*\n\n" +
+               $"💳 *{parts[0]}*\n" +
+               $"💰 Limite: R$ {limite:N2}\n" +
+               $"📅 Vencimento: dia {diaVenc}\n" +
+               $"🔒 Fechamento: 1º dia útil (automático)";
+    }
+
+    private async Task<string?> ProcessarConfirmacaoCartaoAsync(long chatId, string mensagem)
+    {
+        // Limpar expirados (5 min)
+        foreach (var kv in _cartaoPendente)
+        {
+            if ((DateTime.UtcNow - kv.Value.CriadoEm).TotalMinutes > 5)
+                _cartaoPendente.TryRemove(kv.Key, out _);
+        }
+
+        if (!_cartaoPendente.TryGetValue(chatId, out var pendente))
+            return null;
+
+        var msg = mensagem.Trim().ToLower();
+
+        if (msg is "sim" or "s" or "confirmar" or "confirma" or "ok" or "✅" or "👍")
+        {
+            _cartaoPendente.TryRemove(chatId, out _);
+            try
+            {
+                var cartao = await _cartaoRepo.CriarAsync(new CartaoCredito
+                {
+                    Nome = pendente.Nome,
+                    Limite = pendente.Limite,
+                    DiaVencimento = pendente.DiaVencimento,
+                    UsuarioId = pendente.UsuarioId
+                });
+                return $"✅ Cartão {cartao.Nome} cadastrado!\n💰 Limite: R$ {cartao.Limite:N2}\n📅 Vencimento: dia {cartao.DiaVencimento}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao cadastrar cartão");
+                return "❌ Erro ao cadastrar o cartão. Tente novamente.";
+            }
+        }
+
+        if (msg is "nao" or "não" or "n" or "cancelar" or "cancela" or "❌" or "👎")
+        {
+            _cartaoPendente.TryRemove(chatId, out _);
+            return "❌ Cancelado! O cartão não foi criado.";
+        }
+
+        // Qualquer outra coisa: cancela
+        _cartaoPendente.TryRemove(chatId, out _);
+        return null;
+    }
+
+    private string ProcessarPedidoDesvinculacao(long chatId)
+    {
+        _desvinculacaoPendente[chatId] = DateTime.UtcNow;
+        DefinirTeclado(chatId,
+            new[] { ("✅ Sim, desvincular", "sim"), ("❌ Cancelar", "cancelar") }
+        );
+        return "⚠️ *Tem certeza que deseja desvincular?*\n\n" +
+               "Você perderá o acesso ao bot pelo Telegram.\n" +
+               "Seus dados na conta web continuarão salvos.";
+    }
+
+    private async Task<string?> ProcessarConfirmacaoDesvinculacaoAsync(long chatId, Usuario usuario, string mensagem)
+    {
+        // Limpar expirados (5 min)
+        foreach (var kv in _desvinculacaoPendente)
+        {
+            if ((DateTime.UtcNow - kv.Value).TotalMinutes > 5)
+                _desvinculacaoPendente.TryRemove(kv.Key, out _);
+        }
+
+        if (!_desvinculacaoPendente.ContainsKey(chatId))
+            return null;
+
+        var msg = mensagem.Trim().ToLower();
+
+        if (msg is "sim" or "s" or "confirmar" or "confirma" or "ok" or "✅" or "👍")
+        {
+            _desvinculacaoPendente.TryRemove(chatId, out _);
+            usuario.TelegramChatId = null;
+            usuario.TelegramVinculado = false;
+            await _usuarioRepo.AtualizarAsync(usuario);
+            _logger.LogInformation("Telegram desvinculado: {Email} | ChatId {ChatId}", usuario.Email, chatId);
+            return "✅ Telegram desvinculado com sucesso!\n\n" +
+                   "Sua conta web continua ativa.\n" +
+                   "Para vincular novamente, gere um novo código em finance.nicolasportie.com";
+        }
+
+        if (msg is "nao" or "não" or "n" or "cancelar" or "cancela" or "❌" or "👎")
+        {
+            _desvinculacaoPendente.TryRemove(chatId, out _);
+            return "👍 Cancelado! Seu Telegram continua vinculado.";
+        }
+
+        // Qualquer outra coisa: cancela a desvinculação
+        _desvinculacaoPendente.TryRemove(chatId, out _);
+        return null;
+    }
+
+    private async Task<string> ProcessarPrevisaoCompraAsync(Usuario usuario, DadosSimulacaoIA simulacao)
+    {
+        try
+        {
+            // Mapear cartão se mencionado por nome
+            int? cartaoId = null;
+            if (!string.IsNullOrWhiteSpace(simulacao.Cartao))
+            {
+                var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+                var cartao = cartoes.FirstOrDefault(c =>
+                    c.Nome.Contains(simulacao.Cartao, StringComparison.OrdinalIgnoreCase));
+                cartaoId = cartao?.Id;
+            }
+
+            // Se é crédito e não tem cartão, usar o primeiro disponível
+            if (simulacao.FormaPagamento?.ToLower() is "credito" or "crédito" && cartaoId == null)
+            {
+                var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+                if (cartoes.Any())
+                    cartaoId = cartoes.First().Id;
+            }
+
+            var request = new SimularCompraRequestDto
+            {
+                Descricao = simulacao.Descricao,
+                Valor = simulacao.Valor,
+                FormaPagamento = simulacao.FormaPagamento ?? "pix",
+                NumeroParcelas = simulacao.NumeroParcelas < 1 ? 1 : simulacao.NumeroParcelas,
+                CartaoCreditoId = cartaoId,
+                DataPrevista = simulacao.DataPrevista
+            };
+
+            var resultado = await _previsaoService.SimularAsync(usuario.Id, request);
+            return resultado.ResumoTexto;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar previsão de compra");
+            return "❌ Erro ao analisar a compra. Tente novamente.";
+        }
+    }
+
+    private async Task<string> ProcessarComandoSimularAsync(Usuario usuario, string? parametros)
+    {
+        if (string.IsNullOrWhiteSpace(parametros))
+        {
+            return "🔍 *Simulação de Compra*\n\n" +
+                   "Fale naturalmente! Exemplos:\n\n" +
+                   "💬 \"Se eu comprar uma TV de 3000 em 10x?\"\n" +
+                   "💬 \"Quero comprar um celular de 4500, como fica?\"\n" +
+                   "💬 \"Dá pra parcelar uma viagem de 8000 em 12x?\"\n\n" +
+                   "Se preferir, escreva assim: \"simular TV 5000 10x\"";
+        }
+
+        // Parse rápido: simular NomeItem Valor Parcelas
+        var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+        {
+            var descricao = parts[0];
+            if (decimal.TryParse(parts[1].Replace(",", "."), System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var valor))
+            {
+                var parcelas = 1;
+                if (parts.Length >= 3)
+                {
+                    var parcelaStr = parts[2].Replace("x", "").Replace("X", "");
+                    int.TryParse(parcelaStr, out parcelas);
+                    if (parcelas < 1) parcelas = 1;
+                }
+
+                var formaPag = parcelas > 1 ? "credito" : "pix";
+
+                int? cartaoId = null;
+                if (formaPag == "credito")
+                {
+                    var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+                    if (cartoes.Any()) cartaoId = cartoes.First().Id;
+                }
+
+                var request = new SimularCompraRequestDto
+                {
+                    Descricao = descricao,
+                    Valor = valor,
+                    FormaPagamento = formaPag,
+                    NumeroParcelas = parcelas,
+                    CartaoCreditoId = cartaoId
+                };
+
+                try
+                {
+                    var resultado = await _previsaoService.SimularAsync(usuario.Id, request);
+                    return resultado.ResumoTexto;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erro ao simular compra via comando");
+                    return "❌ Erro ao simular. Tente novamente.";
+                }
+            }
+        }
+
+        // Se não conseguiu parsear, manda pra IA
+        return await ProcessarComIAAsync(usuario, $"simular compra de {parametros}");
+    }
+
+    private async Task<string> ProcessarAvaliacaoGastoAsync(Usuario usuario, DadosAvaliacaoGastoIA avaliacao)
+    {
+        try
+        {
+            // Verificar se deve usar resposta rápida ou completa
+            var rapida = await _decisaoService.DeveUsarRespostaRapidaAsync(
+                usuario.Id, avaliacao.Valor, false);
+
+            if (rapida)
+            {
+                var resultado = await _decisaoService.AvaliarGastoRapidoAsync(
+                    usuario.Id, avaliacao.Valor, avaliacao.Descricao, avaliacao.Categoria);
+                return resultado.ResumoTexto;
+            }
+            else
+            {
+                // Compra relevante → análise completa com tabela de parcelas
+                return await _decisaoService.AvaliarCompraCompletaAsync(
+                    usuario.Id, avaliacao.Valor, avaliacao.Descricao ?? "Compra", null, 1);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao avaliar gasto");
+            return "❌ Erro ao analisar. Tente novamente.";
+        }
+    }
+
+    private async Task<string> ProcessarConfigurarLimiteAsync(Usuario usuario, DadosLimiteIA limite)
+    {
+        try
+        {
+            var dto = new DefinirLimiteDto
+            {
+                Categoria = limite.Categoria,
+                Valor = limite.Valor
+            };
+
+            var resultado = await _limiteService.DefinirLimiteAsync(usuario.Id, dto);
+            return $"✅ Limite definido!\n\n🏷️ {resultado.CategoriaNome}: R$ {resultado.ValorLimite:N2}/mês\n📊 Gasto atual: R$ {resultado.GastoAtual:N2} ({resultado.PercentualConsumido:N0}%)";
+        }
+        catch (InvalidOperationException ex)
+        {
+            return $"❌ {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao configurar limite");
+            return "❌ Erro ao definir limite. Tente novamente.";
+        }
+    }
+
+    private async Task<string> ProcessarCriarMetaAsync(Usuario usuario, DadosMetaIA metaIA)
+    {
+        try
+        {
+            DateTime prazo;
+            if (DateTime.TryParseExact(metaIA.Prazo, new[] { "MM/yyyy", "M/yyyy", "yyyy-MM-dd" },
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
+            {
+                prazo = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
+            }
+            else
+            {
+                prazo = DateTime.UtcNow.AddMonths(12); // Default: 1 ano
+            }
+
+            var dto = new CriarMetaDto
+            {
+                Nome = metaIA.Nome,
+                Tipo = metaIA.Tipo,
+                ValorAlvo = metaIA.ValorAlvo,
+                ValorAtual = metaIA.ValorAtual,
+                Prazo = prazo,
+                Categoria = metaIA.Categoria,
+                Prioridade = metaIA.Prioridade
+            };
+
+            var resultado = await _metaService.CriarMetaAsync(usuario.Id, dto);
+
+            return $"🎯 Meta criada!\n\n" +
+                   $"📌 *{resultado.Nome}*\n" +
+                   $"💰 Alvo: R$ {resultado.ValorAlvo:N2}\n" +
+                   $"📅 Prazo: {resultado.Prazo:MM/yyyy} ({resultado.MesesRestantes} meses)\n" +
+                   $"💵 Precisa guardar: R$ {resultado.ValorMensalNecessario:N2}/mês";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao criar meta");
+            return "❌ Erro ao criar meta. Tente novamente.";
+        }
+    }
+
+    private async Task<string> ProcessarCadastrarCartaoViaIAAsync(Usuario usuario, DadosCartaoIA cartaoIA)
+    {
+        var chatId = usuario.TelegramChatId!.Value;
+
+        if (cartaoIA.Limite <= 0)
+            return "❌ O limite do cartão precisa ser maior que zero. Me diz novamente com o limite correto!";
+        if (cartaoIA.DiaVencimento < 1 || cartaoIA.DiaVencimento > 28)
+            return "❌ O dia de vencimento precisa ser entre 1 e 28. Qual o dia certo?";
+
+        _cartaoPendente[chatId] = new CartaoPendente
+        {
+            Nome = cartaoIA.Nome,
+            Limite = cartaoIA.Limite,
+            DiaVencimento = cartaoIA.DiaVencimento,
+            UsuarioId = usuario.Id,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+        );
+        return $"📋 *Confirma a criação deste cartão?*\n\n" +
+               $"💳 *{cartaoIA.Nome}*\n" +
+               $"💰 Limite: R$ {cartaoIA.Limite:N2}\n" +
+               $"📅 Vencimento: dia {cartaoIA.DiaVencimento}\n" +
+               $"🔒 Fechamento: 1º dia útil (automático)";
+    }
+
+    private async Task<string> ProcessarComandoPossoAsync(Usuario usuario, string? parametros)
+    {
+        if (string.IsNullOrWhiteSpace(parametros))
+            return "❓ *Posso gastar?*\n\nExemplo: \"posso 50 lanche\"\nOu fale naturalmente: \"posso gastar 80 no iFood?\"";
+
+        // Parse: posso 50 lanche
+        var parts = parametros.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 1 && decimal.TryParse(parts[0].Replace(",", "."),
+            System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var valor))
+        {
+            var descricao = parts.Length > 1 ? parts[1] : null;
+            var rapida = await _decisaoService.DeveUsarRespostaRapidaAsync(usuario.Id, valor, false);
+
+            if (rapida)
+            {
+                var resultado = await _decisaoService.AvaliarGastoRapidoAsync(usuario.Id, valor, descricao, null);
+                return resultado.ResumoTexto;
+            }
+            else
+            {
+                return await _decisaoService.AvaliarCompraCompletaAsync(
+                    usuario.Id, valor, descricao ?? "Compra", null, 1);
+            }
+        }
+
+        return await ProcessarComIAAsync(usuario, $"posso gastar {parametros}");
+    }
+
+    private async Task<string> ProcessarComandoLimiteAsync(Usuario usuario, string? parametros)
+    {
+        if (string.IsNullOrWhiteSpace(parametros))
+            return "📊 *Limites por Categoria*\n\nExemplo: \"limite Alimentação 800\"\nOu: \"limitar lazer em 500\"\n\nPara ver todos, diga: \"listar limites\".";
+
+        var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2 && decimal.TryParse(parts[^1].Replace(",", "."),
+            System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var valor))
+        {
+            var categoria = string.Join(" ", parts[..^1]);
+            try
+            {
+                var resultado = await _limiteService.DefinirLimiteAsync(usuario.Id,
+                    new DefinirLimiteDto { Categoria = categoria, Valor = valor });
+                return $"✅ Limite definido!\n🏷️ {resultado.CategoriaNome}: R$ {resultado.ValorLimite:N2}/mês\n📊 Gasto atual: R$ {resultado.GastoAtual:N2} ({resultado.PercentualConsumido:N0}%)";
+            }
+            catch (InvalidOperationException ex)
+            {
+                return $"❌ {ex.Message}";
+            }
+        }
+
+        return "❌ Formato inválido.\nExemplo: \"limite Alimentação 800\"";
+    }
+
+    private async Task<string> ListarLimitesFormatado(Usuario usuario)
+    {
+        var limites = await _limiteService.ListarLimitesAsync(usuario.Id);
+        return _limiteService.FormatarLimitesBot(limites);
+    }
+
+    private async Task<string> ProcessarComandoMetaAsync(Usuario usuario, string? parametros)
+    {
+        if (string.IsNullOrWhiteSpace(parametros))
+            return "🎯 *Metas Financeiras*\n\n" +
+                   "Para criar, diga algo como: \"meta criar Viagem 5000 12/2026\"\n" +
+                   "Para atualizar: \"meta atualizar [id] [valor]\"\n" +
+                   "Para listar: \"listar metas\"\n\n" +
+                   "Ou fale naturalmente: \"quero juntar 10 mil até dezembro\"";
+
+        var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var acao = parts[0].ToLower();
+
+        if (acao == "criar" && parts.Length >= 4)
+        {
+            var nome = parts[1];
+            if (decimal.TryParse(parts[2].Replace(",", "."),
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var valorAlvo))
+            {
+                DateTime prazo;
+                if (DateTime.TryParseExact(parts[3], new[] { "MM/yyyy", "M/yyyy" },
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
+                {
+                    prazo = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
+                }
+                else
+                {
+                    return "❌ Prazo inválido. Use MM/aaaa (ex: 12/2026)";
+                }
+
+                var dto = new CriarMetaDto { Nome = nome, ValorAlvo = valorAlvo, Prazo = prazo };
+                var resultado = await _metaService.CriarMetaAsync(usuario.Id, dto);
+                return $"🎯 Meta criada!\n📌 *{resultado.Nome}*\n💰 R$ {resultado.ValorAlvo:N2}\n📅 {resultado.Prazo:MM/yyyy}\n💵 R$ {resultado.ValorMensalNecessario:N2}/mês";
+            }
+        }
+
+        if (acao == "atualizar" && parts.Length >= 3)
+        {
+            if (int.TryParse(parts[1], out var metaId) &&
+                decimal.TryParse(parts[2].Replace(",", "."),
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out var novoValor))
+            {
+                var resultado = await _metaService.AtualizarMetaAsync(usuario.Id, metaId,
+                    new AtualizarMetaDto { ValorAtual = novoValor });
+                if (resultado != null)
+                    return $"✅ Meta *{resultado.Nome}* atualizada!\n💰 R$ {resultado.ValorAtual:N2} / R$ {resultado.ValorAlvo:N2} ({resultado.PercentualConcluido:N0}%)";
+                return "❌ Meta não encontrada.";
+            }
+        }
+
+        return await ProcessarComIAAsync(usuario, $"meta {parametros}");
+    }
+
+    private async Task<string> ListarMetasFormatado(Usuario usuario)
+    {
+        var metas = await _metaService.ListarMetasAsync(usuario.Id);
+        return _metaService.FormatarMetasBot(metas);
+    }
+
+    private async Task<string> ProcessarComandoLembreteAsync(Usuario usuario, string? parametros)
+    {
+        if (string.IsNullOrWhiteSpace(parametros))
+            return await ListarLembretesFormatadoAsync(usuario);
+
+        var texto = parametros.Trim();
+        var partes = texto.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var acao = partes[0].ToLowerInvariant();
+        var resto = partes.Length > 1 ? partes[1].Trim() : string.Empty;
+
+        if (acao is "listar" or "lista")
+            return await ListarLembretesFormatadoAsync(usuario);
+
+        if (acao is "ajuda" or "help")
+            return "Use /lembrete criar descricao;dd/MM/yyyy;valor;mensal\n" +
+                   "Exemplo: /lembrete criar Internet;15/03/2026;99,90;mensal\n" +
+                   "Ou: /lembrete remover 12";
+
+        if (acao is "remover" or "excluir" or "desativar" or "concluir" or "pago")
+        {
+            if (!int.TryParse(resto, out var id))
+                return "Informe o ID. Exemplo: /lembrete remover 12";
+
+            var removido = await _lembreteRepo.DesativarAsync(usuario.Id, id);
+            return removido
+                ? $"✅ Lembrete {id} desativado."
+                : $"❌ Lembrete {id} nao encontrado.";
+        }
+
+        if (acao is "criar" or "novo" or "adicionar" or "add")
+            return await CriarLembreteAPartirTextoAsync(usuario, resto);
+
+        // Fallback: tenta interpretar todo o texto como payload de criacao.
+        return await CriarLembreteAPartirTextoAsync(usuario, texto);
+    }
+
+    private async Task<string> ProcessarComandoContaFixaAsync(Usuario usuario, string? parametros)
+    {
+        if (string.IsNullOrWhiteSpace(parametros))
+            return "Use /conta_fixa descricao;valor;dia\n" +
+                   "Exemplo: /conta_fixa Aluguel;1500;5";
+
+        var partes = parametros.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (partes.Length < 3)
+            return "Formato invalido. Use /conta_fixa descricao;valor;dia";
+
+        var descricao = partes[0];
+        if (string.IsNullOrWhiteSpace(descricao))
+            return "Descricao obrigatoria.";
+
+        if (!TryParseValor(partes[1], out var valor))
+            return "Valor invalido. Exemplo: 1500 ou 1500,90";
+
+        if (!int.TryParse(partes[2], out var dia) || dia < 1 || dia > 28)
+            return "Dia invalido. Use um dia entre 1 e 28.";
+
+        var proximoVencimento = CalcularProximoVencimentoMensal(dia, DateTime.UtcNow);
+        var lembrete = new LembretePagamento
+        {
+            UsuarioId = usuario.Id,
+            Descricao = descricao,
+            Valor = valor,
+            DataVencimento = proximoVencimento,
+            RecorrenteMensal = true,
+            DiaRecorrente = dia,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+            AtualizadoEm = DateTime.UtcNow
+        };
+
+        await _lembreteRepo.CriarAsync(lembrete);
+        return $"✅ Conta fixa cadastrada!\n\n" +
+               $"ID: {lembrete.Id}\n" +
+               $"Descricao: {lembrete.Descricao}\n" +
+               $"Valor: R$ {lembrete.Valor:N2}\n" +
+               $"Todo dia {dia} (proximo: {lembrete.DataVencimento:dd/MM/yyyy})";
+    }
+
+    private async Task<string> CriarLembreteAPartirTextoAsync(Usuario usuario, string? payload)
+    {
+        if (string.IsNullOrWhiteSpace(payload))
+            return "Formato: /lembrete criar descricao;dd/MM/yyyy;valor;mensal";
+
+        var partes = payload.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (partes.Length < 2)
+            return "Formato invalido. Use: /lembrete criar descricao;dd/MM/yyyy;valor;mensal";
+
+        var descricao = partes[0].Trim();
+        if (string.IsNullOrWhiteSpace(descricao))
+            return "Descricao obrigatoria.";
+
+        var dataToken = partes[1].Trim();
+        DateTime dataVencimentoUtc;
+        int? diaRecorrente = null;
+
+        if (dataToken.StartsWith("dia ", StringComparison.OrdinalIgnoreCase))
+        {
+            var diaTexto = dataToken[4..].Trim();
+            if (!int.TryParse(diaTexto, out var dia) || dia < 1 || dia > 28)
+                return "Dia invalido. Use entre 1 e 28.";
+
+            diaRecorrente = dia;
+            dataVencimentoUtc = CalcularProximoVencimentoMensal(dia, DateTime.UtcNow);
+        }
+        else if (!TryParseDataLembrete(dataToken, out dataVencimentoUtc))
+        {
+            return "Data invalida. Use dd/MM/yyyy, dd/MM ou dia 10.";
+        }
+
+        decimal? valor = null;
+        var recorrente = false;
+        foreach (var parte in partes.Skip(2))
+        {
+            var token = parte.Trim();
+            if (string.IsNullOrWhiteSpace(token))
+                continue;
+
+            if (token.Contains("mensal", StringComparison.OrdinalIgnoreCase)
+                || token.Contains("recorrente", StringComparison.OrdinalIgnoreCase)
+                || token.Contains("todo mes", StringComparison.OrdinalIgnoreCase)
+                || token.Contains("todo mês", StringComparison.OrdinalIgnoreCase))
+            {
+                recorrente = true;
+                continue;
+            }
+
+            if (TryParseValor(token, out var valorLido))
+                valor = valorLido;
+        }
+
+        if (recorrente && diaRecorrente == null)
+            diaRecorrente = dataVencimentoUtc.Day;
+
+        var lembrete = new LembretePagamento
+        {
+            UsuarioId = usuario.Id,
+            Descricao = descricao,
+            Valor = valor,
+            DataVencimento = dataVencimentoUtc,
+            RecorrenteMensal = recorrente,
+            DiaRecorrente = diaRecorrente,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+            AtualizadoEm = DateTime.UtcNow
+        };
+
+        await _lembreteRepo.CriarAsync(lembrete);
+
+        var recorrenciaTexto = lembrete.RecorrenteMensal
+            ? $"\nRecorrencia: mensal (dia {lembrete.DiaRecorrente})"
+            : string.Empty;
+        var valorTexto = lembrete.Valor.HasValue ? $"\nValor: R$ {lembrete.Valor.Value:N2}" : string.Empty;
+
+        return $"✅ Lembrete criado!\n\n" +
+               $"ID: {lembrete.Id}\n" +
+               $"Descricao: {lembrete.Descricao}\n" +
+               $"Vencimento: {lembrete.DataVencimento:dd/MM/yyyy}" +
+               $"{valorTexto}{recorrenciaTexto}";
+    }
+
+    private async Task<string> ListarLembretesFormatadoAsync(Usuario usuario)
+    {
+        var lembretes = await _lembreteRepo.ObterPorUsuarioAsync(usuario.Id, apenasAtivos: true);
+        if (!lembretes.Any())
+            return "🔔 Nenhum lembrete ativo.\n\n" +
+                   "Use /lembrete criar descricao;dd/MM/yyyy;valor;mensal";
+
+        var texto = "🔔 Seus lembretes ativos:\n";
+        foreach (var lembrete in lembretes)
+        {
+            var valorTexto = lembrete.Valor.HasValue ? $" - R$ {lembrete.Valor.Value:N2}" : string.Empty;
+            var recorrenciaTexto = lembrete.RecorrenteMensal
+                ? $" - mensal dia {lembrete.DiaRecorrente ?? lembrete.DataVencimento.Day}"
+                : string.Empty;
+
+            texto += $"\n#{lembrete.Id} - {lembrete.Descricao} - {lembrete.DataVencimento:dd/MM/yyyy}{valorTexto}{recorrenciaTexto}";
+        }
+
+        texto += "\n\nPara remover: /lembrete remover ID";
+        return texto;
+    }
+
+    private async Task<string> ConsultarSalarioMensalAsync(Usuario usuario)
+    {
+        var hoje = DateTime.UtcNow;
+        var inicioJanela = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
+        var fimJanela = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1).AddDays(-1);
+
+        var receitas = await _lancamentoRepo.ObterPorUsuarioETipoAsync(usuario.Id, TipoLancamento.Receita, inicioJanela, fimJanela);
+        var salarios = receitas
+            .Where(l =>
+                string.Equals(l.Categoria?.Nome, "Salário", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(l.Categoria?.Nome, "Salario", StringComparison.OrdinalIgnoreCase) ||
+                l.Descricao.Contains("salario", StringComparison.OrdinalIgnoreCase) ||
+                l.Descricao.Contains("salário", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (!salarios.Any())
+            return "💰 Nao encontrei receitas de salario nos ultimos 6 meses.\n" +
+                   "Registre com algo como: \"recebi 3500 de salario\".";
+
+        var porMes = salarios
+            .GroupBy(l => new DateTime(l.Data.Year, l.Data.Month, 1, 0, 0, 0, DateTimeKind.Utc))
+            .OrderBy(g => g.Key)
+            .Select(g => new { Mes = g.Key, Total = g.Sum(x => x.Valor) })
+            .ToList();
+
+        var media = porMes.Average(x => x.Total);
+        var totalAtual = porMes
+            .Where(x => x.Mes.Year == hoje.Year && x.Mes.Month == hoje.Month)
+            .Sum(x => x.Total);
+
+        var texto = "💰 Estimativa de salario mensal\n\n" +
+                    $"Media (ultimos {porMes.Count} meses com salario): R$ {media:N2}\n" +
+                    $"Mes atual ({hoje:MM/yyyy}): R$ {totalAtual:N2}\n\n" +
+                    "Historico:";
+
+        foreach (var item in porMes)
+        {
+            texto += $"\n- {item.Mes:MM/yyyy}: R$ {item.Total:N2}";
+        }
+
+        return texto;
+    }
+
+    private static bool TryParseValor(string input, out decimal valor)
+    {
+        var normalizado = input
+            .Replace("R$", "", StringComparison.OrdinalIgnoreCase)
+            .Replace(" ", "")
+            .Replace(".", "")
+            .Replace(",", ".");
+
+        return decimal.TryParse(
+            normalizado,
+            NumberStyles.Any,
+            CultureInfo.InvariantCulture,
+            out valor);
+    }
+
+    private static bool TryParseDataLembrete(string input, out DateTime dataUtc)
+    {
+        dataUtc = default;
+        var token = input.Trim();
+
+        if (DateTime.TryParseExact(
+                token,
+                new[] { "dd/MM/yyyy", "d/M/yyyy" },
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var dataCompleta))
+        {
+            dataUtc = new DateTime(dataCompleta.Year, dataCompleta.Month, dataCompleta.Day, 0, 0, 0, DateTimeKind.Utc);
+            return true;
+        }
+
+        if (DateTime.TryParseExact(
+                token,
+                new[] { "dd/MM", "d/M" },
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var dataSemAno))
+        {
+            var hojeUtc = DateTime.UtcNow.Date;
+            var ano = hojeUtc.Year;
+            var candidato = new DateTime(ano, dataSemAno.Month, dataSemAno.Day, 0, 0, 0, DateTimeKind.Utc);
+            if (candidato.Date < hojeUtc)
+                candidato = candidato.AddYears(1);
+
+            dataUtc = candidato;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static DateTime CalcularProximoVencimentoMensal(int diaPreferencial, DateTime referenciaUtc)
+    {
+        var hoje = referenciaUtc.Date;
+        var diaNoMes = Math.Min(Math.Max(diaPreferencial, 1), DateTime.DaysInMonth(hoje.Year, hoje.Month));
+        var candidato = new DateTime(hoje.Year, hoje.Month, diaNoMes, 0, 0, 0, DateTimeKind.Utc);
+
+        if (candidato.Date < hoje)
+        {
+            var proximoMes = hoje.AddMonths(1);
+            var diaNoProximo = Math.Min(Math.Max(diaPreferencial, 1), DateTime.DaysInMonth(proximoMes.Year, proximoMes.Month));
+            candidato = new DateTime(proximoMes.Year, proximoMes.Month, diaNoProximo, 0, 0, 0, DateTimeKind.Utc);
+        }
+
+        return candidato;
+    }
+
+    private async Task<Usuario?> ObterUsuarioVinculadoAsync(long chatId)
+    {
+        return await _usuarioRepo.ObterPorTelegramChatIdAsync(chatId);
+    }
+
+    private async Task<string> ProcessarVinculacaoAsync(long chatId, string mensagem, string nomeUsuario)
+    {
+        // Verificar se já está vinculado
+        var existente = await _usuarioRepo.ObterPorTelegramChatIdAsync(chatId);
+        if (existente != null)
+            return $"✅ Seu Telegram já está vinculado à conta de {existente.Nome}!";
+
+        var partes = mensagem.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (partes.Length < 2)
+            return "❌ Envie o código de vinculação!\n\nExemplo: vincular ABC123\n\nGere o código no seu perfil em finance.nicolasportie.com";
+
+        var codigo = partes[1].Trim();
+
+        // Buscar código válido em todos os usuários
+        // Precisamos encontrar o usuário que gerou esse código
+        var usuarios = await BuscarUsuarioPorCodigoAsync(codigo);
+        if (usuarios == null)
+            return "❌ Código inválido ou expirado.\n\nGere um novo código no seu perfil em finance.nicolasportie.com";
+
+        var (usuario, codigoVerificacao) = usuarios.Value;
+
+        // Vincular Telegram
+        usuario.TelegramChatId = chatId;
+        usuario.TelegramVinculado = true;
+        if (!string.IsNullOrEmpty(nomeUsuario) && usuario.Nome == usuario.Email)
+            usuario.Nome = nomeUsuario;
+        await _usuarioRepo.AtualizarAsync(usuario);
+
+        // Marcar código como usado
+        await _codigoRepo.MarcarComoUsadoAsync(codigoVerificacao.Id);
+
+        _logger.LogInformation("Telegram vinculado: {Email} → ChatId {ChatId}", usuario.Email, chatId);
+
+        return $"🎉 Vinculado com sucesso!\n\n" +
+               $"Olá, {usuario.Nome}! Agora você pode usar o bot.\n\n" +
+               $"💸 \"gastei 50 no mercado\"\n" +
+               $"💰 \"recebi 3000 de salário\"\n" +
+               $"📊 \"quanto gastei esse mês?\"\n\n" +
+               $"Pode mandar texto, áudio ou foto de cupom! 🚀";
+    }
+
+    private async Task<(Usuario, CodigoVerificacao)?> BuscarUsuarioPorCodigoAsync(string codigo)
+    {
+        var codigoVerificacao = await _codigoRepo.ObterValidoPorCodigoAsync(
+            codigo, TipoCodigoVerificacao.VinculacaoTelegram);
+
+        if (codigoVerificacao?.Usuario == null)
+            return null;
+
+        return (codigoVerificacao.Usuario, codigoVerificacao);
+    }
+}
+

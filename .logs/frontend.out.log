@@ -1,0 +1,61 @@
+
+> web-next@0.1.0 dev
+> next dev --port 5173
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:5173
+- Network:       http://192.168.15.7:5173
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 988ms
+ GET /login 200 in 925ms (compile: 447ms, proxy.ts: 135ms, render: 342ms)
+ GET /dashboard 200 in 198ms (compile: 95ms, proxy.ts: 7ms, render: 96ms)
+ GET /dashboard 200 in 87ms (compile: 8ms, proxy.ts: 16ms, render: 64ms)
+ GET /dashboard 200 in 111ms (compile: 9ms, proxy.ts: 5ms, render: 97ms)
+ GET /dashboard 200 in 99ms (compile: 6ms, proxy.ts: 6ms, render: 86ms)
+ GET /dashboard 200 in 105ms (compile: 9ms, proxy.ts: 9ms, render: 87ms)
+ GET /dashboard 200 in 109ms (compile: 28ms, proxy.ts: 11ms, render: 70ms)
+ GET /login 200 in 105ms (compile: 6ms, proxy.ts: 6ms, render: 93ms)
+ GET /dashboard 200 in 63ms (compile: 4ms, proxy.ts: 3ms, render: 56ms)
+ GET /dashboard 200 in 60ms (compile: 6ms, proxy.ts: 4ms, render: 50ms)
+ GET /dashboard 200 in 38ms (compile: 8ms, proxy.ts: 4ms, render: 26ms)
+ GET /dashboard 200 in 169ms (compile: 4ms, proxy.ts: 3ms, render: 161ms)
+ GET /lancamentos 200 in 74ms (compile: 50ms, proxy.ts: 5ms, render: 18ms)
+ GET /lancamentos 200 in 70ms (compile: 4ms, proxy.ts: 5ms, render: 61ms)
+✓ Compiled in 353ms
+✓ Compiled in 61ms
+ GET /lancamentos 200 in 281ms (compile: 60ms, proxy.ts: 3ms, render: 218ms)
+ GET /cartoes 200 in 988ms (compile: 860ms, proxy.ts: 3ms, render: 126ms)
+ GET /simulacao 200 in 1021ms (compile: 907ms, proxy.ts: 4ms, render: 111ms)
+✓ Compiled in 58ms
+ GET /simulacao 200 in 283ms (compile: 58ms, proxy.ts: 4ms, render: 222ms)
+✓ Compiled in 64ms
+ GET /simulacao 200 in 271ms (compile: 60ms, proxy.ts: 4ms, render: 207ms)
+ GET /limites 200 in 473ms (compile: 416ms, proxy.ts: 3ms, render: 54ms)
+✓ Compiled in 51ms
+✓ Compiled in 44ms
+✓ Compiled in 54ms
+ GET /limites 200 in 222ms (compile: 52ms, proxy.ts: 5ms, render: 165ms)
+ GET /metas 200 in 552ms (compile: 491ms, proxy.ts: 4ms, render: 57ms)
+ GET /metas 200 in 50ms (compile: 4ms, proxy.ts: 4ms, render: 42ms)
+✓ Compiled in 56ms
+ GET /metas 200 in 257ms (compile: 54ms, proxy.ts: 4ms, render: 199ms)
+ GET /perfil 200 in 648ms (compile: 557ms, proxy.ts: 3ms, render: 88ms)
+ GET /login 200 in 329ms (compile: 72ms, proxy.ts: 3ms, render: 254ms)
+ GET /lancamentos 200 in 111ms (compile: 77ms, proxy.ts: 5ms, render: 29ms)
+ GET /lancamentos 200 in 234ms (compile: 4ms, proxy.ts: 3ms, render: 227ms)
+ GET /dashboard 200 in 296ms (compile: 64ms, proxy.ts: 5ms, render: 227ms)
+ GET /login 200 in 68ms (compile: 5ms, proxy.ts: 3ms, render: 61ms)
+ GET /lancamentos 200 in 70ms (compile: 12ms, proxy.ts: 15ms, render: 42ms)
+ GET /cartoes 200 in 158ms (compile: 132ms, proxy.ts: 4ms, render: 23ms)
+ GET /lancamentos 200 in 35ms (compile: 4ms, proxy.ts: 3ms, render: 28ms)
+✓ Compiled in 263ms
+✓ Compiled in 92ms
+ GET /login 200 in 115ms (compile: 22ms, proxy.ts: 6ms, render: 87ms)
+ GET /dashboard 200 in 119ms (compile: 13ms, proxy.ts: 5ms, render: 101ms)
+ GET /dashboard 200 in 116ms (compile: 11ms, proxy.ts: 5ms, render: 100ms)
+ GET /dashboard 200 in 106ms (compile: 12ms, proxy.ts: 12ms, render: 82ms)
+ GET /dashboard 200 in 94ms (compile: 8ms, proxy.ts: 6ms, render: 80ms)
+ GET /dashboard 200 in 92ms (compile: 8ms, proxy.ts: 5ms, render: 80ms)
+ GET /dashboard 200 in 62ms (compile: 9ms, proxy.ts: 7ms, render: 46ms)

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ControlFinance.Api/ControlFinance.Api.csproj" />
+    <Project Path="src/ControlFinance.Application/ControlFinance.Application.csproj" />
+    <Project Path="src/ControlFinance.Domain/ControlFinance.Domain.csproj" />
+    <Project Path="src/ControlFinance.Infrastructure/ControlFinance.Infrastructure.csproj" />
+  </Folder>
+</Solution>
