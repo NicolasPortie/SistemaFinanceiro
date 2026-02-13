@@ -69,13 +69,13 @@ const meses = [
 ];
 
 function getFinancialHealth(receitas: number, gastos: number) {
-  if (receitas <= 0) return { label: "Sem dados", color: "text-muted-foreground", bg: "bg-muted", pct: 0, emoji: "📊" };
+  if (receitas <= 0) return { label: "Sem dados", color: "text-muted-foreground", bg: "bg-muted", pct: 0 };
   const taxa = ((receitas - gastos) / receitas) * 100;
-  if (taxa >= 30) return { label: "Excelente", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500", pct: Math.min(taxa, 100), emoji: "🏆" };
-  if (taxa >= 15) return { label: "Boa", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500", pct: taxa, emoji: "✅" };
-  if (taxa >= 5) return { label: "Regular", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500", pct: taxa, emoji: "⚠️" };
-  if (taxa >= 0) return { label: "Apertada", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500", pct: taxa, emoji: "🔶" };
-  return { label: "Crítica", color: "text-red-600 dark:text-red-400", bg: "bg-red-500", pct: 0, emoji: "🔴" };
+  if (taxa >= 30) return { label: "Excelente", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500", pct: Math.min(taxa, 100) };
+  if (taxa >= 15) return { label: "Boa", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500", pct: taxa };
+  if (taxa >= 5) return { label: "Regular", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500", pct: taxa };
+  if (taxa >= 0) return { label: "Apertada", color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500", pct: taxa };
+  return { label: "Crítica", color: "text-red-600 dark:text-red-400", bg: "bg-red-500", pct: 0 };
 }
 
 function useMonthSelector() {
@@ -162,7 +162,7 @@ export default function DashboardPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                {getGreeting()}, {getFirstName(usuario?.nome ?? "")} 👋
+                {getGreeting()}, {getFirstName(usuario?.nome ?? "")}
               </h1>
               {usuario?.telegramVinculado && (
                 <Badge className="bg-white/15 text-white border-0 text-[10px] gap-1 hidden sm:flex backdrop-blur-sm font-semibold">
@@ -174,7 +174,7 @@ export default function DashboardPage() {
             <p className="text-white/60 text-sm max-w-md leading-relaxed">
               {health
                 ? <>
-                    Saúde financeira: {health.emoji}{" "}
+                    Saúde financeira:{" "}
                     <span className="text-white/90 font-semibold">{health.label}</span>
                     {" · "}Economia de{" "}
                     <span className="text-white font-bold">{taxaEconomia}%</span>

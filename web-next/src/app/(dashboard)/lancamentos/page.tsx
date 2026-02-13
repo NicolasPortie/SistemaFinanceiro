@@ -216,8 +216,8 @@ export default function LancamentosPage() {
               className="pl-9 h-9"
             />
             {busca && (
-              <button onClick={() => { setBusca(""); setPagina(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                <X className="h-3.5 w-3.5" />
+              <button onClick={() => { setBusca(""); setPagina(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -276,8 +276,8 @@ export default function LancamentosPage() {
                       {l.tipo === "receita" ? "+" : "-"} {formatCurrency(l.valor)}
                     </span>
                     <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(l)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeletingId(l.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openEdit(l)}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => setDeletingId(l.id)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </motion.div>
                 ))}
@@ -287,8 +287,8 @@ export default function LancamentosPage() {
               <div className="flex items-center justify-between px-5 py-3 border-t border-border/50">
                 <span className="text-[11px] text-muted-foreground/60 font-medium">{lancamentosData.total} lançamentos · Página {lancamentosData.pagina} de {lancamentosData.totalPaginas}</span>
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="icon" className="h-8 w-8" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8" disabled={pagina >= lancamentosData.totalPaginas} onClick={() => setPagina((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="icon" className="h-9 w-9" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="icon" className="h-9 w-9" disabled={pagina >= lancamentosData.totalPaginas} onClick={() => setPagina((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
                 </div>
               </div>
             )}

@@ -328,11 +328,11 @@ export default function PerfilPage() {
                     <span className="text-[10px] text-muted-foreground">(padrão)</span>
                   ) : (
                     <div className="flex items-center gap-0.5 ml-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                      <button className="p-0.5 rounded hover:bg-background" onClick={() => { editCategoriaForm.reset({ nome: cat.nome }); setEditandoCategoria({ id: cat.id, nome: cat.nome }); }}>
-                        <Pencil className="h-3 w-3 text-muted-foreground" />
+                      <button className="p-1.5 rounded-md hover:bg-background" onClick={() => { editCategoriaForm.reset({ nome: cat.nome }); setEditandoCategoria({ id: cat.id, nome: cat.nome }); }}>
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
-                      <button className="p-0.5 rounded hover:bg-background" onClick={() => setRemovendoCategoria(cat.id)}>
-                        <Trash2 className="h-3 w-3 text-destructive" />
+                      <button className="p-1.5 rounded-md hover:bg-background" onClick={() => setRemovendoCategoria(cat.id)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </button>
                     </div>
                   )}

@@ -240,7 +240,7 @@ export default function LimitesPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    className="h-9 w-9 text-muted-foreground hover:text-destructive"
                     onClick={() => setDeleteId(l.id)}
                   >
                     <Trash2 className="h-4 w-4" />

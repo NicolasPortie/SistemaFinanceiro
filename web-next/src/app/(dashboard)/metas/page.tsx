@@ -542,29 +542,29 @@ function MetaCard({
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
-            <Edit3 className="h-3.5 w-3.5" />
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onEdit}>
+            <Edit3 className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-9 w-9"
             onClick={onPausar}
             disabled={actionLoading === meta.id}
           >
             {meta.status === "pausada" ? (
-              <Play className="h-3.5 w-3.5" />
+              <Play className="h-4 w-4" />
             ) : (
-              <Pause className="h-3.5 w-3.5" />
+              <Pause className="h-4 w-4" />
             )}
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            className="h-9 w-9 text-muted-foreground hover:text-destructive"
             onClick={onRemover}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>

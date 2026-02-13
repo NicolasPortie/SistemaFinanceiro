@@ -545,7 +545,7 @@ export default function SimulacaoPage() {
                     <Badge className={riskColor(h.risco).badge}>{h.risco}</Badge>
                   </div>
                   <Separator />
-                  <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-[11px] text-muted-foreground/60 font-medium">Pior Mês</p>
                       <p className="font-medium">{h.piorMes}</p>

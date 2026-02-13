@@ -107,8 +107,8 @@ function FaturaSection({ fatura, defaultOpen }: { fatura: import("@/lib/api").Fa
       </button>
 
       {open && fatura.parcelas.length > 0 && (
-        <div className="border-t border-border/40">
-          <table className="w-full text-sm">
+        <div className="border-t border-border/40 overflow-x-auto">
+          <table className="w-full text-sm min-w-[320px]">
             <thead>
               <tr className="text-[11px] uppercase tracking-wider text-muted-foreground bg-muted/30">
                 <th className="text-left font-medium px-4 py-2">Lançamento</th>
@@ -293,13 +293,13 @@ export default function CartoesPage() {
                         <Wifi className="h-5 w-5 opacity-50 rotate-90" />
                       </div>
                       <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => setViewingFaturaId({ id: cartao.id, nome: cartao.nome })}>
-                          <Eye className="h-3.5 w-3.5" />
+                        <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => setViewingFaturaId({ id: cartao.id, nome: cartao.nome })}>
+                          <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => openEdit(cartao)}>
-                          <Pencil className="h-3.5 w-3.5" />
+                        <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => openEdit(cartao)}>
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-white/70 hover:text-red-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => setDeletingId(cartao.id)}>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-red-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => setDeletingId(cartao.id)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
