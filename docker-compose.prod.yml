@@ -80,8 +80,7 @@ services:
     container_name: controlfinance-web-prod
     restart: always
     depends_on:
-      api:
-        condition: service_healthy
+      - api
     environment:
       NODE_ENV: production
       PORT: 3000
