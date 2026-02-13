@@ -52,7 +52,7 @@ jobs:
   deploy:
     name: Deploy para Produção
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
@@ -63,66 +63,54 @@ jobs:
       id: version
       run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-    - name: Setup SSH
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: Adicionar host conhecido
+    - name: Sincronizar arquivos para pasta de deploy
       run: |
-        mkdir -p ~/.ssh
-        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-
-    - name: Copiar arquivos para servidor
-      run: |
-        rsync -avz --delete \
+        rsync -av --delete \
           --exclude '.git' \
           --exclude 'bin' \
           --exclude 'obj' \
           --exclude 'node_modules' \
           --exclude '.next' \
           --exclude '.env' \
-          ./ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }}:~/controlfinance/
+          ./ ~/controlfinance/
 
     - name: Deploy com Docker Compose
       run: |
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-          cd ~/controlfinance
-          
-          echo "=== Deploy ${{ steps.version.outputs.VERSION }} ==="
-          
-          # Build novos containers
-          docker compose -f docker-compose.prod.yml build --no-cache
-          
-          # Parar containers antigos e iniciar novos
-          docker compose -f docker-compose.prod.yml down
-          docker compose -f docker-compose.prod.yml up -d
-          
-          # Limpar imagens não utilizadas
-          docker image prune -f
-          
-          # Verificar status
-          echo "=== Status dos containers ==="
-          docker compose -f docker-compose.prod.yml ps
-        EOF
+        cd ~/controlfinance
+        
+        echo "=== Deploy ${{ steps.version.outputs.VERSION }} ==="
+        
+        # Build novos containers
+        docker compose -f docker-compose.prod.yml build --no-cache
+        
+        # Parar containers antigos e iniciar novos
+        docker compose -f docker-compose.prod.yml down
+        docker compose -f docker-compose.prod.yml up -d
+        
+        # Limpar imagens não utilizadas
+        docker image prune -f
+        
+        # Verificar status
+        echo "=== Status dos containers ==="
+        docker compose -f docker-compose.prod.yml ps
 
     - name: Aguardar inicialização
       run: sleep 40
 
     - name: Verificar saúde da API
       run: |
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} "curl -sf http://localhost:5000/api/telegram/health || exit 1"
+        curl -sf http://localhost:5000/api/telegram/health || exit 1
         echo "API está respondendo!"
 
     - name: Verificar saúde do Frontend
       run: |
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} "curl -sf -o /dev/null http://localhost:3000 || exit 1"
+        curl -sf -o /dev/null http://localhost:3000 || exit 1
         echo "Frontend está respondendo!"
 
     - name: Resumo do deploy
       if: success()
       run: |
-        echo "## Deploy concluído com sucesso! ✅" >> $GITHUB_STEP_SUMMARY
+        echo "## Deploy concluído com sucesso!" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "- **Versão:** ${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
         echo "- **API:** https://api.nicolasportie.com" >> $GITHUB_STEP_SUMMARY
