@@ -112,6 +112,53 @@ public class CartoesController : BaseAuthController
         await _cartaoRepo.DesativarAsync(id);
         return Ok(new { mensagem = "Cartão desativado com sucesso." });
     }
+    [HttpPost("{id}/limite-extra")]
+    public async Task<IActionResult> AdicionarLimiteExtra(int id, [FromBody] AjusteLimiteRequest request)
+    {
+        var cartao = await _cartaoRepo.ObterPorIdAsync(id);
+        if (cartao == null || cartao.UsuarioId != UsuarioId)
+            return NotFound(new { erro = "Cartão não encontrado." });
+
+        if (request.ValorAdicional <= 0)
+            return BadRequest(new { erro = "O valor adicional deve ser maior que zero." });
+
+        if (request.PercentualExtra < 0 || request.PercentualExtra > 100)
+            return BadRequest(new { erro = "O percentual deve estar entre 0 e 100%." });
+
+        var valorAcrescimo = request.ValorAdicional * (request.PercentualExtra / 100m);
+        var novoLimiteTotal = cartao.Limite + request.ValorAdicional + valorAcrescimo;
+
+        // Create history record
+        var ajuste = new AjusteLimiteCartao
+        {
+            CartaoId = cartao.Id,
+            ValorBase = request.ValorAdicional,
+            Percentual = request.PercentualExtra,
+            ValorAcrescimo = valorAcrescimo,
+            NovoLimiteTotal = novoLimiteTotal,
+            DataAjuste = DateTime.UtcNow
+        };
+
+        // Update card limit
+        cartao.Limite = novoLimiteTotal;
+
+        // Save
+        await _cartaoRepo.AtualizarAsync(cartao);
+        await _cartaoRepo.AdicionarAjusteLimiteAsync(ajuste);
+
+        return Ok(new
+        {
+            mensagem = "Limite extra aplicado com sucesso.",
+            novoLimite = cartao.Limite,
+            detalhes = new
+            {
+                ValorBase = request.ValorAdicional,
+                Percentual = request.PercentualExtra,
+                ValorExtra = valorAcrescimo,
+                TotalAdicionado = request.ValorAdicional + valorAcrescimo
+            }
+        });
+    }
 }
 
 public class CriarCartaoRequest
@@ -126,4 +173,10 @@ public class AtualizarCartaoRequest
     public string? Nome { get; set; }
     public decimal? Limite { get; set; }
     public int? DiaVencimento { get; set; }
+}
+
+public class AjusteLimiteRequest
+{
+    public decimal ValorAdicional { get; set; }
+    public decimal PercentualExtra { get; set; }
 }

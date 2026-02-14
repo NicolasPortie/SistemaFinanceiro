@@ -32,6 +32,7 @@ public class AppDbContext : DbContext
     public DbSet<MetaFinanceira> MetasFinanceiras => Set<MetaFinanceira>();
     public DbSet<LembretePagamento> LembretesPagamento => Set<LembretePagamento>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AjusteLimiteCartao> AjustesLimitesCartao => Set<AjusteLimiteCartao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -413,6 +414,27 @@ public class AppDbContext : DbContext
 
             entity.HasIndex(e => e.Token).IsUnique();
             entity.HasIndex(e => e.UsuarioId);
+        });
+
+        // === AjusteLimiteCartao ===
+        modelBuilder.Entity<AjusteLimiteCartao>(entity =>
+        {
+            entity.ToTable("ajustes_limite_cartao");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CartaoId).HasColumnName("cartao_id");
+            entity.Property(e => e.ValorBase).HasColumnName("valor_base").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Percentual).HasColumnName("percentual").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.ValorAcrescimo).HasColumnName("valor_acrescimo").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.NovoLimiteTotal).HasColumnName("novo_limite_total").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.DataAjuste).HasColumnName("data_ajuste");
+
+            entity.HasOne(e => e.Cartao)
+                  .WithMany()
+                  .HasForeignKey(e => e.CartaoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.CartaoId);
         });
 
         // Converter global: forçar todas as propriedades DateTime para UTC

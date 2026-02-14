@@ -144,7 +144,7 @@ builder.Services.AddSwaggerGen(c =>
 // === Background Services ===
 if (telegramConfigurado)
 {
-    builder.Services.AddHostedService<ResumoSemanalService>();
+    builder.Services.AddHostedService<BotNotificationService>();
     builder.Services.AddHostedService<LembretePagamentoBackgroundService>();
 }
 

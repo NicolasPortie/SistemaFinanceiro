@@ -59,11 +59,11 @@ export function useResumoHistorico(mesesAtras: number = 6) {
         .map((r, i) =>
           r.data
             ? {
-                mes: meses[i],
-                receitas: r.data.totalReceitas,
-                gastos: r.data.totalGastos,
-                saldo: r.data.saldo,
-              }
+              mes: meses[i],
+              receitas: r.data.totalReceitas,
+              gastos: r.data.totalGastos,
+              saldo: r.data.saldo,
+            }
             : null
         )
         .filter((d): d is NonNullable<typeof d> => d !== null),
@@ -296,6 +296,21 @@ export function useDesativarCartao() {
     },
     onError: (err: Error) => {
       toast.error(err.message || "Erro ao desativar cartão");
+    },
+  });
+}
+
+export function useAdicionarLimiteExtra() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { valorAdicional: number; percentualExtra: number } }) =>
+      api.cartoes.adicionarLimiteExtra(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.cartoes });
+      toast.success("Limite extra aplicado com sucesso!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao aplicar limite extra");
     },
   });
 }

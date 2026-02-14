@@ -125,7 +125,6 @@ public class LancamentoService
                 TotalParcelas = lancamento.NumeroParcelas,
                 Valor = valor,
                 DataVencimento = fatura?.DataVencimento ?? mesParcela,
-                Paga = false,
                 LancamentoId = lancamento.Id,
                 FaturaId = fatura?.Id
             });
@@ -134,9 +133,9 @@ public class LancamentoService
         await _parcelaRepo.CriarVariasAsync(parcelas);
 
         // Atualizar totais das faturas afetadas
-        foreach (var fatura in parcelas.Where(p => p.FaturaId.HasValue).Select(p => p.FaturaId!.Value).Distinct())
+        foreach (var faturaId in parcelas.Where(p => p.FaturaId.HasValue).Select(p => p.FaturaId!.Value).Distinct())
         {
-            await AtualizarTotalFaturaAsync(fatura);
+            await AtualizarTotalFaturaAsync(faturaId);
         }
     }
 
@@ -153,19 +152,17 @@ public class LancamentoService
 
         if (fatura == null) return;
 
-        await _parcelaRepo.CriarVariasAsync(new[]
+        var parcela = new Parcela
         {
-            new Parcela
-            {
-                NumeroParcela = 1,
-                TotalParcelas = 1,
-                Valor = lancamento.Valor,
-                DataVencimento = fatura.DataVencimento,
-                Paga = false,
-                LancamentoId = lancamento.Id,
-                FaturaId = fatura.Id
-            }
-        });
+            NumeroParcela = 1,
+            TotalParcelas = 1,
+            Valor = lancamento.Valor,
+            DataVencimento = fatura.DataVencimento,
+            LancamentoId = lancamento.Id,
+            FaturaId = fatura.Id
+        };
+        
+        await _parcelaRepo.CriarVariasAsync(new List<Parcela> { parcela });
 
         await AtualizarTotalFaturaAsync(fatura.Id);
     }

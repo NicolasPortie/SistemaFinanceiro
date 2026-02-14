@@ -518,7 +518,7 @@ export default function DashboardPage() {
                     <CreditCard className="h-6 w-6 text-muted-foreground/60" />
                   </div>
                   <p className="text-sm font-bold">Nenhum cartão</p>
-                  <p className="text-[11px] text-muted-foreground/60 mt-1 font-medium">Adicione via Perfil ou Telegram</p>
+                  <p className="text-[11px] text-muted-foreground/60 mt-1 font-medium">Adicione na aba Cartões</p>
                 </div>
               )}
             </motion.div>

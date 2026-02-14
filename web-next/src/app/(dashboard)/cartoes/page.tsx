@@ -7,6 +7,7 @@ import {
   useAtualizarCartao,
   useDesativarCartao,
   useFaturas,
+  useAdicionarLimiteExtra,
 } from "@/hooks/use-queries";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { cartaoSchema, type CartaoData } from "@/lib/schemas";
@@ -22,12 +23,11 @@ import {
   Loader2,
   Eye,
   Calendar,
-  DollarSign,
-  X,
   ChevronDown,
   ChevronUp,
   Receipt,
   Wifi,
+  TrendingUp,
 } from "lucide-react";
 import {
   PageShell,
@@ -154,7 +154,7 @@ function FaturaSection({ fatura, defaultOpen }: { fatura: import("@/lib/api").Fa
   );
 }
 
-function FaturaView({ cartaoId, cartaoNome }: { cartaoId: number; cartaoNome: string }) {
+function FaturaView({ cartaoId }: { cartaoId: number }) {
   const { data: faturas, isLoading, isError } = useFaturas(cartaoId);
 
   if (isLoading) return <div className="p-6 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
@@ -192,11 +192,13 @@ export default function CartoesPage() {
   const [editingCard, setEditingCard] = useState<Cartao | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewingFaturaId, setViewingFaturaId] = useState<{ id: number; nome: string } | null>(null);
+  const [ajusteLimiteCard, setAjusteLimiteCard] = useState<Cartao | null>(null);
 
   const { data: cartoes = [], isLoading } = useCartoes();
   const criarCartao = useCriarCartao();
   const atualizarCartao = useAtualizarCartao();
   const desativarCartao = useDesativarCartao();
+  const adicionarLimiteExtra = useAdicionarLimiteExtra();
 
   const form = useForm<CartaoData>({
     resolver: zodResolver(cartaoSchema),
@@ -206,6 +208,15 @@ export default function CartoesPage() {
   const editFormState = useForm<CartaoData>({
     resolver: zodResolver(cartaoSchema),
   });
+
+  const ajusteForm = useForm<{ valorAdicional: string; percentualExtra: string }>({
+    defaultValues: { valorAdicional: "", percentualExtra: "40" }
+  });
+
+  const valorAdicionalWatch = parseFloat(ajusteForm.watch("valorAdicional")?.replace(",", ".") || "0");
+  const percentualExtraWatch = parseFloat(ajusteForm.watch("percentualExtra")?.replace(",", ".") || "0");
+  const valorExtraCalculado = valorAdicionalWatch * (percentualExtraWatch / 100);
+  const novoLimiteCalculado = (ajusteLimiteCard?.limite || 0) + valorAdicionalWatch + valorExtraCalculado;
 
   const onSubmitCreate = (data: CartaoData) => {
     criarCartao.mutate(
@@ -252,6 +263,27 @@ export default function CartoesPage() {
     setEditingCard(cartao);
   };
 
+  const openAjuste = (cartao: Cartao) => {
+    ajusteForm.reset({ valorAdicional: "", percentualExtra: "40" });
+    setAjusteLimiteCard(cartao);
+  };
+
+  const onSubmitAjuste = (data: { valorAdicional: string; percentualExtra: string }) => {
+    if (!ajusteLimiteCard) return;
+    adicionarLimiteExtra.mutate(
+      {
+        id: ajusteLimiteCard.id,
+        data: {
+          valorAdicional: parseFloat(data.valorAdicional.replace(",", ".")),
+          percentualExtra: parseFloat(data.percentualExtra.replace(",", ".")),
+        },
+      },
+      {
+        onSuccess: () => setAjusteLimiteCard(null),
+      }
+    );
+  };
+
   return (
     <PageShell>
       <PageHeader title="Cartões de Crédito" description="Gerencie seus cartões e visualize faturas">
@@ -261,93 +293,97 @@ export default function CartoesPage() {
         </Button>
       </PageHeader>
 
-      {isLoading ? (
-        <CardSkeleton count={3} />
-      ) : cartoes.length > 0 ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <AnimatePresence>
-            {cartoes.map((cartao, i) => (
-              <motion.div
-                key={cartao.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * i }}
-                className="group relative"
-              >
-                {/* Card visual */}
-                <div className={`rounded-2xl bg-linear-to-br ${cardGradients[i % cardGradients.length]} p-6 text-white shadow-xl shadow-black/20 dark:shadow-black/40 relative overflow-hidden transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl noise-overlay`}>
-                  {/* Background pattern */}
-                  <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-white/[0.04] -translate-y-1/2 translate-x-1/2" />
-                  <div className="absolute bottom-0 left-0 w-28 h-28 rounded-full bg-white/[0.04] translate-y-1/2 -translate-x-1/2" />
-                  {/* Holographic shimmer overlay */}
-                  <div className="absolute inset-0 holographic opacity-0 group-hover:opacity-100 transition-opacity duration-700 mix-blend-overlay" />
-                  {/* Subtle line pattern */}
-                  <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-white/[0.06] to-transparent" />
-                  <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-white/[0.04] to-transparent" />
+      {
+        isLoading ? (
+          <CardSkeleton count={3} />
+        ) : cartoes.length > 0 ? (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <AnimatePresence>
+              {cartoes.map((cartao, i) => (
+                <motion.div
+                  key={cartao.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * i }}
+                  className="group relative"
+                >
+                  {/* Card visual */}
+                  <div className={`rounded-2xl bg-linear-to-br ${cardGradients[i % cardGradients.length]} p-6 text-white shadow-xl shadow-black/20 dark:shadow-black/40 relative overflow-hidden transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl noise-overlay`}>
+                    {/* Background pattern */}
+                    <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-white/[0.04] -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute bottom-0 left-0 w-28 h-28 rounded-full bg-white/[0.04] translate-y-1/2 -translate-x-1/2" />
+                    {/* Holographic shimmer overlay */}
+                    <div className="absolute inset-0 holographic opacity-0 group-hover:opacity-100 transition-opacity duration-700 mix-blend-overlay" />
+                    {/* Subtle line pattern */}
+                    <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-white/[0.06] to-transparent" />
+                    <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-white/[0.04] to-transparent" />
 
-                  <div className="relative z-10 space-y-5">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        {/* Chip pattern */}
-                        <div className="chip-pattern" />
-                        <Wifi className="h-5 w-5 opacity-50 rotate-90" />
-                      </div>
-                      <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
-                        <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => setViewingFaturaId({ id: cartao.id, nome: cartao.nome })}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => openEdit(cartao)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-red-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => setDeletingId(cartao.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.15em] opacity-50 font-semibold">Limite disponível</p>
-                      <p className="text-2xl font-extrabold tabular-nums mt-1 tracking-tight">{formatCurrency(cartao.limiteDisponivel ?? cartao.limite)}</p>
-                      {cartao.limiteUsado > 0 && (
-                        <div className="mt-2">
-                          <div className="flex justify-between text-[10px] opacity-60 mb-1">
-                            <span>Usado: {formatCurrency(cartao.limiteUsado)}</span>
-                            <span>{((cartao.limiteUsado / cartao.limite) * 100).toFixed(0)}%</span>
-                          </div>
-                          <div className="h-1 rounded-full bg-white/20 overflow-hidden">
-                            <div 
-                              className="h-full rounded-full bg-white/70 transition-all duration-500" 
-                              style={{ width: `${Math.min((cartao.limiteUsado / cartao.limite) * 100, 100)}%` }} 
-                            />
-                          </div>
+                    <div className="relative z-10 space-y-5">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          {/* Chip pattern */}
+                          <div className="chip-pattern" />
+                          <Wifi className="h-5 w-5 opacity-50 rotate-90" />
                         </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <div>
-                        <p className="text-sm font-bold tracking-tight">{cartao.nome}</p>
-                        <p className="text-[10px] opacity-40 mt-0.5 font-medium">Fechamento: 1º dia útil</p>
+                        <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
+                          <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => setViewingFaturaId({ id: cartao.id, nome: cartao.nome })}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => openEdit(cartao)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-emerald-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => openAjuste(cartao)} title="Ajuste de Limite Extra">
+                            <TrendingUp className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-red-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => setDeletingId(cartao.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 bg-white/10 rounded-lg px-2.5 py-1.5 backdrop-blur-sm">
-                        <Calendar className="h-3 w-3 opacity-70" />
-                        <span className="text-xs font-semibold opacity-90">Dia {cartao.diaVencimento}</span>
+
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.15em] opacity-50 font-semibold">Limite disponível</p>
+                        <p className="text-2xl font-extrabold tabular-nums mt-1 tracking-tight">{formatCurrency(cartao.limiteDisponivel ?? cartao.limite)}</p>
+                        {cartao.limiteUsado > 0 && (
+                          <div className="mt-2">
+                            <div className="flex justify-between text-[10px] opacity-60 mb-1">
+                              <span>Usado: {formatCurrency(cartao.limiteUsado)}</span>
+                              <span>{((cartao.limiteUsado / cartao.limite) * 100).toFixed(0)}%</span>
+                            </div>
+                            <div className="h-1 rounded-full bg-white/20 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-white/70 transition-all duration-500"
+                                style={{ width: `${Math.min((cartao.limiteUsado / cartao.limite) * 100, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <div>
+                          <p className="text-sm font-bold tracking-tight">{cartao.nome}</p>
+                          <p className="text-[10px] opacity-40 mt-0.5 font-medium">Fechamento: 1º dia útil</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-white/10 rounded-lg px-2.5 py-1.5 backdrop-blur-sm">
+                          <Calendar className="h-3 w-3 opacity-70" />
+                          <span className="text-xs font-semibold opacity-90">Dia {cartao.diaVencimento}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      ) : (
-        <EmptyState
-          icon={<CreditCard className="h-6 w-6" />}
-          title="Nenhum cartão"
-          description="Adicione um cartão de crédito para começar a rastrear suas faturas"
-          action={<Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="h-4 w-4" />Adicionar cartão</Button>}
-        />
-      )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <EmptyState
+            icon={<CreditCard className="h-6 w-6" />}
+            title="Nenhum cartão"
+            description="Adicione um cartão de crédito para começar a rastrear suas faturas"
+            action={<Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="h-4 w-4" />Adicionar cartão</Button>}
+          />
+        )}
 
       {/* Create Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
@@ -433,9 +469,66 @@ export default function CartoesPage() {
           </DialogHeader>
           <div className="overflow-y-auto flex-1 px-5 pb-5 pt-2">
             {viewingFaturaId && (
-              <FaturaView cartaoId={viewingFaturaId.id} cartaoNome={viewingFaturaId.nome} />
+              <FaturaView cartaoId={viewingFaturaId.id} />
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ajuste Limite Dialog */}
+      <Dialog open={ajusteLimiteCard !== null} onOpenChange={() => setAjusteLimiteCard(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Limite Extra</DialogTitle>
+            <DialogDescription>
+              Adicione um valor ao limite e aplique um percentual extra.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={ajusteForm.handleSubmit(onSubmitAjuste)} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Valor Adicional (R$)</Label>
+                <Input
+                  className="h-11 tabular-nums"
+                  placeholder="0,00"
+                  {...ajusteForm.register("valorAdicional", { required: true })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Percentual Extra (%)</Label>
+                <Input
+                  className="h-11 tabular-nums"
+                  placeholder="40"
+                  {...ajusteForm.register("percentualExtra", { required: true })}
+                />
+              </div>
+            </div>
+
+            {/* Live Calculation Preview */}
+            <div className="rounded-lg bg-muted/60 p-4 space-y-3 border border-border">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Limite Atual:</span>
+                <span className="font-medium">{formatCurrency(ajusteLimiteCard?.limite || 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Valor Base:</span>
+                <span className="font-medium">+ {formatCurrency(valorAdicionalWatch)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Extra ({percentualExtraWatch}%):</span>
+                <span className="font-medium">+ {formatCurrency(valorExtraCalculado)}</span>
+              </div>
+              <div className="h-px bg-border/50 my-2" />
+              <div className="flex justify-between items-center text-base">
+                <span className="font-bold text-foreground">Novo Limite:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(novoLimiteCalculado)}</span>
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full h-11 font-semibold gap-2" disabled={adicionarLimiteExtra.isPending}>
+              {adicionarLimiteExtra.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><TrendingUp className="h-4 w-4" /> Aplicar Limite Extra</>}
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -454,6 +547,6 @@ export default function CartoesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </PageShell>
+    </PageShell >
   );
 }

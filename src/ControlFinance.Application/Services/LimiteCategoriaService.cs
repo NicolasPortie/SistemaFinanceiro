@@ -137,6 +137,20 @@ public class LimiteCategoriaService
         return texto.TrimEnd();
     }
 
+    /// <summary>
+    /// Retorna (Gasto, Limite, Disponivel) para uma categoria no mês atual.
+    /// Retorna (0, 0, 0) se não houver limite definido.
+    /// </summary>
+    public async Task<(decimal Gasto, decimal Limite, decimal Disponivel)> ObterProgressoCategoriaAsync(int usuarioId, int categoriaId)
+    {
+        var limite = await _limiteRepo.ObterPorUsuarioECategoriaAsync(usuarioId, categoriaId);
+        if (limite == null || limite.ValorLimite <= 0) 
+            return (0, 0, 0);
+
+        var gasto = await CalcularGastoCategoriaNoMesAsync(usuarioId, categoriaId);
+        return (gasto, limite.ValorLimite, limite.ValorLimite - gasto);
+    }
+
     // ===================== Privados =====================
 
     private async Task<LimiteCategoriaDto> MontarLimiteDtoAsync(LimiteCategoria limite, int usuarioId)

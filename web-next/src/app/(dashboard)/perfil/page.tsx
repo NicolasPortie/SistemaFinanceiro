@@ -68,6 +68,7 @@ import {
 import { toast } from "sonner";
 
 export default function PerfilPage() {
+  const telegramBotUrl = "https://t.me/facilita_finance_bot";
   const { usuario, atualizarPerfil: atualizarContexto } = useAuth();
   const [codigoTelegram, setCodigoTelegram] = useState<CodigoTelegramResponse | null>(null);
   const [gerando, setGerando] = useState(false);
@@ -255,10 +256,17 @@ export default function PerfilPage() {
               )}
             </div>
             <Separator />
+            <Button asChild variant="outline" className="w-full gap-2 h-11">
+              <a href={telegramBotUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" />
+                Abrir bot no Telegram
+              </a>
+            </Button>
+            <Separator />
             {usuario.telegramVinculado ? (
               <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 p-5 space-y-3">
                 <div className="flex items-center gap-2"><Shield className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /><h4 className="font-semibold text-emerald-800 dark:text-emerald-300">Telegram conectado!</h4></div>
-                <p className="text-sm text-emerald-700 dark:text-emerald-400/80">Registre lançamentos, consulte saldos e muito mais pelo Telegram usando linguagem natural.</p>
+                <p className="text-sm text-emerald-700 dark:text-emerald-400/80">Registre lançamentos, consulte saldos e faturas pelo Telegram usando linguagem natural. Cadastro e edição de cartão ficam na aba Cartões do sistema web.</p>
               </div>
             ) : (
               <div className="space-y-5">
@@ -289,9 +297,6 @@ export default function PerfilPage() {
                       </div>
                       <p className="text-[11px] text-muted-foreground/60 font-medium">Expira em: {formatDate(codigoTelegram.expiraEm)}</p>
                     </div>
-                    <a href="https://t.me/ControlFinanceNPBot" target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" className="w-full gap-2 h-11"><ExternalLink className="h-4 w-4" />Abrir bot no Telegram</Button>
-                    </a>
                     <Button onClick={verificarVinculo} disabled={verificando} className="w-full gap-2 h-11 font-semibold shadow-premium">
                       {verificando ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4" />Já enviei, verificar</>}
                     </Button>

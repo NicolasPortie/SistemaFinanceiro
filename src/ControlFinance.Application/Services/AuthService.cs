@@ -198,7 +198,7 @@ public class AuthService
         {
             Codigo = codigo,
             ExpiraEm = expiraEm,
-            Instrucoes = $"Envie \"vincular {codigo}\" para o bot @ControlFinanceBot no Telegram. O código expira em 10 minutos."
+            Instrucoes = $"Envie \"vincular {codigo}\" para o bot @facilita_finance_bot no Telegram. O código expira em 10 minutos."
         }, null);
     }
 

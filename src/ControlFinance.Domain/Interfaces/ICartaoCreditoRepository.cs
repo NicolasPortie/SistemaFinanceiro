@@ -9,4 +9,5 @@ public interface ICartaoCreditoRepository
     Task<List<CartaoCredito>> ObterPorUsuarioAsync(int usuarioId);
     Task AtualizarAsync(CartaoCredito cartao);
     Task DesativarAsync(int id);
+    Task AdicionarAjusteLimiteAsync(AjusteLimiteCartao ajuste);
 }

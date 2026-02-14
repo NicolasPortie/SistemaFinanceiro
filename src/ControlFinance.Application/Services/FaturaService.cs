@@ -1,6 +1,7 @@
 using ControlFinance.Application.DTOs;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
+using ControlFinance.Domain.Entities;
 
 namespace ControlFinance.Application.Services;
 
@@ -33,6 +34,12 @@ public class FaturaService
     {
         var fatura = await _faturaRepo.ObterPorIdAsync(faturaId);
         if (fatura == null) return;
+
+        // Garantir que carregou o cartão, se o repo não trouxer por padrão no ObterPorId (o FaturaRepository atual traz)
+        if (fatura.CartaoCredito == null)
+        {
+             fatura.CartaoCredito = await _cartaoRepo.ObterPorIdAsync(fatura.CartaoCreditoId);
+        }
 
         fatura.Status = StatusFatura.Paga;
         foreach (var parcela in fatura.Parcelas)

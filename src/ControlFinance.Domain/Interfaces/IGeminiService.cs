@@ -19,8 +19,23 @@ public class RespostaIA
     public DadosAvaliacaoGastoIA? AvaliacaoGasto { get; set; }
     public DadosLimiteIA? Limite { get; set; }
     public DadosMetaIA? Meta { get; set; }
+    public DadosAporteMetaIA? AporteMeta { get; set; }
+    public DadosPagamentoFaturaIA? PagamentoFatura { get; set; }
     [JsonConverter(typeof(DadosCartaoIAConverter))]
     public DadosCartaoIA? Cartao { get; set; }
+}
+
+public class DadosPagamentoFaturaIA
+{
+    public string Cartao { get; set; } = string.Empty;
+    public decimal? Valor { get; set; }
+    public DateTime? Data { get; set; }
+}
+
+public class DadosAporteMetaIA
+{
+    public string NomeMeta { get; set; } = string.Empty;
+    public decimal Valor { get; set; }
 }
 
 public class DadosSimulacaoIA

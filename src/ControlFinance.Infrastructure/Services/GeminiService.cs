@@ -10,9 +10,10 @@ namespace ControlFinance.Infrastructure.Services;
 public class GeminiService : IGeminiService
 {
     private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
+    private readonly string? _apiKey;
+    private readonly bool _geminiHabilitado;
     private readonly List<string> _models;
-    private readonly string? _groqApiKey;
+    private readonly List<string> _groqApiKeys;
     private readonly List<string> _groqModels;
     private readonly ILogger<GeminiService> _logger;
 
@@ -25,25 +26,59 @@ public class GeminiService : IGeminiService
     public GeminiService(HttpClient httpClient, IConfiguration config, ILogger<GeminiService> logger)
     {
         _httpClient = httpClient;
-        _apiKey = config["Gemini:ApiKey"] ?? throw new ArgumentException("Gemini:ApiKey nao configurada");
+        _apiKey = config["Gemini:ApiKey"];
+        _geminiHabilitado = !string.IsNullOrWhiteSpace(_apiKey);
         
         var primaryModel = config["Gemini:Model"] ?? "gemini-2.0-flash";
         var fallbacks = config["Gemini:FallbackModels"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
         _models = new List<string> { primaryModel };
         _models.AddRange(fallbacks);
         
-        _groqApiKey = config["Groq:ApiKey"];
+        _groqApiKeys = CarregarGroqApiKeys(config);
         var groqPrimary = config["Groq:Model"] ?? "llama-3.3-70b-versatile";
         var groqFallbacks = config["Groq:FallbackModels"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
         _groqModels = new List<string> { groqPrimary };
         _groqModels.AddRange(groqFallbacks);
         
+        if (!_geminiHabilitado && _groqApiKeys.Count == 0)
+            throw new ArgumentException("Configure ao menos uma chave em Gemini:ApiKey ou Groq:ApiKey/Groq:ApiKeys.");
+
         _logger = logger;
         
-        var providers = new List<string>(_models);
-        if (!string.IsNullOrEmpty(_groqApiKey))
-            providers.AddRange(_groqModels.Select(m => $"groq:{m}"));
+        var providers = new List<string>();
+        if (_geminiHabilitado)
+            providers.AddRange(_models.Select(m => $"gemini:{m}"));
+        providers.AddRange(_groqModels.Select(m => $"groq:{m}"));
+
         _logger.LogInformation("IA modelos configurados: {Models}", string.Join(" -> ", providers));
+        _logger.LogInformation("Groq keys configuradas: {Count}", _groqApiKeys.Count);
+    }
+
+    private static List<string> CarregarGroqApiKeys(IConfiguration config)
+    {
+        var keys = new List<string>();
+
+        var chavePrimaria = config["Groq:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(chavePrimaria))
+            keys.Add(chavePrimaria.Trim());
+
+        var keysCsv = config["Groq:ApiKeys"];
+        if (!string.IsNullOrWhiteSpace(keysCsv))
+        {
+            keys.AddRange(keysCsv
+                .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        }
+
+        foreach (var child in config.GetSection("Groq:ApiKeys").GetChildren())
+        {
+            if (!string.IsNullOrWhiteSpace(child.Value))
+                keys.Add(child.Value.Trim());
+        }
+
+        return keys
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
     }
 
     public async Task<RespostaIA> ProcessarMensagemCompletaAsync(string mensagem, string contextoFinanceiro)
@@ -55,6 +90,17 @@ public class GeminiService : IGeminiService
 
             CONTEXTO FINANCEIRO DO USUARIO:
             {{contextoFinanceiro}}
+
+            IMPORTANTE — TRANSCRICAO DE VOZ:
+            A mensagem pode ter sido transcrita de audio por voz. Isso significa que:
+            - Pode conter erros de pontuacao ou acentuacao.
+            - Numeros podem estar por extenso ("cinquenta reais", "mil e quinhentos", "cem conto").
+            - Valores podem vir sem "R$" ("gastei vinte no mercado").
+            - Datas podem ser relativas ("ontem", "semana passada", "anteontem", "hoje de manha").
+            - Palavras podem estar juntas ou separadas diferente do esperado.
+            - Converta SEMPRE numeros por extenso para valores numericos decimais.
+            - "cem conto" ou "cem reais" = 100.00, "dois e cinquenta" = 2.50, "mil e quinhentos" = 1500.00.
+            - "ontem" = dia anterior a {{dataHoje}}, "anteontem" = 2 dias antes de {{dataHoje}}.
 
             REGRAS:
             1. Analise a mensagem e determine a intencao do usuario.
@@ -68,6 +114,8 @@ public class GeminiService : IGeminiService
                 "avaliacaoGasto": null,
                 "limite": null,
                 "meta": null,
+                "aporteMeta": null,
+                "pagamentoFatura": null,
                 "cartao": null
             }
 
@@ -80,6 +128,8 @@ public class GeminiService : IGeminiService
             - "configurar_limite" -> definir limite por categoria. Preencher "limite".
             - "consultar_limites" -> ver limites.
             - "criar_meta" -> criar meta financeira. Preencher "meta".
+            - "aportar_meta" -> adicionar valor ou depositar em uma meta existente. Preencher "aporteMeta".
+            - "sacar_meta" -> retirar valor de uma meta. Preencher "aporteMeta" com valor NEGATIVO.
             - "consultar_metas" -> ver metas.
             - "ver_resumo" -> resumo financeiro.
             - "ver_fatura" -> ver fatura atual/corrente do cartao (a que esta acumulando agora).
@@ -88,8 +138,26 @@ public class GeminiService : IGeminiService
             - "detalhar_categoria" -> detalhar gastos de uma categoria especifica. Colocar o nome da categoria no campo "resposta".
             - "ver_categorias" -> ver categorias.
             - "cadastrar_cartao" -> cadastrar cartao de credito. Preencher "cartao" com nome, limite e diaVencimento quando possivel.
+            - "editar_cartao" -> editar/alterar/corrigir dados de um cartao ja cadastrado (nome, limite ou vencimento). Preencher "cartao" com os dados novos e colocar o nome atual do cartao no campo "resposta".
+            - "excluir_cartao" -> excluir/remover/desativar um cartao cadastrado. Colocar o nome do cartao no campo "resposta".
+            - "excluir_lancamento" -> apagar/remover/excluir um lancamento ja registrado. Colocar descricao ou detalhes no campo "resposta".
+            - "categorizar_ultimo" -> alterar a categoria do último lançamento registrado (ex: "esse último gasto foi Lazer"). Preencher "resposta" com o nome da NOVA categoria.
+            - "pagar_fatura" -> registrar pagamento de fatura de cartao de credito. Preencher "pagamentoFatura".
             - "pergunta" -> pergunta financeira geral.
             - "conversa" -> conversa casual.
+
+            REGRA PARA RECEITAS:
+            REGRA PARA RECEITAS:
+            - Quando o usuario diz "recebi", "ganhei", "entrou", "salario", "renda", "freelance", "pagamento recebido", use tipo "receita".
+            - CUIDADO: "pagamento recebido" eh RECEITA. "pagamento de fatura" eh PAGAR_FATURA.
+            - "salario caiu" = RECEITA. "adiantamento" = RECEITA.
+            - Receitas NAO precisam de forma de pagamento (o sistema ja trata).
+            - NUNCA classifique receita como gasto.
+
+            REGRA PARA VALORES:
+            - O valor DEVE ser sempre positivo e maior que zero.
+            - Se nao conseguir extrair um valor numerico valido, NAO use intencao "registrar".
+            - Converta valores por extenso: "cinquenta" = 50, "mil" = 1000, "dois mil e quinhentos" = 2500.
 
             DIFERENCA ENTRE "avaliar_gasto" E "prever_compra":
             - "avaliar_gasto": gasto pequeno e a vista.
@@ -200,6 +268,16 @@ public class GeminiService : IGeminiService
                 }
             }
 
+            EXEMPLO "aportar_meta":
+            {
+                "intencao": "aportar_meta",
+                "resposta": "Vou adicionar esse valor na meta!",
+                "aporteMeta": {
+                    "nomeMeta": "Viagem",
+                    "valor": 500.00
+                }
+            }
+
             EXEMPLO "cadastrar_cartao" (dados completos):
             {
                 "intencao": "cadastrar_cartao",
@@ -217,6 +295,39 @@ public class GeminiService : IGeminiService
                 "resposta": "Me diga nome do cartao, limite e dia de vencimento. O fechamento e automatico (1o dia util). Exemplo: Nubank limite 5000 vence dia 10",
                 "cartao": null
             }
+
+            EXEMPLO "editar_cartao" (corrigir nome):
+            {
+                "intencao": "editar_cartao",
+                "resposta": "BicPay",
+                "cartao": {
+                    "nome": "PicPay",
+                    "limite": 0,
+                    "diaVencimento": 0
+                }
+            }
+
+            EXEMPLO "categorizar_ultimo":
+            {
+                "intencao": "categorizar_ultimo",
+                "resposta": "Lazer"
+            }
+
+            EXEMPLO "pagar_fatura":
+            {
+                "intencao": "pagar_fatura",
+                "resposta": "Vou registrar o pagamento da sua fatura!",
+                "pagamentoFatura": {
+                    "cartao": "Nubank",
+                    "valor": null,
+                    "data": "{{dataHoje}}"
+                }
+            }
+            NOTA SOBRE "editar_cartao":
+            - No campo "resposta", coloque o nome ATUAL do cartao que o usuario quer editar (como esta cadastrado).
+            - No campo "cartao", coloque os dados NOVOS. Se o usuario so quer mudar o nome, coloque limite=0 e diaVencimento=0 (serao ignorados).
+            - Se o usuario so quer mudar o limite, coloque o nome atual no "cartao.nome" e o novo limite. diaVencimento=0.
+            - Se o usuario so quer mudar o vencimento, coloque o nome atual no "cartao.nome" e limite=0.
 
             Formas de pagamento: pix, debito, credito, nao_informado (quando usuario nao menciona).
             Tipos de meta: juntar_valor, reduzir_gasto, reserva_mensal.
@@ -263,14 +374,14 @@ public class GeminiService : IGeminiService
     public async Task<string> TranscreverAudioAsync(byte[] audioData, string mimeType)
     {
         // Estratégia 1: Tentar Groq Whisper primeiro (mais confiável para áudio)
-        if (!string.IsNullOrEmpty(_groqApiKey))
+        for (var i = 0; i < _groqApiKeys.Count; i++)
         {
-            var whisperResult = await TranscreverViaGroqWhisperAsync(audioData, mimeType);
+            var whisperResult = await TranscreverViaGroqWhisperAsync(audioData, mimeType, _groqApiKeys[i], i + 1);
             if (!string.IsNullOrWhiteSpace(whisperResult))
                 return whisperResult;
         }
 
-        // Estratégia 2: Fallback para Gemini multimodal
+        // Estratégia 2: Fallback para Gemini multimodal (somente se habilitado)
         var base64Audio = Convert.ToBase64String(audioData);
         var prompt = "Transcreva o audio a seguir para texto em portugues. Retorne apenas a transcricao, sem explicacoes.";
 
@@ -278,7 +389,7 @@ public class GeminiService : IGeminiService
         return resultado ?? string.Empty;
     }
 
-    private async Task<string?> TranscreverViaGroqWhisperAsync(byte[] audioData, string mimeType)
+    private async Task<string?> TranscreverViaGroqWhisperAsync(byte[] audioData, string mimeType, string groqApiKey, int keyIndex)
     {
         try
         {
@@ -307,25 +418,25 @@ public class GeminiService : IGeminiService
             {
                 Content = formData
             };
-            request.Headers.Add("Authorization", $"Bearer {_groqApiKey}");
+            request.Headers.Add("Authorization", $"Bearer {groqApiKey}");
 
             var response = await _httpClient.SendAsync(request);
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("Groq Whisper transcreveu áudio com sucesso!");
+                _logger.LogInformation("Groq Whisper transcreveu áudio com sucesso (key #{KeyIndex})", keyIndex);
                 var result = JsonSerializer.Deserialize<JsonElement>(responseBody, JsonOptions);
                 if (result.TryGetProperty("text", out var textProp))
                     return textProp.GetString();
             }
 
-            _logger.LogWarning("Groq Whisper falhou {StatusCode}: {Body}", response.StatusCode, responseBody);
+            _logger.LogWarning("Groq Whisper falhou (key #{KeyIndex}) {StatusCode}: {Body}", keyIndex, response.StatusCode, responseBody);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Erro ao chamar Groq Whisper para transcrição");
+            _logger.LogWarning(ex, "Erro ao chamar Groq Whisper para transcrição (key #{KeyIndex})", keyIndex);
             return null;
         }
     }
@@ -335,18 +446,18 @@ public class GeminiService : IGeminiService
         var base64Image = Convert.ToBase64String(imageData);
         var prompt = "Extraia todos os valores, itens e informacoes financeiras desta imagem (nota fiscal, cupom, recibo). Retorne em texto simples e organizado.";
 
-        // Estratégia 1: Gemini multimodal
-        var resultado = await ChamarGeminiMultimodalAsync(prompt, base64Image, mimeType);
-        if (!string.IsNullOrWhiteSpace(resultado))
-            return resultado;
-
-        // Estratégia 2: Groq Vision como fallback
-        if (!string.IsNullOrEmpty(_groqApiKey))
+        // Estratégia 1: Groq Vision (preferencial)
+        if (_groqApiKeys.Count > 0)
         {
             var visionResult = await ChamarGroqVisionAsync(prompt, base64Image, mimeType);
             if (!string.IsNullOrWhiteSpace(visionResult))
                 return visionResult;
         }
+
+        // Estratégia 2: Gemini multimodal (fallback opcional)
+        var resultado = await ChamarGeminiMultimodalAsync(prompt, base64Image, mimeType);
+        if (!string.IsNullOrWhiteSpace(resultado))
+            return resultado;
 
         return string.Empty;
     }
@@ -354,10 +465,23 @@ public class GeminiService : IGeminiService
     private string LimparJson(string response)
     {
         response = response.Trim();
-        if (response.StartsWith("```json")) response = response[7..];
-        if (response.StartsWith("```")) response = response[3..];
-        if (response.EndsWith("```")) response = response[..^3];
+
+        // Remover blocos de código Markdown (case-insensitive)
+        if (response.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+            response = response[7..];
+        else if (response.StartsWith("```"))
+            response = response[3..];
+        if (response.EndsWith("```"))
+            response = response[..^3];
         response = response.Trim();
+
+        // Se há texto antes do JSON, extrair apenas o JSON
+        var idxStart = response.IndexOf('{');
+        var idxEnd = response.LastIndexOf('}');
+        if (idxStart > 0 && idxEnd > idxStart)
+        {
+            response = response[idxStart..(idxEnd + 1)];
+        }
 
         response = CorrigirNewlinesEmJson(response);
 
@@ -424,93 +548,106 @@ public class GeminiService : IGeminiService
 
     private async Task<string?> ChamarGeminiAsync(string prompt)
     {
-        var requestBody = new
+        if (_geminiHabilitado)
         {
-            contents = new[]
+            var requestBody = new
             {
-                new
+                contents = new[]
                 {
-                    parts = new[]
+                    new
                     {
-                        new { text = prompt }
+                        parts = new[]
+                        {
+                            new { text = prompt }
+                        }
                     }
                 }
-            }
-        };
+            };
 
-        var json = JsonSerializer.Serialize(requestBody, JsonOptions);
+            var json = JsonSerializer.Serialize(requestBody, JsonOptions);
 
-        foreach (var model in _models)
-        {
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_apiKey}";
-            var maxRetries = 3;
-            var delays = new[] { 3000, 5000, 10000 };
-            bool quotaExhausted = false;
-
-            for (int tentativa = 0; tentativa <= maxRetries; tentativa++)
+            foreach (var model in _models)
             {
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var response = await _httpClient.PostAsync(url, content);
-                var responseBody = await response.Content.ReadAsStringAsync();
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_apiKey}";
+                var maxRetries = 3;
+                var delays = new[] { 3000, 5000, 10000 };
+                bool quotaExhausted = false;
 
-                if (response.IsSuccessStatusCode)
+                for (int tentativa = 0; tentativa <= maxRetries; tentativa++)
                 {
-                    if (model != _models[0])
-                        _logger.LogInformation("Gemini respondeu via fallback: {Model}", model);
-                    var result = JsonSerializer.Deserialize<GeminiResponse>(responseBody, JsonOptions);
-                    return result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text;
-                }
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    var response = await _httpClient.PostAsync(url, content);
+                    var responseBody = await response.Content.ReadAsStringAsync();
 
-                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                {
-                    bool isDailyQuota = responseBody.Contains("PerDay") || responseBody.Contains("FreeTier");
-                    
-                    if (isDailyQuota)
+                    if (response.IsSuccessStatusCode)
                     {
-                        _logger.LogWarning("Gemini {Model} cota DIARIA esgotada, trocando para proximo modelo...", model);
+                        if (model != _models[0])
+                            _logger.LogInformation("Gemini respondeu via fallback: {Model}", model);
+                        var result = JsonSerializer.Deserialize<GeminiResponse>(responseBody, JsonOptions);
+                        return result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text;
+                    }
+
+                    if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        bool isDailyQuota = responseBody.Contains("PerDay") || responseBody.Contains("FreeTier");
+                        
+                        if (isDailyQuota)
+                        {
+                            _logger.LogWarning("Gemini {Model} cota DIARIA esgotada, trocando para proximo modelo...", model);
+                            quotaExhausted = true;
+                            break;
+                        }
+
+                        if (tentativa < maxRetries)
+                        {
+                            _logger.LogWarning("Gemini {Model} 429 RPM - tentativa {Tentativa}/{Max}. Aguardando {Delay}ms...", model, tentativa + 1, maxRetries, delays[tentativa]);
+                            await Task.Delay(delays[tentativa]);
+                            continue;
+                        }
+                        
+                        _logger.LogWarning("Gemini {Model} 429 persistente apos retries, trocando modelo...", model);
                         quotaExhausted = true;
                         break;
                     }
 
-                    if (tentativa < maxRetries)
-                    {
-                        _logger.LogWarning("Gemini {Model} 429 RPM - tentativa {Tentativa}/{Max}. Aguardando {Delay}ms...", model, tentativa + 1, maxRetries, delays[tentativa]);
-                        await Task.Delay(delays[tentativa]);
-                        continue;
-                    }
-                    
-                    _logger.LogWarning("Gemini {Model} 429 persistente apos retries, trocando modelo...", model);
-                    quotaExhausted = true;
-                    break;
+                    _logger.LogWarning("Gemini {Model} erro {StatusCode}, tentando proximo modelo...", model, response.StatusCode);
+                    break; // Tentar próximo modelo ao invés de retornar null
                 }
 
-                _logger.LogWarning("Gemini {Model} erro {StatusCode}, tentando proximo modelo...", model, response.StatusCode);
-                break; // Tentar próximo modelo ao invés de retornar null
+                if (!quotaExhausted) break;
+                
+                await Task.Delay(1000);
             }
-
-            if (!quotaExhausted) break;
-            
-            await Task.Delay(1000);
+        }
+        else
+        {
+            _logger.LogInformation("Gemini desabilitado: usando apenas Groq para texto.");
         }
 
-        // Fallback: Groq (múltiplos modelos)
-        if (!string.IsNullOrEmpty(_groqApiKey))
+        // Fallback/estratégia principal: Groq (múltiplas chaves e modelos)
+        for (var keyIndex = 0; keyIndex < _groqApiKeys.Count; keyIndex++)
         {
             foreach (var groqModel in _groqModels)
             {
-                _logger.LogWarning("Gemini esgotado, tentando Groq ({Model})...", groqModel);
-                var groqResult = await ChamarGroqAsync(prompt, groqModel);
+                _logger.LogWarning("Tentando Groq ({Model}) com key #{KeyIndex}...", groqModel, keyIndex + 1);
+                var groqResult = await ChamarGroqAsync(prompt, _groqApiKeys[keyIndex], groqModel, keyIndex + 1);
                 if (groqResult != null) return groqResult;
-                _logger.LogWarning("Groq {Model} falhou, tentando próximo...", groqModel);
+                _logger.LogWarning("Groq {Model} com key #{KeyIndex} falhou, tentando próximo...", groqModel, keyIndex + 1);
             }
         }
 
-        _logger.LogError("Todos os modelos (Gemini + Groq) esgotaram a cota");
+        _logger.LogError("Todos os modelos IA (Gemini/Groq) esgotaram a cota");
         return null;
     }
 
     private async Task<string?> ChamarGeminiMultimodalAsync(string prompt, string base64Data, string mimeType)
     {
+        if (!_geminiHabilitado)
+        {
+            _logger.LogInformation("Gemini multimodal desabilitado: sem chave configurada.");
+            return null;
+        }
+
         var requestBody = new
         {
             contents = new[]
@@ -593,63 +730,67 @@ public class GeminiService : IGeminiService
         // Modelos Groq com suporte a visão (Llama 4 multimodal, gratuitos)
         var visionModels = new[] { "meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct" };
 
-        foreach (var model in visionModels)
+        for (var keyIndex = 0; keyIndex < _groqApiKeys.Count; keyIndex++)
         {
-            try
+            var groqApiKey = _groqApiKeys[keyIndex];
+            foreach (var model in visionModels)
             {
-                // Formato OpenAI-compatible vision API
-                var requestBody = new
+                try
                 {
-                    model,
-                    messages = new[]
+                    // Formato OpenAI-compatible vision API
+                    var requestBody = new
                     {
-                        new
+                        model,
+                        messages = new[]
                         {
-                            role = "user",
-                            content = new object[]
+                            new
                             {
-                                new { type = "text", text = prompt },
-                                new
+                                role = "user",
+                                content = new object[]
                                 {
-                                    type = "image_url",
-                                    image_url = new { url = $"data:{mimeType};base64,{base64Image}" }
+                                    new { type = "text", text = prompt },
+                                    new
+                                    {
+                                        type = "image_url",
+                                        image_url = new { url = $"data:{mimeType};base64,{base64Image}" }
+                                    }
                                 }
                             }
-                        }
-                    },
-                    temperature = 0.3,
-                    max_tokens = 2048
-                };
+                        },
+                        temperature = 0.3,
+                        max_tokens = 2048
+                    };
 
-                var json = JsonSerializer.Serialize(requestBody, JsonOptions);
-                var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions")
-                {
-                    Content = new StringContent(json, Encoding.UTF8, "application/json")
-                };
-                request.Headers.Add("Authorization", $"Bearer {_groqApiKey}");
+                    var json = JsonSerializer.Serialize(requestBody, JsonOptions);
+                    var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions")
+                    {
+                        Content = new StringContent(json, Encoding.UTF8, "application/json")
+                    };
+                    request.Headers.Add("Authorization", $"Bearer {groqApiKey}");
 
-                var response = await _httpClient.SendAsync(request);
-                var responseBody = await response.Content.ReadAsStringAsync();
+                    var response = await _httpClient.SendAsync(request);
+                    var responseBody = await response.Content.ReadAsStringAsync();
 
-                if (response.IsSuccessStatusCode)
-                {
-                    _logger.LogInformation("Groq Vision ({Model}) processou imagem com sucesso!", model);
-                    var result = JsonSerializer.Deserialize<GroqResponse>(responseBody, JsonOptions);
-                    return result?.Choices?.FirstOrDefault()?.Message?.Content;
+                    if (response.IsSuccessStatusCode)
+                    {
+                        _logger.LogInformation("Groq Vision ({Model}) processou imagem com sucesso (key #{KeyIndex})!", model, keyIndex + 1);
+                        var result = JsonSerializer.Deserialize<GroqResponse>(responseBody, JsonOptions);
+                        return result?.Choices?.FirstOrDefault()?.Message?.Content;
+                    }
+
+                    _logger.LogWarning("Groq Vision {Model} (key #{KeyIndex}) falhou {StatusCode}: {Body}", model, keyIndex + 1, response.StatusCode, responseBody);
                 }
-
-                _logger.LogWarning("Groq Vision {Model} falhou {StatusCode}: {Body}", model, response.StatusCode, responseBody);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Erro ao chamar Groq Vision {Model}", model);
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Erro ao chamar Groq Vision {Model} (key #{KeyIndex})", model, keyIndex + 1);
+                }
             }
         }
 
         return null;
     }
 
-    private async Task<string?> ChamarGroqAsync(string prompt, string? modelo = null)
+    private async Task<string?> ChamarGroqAsync(string prompt, string groqApiKey, string? modelo = null, int? keyIndex = null)
     {
         var groqModel = modelo ?? _groqModels.First();
         var requestBody = new
@@ -673,14 +814,14 @@ public class GeminiService : IGeminiService
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
             };
-            request.Headers.Add("Authorization", $"Bearer {_groqApiKey}");
+            request.Headers.Add("Authorization", $"Bearer {groqApiKey}");
 
             var response = await _httpClient.SendAsync(request);
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("Groq ({Model}) respondeu com sucesso!", groqModel);
+                _logger.LogInformation("Groq ({Model}) respondeu com sucesso (key #{KeyIndex})!", groqModel, keyIndex ?? 0);
                 var result = JsonSerializer.Deserialize<GroqResponse>(responseBody, JsonOptions);
                 return result?.Choices?.FirstOrDefault()?.Message?.Content;
             }
@@ -689,17 +830,17 @@ public class GeminiService : IGeminiService
             {
                 if (tentativa < maxRetries)
                 {
-                    _logger.LogWarning("Groq 429 - tentativa {Tentativa}/{Max}. Aguardando {Delay}ms...", tentativa + 1, maxRetries, delays[tentativa]);
+                    _logger.LogWarning("Groq 429 (key #{KeyIndex}) - tentativa {Tentativa}/{Max}. Aguardando {Delay}ms...", keyIndex ?? 0, tentativa + 1, maxRetries, delays[tentativa]);
                     await Task.Delay(delays[tentativa]);
                     continue;
                 }
             }
 
-            _logger.LogError("Groq erro {StatusCode}: {Body}", response.StatusCode, responseBody);
+            _logger.LogError("Groq erro (key #{KeyIndex}) {StatusCode}: {Body}", keyIndex ?? 0, response.StatusCode, responseBody);
             return null;
         }
 
-        _logger.LogError("Groq esgotou tentativas");
+        _logger.LogError("Groq esgotou tentativas (key #{KeyIndex})", keyIndex ?? 0);
         return null;
     }
 

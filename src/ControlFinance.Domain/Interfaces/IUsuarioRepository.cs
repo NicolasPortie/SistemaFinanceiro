@@ -5,6 +5,7 @@ namespace ControlFinance.Domain.Interfaces;
 public interface IUsuarioRepository
 {
     Task<Usuario?> ObterPorTelegramChatIdAsync(long chatId);
+    Task<List<Usuario>> ObterTodosComTelegramAsync();
     Task<Usuario?> ObterPorIdAsync(int id);
     Task<Usuario?> ObterPorEmailAsync(string email);
     Task<bool> EmailExisteAsync(string email);

@@ -20,6 +20,13 @@ public class UsuarioRepository : IUsuarioRepository
             .FirstOrDefaultAsync(u => u.TelegramChatId == chatId);
     }
 
+    public async Task<List<Usuario>> ObterTodosComTelegramAsync()
+    {
+        return await _context.Usuarios
+            .Where(u => u.Ativo && u.TelegramChatId != null)
+            .ToListAsync();
+    }
+
     public async Task<Usuario?> ObterPorIdAsync(int id)
     {
         return await _context.Usuarios.FindAsync(id);

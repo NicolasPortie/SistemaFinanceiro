@@ -10,6 +10,7 @@ namespace ControlFinance.Application.Services;
 
 public class TelegramBotService
 {
+    private const string SistemaWebUrl = "https://finance.nicolasportie.com";
     private readonly IUsuarioRepository _usuarioRepo;
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
@@ -25,6 +26,7 @@ public class TelegramBotService
     private readonly MetaFinanceiraService _metaService;
     private readonly ILancamentoRepository _lancamentoRepo;
     private readonly ILembretePagamentoRepository _lembreteRepo;
+    private readonly IFaturaRepository _faturaRepo;
     private readonly ILogger<TelegramBotService> _logger;
 
     // Cache de lançamentos pendentes de confirmação (chatId → dados)
@@ -54,6 +56,9 @@ public class TelegramBotService
         public int DiaVencimento { get; set; }
         public int UsuarioId { get; set; }
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+        // Para edição: armazena o ID do cartão existente e as alterações formatadas
+        public int? CartaoIdEdicao { get; set; }
+        public string? AlteracoesResumo { get; set; }
     }
 
     private class LancamentoPendente
@@ -83,6 +88,7 @@ public class TelegramBotService
         MetaFinanceiraService metaService,
         ILancamentoRepository lancamentoRepo,
         ILembretePagamentoRepository lembreteRepo,
+        IFaturaRepository faturaRepo,
         ILogger<TelegramBotService> logger)
     {
         _usuarioRepo = usuarioRepo;
@@ -100,6 +106,7 @@ public class TelegramBotService
         _metaService = metaService;
         _lancamentoRepo = lancamentoRepo;
         _lembreteRepo = lembreteRepo;
+        _faturaRepo = faturaRepo;
         _logger = logger;
     }
 
@@ -143,11 +150,6 @@ public class TelegramBotService
         var respostaDesvinc = await ProcessarConfirmacaoDesvinculacaoAsync(chatId, usuario, mensagem);
         if (respostaDesvinc != null)
             return respostaDesvinc;
-
-        // Verificar confirmação de cartão pendente
-        var respostaCartao = await ProcessarConfirmacaoCartaoAsync(chatId, mensagem);
-        if (respostaCartao != null)
-            return respostaCartao;
 
         // Verificar se há lançamento pendente em etapas (forma, cartão, categoria, confirmação)
         var respostaEtapa = await ProcessarEtapaPendenteAsync(chatId, usuario, mensagem);
@@ -218,20 +220,18 @@ public class TelegramBotService
 
     private async Task<string?> ProcessarRespostaFormaPagamentoAsync(long chatId, LancamentoPendente pendente, string msg)
     {
-        // Aceitar: 1, 2, 3, pix, debito, credito
-        string? formaPag = msg switch
-        {
-            "1" or "pix" => "pix",
-            "2" or "debito" or "débito" => "debito",
-            "3" or "credito" or "crédito" => "credito",
-            _ => null
-        };
+        // Aceitar diversas formas de falar (texto e voz)
+        string? formaPag = ReconhecerFormaPagamento(msg);
 
         if (formaPag == null)
         {
-            // Se não reconheceu, descartar o pendente e processar como nova mensagem
-            _pendentes.TryRemove(chatId, out _);
-            return null;
+            // Não reconheceu — re-perguntar sem descartar pendente
+            pendente.CriadoEm = DateTime.UtcNow;
+            DefinirTeclado(chatId,
+                new[] { ("1️⃣ PIX", "pix"), ("2️⃣ Débito", "debito"), ("3️⃣ Crédito", "credito") },
+                new[] { ("❌ Cancelar", "cancelar") }
+            );
+            return "⚠️ Não entendi a forma de pagamento. Escolha uma opção:\n\n1️⃣ PIX\n2️⃣ Débito\n3️⃣ Crédito\n\nEscolha abaixo 👇";
         }
 
         pendente.Dados.FormaPagamento = formaPag;
@@ -244,7 +244,11 @@ public class TelegramBotService
             if (!cartoes.Any())
             {
                 _pendentes.TryRemove(chatId, out _);
-                return "💳 Você não tem cartão cadastrado!\nMe diz o nome, limite e vencimento que eu cadastro.\nExemplo: \"cadastrar cartão Nubank limite 5000 vence dia 10\"";
+                return MensagemGestaoNoWeb(
+                    chatId,
+                    "Você escolheu pagamento no crédito, mas ainda não há cartão cadastrado.",
+                    "Acesse o menu *Cartões* no sistema web, cadastre o cartão e depois me envie a compra novamente."
+                );
             }
 
             if (cartoes.Count == 1)
@@ -359,16 +363,19 @@ public class TelegramBotService
         pendente.Dados.Categoria = categoriaEscolhida.Nome;
         pendente.CriadoEm = DateTime.UtcNow;
 
-        // Avançar para confirmação
+        // Avançar para confirmação — com botões!
         pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+        );
         var nomeCartaoPreview = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
         return MontarPreviewLancamento(pendente.Dados, nomeCartaoPreview);
     }
 
     private async Task<string?> ProcessarConfirmacaoFinalAsync(long chatId, LancamentoPendente pendente, Usuario usuario, string msg)
     {
-        // Confirmar
-        if (msg is "sim" or "s" or "confirmar" or "confirma" or "ok" or "✅" or "👍")
+        // Confirmar — aceitar muitas variações naturais (texto e voz)
+        if (EhConfirmacao(msg))
         {
             _pendentes.TryRemove(chatId, out _);
             try
@@ -397,7 +404,7 @@ public class TelegramBotService
                     var cat = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, pendente.Dados.Categoria);
                     if (cat != null)
                     {
-                        var alerta = await _limiteService.VerificarAlertaAsync(usuario.Id, cat.Id, 0);
+                        var alerta = await _limiteService.VerificarAlertaAsync(usuario.Id, cat.Id, pendente.Dados.Valor);
                         if (alerta != null)
                             resultado += alerta;
                     }
@@ -412,16 +419,19 @@ public class TelegramBotService
             }
         }
 
-        // Cancelar
-        if (msg is "nao" or "não" or "n")
+        // Cancelar — aceitar muitas variações naturais (texto e voz)
+        if (EhCancelamento(msg))
         {
             _pendentes.TryRemove(chatId, out _);
             return "❌ Cancelado! O lançamento não foi registrado.";
         }
 
-        // Qualquer outra mensagem: descartar o pendente e processar normalmente
-        _pendentes.TryRemove(chatId, out _);
-        return null;
+        // Não reconheceu — re-perguntar ao invés de descartar silenciosamente
+        pendente.CriadoEm = DateTime.UtcNow;
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+        );
+        return "⚠️ Não entendi. Deseja confirmar ou cancelar este lançamento?\n\nEscolha abaixo 👇";
     }
 
     /// <summary>
@@ -462,7 +472,7 @@ public class TelegramBotService
             {
                 pendente.Dados.Categoria = ehReceita ? "Renda Extra" : "Outros";
             }
-            else if (categorias.Any())
+            else
             {
                 // IA pode sugerir uma categoria baseada na descrição
                 var sugerida = SugerirCategoria(pendente.Dados.Descricao, categorias);
@@ -488,9 +498,6 @@ public class TelegramBotService
                 DefinirTeclado(chatId, linhasCat);
                 return texto;
             }
-
-            // Sem categorias — usar "Outros" e seguir
-            pendente.Dados.Categoria = "Outros";
         }
 
         // Tudo preenchido: ir para confirmação
@@ -503,6 +510,56 @@ public class TelegramBotService
     }
 
     /// <summary>
+    /// Reconhece a forma de pagamento a partir de texto livre (suporta variações de voz).
+    /// </summary>
+    private static string? ReconhecerFormaPagamento(string msg)
+    {
+        // Exato
+        if (msg is "1" or "pix") return "pix";
+        if (msg is "2" or "debito" or "débito") return "debito";
+        if (msg is "3" or "credito" or "crédito") return "credito";
+
+        // Variações naturais (voz)
+        if (msg.Contains("pix")) return "pix";
+        if (msg.Contains("débito") || msg.Contains("debito")) return "debito";
+        if (msg.Contains("crédito") || msg.Contains("credito") || msg.Contains("cartão") ||
+            msg.Contains("cartao") || msg.Contains("visa") || msg.Contains("mastercard") ||
+            msg.Contains("nubank") || msg.Contains("picpay") || msg.Contains("bicpay")) return "credito";
+
+        // "no cartão", "no crédito", "na função crédito"
+        if (msg.Contains("cart") || msg.Contains("créd") || msg.Contains("cred")) return "credito";
+
+        return null;
+    }
+
+    /// <summary>
+    /// Verifica se a mensagem é uma confirmação (suporta variações de voz e texto).
+    /// </summary>
+    private static bool EhConfirmacao(string msg)
+    {
+        return msg is "sim" or "s" or "confirmar" or "confirma" or "ok" or "✅" or "👍"
+            or "pode" or "pode confirmar" or "pode registrar" or "isso" or "isso mesmo"
+            or "ta certo" or "tá certo" or "está certo" or "esta certo"
+            or "certinho" or "certo" or "positivo" or "afirmativo" or "manda"
+            or "manda ver" or "pode sim" or "pode ser" or "bora" or "vai"
+            or "registra" or "salvar" or "salva" or "correto" or "exato"
+            or "si" or "sí" or "uhum" or "aham" or "yes"
+            || msg.Contains("confirm") || msg.Contains("registr");
+    }
+
+    /// <summary>
+    /// Verifica se a mensagem é um cancelamento (suporta variações de voz e texto).
+    /// </summary>
+    private static bool EhCancelamento(string msg)
+    {
+        return msg is "nao" or "não" or "n" or "cancelar" or "cancela" or "❌" or "👎"
+            or "não quero" or "nao quero" or "deixa" or "deixa pra lá" or "deixa pra la"
+            or "esquece" or "esqueci" or "desiste" or "desistir" or "para" or "parar"
+            or "no" or "nope" or "negativo"
+            || msg.Contains("cancel") || msg.Contains("desist");
+    }
+
+    /// <summary>
     /// Sugere uma categoria baseada na descrição do lançamento, comparando com as categorias do usuário.
     /// </summary>
     private static string? SugerirCategoria(string descricao, List<Categoria> categorias)
@@ -512,14 +569,14 @@ public class TelegramBotService
         var desc = descricao.ToLower();
         var mapeamento = new Dictionary<string, string[]>
         {
-            ["Alimentação"] = new[] { "mercado", "supermercado", "restaurante", "lanche", "comida", "almoço", "jantar", "café", "padaria", "ifood", "pizza", "hamburger", "açougue", "feira", "hortifruti" },
-            ["Transporte"] = new[] { "uber", "99", "ônibus", "gasolina", "combustível", "estacionamento", "pedágio", "metrô", "taxi", "posto", "oficina" },
-            ["Moradia"] = new[] { "aluguel", "condomínio", "luz", "água", "gás", "iptu", "internet", "energia" },
-            ["Saúde"] = new[] { "farmácia", "remédio", "médico", "consulta", "hospital", "plano de saúde", "dentista", "exame" },
-            ["Lazer"] = new[] { "cinema", "netflix", "spotify", "jogo", "viagem", "bar", "festa", "show", "ingresso", "passeio" },
-            ["Educação"] = new[] { "curso", "faculdade", "escola", "livro", "mensalidade", "material escolar", "udemy" },
-            ["Vestuário"] = new[] { "roupa", "sapato", "tênis", "calça", "camisa", "blusa", "vestido", "loja" },
-            ["Assinaturas"] = new[] { "assinatura", "plano", "mensalidade", "streaming" },
+            ["Alimentação"] = new[] { "mercado", "supermercado", "restaurante", "lanche", "comida", "almoço", "jantar", "café", "padaria", "ifood", "pizza", "hamburger", "açougue", "feira", "hortifruti", "rappi", "mcdonald", "burger", "sushi", "churrasco", "sorvete", "doceria", "confeitaria", "bebida", "cerveja" },
+            ["Transporte"] = new[] { "uber", "99", "ônibus", "gasolina", "combustível", "estacionamento", "pedágio", "metrô", "taxi", "posto", "oficina", "99pop", "99taxi", "indriver", "multa", "ipva", "seguro auto", "moto", "bicicleta" },
+            ["Moradia"] = new[] { "aluguel", "condomínio", "luz", "água", "gás", "iptu", "internet", "energia", "seguro residencial", "reforma", "mudança", "mobília", "móvel" },
+            ["Saúde"] = new[] { "farmácia", "remédio", "médico", "consulta", "hospital", "plano de saúde", "dentista", "exame", "academia", "suplemento", "psicólogo", "terapia", "cirurgia", "vacina", "drogaria" },
+            ["Lazer"] = new[] { "cinema", "netflix", "spotify", "jogo", "viagem", "bar", "festa", "show", "ingresso", "passeio", "parque", "teatro", "museu", "camping" },
+            ["Educação"] = new[] { "curso", "faculdade", "escola", "livro", "mensalidade", "material escolar", "udemy", "alura", "rocketseat", "apostila", "treinamento" },
+            ["Vestuário"] = new[] { "roupa", "sapato", "tênis", "calça", "camisa", "blusa", "vestido", "loja", "americanas", "renner", "riachuelo", "c&a", "zara", "shein", "shopee", "acessório", "meia", "cueca", "calcinha", "sutiã", "bermuda", "jaqueta", "casaco" },
+            ["Assinaturas"] = new[] { "assinatura", "plano", "streaming", "disney", "hbo", "prime", "amazon", "apple", "youtube premium", "deezer", "globoplay", "starplus" },
         };
 
         foreach (var (categoria, palavras) in mapeamento)
@@ -576,12 +633,23 @@ public class TelegramBotService
                    "⚠️ *Limites* — \"Ver limites\" ou /limites\n" +
                    "🤔 *Decisão* — \"Posso gastar X em Y?\"\n" +
                    "🔮 *Previsão* — \"Quero comprar X de R$ Y em Z parcelas\"\n" +
-                   "💳 *Cartão* — \"Cadastrar cartão Nubank\"\n" +
+                   "💳 *Cartões* — consulta de faturas no bot; cadastro/edição no site\n" +
                    "🔔 *Lembretes* — /lembrete criar Internet;15/03/2026;99,90;mensal\n" +
                    "💵 *Salário médio* — /salario_mensal\n" +
                    "🎤 *Áudio* — Envie áudio que eu transcrevo!\n" +
                    "📷 *Imagem* — Envie foto de nota fiscal!\n\n" +
                    "Digite qualquer coisa e eu entendo! 🚀";
+        }
+
+        // Intentos de gestão no estilo cadastro/edição/exclusão devem ir para o Web
+        if (EhMensagemGestaoNoWeb(msgLower))
+        {
+            _logger.LogInformation("Resposta direta: gestao_web | Usuário: {Nome}", usuario.Nome);
+            return MensagemGestaoNoWeb(
+                usuario.TelegramChatId,
+                "Essa alteração é feita no sistema web.",
+                "Acesse o menu correspondente e conclua por lá. Quando terminar, me envie a ação aqui no bot que eu continuo de onde parou."
+            );
         }
 
         // Agradecimento
@@ -662,7 +730,9 @@ public class TelegramBotService
             if (string.IsNullOrWhiteSpace(texto))
                 return "❌ Não consegui entender o áudio. Tente enviar em texto.";
 
-            var resultado = await ProcessarComIAAsync(usuario, texto, OrigemDado.Audio);
+            // Usar o mesmo fluxo de texto para que áudio passe pelo state machine
+            // (pendentes, confirmações, respostas diretas, etc.)
+            var resultado = await ProcessarMensagemAsync(chatId, texto, nomeUsuario);
             return $"🎤 Transcrição: \"{texto}\"\n\n{resultado}";
         }
         catch (Exception ex)
@@ -734,10 +804,39 @@ public class TelegramBotService
             return await ProcessarCriarMetaAsync(usuario, resposta.Meta);
         }
 
-        // Se a IA identificou cadastro de cartão com dados extraídos
-        if (resposta.Intencao == "cadastrar_cartao" && resposta.Cartao != null)
+        // Se a IA identificou aporte ou saque em meta
+        if ((resposta.Intencao == "aportar_meta" || resposta.Intencao == "sacar_meta") && resposta.AporteMeta != null)
         {
-            return await ProcessarCadastrarCartaoViaIAAsync(usuario, resposta.Cartao);
+            return await ProcessarAportarMetaAsync(usuario, resposta.AporteMeta);
+        }
+
+        // Cadastro/edição/exclusão de cartão: orientação para Web
+        if (resposta.Intencao is "cadastrar_cartao" or "editar_cartao" or "excluir_cartao")
+            return MensagemGestaoNoWeb(
+                usuario.TelegramChatId,
+                "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
+                "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
+            );
+
+        // Qualquer outro CRUD que o bot não executa deve ser orientado para o Web
+        var orientacaoCrudWeb = TentarOrientarCrudNoWeb(usuario, resposta.Intencao);
+        if (orientacaoCrudWeb != null)
+            return orientacaoCrudWeb;
+
+        if (resposta.Intencao == "excluir_lancamento")
+        {
+            return await ProcessarExcluirLancamentoAsync(usuario, resposta.Resposta);
+        }
+
+        // Se a IA identificou mudança de categoria do último lançamento
+        if (resposta.Intencao == "categorizar_ultimo" && !string.IsNullOrWhiteSpace(resposta.Resposta))
+        {
+            return await ProcessarCategorizarUltimoAsync(usuario, resposta.Resposta);
+        }
+
+        if (resposta.Intencao == "pagar_fatura" && resposta.PagamentoFatura != null)
+        {
+            return await ProcessarPagarFaturaAsync(usuario, resposta.PagamentoFatura);
         }
 
         // Para intenções que precisam de dados do sistema
@@ -751,9 +850,119 @@ public class TelegramBotService
             "ver_categorias" => await ListarCategorias(usuario),
             "consultar_limites" => await ListarLimitesFormatado(usuario),
             "consultar_metas" => await ListarMetasFormatado(usuario),
-            "cadastrar_cartao" => resposta.Resposta, // IA asks for missing data in natural language
+            "cadastrar_cartao" => MensagemGestaoNoWeb(
+                usuario.TelegramChatId,
+                "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
+                "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
+            ),
+            "editar_cartao" => MensagemGestaoNoWeb(
+                usuario.TelegramChatId,
+                "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
+                "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
+            ),
+            "excluir_cartao" => MensagemGestaoNoWeb(
+                usuario.TelegramChatId,
+                "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
+                "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
+            ),
             _ => resposta.Resposta // Resposta conversacional da IA (saudação, ajuda, conversa, etc.)
         };
+    }
+
+    private async Task<string> ProcessarPagarFaturaAsync(Usuario usuario, DadosPagamentoFaturaIA dados)
+    {
+        try
+        {
+            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+            if (!cartoes.Any())
+                return MensagemGestaoNoWeb(
+                    usuario.TelegramChatId,
+                    "Você ainda não tem cartão cadastrado para pagar fatura.",
+                    "Acesse o menu *Cartões* no sistema web, cadastre o cartão e depois volte aqui para consultar e pagar a fatura."
+                );
+
+            CartaoCredito? cartao = null;
+            
+            // 1. Tentar achar o cartão
+            if (!string.IsNullOrWhiteSpace(dados.Cartao))
+            {
+                cartao = cartoes.FirstOrDefault(c => c.Nome.Contains(dados.Cartao, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Se não achou ou não foi informado
+            if (cartao == null)
+            {
+                if (cartoes.Count == 1)
+                {
+                    cartao = cartoes.First();
+                }
+                else
+                {
+                    // Perguntar qual cartão
+                    var nomes = string.Join(", ", cartoes.Select(c => c.Nome));
+                    return $"💳 Qual cartão você pagou? Tenho estes: {nomes}. Tente dizer: 'Paguei fatura do Nubank'.";
+                }
+            }
+
+            // 2. Achar a fatura (Prioridade: Fechada não paga > Atual aberta)
+            // Lógica: Se estamos pagando, provavelmente é a que venceu agora ou vai vencer
+            var hoje = DateTime.UtcNow;
+            var faturas = await _faturaRepo.ObterPorCartaoAsync(cartao.Id);
+            
+            // Buscar primeira fatura FECHADA e NÃO PAGA
+            var faturaPagar = faturas
+                .Where(f => f.Status == StatusFatura.Fechada)
+                .OrderBy(f => f.DataVencimento)
+                .FirstOrDefault();
+
+            // Se não tem fechada, pode ser antecipação da atual (Aberta)
+            // (Só pega aberta se o mês de referencia for igual ou anterior ao atual, para evitar pagar fatura futura sem querer)
+            if (faturaPagar == null)
+            {
+                faturaPagar = faturas.FirstOrDefault(f => f.Status == StatusFatura.Aberta);
+            }
+
+            if (faturaPagar == null)
+                return $"✅ Não encontrei faturas pendentes para o cartão *{cartao.Nome}*.";
+
+            // 3. Registrar o pagamento (Ação Dupla)
+            
+            // A - Saída financeira (Lançamento)
+            var valorPago = dados.Valor ?? faturaPagar.Total;
+            if (valorPago <= 0) valorPago = faturaPagar.Total; // Fallback
+
+            var lancamentoPagamento = new RegistrarLancamentoDto
+            {
+                 Valor = valorPago,
+                 Descricao = $"Pagamento Fatura {cartao.Nome} ({faturaPagar.MesReferencia:MM/yyyy})",
+                 Categoria = "Pagamento de fatura", 
+                 Tipo = TipoLancamento.Gasto,
+                 FormaPagamento = FormaPagamento.PIX, // Assume Pix/Conta por padrão ao pagar fatura
+                 Data = dados.Data ?? hoje,
+                 Origem = OrigemDado.Texto
+            };
+
+            // Criar lançamento (só para constar no extrato e baixar saldo)
+            await _lancamentoService.RegistrarAsync(usuario.Id, lancamentoPagamento);
+
+            // B - Baixar a Fatura (Sistêmico)
+            // Se valor pago for total ou maior (com margem de erro pequena), quita a fatura
+            if (valorPago >= faturaPagar.Total * 0.95m)
+            {
+                 await _faturaService.PagarFaturaAsync(faturaPagar.Id);
+                 await _perfilService.InvalidarAsync(usuario.Id);
+                 return $"✅ *Fatura Paga com Sucesso!*\n\n💳 Cartão: {cartao.Nome}\n📅 Mês: {faturaPagar.MesReferencia:MM/yyyy}\n💸 Valor Pago: R$ {valorPago:N2}\n\nO limite do seu cartão foi restaurado!";
+            }
+            else
+            {
+                 return $"⚠️ Registrei o pagamento parcial de R$ {valorPago:N2} na fatura do {cartao.Nome}, mas ela ainda consta em aberto no sistema (valor total era R$ {faturaPagar.Total:N2}).";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar pagamento de fatura");
+            return "❌ Ocorreu um erro ao processar o pagamento da fatura.";
+        }
     }
 
     /// <summary>
@@ -762,6 +971,14 @@ public class TelegramBotService
     private async Task<string> IniciarFluxoLancamentoAsync(Usuario usuario, DadosLancamento dados, OrigemDado origem)
     {
         var chatId = usuario.TelegramChatId!.Value;
+
+        // Validar valor — evitar lançamentos zerados ou negativos (comum em erros de transcrição)
+        if (dados.Valor <= 0)
+            return "❌ O valor precisa ser maior que zero. Pode repetir o valor do lançamento?";
+
+        // Truncar descrição muito longa (segurança para DB)
+        if (!string.IsNullOrEmpty(dados.Descricao) && dados.Descricao.Length > 200)
+            dados.Descricao = dados.Descricao[..200];
 
         var pendente = new LancamentoPendente
         {
@@ -829,7 +1046,11 @@ public class TelegramBotService
             var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
             if (!cartoes.Any())
             {
-                return "💳 Você mencionou crédito, mas não tem cartão cadastrado.\nMe diz o nome do cartão, limite e dia de vencimento que eu cadastro!\nExemplo: \"cadastrar cartão Nubank limite 5000 vencimento dia 10\"";
+                return MensagemGestaoNoWeb(
+                    chatId,
+                    "Você pediu lançamento no crédito, mas não há cartão cadastrado.",
+                    "Acesse o menu *Cartões* no sistema web e faça o cadastro. Depois me envie novamente a compra que eu registro pra você."
+                );
             }
 
             if (cartoes.Count > 1)
@@ -925,7 +1146,11 @@ public class TelegramBotService
             }
             else
             {
-                return "💳 Você mencionou crédito, mas não tem cartão cadastrado.\nMe diz o nome do cartão, limite e dia de vencimento que eu cadastro!\nExemplo: \"cadastrar cartão Nubank limite 5000 vencimento dia 10\"";
+                return MensagemGestaoNoWeb(
+                    usuario.TelegramChatId,
+                    "Você informou pagamento no crédito, mas ainda não existe cartão cadastrado.",
+                    "Acesse o menu *Cartões* no sistema web e faça o cadastro. Depois me envie novamente essa compra."
+                );
             }
         }
         else if (formaPag == FormaPagamento.Credito && cartaoId != null)
@@ -1028,7 +1253,11 @@ public class TelegramBotService
         var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
 
         if (!cartoes.Any())
-            return "💳 Você não tem cartões cadastrados.\nMe diga o nome do cartão, limite e dia de vencimento que eu cadastro!\nExemplo: \"cadastrar cartão Nubank limite 5000 vence dia 10\"";
+            return MensagemGestaoNoWeb(
+                usuario.TelegramChatId,
+                "Você ainda não tem cartão cadastrado para consultar fatura.",
+                "Acesse o menu *Cartões* no sistema web, cadastre o cartão e depois me peça a fatura aqui."
+            );
 
         string? referenciaNormalizada = null;
         if (!string.IsNullOrWhiteSpace(referenciaMes))
@@ -1161,7 +1390,11 @@ public class TelegramBotService
         var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
 
         if (!cartoes.Any())
-            return "💳 Você não tem cartões cadastrados.";
+            return MensagemGestaoNoWeb(
+                usuario.TelegramChatId,
+                "Você ainda não tem cartão cadastrado para listar faturas.",
+                "Acesse o menu *Cartões* no sistema web, cadastre o cartão e depois volte aqui para listar as faturas."
+            );
 
         var resultado = "📋 *Todas as faturas pendentes:*\n\n";
         var temFatura = false;
@@ -1277,7 +1510,7 @@ public class TelegramBotService
         return comando switch
         {
             "/start" => $"👋 Oi, {usuario.Nome}! Eu sou o ControlFinance!\n\nFala comigo naturalmente:\n💸 \"paguei 45 no mercado\"\n💰 \"recebi 5000 de salário\"\n❓ \"posso gastar 50 num lanche?\"\n🔍 \"se eu comprar uma TV de 3000 em 10x?\"\n📊 \"limitar alimentação em 800\"\n🎯 \"quero juntar 10 mil até dezembro\"\n\nPode mandar texto, áudio ou foto de cupom! 🚀",
-            "/ajuda" or "/help" => "📖 Fala comigo naturalmente! Exemplos:\n\n💸 \"gastei 50 no mercado\"\n💰 \"recebi 3000 de salário\"\n❓ \"posso gastar 80 no iFood?\"\n💳 \"ifood 89,90 no crédito 3x\"\n📊 \"quanto gastei esse mês?\"\n🧾 \"me mostra a fatura\" ou /fatura\n📋 \"listar faturas\" ou /faturas\n🧾 \"fatura detalhada\"\n📋 \"detalhar Alimentação\"\n🔍 \"se eu comprar um celular de 4000 em 12x?\"\n📊 \"limitar lazer em 500\"\n🎯 \"meta de juntar 5000 pra viagem até junho\"\n💳 \"cadastrar cartão Nubank limite 5000 vence dia 10\"\n\nÉ só falar normalmente que eu entendo! 🚀",
+            "/ajuda" or "/help" => "📖 Fala comigo naturalmente! Exemplos:\n\n💸 \"gastei 50 no mercado\"\n💰 \"recebi 3000 de salário\"\n❓ \"posso gastar 80 no iFood?\"\n💳 \"ifood 89,90 no crédito 3x\"\n📊 \"quanto gastei esse mês?\"\n🧾 \"me mostra a fatura\" ou /fatura\n📋 \"listar faturas\" ou /faturas\n🧾 \"fatura detalhada\"\n📋 \"detalhar Alimentação\"\n🔍 \"se eu comprar um celular de 4000 em 12x?\"\n📊 \"limitar lazer em 500\"\n🎯 \"meta de juntar 5000 pra viagem até junho\"\n🔔 \"/conta_fixa Aluguel;1500;5\"\n\nPara cadastrar/editar/excluir cartões, use o sistema web: finance.nicolasportie.com.",
             "/simular" => await ProcessarComandoSimularAsync(usuario, partes.Length > 1 ? partes[1] : null),
             "/posso" => await ProcessarComandoPossoAsync(usuario, partes.Length > 1 ? partes[1] : null),
             "/limite" => await ProcessarComandoLimiteAsync(usuario, partes.Length > 1 ? partes[1] : null),
@@ -1296,57 +1529,84 @@ public class TelegramBotService
                 ? await DetalharCategoriaAsync(usuario, partes[1])
                 : "📋 Use: /detalhar NomeCategoria\nExemplo: /detalhar Alimentação",
             "/categorias" => await ListarCategorias(usuario),
-            "/cartao" => await ProcessarCartao(usuario, partes.Length > 1 ? partes[1] : null),
+            "/cartao" => MensagemGestaoNoWeb(
+                usuario.TelegramChatId,
+                "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
+                "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
+            ),
             "/gasto" when partes.Length > 1 => await ProcessarComIAAsync(usuario, partes[1]),
             "/receita" when partes.Length > 1 => await ProcessarComIAAsync(usuario, $"recebi {partes[1]}"),
             _ => await ProcessarComIAAsync(usuario, mensagem) // Send unknown commands to AI instead of rejecting
         };
     }
 
-    private async Task<string> ProcessarCartao(Usuario usuario, string? parametros)
+    private static bool EhMensagemGestaoNoWeb(string msgLower)
     {
-        if (string.IsNullOrWhiteSpace(parametros))
+        var termosAcao = new[]
         {
-            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
-            if (!cartoes.Any())
-                return "💳 Nenhum cartão cadastrado.\n\nMe diz o nome, limite e vencimento que eu cadastro!\nExemplo: \"cadastrar cartão Nubank limite 5000 vence dia 10\"";
-
-            var texto = "💳 Seus Cartões:\n";
-            foreach (var c in cartoes)
-                texto += $"\n• {c.Nome} — Limite: R$ {c.Limite:N2} — Venc.: dia {c.DiaVencimento}";
-            return texto;
-        }
-
-        var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 3)
-            return "❌ Me passe nome, limite e dia de vencimento.\nExemplo: \"cartao Nubank 5000 10\"";
-
-        if (!decimal.TryParse(parts[1].Replace(",", "."), System.Globalization.NumberStyles.Any,
-            System.Globalization.CultureInfo.InvariantCulture, out var limite))
-            return "❌ Limite inválido. Use número (ex: 5000)";
-
-        if (!int.TryParse(parts[2], out var diaVenc) || diaVenc < 1 || diaVenc > 28)
-            return "❌ Dia de vencimento inválido (1 a 28).";
-
-        var chatId = usuario.TelegramChatId!.Value;
-        _cartaoPendente[chatId] = new CartaoPendente
-        {
-            Nome = parts[0],
-            Limite = limite,
-            DiaVencimento = diaVenc,
-            UsuarioId = usuario.Id,
-            CriadoEm = DateTime.UtcNow
+            "cadastrar", "cadastro", "criar", "adicionar", "novo",
+            "editar", "alterar", "mudar", "atualizar",
+            "excluir", "apagar", "remover", "deletar"
         };
 
-        DefinirTeclado(chatId,
-            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
-        );
-        return $"📋 *Confirma a criação deste cartão?*\n\n" +
-               $"💳 *{parts[0]}*\n" +
-               $"💰 Limite: R$ {limite:N2}\n" +
-               $"📅 Vencimento: dia {diaVenc}\n" +
-               $"🔒 Fechamento: 1º dia útil (automático)";
+        var termosEntidade = new[]
+        {
+            "cartao", "cartão", "cartoes", "cartões"
+        };
+
+        var temAcao = termosAcao.Any(msgLower.Contains);
+        var temEntidade = termosEntidade.Any(msgLower.Contains);
+        return temAcao && temEntidade;
     }
+
+    private string? TentarOrientarCrudNoWeb(Usuario usuario, string? intencao)
+    {
+        if (string.IsNullOrWhiteSpace(intencao))
+            return null;
+
+        var normalizada = intencao.Trim().ToLowerInvariant();
+        var intentsCrudSuportadasNoBot = new HashSet<string>
+        {
+            "excluir_lancamento",
+            "remover_lancamento",
+            "deletar_lancamento"
+        };
+        if (intentsCrudSuportadasNoBot.Contains(normalizada))
+            return null;
+
+        var ehCrud =
+            normalizada.StartsWith("cadastrar_") ||
+            normalizada.StartsWith("editar_") ||
+            normalizada.StartsWith("excluir_") ||
+            normalizada.StartsWith("remover_") ||
+            normalizada.StartsWith("deletar_");
+
+        if (!ehCrud)
+            return null;
+
+        return MensagemGestaoNoWeb(
+            usuario.TelegramChatId,
+            "Essa alteração é feita no sistema web.",
+            "Acesse o menu correspondente, conclua por lá e depois me chame aqui para continuar."
+        );
+    }
+
+    private string MensagemGestaoNoWeb(long? chatId, string cabecalho, string complemento)
+    {
+        if (chatId.HasValue)
+        {
+            DefinirTeclado(chatId.Value, new[] { ("🌐 Acessar sistema web", $"url:{SistemaWebUrl}") });
+        }
+
+        return $"🌐 {cabecalho}\n\n{complemento}\n\nLink: *{SistemaWebUrl}*";
+    }
+
+    private Task<string> ProcessarCartao(Usuario usuario, string? parametros)
+        => Task.FromResult(MensagemGestaoNoWeb(
+            usuario.TelegramChatId,
+            "A gestão de cartão é feita no sistema web, no menu *Cartões*.",
+            "Depois de cadastrar ou ajustar o cartão, me chame aqui para consultar fatura, pagar fatura ou registrar compras."
+        ));
 
     private async Task<string?> ProcessarConfirmacaoCartaoAsync(long chatId, string mensagem)
     {
@@ -1362,36 +1622,55 @@ public class TelegramBotService
 
         var msg = mensagem.Trim().ToLower();
 
-        if (msg is "sim" or "s" or "confirmar" or "confirma" or "ok" or "✅" or "👍")
+        if (EhConfirmacao(msg))
         {
             _cartaoPendente.TryRemove(chatId, out _);
             try
             {
-                var cartao = await _cartaoRepo.CriarAsync(new CartaoCredito
+                // Modo edição
+                if (pendente.CartaoIdEdicao.HasValue)
+                {
+                    var cartao = await _cartaoRepo.ObterPorIdAsync(pendente.CartaoIdEdicao.Value);
+                    if (cartao == null)
+                        return "❌ Cartão não encontrado. Pode ter sido removido.";
+
+                    cartao.Nome = pendente.Nome;
+                    if (pendente.Limite > 0) cartao.Limite = pendente.Limite;
+                    if (pendente.DiaVencimento > 0 && pendente.DiaVencimento <= 28) cartao.DiaVencimento = pendente.DiaVencimento;
+
+                    await _cartaoRepo.AtualizarAsync(cartao);
+                    return $"✅ Cartão atualizado com sucesso!\n\n{pendente.AlteracoesResumo}\n\n💳 *{cartao.Nome}* — Limite: R$ {cartao.Limite:N2} — Venc: dia {cartao.DiaVencimento}";
+                }
+
+                // Modo criação
+                var novoCartao = await _cartaoRepo.CriarAsync(new CartaoCredito
                 {
                     Nome = pendente.Nome,
                     Limite = pendente.Limite,
                     DiaVencimento = pendente.DiaVencimento,
                     UsuarioId = pendente.UsuarioId
                 });
-                return $"✅ Cartão {cartao.Nome} cadastrado!\n💰 Limite: R$ {cartao.Limite:N2}\n📅 Vencimento: dia {cartao.DiaVencimento}";
+                return $"✅ Cartão {novoCartao.Nome} cadastrado!\n💰 Limite: R$ {novoCartao.Limite:N2}\n📅 Vencimento: dia {novoCartao.DiaVencimento}";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao cadastrar cartão");
-                return "❌ Erro ao cadastrar o cartão. Tente novamente.";
+                _logger.LogError(ex, "Erro ao processar cartão");
+                return "❌ Erro ao processar o cartão. Tente novamente.";
             }
         }
 
-        if (msg is "nao" or "não" or "n" or "cancelar" or "cancela" or "❌" or "👎")
+        if (EhCancelamento(msg))
         {
             _cartaoPendente.TryRemove(chatId, out _);
-            return "❌ Cancelado! O cartão não foi criado.";
+            return "❌ Cancelado!";
         }
 
-        // Qualquer outra coisa: cancela
-        _cartaoPendente.TryRemove(chatId, out _);
-        return null;
+        // Não reconheceu — re-perguntar
+        pendente.CriadoEm = DateTime.UtcNow;
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+        );
+        return "⚠️ Não entendi. Deseja confirmar ou cancelar?\n\nEscolha abaixo 👇";
     }
 
     private string ProcessarPedidoDesvinculacao(long chatId)
@@ -1641,32 +1920,68 @@ public class TelegramBotService
         }
     }
 
-    private async Task<string> ProcessarCadastrarCartaoViaIAAsync(Usuario usuario, DadosCartaoIA cartaoIA)
+    private Task<string> ProcessarCadastrarCartaoViaIAAsync(Usuario usuario, DadosCartaoIA cartaoIA)
+        => Task.FromResult(MensagemGestaoNoWeb(
+            usuario.TelegramChatId,
+            "O cadastro de cartão é feito no sistema web, no menu *Cartões*.",
+            "Depois de cadastrar, me envie sua compra novamente que eu registro aqui no bot."
+        ));
+
+    private Task<string> ProcessarEditarCartaoViaIAAsync(Usuario usuario, DadosCartaoIA? dadosNovos, string? nomeAtual)
+        => Task.FromResult(MensagemGestaoNoWeb(
+            usuario.TelegramChatId,
+            "A edição de cartão é feita no sistema web, no menu *Cartões*.",
+            "Depois de ajustar o cartão no site, me chame aqui para continuar."
+        ));
+
+    private Task<string> ProcessarExcluirCartaoAsync(Usuario usuario, string? nomeCartao)
+        => Task.FromResult(MensagemGestaoNoWeb(
+            usuario.TelegramChatId,
+            "A exclusão de cartão é feita no sistema web, no menu *Cartões*.",
+            "Se precisar remover um cartão, faça por lá e depois volte aqui para continuar."
+        ));
+
+    private async Task<string> ProcessarExcluirLancamentoAsync(Usuario usuario, string? descricao)
     {
-        var chatId = usuario.TelegramChatId!.Value;
-
-        if (cartaoIA.Limite <= 0)
-            return "❌ O limite do cartão precisa ser maior que zero. Me diz novamente com o limite correto!";
-        if (cartaoIA.DiaVencimento < 1 || cartaoIA.DiaVencimento > 28)
-            return "❌ O dia de vencimento precisa ser entre 1 e 28. Qual o dia certo?";
-
-        _cartaoPendente[chatId] = new CartaoPendente
+        try
         {
-            Nome = cartaoIA.Nome,
-            Limite = cartaoIA.Limite,
-            DiaVencimento = cartaoIA.DiaVencimento,
-            UsuarioId = usuario.Id,
-            CriadoEm = DateTime.UtcNow
-        };
+            // Buscar últimos lançamentos do usuário para encontrar o mencionado
+            var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(usuario.Id);
+            var recentes = lancamentos
+                .OrderByDescending(l => l.Data)
+                .Take(20)
+                .ToList();
 
-        DefinirTeclado(chatId,
-            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
-        );
-        return $"📋 *Confirma a criação deste cartão?*\n\n" +
-               $"💳 *{cartaoIA.Nome}*\n" +
-               $"💰 Limite: R$ {cartaoIA.Limite:N2}\n" +
-               $"📅 Vencimento: dia {cartaoIA.DiaVencimento}\n" +
-               $"🔒 Fechamento: 1º dia útil (automático)";
+            if (!recentes.Any())
+                return "📭 Você não tem lançamentos registrados.";
+
+            Domain.Entities.Lancamento? lancamento = null;
+
+            if (!string.IsNullOrWhiteSpace(descricao))
+            {
+                // Tentar encontrar pelo nome/descrição
+                lancamento = recentes.FirstOrDefault(l =>
+                    l.Descricao.Contains(descricao, StringComparison.OrdinalIgnoreCase) ||
+                    descricao.Contains(l.Descricao, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Se não encontrou, pegar o último
+            if (lancamento == null)
+            {
+                lancamento = recentes.First();
+            }
+
+            await _lancamentoRepo.RemoverAsync(lancamento.Id);
+            await _perfilService.InvalidarAsync(usuario.Id);
+
+            var emoji = lancamento.Tipo == TipoLancamento.Receita ? "💰" : "💸";
+            return $"🗑️ Lançamento excluído!\n\n{emoji} {lancamento.Descricao}\n💵 R$ {lancamento.Valor:N2}\n📅 {lancamento.Data:dd/MM/yyyy}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao excluir lançamento");
+            return "❌ Erro ao excluir o lançamento. Tente novamente.";
+        }
     }
 
     private async Task<string> ProcessarComandoPossoAsync(Usuario usuario, string? parametros)
@@ -2138,6 +2453,87 @@ public class TelegramBotService
             return null;
 
         return (codigoVerificacao.Usuario, codigoVerificacao);
+    }
+
+    private async Task<string> ProcessarAportarMetaAsync(Usuario usuario, DadosAporteMetaIA aporte)
+    {
+        try
+        {
+            var metas = await _metaService.ListarMetasAsync(usuario.Id);
+            var meta = metas.FirstOrDefault(m =>
+                m.Nome.Equals(aporte.NomeMeta, StringComparison.OrdinalIgnoreCase) ||
+                m.Nome.Contains(aporte.NomeMeta, StringComparison.OrdinalIgnoreCase));
+
+            if (meta == null)
+            {
+                var nomes = string.Join(", ", metas.Select(m => m.Nome));
+                return $"❌ Não encontrei a meta *{aporte.NomeMeta}*.\n\nSuas metas: {nomes}";
+            }
+
+            var novoValor = meta.ValorAtual + aporte.Valor;
+            if (novoValor < 0) novoValor = 0; // Evitar negativo
+
+            var resultado = await _metaService.AtualizarMetaAsync(usuario.Id, meta.Id,
+                new AtualizarMetaDto { ValorAtual = novoValor });
+
+            if (resultado == null) return "❌ Erro ao atualizar meta.";
+
+            var acao = aporte.Valor >= 0 ? "Aporte realizado" : "Saque realizado";
+            var emoji = aporte.Valor >= 0 ? "💰" : "💸";
+            var diff = Math.Abs(aporte.Valor);
+
+            return $"{emoji} {acao} na meta *{resultado.Nome}*!\n\n" +
+                   $"💵 Valor: R$ {diff:N2}\n" +
+                   $"🎯 Progresso: R$ {resultado.ValorAtual:N2} / R$ {resultado.ValorAlvo:N2} ({resultado.PercentualConcluido:N0}%)";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar aporte na meta");
+            return "❌ Erro ao atualizar a meta. Tente novamente.";
+        }
+    }
+
+    private async Task<string> ProcessarCategorizarUltimoAsync(Usuario usuario, string novaCategoria)
+    {
+        try
+        {
+            var hoje = DateTime.UtcNow;
+            var inicio = hoje.AddDays(-7); 
+            var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(usuario.Id, inicio, hoje.AddDays(1));
+
+            if (!lancamentos.Any())
+                return "📭 Nenhum lançamento recente encontrado.";
+
+            var ultimo = lancamentos.MaxBy(l => l.CriadoEm);
+
+            if (ultimo == null) return "📭 Nenhum lançamento recente encontrado.";
+
+            var cat = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, novaCategoria);
+            if (cat == null)
+            {
+                 var todas = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
+                 cat = todas.FirstOrDefault(c => c.Nome.Contains(novaCategoria, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (cat == null)
+            {
+                 var todas = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
+                 var nomes = string.Join(", ", todas.Take(10).Select(c => c.Nome));
+                 return $"❌ Categoria *{novaCategoria}* não encontrada.\nCategorias disponíveis: {nomes}...";
+            }
+
+            ultimo.CategoriaId = cat.Id;
+            
+            await _lancamentoRepo.AtualizarAsync(ultimo);
+            await _perfilService.InvalidarAsync(usuario.Id);
+
+            return $"✅ Categoria alterada para *{cat.Nome}*!\n\n📝 {ultimo.Descricao}\n💵 R$ {ultimo.Valor:N2}\n📅 {ultimo.Data:dd/MM/yyyy}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao categorizar último lançamento");
+            return "❌ Erro ao atualizar categoria.";
+        }
     }
 }
 

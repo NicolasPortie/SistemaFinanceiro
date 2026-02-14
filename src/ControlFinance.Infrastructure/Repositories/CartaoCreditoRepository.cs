@@ -50,4 +50,10 @@ public class CartaoCreditoRepository : ICartaoCreditoRepository
             await _context.SaveChangesAsync();
         }
     }
+
+    public async Task AdicionarAjusteLimiteAsync(AjusteLimiteCartao ajuste)
+    {
+        _context.AjustesLimitesCartao.Add(ajuste);
+        await _context.SaveChangesAsync();
+    }
 }

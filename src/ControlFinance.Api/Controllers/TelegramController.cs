@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using ControlFinance.Application.Services;
@@ -18,6 +19,9 @@ public class TelegramController : ControllerBase
     private readonly ITelegramBotClient? _botClient;
     private readonly ILogger<TelegramController> _logger;
     private readonly IConfiguration _configuration;
+
+    // Deduplicação: guarda os update_ids recentes para evitar processar o mesmo update duas vezes
+    private static readonly ConcurrentDictionary<int, DateTime> _processedUpdates = new();
 
     public TelegramController(
         TelegramBotService botService,
@@ -65,13 +69,34 @@ public class TelegramController : ControllerBase
                 PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
             });
 
-            if (update?.Message is { } message)
+            if (update == null)
+                return Ok();
+
+            // Deduplicação: evitar processar o mesmo update duas vezes (retries do Telegram)
+            LimparUpdatesAntigos();
+            if (!_processedUpdates.TryAdd(update.Id, DateTime.UtcNow))
             {
-                await ProcessarMensagem(message);
+                _logger.LogWarning("Update {UpdateId} já processado — ignorando retry", update.Id);
+                return Ok();
             }
-            else if (update?.CallbackQuery is { } callback)
+
+            // Processar em background para retornar OK imediatamente ao Telegram
+            // Isso evita que o Telegram faça retry e cause mensagens duplicadas
+            if (update.Message is { } message)
             {
-                await ProcessarCallback(callback);
+                _ = Task.Run(async () =>
+                {
+                    try { await ProcessarMensagem(message); }
+                    catch (Exception ex) { _logger.LogError(ex, "Erro ao processar mensagem em background"); }
+                });
+            }
+            else if (update.CallbackQuery is { } callback)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try { await ProcessarCallback(callback); }
+                    catch (Exception ex) { _logger.LogError(ex, "Erro ao processar callback em background"); }
+                });
             }
         }
         catch (Exception ex)
@@ -79,7 +104,7 @@ public class TelegramController : ControllerBase
             _logger.LogError(ex, "Erro ao processar update do Telegram");
         }
 
-        // Sempre retorna OK para o Telegram não reenviar
+        // Sempre retorna OK imediato para o Telegram não reenviar
         return Ok();
     }
 
@@ -108,12 +133,20 @@ public class TelegramController : ControllerBase
                     resposta = await ProcessarVoz(message);
                     break;
 
+                case MessageType.Audio:
+                    resposta = await ProcessarAudioArquivo(message);
+                    break;
+
+                case MessageType.VideoNote:
+                    resposta = await ProcessarVideoNote(message);
+                    break;
+
                 case MessageType.Photo:
                     resposta = await ProcessarFoto(message);
                     break;
 
                 default:
-                    resposta = "❓ Tipo de mensagem não suportado. Envie texto, áudio ou imagem.";
+                    resposta = "❓ Tipo de mensagem não suportado. Envie texto, áudio, foto ou vídeo circular.";
                     break;
             }
         }
@@ -168,7 +201,17 @@ public class TelegramController : ControllerBase
         {
             replyMarkup = new InlineKeyboardMarkup(
                 teclado.Select(row =>
-                    row.Select(b => InlineKeyboardButton.WithCallbackData(b.Label, b.Data)).ToArray()
+                    row.Select(b =>
+                    {
+                        const string urlPrefix = "url:";
+                        if (b.Data.StartsWith(urlPrefix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var url = b.Data[urlPrefix.Length..];
+                            return InlineKeyboardButton.WithUrl(b.Label, url);
+                        }
+
+                        return InlineKeyboardButton.WithCallbackData(b.Label, b.Data);
+                    }).ToArray()
                 )
             );
         }
@@ -197,8 +240,13 @@ public class TelegramController : ControllerBase
         if (string.IsNullOrEmpty(texto))
             return texto;
 
-        // Evita itálico acidental em descrições/categorias com "_".
-        return Regex.Replace(texto, @"(?<!\\)_", @"\_");
+        // Proteger os bolds intencionais (*texto*) temporariamente
+        // Só escapar caracteres problemáticos em conteúdo do usuário
+        // Escapar _ (itálico acidental), ` (código acidental), [ (links acidentais)
+        texto = Regex.Replace(texto, @"(?<!\\)_", @"\_");
+        texto = Regex.Replace(texto, @"(?<!\\)`", @"\`");
+        texto = Regex.Replace(texto, @"(?<!\\)\[", @"\[");
+        return texto;
     }
 
     private async Task<string> ProcessarVoz(Message message)
@@ -220,14 +268,99 @@ public class TelegramController : ControllerBase
 
             using var ms = new MemoryStream();
             await _botClient.DownloadFile(file.FilePath, ms);
-            var audioData = ms.ToArray();
 
+            // Verificar tamanho (Groq Whisper aceita max 25MB)
+            if (ms.Length > 25_000_000)
+                return "❌ Áudio muito grande (máx 25MB). Tente enviar um áudio mais curto.";
+            if (ms.Length == 0)
+                return "❌ Áudio vazio. Tente novamente.";
+
+            var audioData = ms.ToArray();
             return await _botService.ProcessarAudioAsync(chatId, audioData, "audio/ogg", nomeUsuario);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao baixar áudio do Telegram");
             return "❌ Erro ao processar o áudio.";
+        }
+    }
+
+    private async Task<string> ProcessarAudioArquivo(Message message)
+    {
+        if (_botClient == null)
+            return "❌ Bot do Telegram está desativado no servidor.";
+
+        if (message.Audio == null)
+            return "❌ Arquivo de áudio inválido.";
+
+        var chatId = message.Chat.Id;
+        var nomeUsuario = message.From?.FirstName ?? "Usuário";
+
+        try
+        {
+            var file = await _botClient.GetFile(message.Audio.FileId);
+            if (file.FilePath == null)
+                return "❌ Não consegui acessar o arquivo de áudio.";
+
+            using var ms = new MemoryStream();
+            await _botClient.DownloadFile(file.FilePath, ms);
+
+            if (ms.Length > 25_000_000)
+                return "❌ Arquivo de áudio muito grande (máx 25MB).";
+            if (ms.Length == 0)
+                return "❌ Arquivo de áudio vazio.";
+
+            var audioData = ms.ToArray();
+
+            // Determinar MIME type
+            var mimeType = message.Audio.MimeType ?? "audio/mpeg";
+            if (file.FilePath.EndsWith(".ogg")) mimeType = "audio/ogg";
+            else if (file.FilePath.EndsWith(".mp3")) mimeType = "audio/mpeg";
+            else if (file.FilePath.EndsWith(".wav")) mimeType = "audio/wav";
+            else if (file.FilePath.EndsWith(".m4a")) mimeType = "audio/m4a";
+
+            return await _botService.ProcessarAudioAsync(chatId, audioData, mimeType, nomeUsuario);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao baixar arquivo de áudio do Telegram");
+            return "❌ Erro ao processar o arquivo de áudio.";
+        }
+    }
+
+    private async Task<string> ProcessarVideoNote(Message message)
+    {
+        if (_botClient == null)
+            return "❌ Bot do Telegram está desativado no servidor.";
+
+        if (message.VideoNote == null)
+            return "❌ Vídeo circular inválido.";
+
+        var chatId = message.Chat.Id;
+        var nomeUsuario = message.From?.FirstName ?? "Usuário";
+
+        try
+        {
+            var file = await _botClient.GetFile(message.VideoNote.FileId);
+            if (file.FilePath == null)
+                return "❌ Não consegui acessar o vídeo circular.";
+
+            using var ms = new MemoryStream();
+            await _botClient.DownloadFile(file.FilePath, ms);
+
+            if (ms.Length > 25_000_000)
+                return "❌ Vídeo circular muito grande (máx 25MB).";
+            if (ms.Length == 0)
+                return "❌ Vídeo circular vazio.";
+
+            var audioData = ms.ToArray();
+            // Video notes são MP4 (MPEG-4)
+            return await _botService.ProcessarAudioAsync(chatId, audioData, "audio/mp4", nomeUsuario);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao baixar vídeo circular do Telegram");
+            return "❌ Erro ao processar o vídeo circular.";
         }
     }
 
@@ -261,6 +394,19 @@ public class TelegramController : ControllerBase
         {
             _logger.LogError(ex, "Erro ao baixar foto do Telegram");
             return "❌ Erro ao processar a imagem.";
+        }
+    }
+
+    /// <summary>
+    /// Remove update_ids mais antigos que 2 minutos para não crescer indefinidamente.
+    /// </summary>
+    private static void LimparUpdatesAntigos()
+    {
+        var limite = DateTime.UtcNow.AddMinutes(-2);
+        foreach (var kv in _processedUpdates)
+        {
+            if (kv.Value < limite)
+                _processedUpdates.TryRemove(kv.Key, out _);
         }
     }
 

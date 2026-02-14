@@ -454,6 +454,8 @@ export const api = {
       request("/cartoes/" + id, { method: "PUT", body: data }),
     desativar: (id: number) =>
       request(`/cartoes/${id}`, { method: "DELETE" }),
+    adicionarLimiteExtra: (id: number, data: { valorAdicional: number; percentualExtra: number }) =>
+      request(`/cartoes/${id}/limite-extra`, { method: "POST", body: data }),
     faturas: (cartaoId: number) =>
       request<FaturaResumo[]>(`/cartoes/${cartaoId}/fatura`),
   },
