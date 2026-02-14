@@ -15,8 +15,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 # Criar usuário não-root para segurança
-RUN addgroup --system --gid 1001 dotnetapp && \
-    adduser --system --uid 1001 --ingroup dotnetapp dotnetapp
+RUN groupadd --system --gid 1001 dotnetapp && \
+    useradd --system --uid 1001 --gid dotnetapp --no-create-home dotnetapp
 
 # Instalar curl para healthcheck
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
