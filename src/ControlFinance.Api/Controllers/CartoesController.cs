@@ -1,5 +1,6 @@
 using System.Security.Claims;
-using ControlFinance.Application.Services;
+using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -13,13 +14,11 @@ namespace ControlFinance.Api.Controllers;
 public class CartoesController : BaseAuthController
 {
     private readonly ICartaoCreditoRepository _cartaoRepo;
-    private readonly IFaturaRepository _faturaRepo;
-    private readonly FaturaService _faturaService;
+    private readonly IFaturaService _faturaService;
 
-    public CartoesController(ICartaoCreditoRepository cartaoRepo, IFaturaRepository faturaRepo, FaturaService faturaService)
+    public CartoesController(ICartaoCreditoRepository cartaoRepo, IFaturaService faturaService)
     {
         _cartaoRepo = cartaoRepo;
-        _faturaRepo = faturaRepo;
         _faturaService = faturaService;
     }
 
@@ -27,14 +26,14 @@ public class CartoesController : BaseAuthController
     public async Task<IActionResult> Listar()
     {
         var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(UsuarioId);
-        var resultado = new List<object>();
 
+        // Carregar faturas para todos os cartões de uma vez via FaturaService
+        var resultado = new List<object>();
         foreach (var c in cartoes)
         {
-            // Calcular limite usado: soma das faturas não pagas
-            var faturas = await _faturaRepo.ObterPorCartaoAsync(c.Id);
+            var faturas = await _faturaService.ObterFaturasAsync(c.Id);
             var limiteUsado = faturas
-                .Where(f => f.Status != Domain.Enums.StatusFatura.Paga)
+                .Where(f => f.Status != "Paga")
                 .Sum(f => f.Total);
 
             resultado.Add(new
@@ -75,7 +74,6 @@ public class CartoesController : BaseAuthController
             return NotFound(new { erro = "Cartão não encontrado." });
 
         var todasFaturas = await _faturaService.ObterFaturasAsync(cartaoId);
-        // Retornar apenas faturas não pagas, ordenadas por vencimento (mais urgente primeiro)
         var faturasPendentes = todasFaturas
             .Where(f => f.Status != "Paga")
             .OrderBy(f => f.DataVencimento)
@@ -112,6 +110,7 @@ public class CartoesController : BaseAuthController
         await _cartaoRepo.DesativarAsync(id);
         return Ok(new { mensagem = "Cartão desativado com sucesso." });
     }
+
     [HttpPost("{id}/limite-extra")]
     public async Task<IActionResult> AdicionarLimiteExtra(int id, [FromBody] AjusteLimiteRequest request)
     {
@@ -119,16 +118,9 @@ public class CartoesController : BaseAuthController
         if (cartao == null || cartao.UsuarioId != UsuarioId)
             return NotFound(new { erro = "Cartão não encontrado." });
 
-        if (request.ValorAdicional <= 0)
-            return BadRequest(new { erro = "O valor adicional deve ser maior que zero." });
-
-        if (request.PercentualExtra < 0 || request.PercentualExtra > 100)
-            return BadRequest(new { erro = "O percentual deve estar entre 0 e 100%." });
-
         var valorAcrescimo = request.ValorAdicional * (request.PercentualExtra / 100m);
         var novoLimiteTotal = cartao.Limite + request.ValorAdicional + valorAcrescimo;
 
-        // Create history record
         var ajuste = new AjusteLimiteCartao
         {
             CartaoId = cartao.Id,
@@ -139,10 +131,8 @@ public class CartoesController : BaseAuthController
             DataAjuste = DateTime.UtcNow
         };
 
-        // Update card limit
         cartao.Limite = novoLimiteTotal;
 
-        // Save
         await _cartaoRepo.AtualizarAsync(cartao);
         await _cartaoRepo.AdicionarAjusteLimiteAsync(ajuste);
 
@@ -159,24 +149,4 @@ public class CartoesController : BaseAuthController
             }
         });
     }
-}
-
-public class CriarCartaoRequest
-{
-    public string Nome { get; set; } = string.Empty;
-    public decimal Limite { get; set; }
-    public int DiaVencimento { get; set; }
-}
-
-public class AtualizarCartaoRequest
-{
-    public string? Nome { get; set; }
-    public decimal? Limite { get; set; }
-    public int? DiaVencimento { get; set; }
-}
-
-public class AjusteLimiteRequest
-{
-    public decimal ValorAdicional { get; set; }
-    public decimal PercentualExtra { get; set; }
 }

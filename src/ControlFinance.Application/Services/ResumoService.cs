@@ -1,11 +1,12 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
 
 namespace ControlFinance.Application.Services;
 
-public class ResumoService
+public class ResumoService : IResumoService
 {
     private readonly ILancamentoRepository _lancamentoRepo;
 

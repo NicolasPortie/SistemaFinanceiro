@@ -19,6 +19,14 @@ var jwtSecretBytes = string.IsNullOrWhiteSpace(jwtSecret) ? 0 : Encoding.UTF8.Ge
 if (jwtSecretBytes < 64)
     throw new InvalidOperationException("JWT Secret não configurado ou muito curto para HS512 (mínimo 64 bytes). Configure em appsettings.Development.json, User Secrets ou variáveis de ambiente.");
 
+var encryptionKey = builder.Configuration["Encryption:Key"];
+if (string.IsNullOrWhiteSpace(encryptionKey))
+    throw new InvalidOperationException("Encryption:Key não configurada. Configure via variáveis de ambiente ou User Secrets.");
+
+var inviteCodeHash = builder.Configuration["InviteCode:Hash"];
+if (string.IsNullOrWhiteSpace(inviteCodeHash))
+    throw new InvalidOperationException("InviteCode:Hash não configurado. Configure via variáveis de ambiente ou User Secrets.");
+
 // === Configuração das camadas ===
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
@@ -60,8 +68,8 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Limite global: 100 req/min por IP
-    options.AddPolicy("global", httpContext =>
+    // Limite global: 100 req/min por IP (aplicado automaticamente a todos os endpoints)
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
@@ -86,16 +94,14 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // === CORS ===
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:5173" };
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:5173",
-                "https://finance.nicolasportie.com"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod()
+        policy.WithOrigins(corsOrigins)
+            .WithHeaders("Content-Type", "Authorization", "X-Requested-With")
+            .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
             .AllowCredentials();
     });
 });
@@ -111,6 +117,9 @@ if (telegramConfigurado)
 
 // === Controllers ===
 builder.Services.AddControllers();
+
+// === HttpClient para webhook e chamadas externas ===
+builder.Services.AddHttpClient();
 
 // === Swagger (apenas Development) ===
 builder.Services.AddEndpointsApiExplorer();
@@ -188,7 +197,8 @@ if (telegramConfigurado)
     {
         try
         {
-            using var httpClient = new HttpClient();
+            var httpClientFactory = app.Services.GetRequiredService<IHttpClientFactory>();
+            using var httpClient = httpClientFactory.CreateClient();
             var setWebhookUrl = $"https://api.telegram.org/bot{botToken}/setWebhook";
             var webhookPayload = new Dictionary<string, object>
             {

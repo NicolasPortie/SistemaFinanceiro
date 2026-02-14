@@ -1,3 +1,4 @@
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
@@ -9,7 +10,7 @@ namespace ControlFinance.Application.Services;
 /// Calcula e mantém o perfil financeiro consolidado do usuário.
 /// Recalcula incrementalmente quando marcado como "sujo".
 /// </summary>
-public class PerfilFinanceiroService
+public class PerfilFinanceiroService : IPerfilFinanceiroService
 {
     private readonly IPerfilFinanceiroRepository _perfilRepo;
     private readonly IAnaliseMensalRepository _analiseRepo;

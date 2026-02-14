@@ -30,7 +30,7 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:5000
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-controlfinance};Username=${POSTGRES_USER:-cf_user};Password=${POSTGRES_PASSWORD:-cf_password_dev}
-      Jwt__Secret: ${JWT_SECRET:-CHANGE_ME_DOCKER_JWT_SECRET_WITH_AT_LEAST_64_BYTES_FOR_HS512_2026}
+      Jwt__Secret: ${JWT_SECRET:?JWT_SECRET deve ser configurado no .env}
       Jwt__Issuer: ${JWT_ISSUER:-ControlFinance}
       Jwt__Audience: ${JWT_AUDIENCE:-ControlFinanceApp}
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
@@ -39,6 +39,8 @@ services:
       Gemini__ApiKey: ${GEMINI_API_KEY:-}
       Gemini__Model: ${GEMINI_MODEL:-gemini-2.0-flash}
       Groq__ApiKey: ${GROQ_API_KEY:-}
+      Groq__ApiKeys__0: ${GROQ_API_KEY_2:-}
+      Groq__ApiKeys__1: ${GROQ_API_KEY_3:-}
       Groq__Model: ${GROQ_MODEL:-llama-3.3-70b-versatile}
       Groq__FallbackModels: ${GROQ_FALLBACK_MODELS:-llama-3.1-8b-instant}
       Email__Enabled: ${EMAIL_ENABLED:-false}
@@ -50,6 +52,8 @@ services:
       Email__Smtp__Username: ${EMAIL_SMTP_USERNAME:-}
       Email__Smtp__Password: ${EMAIL_SMTP_PASSWORD:-}
       Email__Smtp__UseSsl: ${EMAIL_SMTP_USE_SSL:-true}
+      Encryption__Key: ${ENCRYPTION_KEY:?ENCRYPTION_KEY deve ser configurado no .env}
+      InviteCode__Hash: ${INVITE_CODE_HASH:?INVITE_CODE_HASH deve ser configurado no .env}
     ports:
       - "${API_PORT:-5000}:5000"
 

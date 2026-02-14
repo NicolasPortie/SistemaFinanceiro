@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.Extensions.Configuration;
@@ -11,7 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace ControlFinance.Application.Services;
 
-public class AuthService
+public class AuthService : IAuthService
 {
     private readonly IUsuarioRepository _usuarioRepo;
     private readonly ICategoriaRepository _categoriaRepo;
@@ -48,6 +49,10 @@ public class AuthService
             _logger.LogWarning("Tentativa de registro com código de convite inválido. IP: {IP}", ipAddress);
             return (null, "Código de convite inválido.");
         }
+
+        var erroSenha = ValidarForcaSenha(dto.Senha);
+        if (erroSenha != null)
+            return (null, erroSenha);
 
         var emailNormalizado = dto.Email.ToLower().Trim();
 
@@ -233,6 +238,10 @@ public class AuthService
             if (!VerificarSenha(dto.SenhaAtual, usuario.SenhaHash))
                 return (null, "Senha atual incorreta.");
 
+            var erroSenha = ValidarForcaSenha(dto.NovaSenha);
+            if (erroSenha != null)
+                return (null, erroSenha);
+
             usuario.SenhaHash = HashSenha(dto.NovaSenha);
         }
 
@@ -274,7 +283,7 @@ public class AuthService
             ExpiraEm = expiraEm
         });
 
-        _logger.LogInformation("Codigo de recuperacao gerado para usuario {UserId}: {Codigo}", usuario.Id, codigo);
+        _logger.LogInformation("Codigo de recuperacao gerado para usuario {UserId}", usuario.Id);
 
         var emailEnviado = await _emailService.EnviarCodigoRecuperacaoSenhaAsync(
             usuario.Email,
@@ -291,6 +300,10 @@ public class AuthService
 
     public async Task<string?> RedefinirSenhaAsync(RedefinirSenhaDto dto)
     {
+        var erroSenha = ValidarForcaSenha(dto.NovaSenha);
+        if (erroSenha != null)
+            return erroSenha;
+
         var email = dto.Email.ToLower().Trim();
         var usuario = await _usuarioRepo.ObterPorEmailAsync(email);
         if (usuario == null)
@@ -362,8 +375,6 @@ public class AuthService
             new Claim(JwtRegisteredClaimNames.Jti, jwtId),
             new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
             new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-            new Claim(ClaimTypes.Email, usuario.Email),
-            new Claim(ClaimTypes.Name, usuario.Nome),
         };
 
         var token = new JwtSecurityToken(
@@ -400,5 +411,18 @@ public class AuthService
         return texto.Trim()
             .Replace("<", "&lt;")
             .Replace(">", "&gt;");
+    }
+
+    private static string? ValidarForcaSenha(string senha)
+    {
+        if (string.IsNullOrWhiteSpace(senha) || senha.Length < 8)
+            return "A senha deve ter no mínimo 8 caracteres.";
+        if (!senha.Any(char.IsUpper))
+            return "A senha deve conter pelo menos uma letra maiúscula.";
+        if (!senha.Any(char.IsLower))
+            return "A senha deve conter pelo menos uma letra minúscula.";
+        if (!senha.Any(char.IsDigit))
+            return "A senha deve conter pelo menos um número.";
+        return null;
     }
 }

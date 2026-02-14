@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using ControlFinance.Application.DTOs;
-using ControlFinance.Application.Services;
-using ControlFinance.Domain.Interfaces;
+using ControlFinance.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,18 +11,15 @@ namespace ControlFinance.Api.Controllers;
 [Authorize]
 public class LancamentosController : BaseAuthController
 {
-    private readonly LancamentoService _lancamentoService;
-    private readonly ResumoService _resumoService;
-    private readonly ILancamentoRepository _lancamentoRepo;
+    private readonly ILancamentoService _lancamentoService;
+    private readonly IResumoService _resumoService;
 
     public LancamentosController(
-        LancamentoService lancamentoService,
-        ResumoService resumoService,
-        ILancamentoRepository lancamentoRepo)
+        ILancamentoService lancamentoService,
+        IResumoService resumoService)
     {
         _lancamentoService = lancamentoService;
         _resumoService = resumoService;
-        _lancamentoRepo = lancamentoRepo;
     }
 
     [HttpPost]
@@ -32,16 +28,7 @@ public class LancamentosController : BaseAuthController
         try
         {
             var lancamento = await _lancamentoService.RegistrarAsync(UsuarioId, dto);
-            return Ok(new
-            {
-                id = lancamento.Id,
-                descricao = lancamento.Descricao,
-                valor = lancamento.Valor,
-                data = lancamento.Data,
-                tipo = lancamento.Tipo.ToString(),
-                formaPagamento = lancamento.FormaPagamento.ToString(),
-                categoria = lancamento.Categoria?.Nome ?? dto.Categoria
-            });
+            return Ok(MapearLancamento(lancamento));
         }
         catch (ArgumentException ex)
         {
@@ -84,7 +71,10 @@ public class LancamentosController : BaseAuthController
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanhoPagina = 20)
     {
-        var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(UsuarioId, de, ate);
+        // Obter gastos e receitas separados e depois unir
+        var gastos = await _lancamentoService.ObterGastosAsync(UsuarioId, de, ate);
+        var receitas = await _lancamentoService.ObterReceitasAsync(UsuarioId, de, ate);
+        var lancamentos = gastos.Concat(receitas).ToList();
 
         // Filtrar por tipo
         if (!string.IsNullOrEmpty(tipo) && Enum.TryParse<Domain.Enums.TipoLancamento>(tipo, true, out var tipoEnum))
@@ -109,20 +99,7 @@ public class LancamentosController : BaseAuthController
             .OrderByDescending(l => l.Data)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
-            .Select(l => new
-            {
-                l.Id,
-                l.Descricao,
-                l.Valor,
-                l.Data,
-                tipo = l.Tipo.ToString().ToLower(),
-                formaPagamento = l.FormaPagamento.ToString().ToLower(),
-                categoria = l.Categoria?.Nome ?? "Outros",
-                categoriaId = l.CategoriaId,
-                l.NumeroParcelas,
-                l.Parcelado,
-                l.CriadoEm
-            })
+            .Select(MapearLancamento)
             .ToList();
 
         return Ok(new
@@ -138,45 +115,61 @@ public class LancamentosController : BaseAuthController
     [HttpGet("{id}")]
     public async Task<IActionResult> ObterPorId(int id)
     {
-        var lancamento = await _lancamentoRepo.ObterPorIdAsync(id);
-        if (lancamento == null || lancamento.UsuarioId != UsuarioId)
+        // ObterGastos e ObterReceitas não têm filtro por ID.
+        // Usar RemoverAsync ownership check to verify
+        var gastos = await _lancamentoService.ObterGastosAsync(UsuarioId);
+        var receitas = await _lancamentoService.ObterReceitasAsync(UsuarioId);
+        var lancamento = gastos.Concat(receitas).FirstOrDefault(l => l.Id == id);
+
+        if (lancamento == null)
             return NotFound(new { erro = "Lançamento não encontrado." });
 
-        return Ok(new
-        {
-            lancamento.Id,
-            lancamento.Descricao,
-            lancamento.Valor,
-            lancamento.Data,
-            tipo = lancamento.Tipo.ToString().ToLower(),
-            formaPagamento = lancamento.FormaPagamento.ToString().ToLower(),
-            categoria = lancamento.Categoria?.Nome ?? "Outros",
-            categoriaId = lancamento.CategoriaId,
-            lancamento.NumeroParcelas,
-            lancamento.Parcelado,
-            lancamento.CriadoEm
-        });
+        return Ok(MapearLancamento(lancamento));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Atualizar(int id, [FromBody] AtualizarLancamentoDto dto)
     {
-        var lancamento = await _lancamentoRepo.ObterPorIdAsync(id);
-        if (lancamento == null || lancamento.UsuarioId != UsuarioId)
+        try
+        {
+            await _lancamentoService.AtualizarAsync(UsuarioId, id, dto);
+            return Ok(new { mensagem = "Lançamento atualizado com sucesso." });
+        }
+        catch (InvalidOperationException)
+        {
             return NotFound(new { erro = "Lançamento não encontrado." });
-
-        await _lancamentoService.AtualizarAsync(UsuarioId, id, dto);
-        return Ok(new { mensagem = "Lançamento atualizado com sucesso." });
+        }
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Remover(int id)
     {
-        var lancamento = await _lancamentoRepo.ObterPorIdAsync(id);
-        if (lancamento == null || lancamento.UsuarioId != UsuarioId)
+        try
+        {
+            await _lancamentoService.RemoverAsync(id, UsuarioId);
+            return Ok(new { mensagem = "Lançamento removido com sucesso." });
+        }
+        catch (KeyNotFoundException)
+        {
             return NotFound(new { erro = "Lançamento não encontrado." });
-
-        await _lancamentoService.RemoverAsync(id);
-        return Ok(new { mensagem = "Lançamento removido com sucesso." });
+        }
     }
+
+    /// <summary>
+    /// Mapeia entidade para response DTO (elimina duplicação).
+    /// </summary>
+    private static object MapearLancamento(Domain.Entities.Lancamento l) => new
+    {
+        l.Id,
+        l.Descricao,
+        l.Valor,
+        l.Data,
+        tipo = l.Tipo.ToString().ToLower(),
+        formaPagamento = l.FormaPagamento.ToString().ToLower(),
+        categoria = l.Categoria?.Nome ?? "Outros",
+        categoriaId = l.CategoriaId,
+        l.NumeroParcelas,
+        l.Parcelado,
+        l.CriadoEm
+    };
 }

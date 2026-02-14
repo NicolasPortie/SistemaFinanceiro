@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using ControlFinance.Application.DTOs;
-using ControlFinance.Application.Services;
+using ControlFinance.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -12,12 +12,12 @@ namespace ControlFinance.Api.Controllers;
 [EnableRateLimiting("auth")]
 public class AuthController : ControllerBase
 {
-    private readonly AuthService _authService;
+    private readonly IAuthService _authService;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
 
     public AuthController(
-        AuthService authService,
+        IAuthService authService,
         IConfiguration configuration,
         IWebHostEnvironment environment)
     {

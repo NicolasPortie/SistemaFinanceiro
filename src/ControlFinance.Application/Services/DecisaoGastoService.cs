@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
@@ -10,10 +11,10 @@ namespace ControlFinance.Application.Services;
 /// Motor de decisão: resposta rápida vs simulação completa.
 /// Calcula saldo livre real do mês, considerando compromissos e metas.
 /// </summary>
-public class DecisaoGastoService
+public class DecisaoGastoService : IDecisaoGastoService
 {
-    private readonly PerfilFinanceiroService _perfilService;
-    private readonly PrevisaoCompraService _previsaoService;
+    private readonly IPerfilFinanceiroService _perfilService;
+    private readonly IPrevisaoCompraService _previsaoService;
     private readonly ILancamentoRepository _lancamentoRepo;
     private readonly ILimiteCategoriaRepository _limiteRepo;
     private readonly IMetaFinanceiraRepository _metaRepo;
@@ -26,8 +27,8 @@ public class DecisaoGastoService
     private const decimal ThresholdPercentualSaldoLivre = 0.15m; // 15% do saldo livre
 
     public DecisaoGastoService(
-        PerfilFinanceiroService perfilService,
-        PrevisaoCompraService previsaoService,
+        IPerfilFinanceiroService perfilService,
+        IPrevisaoCompraService previsaoService,
         ILancamentoRepository lancamentoRepo,
         ILimiteCategoriaRepository limiteRepo,
         IMetaFinanceiraRepository metaRepo,

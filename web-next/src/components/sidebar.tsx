@@ -20,6 +20,8 @@ import {
   Sun,
   TrendingUp,
   Sparkles,
+  CalendarClock,
+  Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -38,7 +40,9 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/lancamentos", label: "Lançamentos", icon: Receipt },
   { href: "/cartoes", label: "Cartões", icon: CreditCard },
+  { href: "/contas-fixas", label: "Contas Fixas", icon: CalendarClock },
   { href: "/simulacao", label: "Simulação", icon: ShoppingCart },
+  { href: "/decisao", label: "Decisão", icon: Brain },
   { href: "/limites", label: "Limites", icon: Gauge },
   { href: "/metas", label: "Metas", icon: Target },
   { href: "/perfil", label: "Perfil", icon: User },
@@ -197,6 +201,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                       size="icon"
                       className="h-8 w-8 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 shrink-0 transition-all duration-300"
                       onClick={logout}
+                      aria-label="Sair"
                     >
                       <LogOut className="h-4 w-4" />
                     </Button>
@@ -226,7 +231,7 @@ export function Sidebar() {
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex h-14 items-center gap-3 border-b border-border/30 glass-premium px-4">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9">
+            <Button variant="ghost" size="icon" className="h-9 w-9" aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}>
               {mobileOpen ? (
                 <X className="h-5 w-5" />
               ) : (

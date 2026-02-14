@@ -249,6 +249,65 @@ export interface AtualizarPerfilRequest {
   novaSenha?: string;
 }
 
+// ── Lembretes / Contas Fixas ───────────────────────────────
+
+export interface LembretePagamento {
+  id: number;
+  descricao: string;
+  valor: number | null;
+  dataVencimento: string;
+  recorrenteMensal: boolean;
+  diaRecorrente: number | null;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface CriarLembreteRequest {
+  descricao: string;
+  valor?: number;
+  dataVencimento: string;
+  recorrenteMensal: boolean;
+  diaRecorrente?: number;
+}
+
+export interface AtualizarLembreteRequest {
+  descricao?: string;
+  valor?: number;
+  dataVencimento?: string;
+  recorrenteMensal?: boolean;
+  diaRecorrente?: number;
+}
+
+// ── Decisão de Gasto ───────────────────────────────────────
+
+export interface AvaliarGastoRequest {
+  valor: number;
+  categoria?: string;
+  descricao?: string;
+  parcelado: boolean;
+  parcelas: number;
+}
+
+export interface DecisaoGastoResult {
+  podeGastar: boolean;
+  parecer: string;
+  gastoAcumuladoMes: number;
+  receitaPrevistoMes: number;
+  saldoLivreMes: number;
+  diasRestantesMes: number;
+  valorCompra: number;
+  percentualSaldoLivre: number;
+  reservaMetas: number;
+  alertaLimite: string | null;
+  resumoTexto: string;
+}
+
+export interface DecisaoCompletaResult {
+  tipo: string;
+  analise: string;
+}
+
 export interface RecuperarSenhaResponse {
   mensagem: string;
   codigo?: string;
@@ -282,9 +341,20 @@ function normalizeMeta(meta: MetaFinanceira): MetaFinanceira {
   };
 }
 
+// ── Auth Event ─────────────────────────────────────────────
+
+/** Dispatched when the session expires and cannot be refreshed */
+export const AUTH_EXPIRED_EVENT = "cf:auth-expired";
+
+function dispatchAuthExpired() {
+  localStorage.removeItem("cf_token");
+  localStorage.removeItem("cf_refresh_token");
+  localStorage.removeItem("cf_user");
+  window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+}
+
 // ── Refresh Token Singleton ────────────────────────────────
 
-let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
 
 async function tryRefreshToken(): Promise<boolean> {
@@ -336,26 +406,21 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     throw new Error("Muitas requisições. Aguarde um momento e tente novamente.");
   }
 
-  // Unauthorized — try refresh
+  // Unauthorized — try refresh (singleton pattern prevents concurrent refreshes)
   if (res.status === 401 && !_isRetry) {
-    if (!isRefreshing) {
-      isRefreshing = true;
+    if (!refreshPromise) {
       refreshPromise = tryRefreshToken().finally(() => {
-        isRefreshing = false;
         refreshPromise = null;
       });
     }
 
-    const refreshed = await (refreshPromise ?? Promise.resolve(false));
+    const refreshed = await refreshPromise;
     if (refreshed) {
       return request<T>(path, { ...options, _isRetry: true });
     }
 
-    // Refresh failed — full logout
-    localStorage.removeItem("cf_token");
-    localStorage.removeItem("cf_refresh_token");
-    localStorage.removeItem("cf_user");
-    window.location.href = "/login";
+    // Refresh failed — dispatch auth expired event
+    dispatchAuthExpired();
     throw new Error("Sessão expirada");
   }
 
@@ -365,7 +430,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   const text = await res.text();
-  if (!text) return {} as T;
+  if (!text) return undefined as unknown as T;
   return JSON.parse(text) as T;
 }
 
@@ -451,7 +516,7 @@ export const api = {
     criar: (data: { nome: string; limite: number; diaVencimento: number }) =>
       request("/cartoes", { method: "POST", body: data }),
     atualizar: (id: number, data: AtualizarCartaoRequest) =>
-      request("/cartoes/" + id, { method: "PUT", body: data }),
+      request(`/cartoes/${id}`, { method: "PUT", body: data }),
     desativar: (id: number) =>
       request(`/cartoes/${id}`, { method: "DELETE" }),
     adicionarLimiteExtra: (id: number, data: { valorAdicional: number; percentualExtra: number }) =>
@@ -491,5 +556,26 @@ export const api = {
       return normalizeMeta(meta);
     },
     remover: (id: number) => request(`/metas/${id}`, { method: "DELETE" }),
+  },
+
+  lembretes: {
+    listar: (apenasAtivos?: boolean) =>
+      request<LembretePagamento[]>(`/lembretes${apenasAtivos === false ? "?apenasAtivos=false" : ""}`),
+    obter: (id: number) =>
+      request<LembretePagamento>(`/lembretes/${id}`),
+    criar: (data: CriarLembreteRequest) =>
+      request<LembretePagamento>("/lembretes", { method: "POST", body: data }),
+    atualizar: (id: number, data: AtualizarLembreteRequest) =>
+      request<LembretePagamento>(`/lembretes/${id}`, { method: "PUT", body: data }),
+    desativar: (id: number) =>
+      request(`/lembretes/${id}`, { method: "DELETE" }),
+  },
+
+  decisao: {
+    avaliar: (data: AvaliarGastoRequest) =>
+      request<DecisaoGastoResult | DecisaoCompletaResult>("/decisao/avaliar", {
+        method: "POST",
+        body: data,
+      }),
   },
 };

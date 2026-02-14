@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ControlFinance.Application.DTOs;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -86,9 +87,4 @@ public class CategoriasController : BaseAuthController
         await _categoriaRepo.RemoverAsync(id);
         return Ok(new { mensagem = "Categoria removida com sucesso." });
     }
-}
-
-public class CriarCategoriaRequest
-{
-    public string Nome { get; set; } = string.Empty;
 }

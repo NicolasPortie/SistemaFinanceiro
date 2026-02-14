@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using ControlFinance.Application.DTOs;
-using ControlFinance.Application.Services;
+using ControlFinance.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,9 +11,9 @@ namespace ControlFinance.Api.Controllers;
 [Authorize]
 public class MetasController : BaseAuthController
 {
-    private readonly MetaFinanceiraService _metaService;
+    private readonly IMetaFinanceiraService _metaService;
 
-    public MetasController(MetaFinanceiraService metaService)
+    public MetasController(IMetaFinanceiraService metaService)
     {
         _metaService = metaService;
     }

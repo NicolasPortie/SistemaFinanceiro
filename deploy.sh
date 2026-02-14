@@ -57,7 +57,7 @@ docker compose -f docker-compose.prod.yml ps
 
 # Verificar saúde da API
 echo -e "${YELLOW}🏥 Verificando saúde da API...${NC}"
-if curl -f http://localhost:5000/api/telegram/health &> /dev/null; then
+if curl -f http://localhost:5000/health &> /dev/null; then
     echo -e "${GREEN}✅ API está respondendo!${NC}"
 else
     echo -e "${RED}❌ API não está respondendo${NC}"

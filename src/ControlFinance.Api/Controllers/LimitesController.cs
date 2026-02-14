@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using ControlFinance.Application.DTOs;
-using ControlFinance.Application.Services;
+using ControlFinance.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,9 +11,9 @@ namespace ControlFinance.Api.Controllers;
 [Authorize]
 public class LimitesController : BaseAuthController
 {
-    private readonly LimiteCategoriaService _limiteService;
+    private readonly ILimiteCategoriaService _limiteService;
 
-    public LimitesController(LimiteCategoriaService limiteService)
+    public LimitesController(ILimiteCategoriaService limiteService)
     {
         _limiteService = limiteService;
     }

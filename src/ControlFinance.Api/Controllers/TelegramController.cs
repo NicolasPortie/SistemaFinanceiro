@@ -44,16 +44,19 @@ public class TelegramController : ControllerBase
             return Ok(new { status = "bot_disabled" });
         }
 
-        // Validar secret token do Telegram
+        // Validar secret token do Telegram (obrigatório)
         var expectedSecret = _configuration["Telegram:WebhookSecretToken"];
-        if (!string.IsNullOrEmpty(expectedSecret))
+        if (string.IsNullOrEmpty(expectedSecret))
         {
-            var receivedSecret = Request.Headers["X-Telegram-Bot-Api-Secret-Token"].FirstOrDefault();
-            if (receivedSecret != expectedSecret)
-            {
-                _logger.LogWarning("Webhook rejeitado: secret token inválido de {IP}", HttpContext.Connection.RemoteIpAddress);
-                return Unauthorized();
-            }
+            _logger.LogError("Telegram:WebhookSecretToken não configurado. Webhook rejeitado por segurança.");
+            return StatusCode(503, new { error = "webhook_not_configured" });
+        }
+
+        var receivedSecret = Request.Headers["X-Telegram-Bot-Api-Secret-Token"].FirstOrDefault();
+        if (receivedSecret != expectedSecret)
+        {
+            _logger.LogWarning("Webhook rejeitado: secret token inválido de {IP}", HttpContext.Connection.RemoteIpAddress);
+            return Unauthorized();
         }
 
         try
@@ -61,7 +64,7 @@ public class TelegramController : ControllerBase
             using var reader = new StreamReader(Request.Body);
             var body = await reader.ReadToEndAsync();
 
-            _logger.LogInformation("Webhook recebido: {Body}", body.Length > 500 ? body[..500] : body);
+            _logger.LogInformation("Webhook recebido: {Length} bytes", body.Length);
 
             var update = JsonSerializer.Deserialize<Update>(body, new JsonSerializerOptions
             {
@@ -413,6 +416,6 @@ public class TelegramController : ControllerBase
     [HttpGet("health")]
     public IActionResult Health()
     {
-        return Ok(new { status = "online", timestamp = DateTime.UtcNow });
+        return Ok(new { status = "ok" });
     }
 }

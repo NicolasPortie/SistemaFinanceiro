@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
@@ -9,7 +10,7 @@ namespace ControlFinance.Application.Services;
 /// <summary>
 /// Gerencia metas financeiras com acompanhamento de progresso.
 /// </summary>
-public class MetaFinanceiraService
+public class MetaFinanceiraService : IMetaFinanceiraService
 {
     private readonly IMetaFinanceiraRepository _metaRepo;
     private readonly ICategoriaRepository _categoriaRepo;

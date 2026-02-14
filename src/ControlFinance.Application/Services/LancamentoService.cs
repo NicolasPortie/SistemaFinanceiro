@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
@@ -6,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ControlFinance.Application.Services;
 
-public class LancamentoService
+public class LancamentoService : ILancamentoService
 {
     private readonly ILancamentoRepository _lancamentoRepo;
     private readonly ICategoriaRepository _categoriaRepo;
@@ -225,8 +226,15 @@ public class LancamentoService
         _logger.LogInformation("Lançamento {Id} atualizado", lancamentoId);
     }
 
-    public async Task RemoverAsync(int lancamentoId)
+    public async Task RemoverAsync(int lancamentoId, int? usuarioId = null)
     {
+        if (usuarioId.HasValue)
+        {
+            var lancamento = await _lancamentoRepo.ObterPorIdAsync(lancamentoId);
+            if (lancamento == null || lancamento.UsuarioId != usuarioId.Value)
+                throw new KeyNotFoundException("Lançamento não encontrado.");
+        }
+
         await _lancamentoRepo.RemoverAsync(lancamentoId);
         _logger.LogInformation("Lançamento {Id} removido", lancamentoId);
     }

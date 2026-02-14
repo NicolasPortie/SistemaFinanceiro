@@ -1,5 +1,6 @@
 using System.Security.Claims;
-using ControlFinance.Application.Services;
+using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,9 +11,9 @@ namespace ControlFinance.Api.Controllers;
 [Authorize]
 public class DecisaoController : BaseAuthController
 {
-    private readonly DecisaoGastoService _decisaoService;
+    private readonly IDecisaoGastoService _decisaoService;
 
-    public DecisaoController(DecisaoGastoService decisaoService)
+    public DecisaoController(IDecisaoGastoService decisaoService)
     {
         _decisaoService = decisaoService;
     }
@@ -39,13 +40,4 @@ public class DecisaoController : BaseAuthController
             return Ok(new { tipo = "completa", analise = resultado });
         }
     }
-}
-
-public class AvaliarGastoRequest
-{
-    public decimal Valor { get; set; }
-    public string? Categoria { get; set; }
-    public string? Descricao { get; set; }
-    public bool Parcelado { get; set; }
-    public int Parcelas { get; set; } = 1;
 }

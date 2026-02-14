@@ -291,7 +291,7 @@ export default function PerfilPage() {
                       <p className="text-[11px] text-muted-foreground/60 font-medium">Envie este comando no bot:</p>
                       <div className="flex items-center gap-2">
                         <code className="flex-1 rounded-lg bg-background px-3 py-2 text-sm font-mono font-semibold">/vincular {codigoTelegram.codigo}</code>
-                        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={copiarCodigo}>
+                        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={copiarCodigo} aria-label="Copiar código">
                           {copiado ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                         </Button>
                       </div>
@@ -333,10 +333,10 @@ export default function PerfilPage() {
                     <span className="text-[10px] text-muted-foreground">(padrão)</span>
                   ) : (
                     <div className="flex items-center gap-0.5 ml-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                      <button className="p-1.5 rounded-md hover:bg-background" onClick={() => { editCategoriaForm.reset({ nome: cat.nome }); setEditandoCategoria({ id: cat.id, nome: cat.nome }); }}>
+                      <button className="p-1.5 rounded-md hover:bg-background" onClick={() => { editCategoriaForm.reset({ nome: cat.nome }); setEditandoCategoria({ id: cat.id, nome: cat.nome }); }} aria-label="Editar categoria">
                         <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
-                      <button className="p-1.5 rounded-md hover:bg-background" onClick={() => setRemovendoCategoria(cat.id)}>
+                      <button className="p-1.5 rounded-md hover:bg-background" onClick={() => setRemovendoCategoria(cat.id)} aria-label="Remover categoria">
                         <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </button>
                     </div>

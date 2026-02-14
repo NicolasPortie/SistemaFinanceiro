@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
@@ -9,7 +10,7 @@ namespace ControlFinance.Application.Services;
 /// <summary>
 /// Gerencia limites mensais por categoria com alertas.
 /// </summary>
-public class LimiteCategoriaService
+public class LimiteCategoriaService : ILimiteCategoriaService
 {
     private readonly ILimiteCategoriaRepository _limiteRepo;
     private readonly ICategoriaRepository _categoriaRepo;

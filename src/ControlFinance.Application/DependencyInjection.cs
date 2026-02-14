@@ -1,3 +1,4 @@
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,16 +8,18 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddScoped<LancamentoService>();
-        services.AddScoped<ResumoService>();
-        services.AddScoped<FaturaService>();
+        services.AddScoped<ILancamentoService, LancamentoService>();
+        services.AddScoped<IResumoService, ResumoService>();
+        services.AddScoped<IFaturaService, FaturaService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IPerfilFinanceiroService, PerfilFinanceiroService>();
+        services.AddScoped<IPrevisaoCompraService, PrevisaoCompraService>();
+        services.AddScoped<IDecisaoGastoService, DecisaoGastoService>();
+        services.AddScoped<ILimiteCategoriaService, LimiteCategoriaService>();
+        services.AddScoped<IMetaFinanceiraService, MetaFinanceiraService>();
+
+        // TelegramBotService mantém registro concreto (depende de estado estático)
         services.AddScoped<TelegramBotService>();
-        services.AddScoped<AuthService>();
-        services.AddScoped<PerfilFinanceiroService>();
-        services.AddScoped<PrevisaoCompraService>();
-        services.AddScoped<DecisaoGastoService>();
-        services.AddScoped<LimiteCategoriaService>();
-        services.AddScoped<MetaFinanceiraService>();
 
         return services;
     }

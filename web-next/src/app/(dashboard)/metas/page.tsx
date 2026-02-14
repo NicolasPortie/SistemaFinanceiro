@@ -542,7 +542,7 @@ function MetaCard({
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onEdit}>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onEdit} aria-label="Editar meta">
             <Edit3 className="h-4 w-4" />
           </Button>
           <Button
@@ -551,6 +551,7 @@ function MetaCard({
             className="h-9 w-9"
             onClick={onPausar}
             disabled={actionLoading === meta.id}
+            aria-label={meta.status === "pausada" ? "Retomar meta" : "Pausar meta"}
           >
             {meta.status === "pausada" ? (
               <Play className="h-4 w-4" />
@@ -563,6 +564,7 @@ function MetaCard({
             size="icon"
             className="h-9 w-9 text-muted-foreground hover:text-destructive"
             onClick={onRemover}
+            aria-label="Remover meta"
           >
             <Trash2 className="h-4 w-4" />
           </Button>

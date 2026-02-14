@@ -35,14 +35,6 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -242,6 +234,7 @@ export default function LimitesPage() {
                     size="icon"
                     className="h-9 w-9 text-muted-foreground hover:text-destructive"
                     onClick={() => setDeleteId(l.id)}
+                    aria-label="Remover limite"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

@@ -32,11 +32,22 @@ public class GlobalExceptionMiddleware
     private Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+
+        var (statusCode, mensagem) = exception switch
+        {
+            UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, "Acesso não autorizado."),
+            ArgumentException ex => ((int)HttpStatusCode.BadRequest, ex.Message),
+            KeyNotFoundException => ((int)HttpStatusCode.NotFound, "Recurso não encontrado."),
+            InvalidOperationException ex => ((int)HttpStatusCode.BadRequest, ex.Message),
+            FormatException => ((int)HttpStatusCode.BadRequest, "Formato de dados inválido."),
+            _ => ((int)HttpStatusCode.InternalServerError, "Ocorreu um erro interno. Tente novamente mais tarde.")
+        };
+
+        context.Response.StatusCode = statusCode;
 
         var response = new
         {
-            erro = "Ocorreu um erro interno. Tente novamente mais tarde.",
+            erro = mensagem,
             // Apenas em Development mostrar detalhes
             detalhes = _env.IsDevelopment() ? exception.Message : null,
             traceId = context.TraceIdentifier

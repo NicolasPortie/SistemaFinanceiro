@@ -14,8 +14,15 @@ if [ ! -f .env ]; then
     cp .env.prod.example .env
     echo ""
     echo "⚠️  IMPORTANTE: Configure as variáveis no arquivo .env"
-    sed -i 's/CHANGE_ME_STRONG_PASSWORD/Seu567890!DevLinux/g' .env
-    sed -i 's/CHANGE_ME_JWT_SECRET_WITH_AT_LEAST_64_BYTES_FOR_HS512_ALGORITHM/JwtSecretWithAtLeast64BytesForHS512Algorithm2026ControlFinance/g' .env
+    # Gerar segredos aleatórios fortes automaticamente
+    DB_PASS=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
+    JWT_SEC=$(openssl rand -base64 72 | tr -d '/+=' | head -c 80)
+    ENCRYPT_KEY=$(openssl rand -base64 32)
+    sed -i "s/CHANGE_ME_STRONG_PASSWORD/${DB_PASS}/g" .env
+    sed -i "s/CHANGE_ME_JWT_SECRET_WITH_AT_LEAST_64_BYTES_FOR_HS512_ALGORITHM/${JWT_SEC}/g" .env
+    echo ""
+    echo "🔐 Segredos gerados automaticamente com openssl rand."
+    echo "📝 Verifique o .env e adicione ENCRYPTION_KEY e INVITE_CODE_HASH manualmente."
 fi
 
 echo ""

@@ -99,7 +99,7 @@ jobs:
 
     - name: Verificar saúde da API
       run: |
-        curl -sf http://localhost:5000/api/telegram/health || exit 1
+        curl -sf http://localhost:5000/health || exit 1
         echo "API está respondendo!"
 
     - name: Verificar saúde do Frontend

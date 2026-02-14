@@ -45,6 +45,8 @@ services:
       Gemini__ApiKey: ${GEMINI_API_KEY}
       Gemini__Model: ${GEMINI_MODEL:-gemini-2.0-flash}
       Groq__ApiKey: ${GROQ_API_KEY}
+      Groq__ApiKeys__0: ${GROQ_API_KEY_2:-}
+      Groq__ApiKeys__1: ${GROQ_API_KEY_3:-}
       Groq__Model: ${GROQ_MODEL:-llama-3.3-70b-versatile}
       Groq__FallbackModels: ${GROQ_FALLBACK_MODELS:-llama-3.1-8b-instant}
       Email__Enabled: ${EMAIL_ENABLED:-false}
@@ -56,14 +58,14 @@ services:
       Email__Smtp__Username: ${EMAIL_SMTP_USERNAME}
       Email__Smtp__Password: ${EMAIL_SMTP_PASSWORD}
       Email__Smtp__UseSsl: ${EMAIL_SMTP_USE_SSL:-true}
+      Encryption__Key: ${ENCRYPTION_KEY}
+      InviteCode__Hash: ${INVITE_CODE_HASH}
     networks:
       - controlfinance-network
     expose:
       - "5000"
-    ports:
-      - "5000:5000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/telegram/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3

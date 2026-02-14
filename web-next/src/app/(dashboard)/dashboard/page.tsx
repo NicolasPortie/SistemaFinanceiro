@@ -13,31 +13,19 @@ import {
   useResumoHistorico,
   queryKeys,
 } from "@/hooks/use-queries";
-import { formatCurrency, formatDate, getGreeting, getFirstName, statusColor } from "@/lib/format";
-import { motion, AnimatePresence } from "framer-motion";
+import { formatCurrency } from "@/lib/format";
+import { motion } from "framer-motion";
 import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  CreditCard,
-  Tag,
-  MessageCircle,
-  RefreshCw,
   ChevronLeft,
   ChevronRight,
   CalendarDays,
   Plus,
-  Receipt,
-  ShoppingCart,
-  Target,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  ArrowRight,
   PiggyBank,
-  Gauge,
   Activity,
-  Sparkles,
-  Zap,
+  Tag,
 } from "lucide-react";
 import {
   PageShell,
@@ -46,11 +34,18 @@ import {
   EmptyState,
   ErrorState,
 } from "@/components/shared/page-components";
-import { CategoryPieChart, EvolutionChart } from "@/components/charts";
+import { EvolutionChart } from "@/components/charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  HeroSection,
+  CategorySpendingCard,
+  RecentTransactionsCard,
+  AlertsCard,
+  CardsOverviewCard,
+  ActiveMetasCard,
+} from "@/components/dashboard";
 
 const categoryColors = [
   "bg-emerald-500",
@@ -134,80 +129,13 @@ export default function DashboardPage() {
   return (
     <PageShell>
       {/* ── Hero Welcome ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white noise-overlay"
-      >
-        {/* Multi-layer gradient background */}
-        <div className="absolute inset-0 gradient-hero dark:gradient-hero-dark" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/15 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/5 to-transparent" />
-
-        {/* Decorative elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          {/* Geometric shapes */}
-          <div className="absolute -right-10 -top-10 h-52 w-52 rounded-full bg-white/[0.04] animate-float" />
-          <div className="absolute right-24 top-6 h-20 w-20 rounded-full bg-white/[0.03]" style={{ animationDelay: "2s" }} />
-          <div className="absolute -left-6 -bottom-6 h-40 w-40 rounded-full bg-white/[0.04] animate-float" style={{ animationDelay: "4s" }} />
-          <div className="absolute left-1/3 bottom-3 h-10 w-10 rounded-full bg-white/[0.03]" />
-
-          {/* Accent lines */}
-          <div className="absolute top-0 right-1/4 w-px h-full bg-gradient-to-b from-transparent via-white/10 to-transparent" />
-          <div className="absolute bottom-0 left-1/3 w-32 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-        </div>
-
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                {getGreeting()}, {getFirstName(usuario?.nome ?? "")}
-              </h1>
-              {usuario?.telegramVinculado && (
-                <Badge className="bg-white/15 text-white border-0 text-[10px] gap-1 hidden sm:flex backdrop-blur-sm font-semibold">
-                  <MessageCircle className="h-3 w-3" />
-                  Bot ativo
-                </Badge>
-              )}
-            </div>
-            <p className="text-white/60 text-sm max-w-md leading-relaxed">
-              {health
-                ? <>
-                    Saúde financeira:{" "}
-                    <span className="text-white/90 font-semibold">{health.label}</span>
-                    {" · "}Economia de{" "}
-                    <span className="text-white font-bold">{taxaEconomia}%</span>
-                    {" "}este mês
-                  </>
-                : "Aqui está o resumo das suas finanças"}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link href="/lancamentos">
-              <Button size="sm" className="bg-white/12 hover:bg-white/20 text-white border border-white/10 gap-1.5 h-9 backdrop-blur-md shadow-lg shadow-black/10 font-semibold transition-all duration-300">
-                <Plus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Lançamento</span>
-              </Button>
-            </Link>
-            <Link href="/simulacao">
-              <Button size="sm" className="bg-white/12 hover:bg-white/20 text-white border border-white/10 gap-1.5 h-9 backdrop-blur-md shadow-lg shadow-black/10 font-semibold transition-all duration-300">
-                <ShoppingCart className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Simular</span>
-              </Button>
-            </Link>
-            <Button
-              size="sm"
-              className="bg-white/12 hover:bg-white/20 text-white border border-white/10 h-9 w-9 p-0 backdrop-blur-md shadow-lg shadow-black/10 transition-all duration-300"
-              onClick={handleRefresh}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-        </div>
-      </motion.div>
+      <HeroSection
+        usuario={usuario}
+        healthLabel={health?.label ?? null}
+        taxaEconomia={taxaEconomia}
+        loading={loading}
+        onRefresh={handleRefresh}
+      />
 
       {/* ── Month Selector ── */}
       <motion.div
@@ -216,7 +144,7 @@ export default function DashboardPage() {
         transition={{ delay: 0.08 }}
         className="flex items-center justify-center gap-3"
       >
-        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/40 shadow-sm hover:shadow-md transition-all duration-300" onClick={prev}>
+        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/40 shadow-sm hover:shadow-md transition-all duration-300" onClick={prev} aria-label="Mês anterior">
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <button
@@ -229,7 +157,7 @@ export default function DashboardPage() {
             <span className="text-[10px] text-primary ml-0.5 font-semibold">(atual)</span>
           )}
         </button>
-        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/40 shadow-sm hover:shadow-md transition-all duration-300" onClick={next} disabled={isCurrentMonth}>
+        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/40 shadow-sm hover:shadow-md transition-all duration-300" onClick={next} disabled={isCurrentMonth} aria-label="Próximo mês">
           <ChevronRight className="h-4 w-4" />
         </Button>
       </motion.div>
@@ -308,275 +236,15 @@ export default function DashboardPage() {
 
           {/* ── Category Spending + Recent Transactions ── */}
           <div className="grid gap-5 lg:grid-cols-2">
-            {/* Pie Chart + Bar List */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              className="card-premium p-6 space-y-5"
-            >
-              <div className="section-header">
-                <div className="section-header-icon bg-gradient-to-br from-violet-500/10 to-violet-500/20 text-violet-600 dark:text-violet-400">
-                  <Tag className="h-4.5 w-4.5" />
-                </div>
-                <h3 className="text-sm font-bold tracking-tight">Gastos por Categoria</h3>
-              </div>
-              {resumo.gastosPorCategoria.length > 0 ? (
-                <>
-                  <CategoryPieChart data={resumo.gastosPorCategoria} />
-                  <div className="divider-premium" />
-                  <div className="space-y-3">
-                    <AnimatePresence>
-                      {resumo.gastosPorCategoria.slice(0, 5).map((g, i) => (
-                        <motion.div
-                          key={g.categoria}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.04 * i }}
-                          className="space-y-2 group"
-                        >
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2.5">
-                              <div className={`h-3 w-3 rounded-full ${categoryColors[i % categoryColors.length]} shadow-sm ring-2 ring-offset-1 ring-offset-card`} />
-                              <span className="font-semibold text-[13px]">{g.categoria}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="tabular-nums text-muted-foreground/80 font-medium">{formatCurrency(g.total)}</span>
-                              <span className="text-[11px] tabular-nums text-muted-foreground/60 w-10 text-right font-bold">{g.percentual.toFixed(0)}%</span>
-                            </div>
-                          </div>
-                          <Progress value={g.percentual} className="h-1.5" />
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                    {resumo.gastosPorCategoria.length > 5 && (
-                      <p className="text-[11px] text-muted-foreground/60 text-center pt-1 font-medium">
-                        +{resumo.gastosPorCategoria.length - 5} categorias
-                      </p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="py-8 text-center text-sm text-muted-foreground">
-                  Nenhum gasto registrado neste período
-                </div>
-              )}
-            </motion.div>
-
-            {/* Recent Transactions */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              className="card-premium overflow-hidden flex flex-col"
-            >
-              <div className="p-6 pb-4 flex items-center justify-between">
-                <div className="section-header">
-                  <div className="section-header-icon bg-gradient-to-br from-blue-500/10 to-blue-500/20 text-blue-600 dark:text-blue-400">
-                    <Receipt className="h-4.5 w-4.5" />
-                  </div>
-                  <h3 className="text-sm font-bold tracking-tight">Últimos Lançamentos</h3>
-                </div>
-                <Link href="/lancamentos">
-                  <Button variant="ghost" size="sm" className="gap-1 h-7 text-xs text-primary hover:text-primary font-semibold">
-                    Ver todos <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </Link>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                {lancamentos && lancamentos.items.length > 0 ? (
-                  <div className="divide-y divide-border/30">
-                    {lancamentos.items.slice(0, 6).map((l) => (
-                      <div key={l.id} className="flex items-center gap-3 px-6 py-3.5 hover:bg-muted/20 transition-all duration-300 group">
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-105 ${
-                          l.tipo === "receita"
-                            ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/12 dark:text-emerald-400 group-hover:shadow-md group-hover:shadow-emerald-500/10"
-                            : "bg-red-100 text-red-600 dark:bg-red-500/12 dark:text-red-400 group-hover:shadow-md group-hover:shadow-red-500/10"
-                        }`}>
-                          {l.tipo === "receita" ? <ArrowUpCircle className="h-4.5 w-4.5" /> : <ArrowDownCircle className="h-4.5 w-4.5" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-semibold truncate">{l.descricao}</p>
-                          <p className="text-[11px] text-muted-foreground/60 font-medium">{l.categoria} · {formatDate(l.data)}</p>
-                        </div>
-                        <span className={`text-sm font-bold tabular-nums whitespace-nowrap ${
-                          l.tipo === "receita"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-red-600 dark:text-red-400"
-                        }`}>
-                          {l.tipo === "receita" ? "+" : "-"}{formatCurrency(l.valor)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-full py-12">
-                    <EmptyState
-                      icon={<Receipt className="h-6 w-6" />}
-                      title="Nenhum lançamento"
-                      description="Registre seu primeiro lançamento para ver aqui"
-                    />
-                  </div>
-                )}
-              </div>
-            </motion.div>
+            <CategorySpendingCard gastosPorCategoria={resumo.gastosPorCategoria} />
+            <RecentTransactionsCard lancamentos={lancamentos?.items ?? []} />
           </div>
 
           {/* ── Bottom Row: Alerts + Cards + Metas ── */}
           <div className="grid gap-5 lg:grid-cols-3">
-            {/* Alerts */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 }}
-              className="card-premium p-6"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <div className="section-header">
-                  <div className="section-header-icon bg-gradient-to-br from-amber-500/10 to-amber-500/20 text-amber-600 dark:text-amber-400">
-                    <Zap className="h-4.5 w-4.5" />
-                  </div>
-                  <h3 className="text-sm font-bold tracking-tight">Alertas</h3>
-                </div>
-              </div>
-              {limitesAlerta.length > 0 ? (
-                <div className="space-y-3">
-                  {limitesAlerta.slice(0, 4).map((l) => (
-                    <div key={l.id} className="flex items-center gap-3 rounded-xl bg-muted/20 p-3.5 border border-border/20 transition-all duration-300 hover:bg-muted/40 hover:border-border/40">
-                      <Gauge className={`h-4 w-4 shrink-0 ${
-                        l.status === "excedido" || l.status === "critico" ? "text-red-500" : "text-amber-500"
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold truncate">{l.categoriaNome}</p>
-                        <p className="text-[11px] text-muted-foreground/60 font-medium">
-                          {formatCurrency(l.gastoAtual)} de {formatCurrency(l.valorLimite)}
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className={statusColor(l.status).badge}>
-                        {l.percentualConsumido.toFixed(0)}%
-                      </Badge>
-                    </div>
-                  ))}
-                  <Link href="/limites">
-                    <Button variant="ghost" size="sm" className="w-full text-xs gap-1 text-primary hover:text-primary font-semibold mt-1">
-                      Ver limites <ArrowRight className="h-3 w-3" />
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-500/12 mb-3 shadow-sm">
-                    <Sparkles className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <p className="text-sm font-bold">Tudo em ordem!</p>
-                  <p className="text-[11px] text-muted-foreground/60 mt-1 font-medium">Nenhum limite ultrapassado</p>
-                </div>
-              )}
-            </motion.div>
-
-            {/* Cards */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 }}
-              className="card-premium p-6"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <div className="section-header">
-                  <div className="section-header-icon bg-gradient-to-br from-violet-500/10 to-violet-500/20 text-violet-600 dark:text-violet-400">
-                    <CreditCard className="h-4.5 w-4.5" />
-                  </div>
-                  <h3 className="text-sm font-bold tracking-tight">Cartões</h3>
-                </div>
-                <Link href="/cartoes">
-                  <Button variant="ghost" size="sm" className="gap-1 h-7 text-xs text-primary hover:text-primary font-semibold">
-                    Gerenciar <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </Link>
-              </div>
-              {cartoes.length > 0 ? (
-                <div className="space-y-3">
-                  {cartoes.slice(0, 3).map((c) => (
-                    <div key={c.id} className="flex items-center gap-3 rounded-xl bg-muted/20 p-3.5 border border-border/20 transition-all duration-300 hover:bg-muted/40 hover:border-border/40 group">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-card-purple text-white shadow-md shadow-violet-500/20 transition-transform duration-300 group-hover:scale-105">
-                        <CreditCard className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold truncate">{c.nome}</p>
-                        <p className="text-[11px] text-muted-foreground/60 font-medium">Venc. dia {c.diaVencimento}</p>
-                      </div>
-                      <p className="text-sm font-bold tabular-nums">{formatCurrency(c.limite)}</p>
-                    </div>
-                  ))}
-                  {cartoes.length > 3 && (
-                    <p className="text-[11px] text-muted-foreground/60 text-center font-medium">+{cartoes.length - 3} cartões</p>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 mb-3 shadow-sm">
-                    <CreditCard className="h-6 w-6 text-muted-foreground/60" />
-                  </div>
-                  <p className="text-sm font-bold">Nenhum cartão</p>
-                  <p className="text-[11px] text-muted-foreground/60 mt-1 font-medium">Adicione na aba Cartões</p>
-                </div>
-              )}
-            </motion.div>
-
-            {/* Active Metas */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="card-premium p-6"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <div className="section-header">
-                  <div className="section-header-icon bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 text-cyan-600 dark:text-cyan-400">
-                    <Target className="h-4.5 w-4.5" />
-                  </div>
-                  <h3 className="text-sm font-bold tracking-tight">Metas Ativas</h3>
-                </div>
-                <Link href="/metas">
-                  <Button variant="ghost" size="sm" className="gap-1 h-7 text-xs text-primary hover:text-primary font-semibold">
-                    Ver todas <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </Link>
-              </div>
-              {metasAtivas.length > 0 ? (
-                <div className="space-y-4">
-                  {metasAtivas.slice(0, 3).map((meta) => (
-                    <div key={meta.id} className="space-y-2.5 rounded-xl bg-muted/20 p-3.5 border border-border/20 transition-all duration-300 hover:bg-muted/40 hover:border-border/40">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[13px] font-semibold truncate">{meta.nome}</p>
-                        <span className="text-xs font-extrabold tabular-nums text-primary">{meta.percentualConcluido.toFixed(0)}%</span>
-                      </div>
-                      <Progress value={Math.min(meta.percentualConcluido, 100)} className="h-2" />
-                      <p className="text-[11px] text-muted-foreground/60 tabular-nums font-medium">
-                        {formatCurrency(meta.valorAtual)} de {formatCurrency(meta.valorAlvo)}
-                      </p>
-                    </div>
-                  ))}
-                  {metasAtivas.length > 3 && (
-                    <p className="text-[11px] text-muted-foreground/60 text-center font-medium">
-                      +{metasAtivas.length - 3} metas ativas
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 mb-3 shadow-sm">
-                    <Target className="h-6 w-6 text-muted-foreground/60" />
-                  </div>
-                  <p className="text-sm font-bold">Sem metas ativas</p>
-                  <Link href="/metas">
-                    <Button variant="ghost" size="sm" className="text-xs text-primary mt-1.5 hover:text-primary font-semibold">
-                      Criar meta
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </motion.div>
+            <AlertsCard limitesAlerta={limitesAlerta} />
+            <CardsOverviewCard cartoes={cartoes} />
+            <ActiveMetasCard metasAtivas={metasAtivas} />
           </div>
 
           {/* ── Categories Tags ── */}

@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
@@ -10,9 +11,9 @@ namespace ControlFinance.Application.Services;
 /// Motor de simulação de compra. Calcula impacto financeiro futuro
 /// baseado no perfil e compromissos do usuário.
 /// </summary>
-public class PrevisaoCompraService
+public class PrevisaoCompraService : IPrevisaoCompraService
 {
-    private readonly PerfilFinanceiroService _perfilService;
+    private readonly IPerfilFinanceiroService _perfilService;
     private readonly ISimulacaoCompraRepository _simulacaoRepo;
     private readonly IAnaliseMensalRepository _analiseRepo;
     private readonly IParcelaRepository _parcelaRepo;
@@ -23,7 +24,7 @@ public class PrevisaoCompraService
     private const int HorizontePrevisaoMeses = 12;
 
     public PrevisaoCompraService(
-        PerfilFinanceiroService perfilService,
+        IPerfilFinanceiroService perfilService,
         ISimulacaoCompraRepository simulacaoRepo,
         IAnaliseMensalRepository analiseRepo,
         IParcelaRepository parcelaRepo,

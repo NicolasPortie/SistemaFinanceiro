@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using ControlFinance.Application.DTOs;
-using ControlFinance.Application.Services;
+using ControlFinance.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,9 +11,9 @@ namespace ControlFinance.Api.Controllers;
 [Authorize]
 public class PrevisaoController : BaseAuthController
 {
-    private readonly PrevisaoCompraService _previsaoService;
+    private readonly IPrevisaoCompraService _previsaoService;
 
-    public PrevisaoController(PrevisaoCompraService previsaoService)
+    public PrevisaoController(IPrevisaoCompraService previsaoService)
     {
         _previsaoService = previsaoService;
     }

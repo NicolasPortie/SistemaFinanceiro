@@ -1,11 +1,12 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
 using ControlFinance.Domain.Entities;
 
 namespace ControlFinance.Application.Services;
 
-public class FaturaService
+public class FaturaService : IFaturaService
 {
     private readonly IFaturaRepository _faturaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
@@ -30,7 +31,7 @@ public class FaturaService
         return faturas.Select(MapearFatura).ToList();
     }
 
-    public async Task PagarFaturaAsync(int faturaId)
+    public async Task PagarFaturaAsync(int faturaId, int? usuarioId = null)
     {
         var fatura = await _faturaRepo.ObterPorIdAsync(faturaId);
         if (fatura == null) return;
@@ -40,6 +41,10 @@ public class FaturaService
         {
              fatura.CartaoCredito = await _cartaoRepo.ObterPorIdAsync(fatura.CartaoCreditoId);
         }
+
+        // Verificar que o usuário é dono do cartão/fatura
+        if (usuarioId.HasValue && fatura.CartaoCredito?.UsuarioId != usuarioId.Value)
+            throw new UnauthorizedAccessException("Fatura não pertence ao usuário.");
 
         fatura.Status = StatusFatura.Paga;
         foreach (var parcela in fatura.Parcelas)

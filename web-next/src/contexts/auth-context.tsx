@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
-import { api, type Usuario } from "@/lib/api";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { api, AUTH_EXPIRED_EVENT, type Usuario } from "@/lib/api";
 
 interface AuthContextType {
   usuario: Usuario | null;
@@ -29,6 +30,17 @@ function getStoredUsuario(): Usuario | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(getStoredUsuario);
   const loading = false;
+  const router = useRouter();
+
+  // Listen for session expiry dispatched by the API layer
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setUsuario(null);
+      router.push("/login");
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+  }, [router]);
 
   const login = useCallback(async (email: string, senha: string) => {
     const res = await api.auth.login({ email, senha });

@@ -1,29 +1,31 @@
 ﻿using System.Collections.Concurrent;
 using System.Globalization;
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace ControlFinance.Application.Services;
 
 public class TelegramBotService
 {
-    private const string SistemaWebUrl = "https://finance.nicolasportie.com";
+    private readonly string _sistemaWebUrl;
     private readonly IUsuarioRepository _usuarioRepo;
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
     private readonly ICodigoVerificacaoRepository _codigoRepo;
     private readonly IGeminiService _gemini;
-    private readonly LancamentoService _lancamentoService;
-    private readonly ResumoService _resumoService;
-    private readonly FaturaService _faturaService;
-    private readonly PrevisaoCompraService _previsaoService;
-    private readonly PerfilFinanceiroService _perfilService;
-    private readonly DecisaoGastoService _decisaoService;
-    private readonly LimiteCategoriaService _limiteService;
-    private readonly MetaFinanceiraService _metaService;
+    private readonly ILancamentoService _lancamentoService;
+    private readonly IResumoService _resumoService;
+    private readonly IFaturaService _faturaService;
+    private readonly IPrevisaoCompraService _previsaoService;
+    private readonly IPerfilFinanceiroService _perfilService;
+    private readonly IDecisaoGastoService _decisaoService;
+    private readonly ILimiteCategoriaService _limiteService;
+    private readonly IMetaFinanceiraService _metaService;
     private readonly ILancamentoRepository _lancamentoRepo;
     private readonly ILembretePagamentoRepository _lembreteRepo;
     private readonly IFaturaRepository _faturaRepo;
@@ -78,17 +80,18 @@ public class TelegramBotService
         ICartaoCreditoRepository cartaoRepo,
         ICodigoVerificacaoRepository codigoRepo,
         IGeminiService gemini,
-        LancamentoService lancamentoService,
-        ResumoService resumoService,
-        FaturaService faturaService,
-        PrevisaoCompraService previsaoService,
-        PerfilFinanceiroService perfilService,
-        DecisaoGastoService decisaoService,
-        LimiteCategoriaService limiteService,
-        MetaFinanceiraService metaService,
+        ILancamentoService lancamentoService,
+        IResumoService resumoService,
+        IFaturaService faturaService,
+        IPrevisaoCompraService previsaoService,
+        IPerfilFinanceiroService perfilService,
+        IDecisaoGastoService decisaoService,
+        ILimiteCategoriaService limiteService,
+        IMetaFinanceiraService metaService,
         ILancamentoRepository lancamentoRepo,
         ILembretePagamentoRepository lembreteRepo,
         IFaturaRepository faturaRepo,
+        IConfiguration configuration,
         ILogger<TelegramBotService> logger)
     {
         _usuarioRepo = usuarioRepo;
@@ -107,6 +110,7 @@ public class TelegramBotService
         _lancamentoRepo = lancamentoRepo;
         _lembreteRepo = lembreteRepo;
         _faturaRepo = faturaRepo;
+        _sistemaWebUrl = configuration["Cors:AllowedOrigins:1"] ?? "https://finance.nicolasportie.com";
         _logger = logger;
     }
 
@@ -1595,10 +1599,10 @@ public class TelegramBotService
     {
         if (chatId.HasValue)
         {
-            DefinirTeclado(chatId.Value, new[] { ("🌐 Acessar sistema web", $"url:{SistemaWebUrl}") });
+            DefinirTeclado(chatId.Value, new[] { ("🌐 Acessar sistema web", $"url:{_sistemaWebUrl}") });
         }
 
-        return $"🌐 {cabecalho}\n\n{complemento}\n\nLink: *{SistemaWebUrl}*";
+        return $"🌐 {cabecalho}\n\n{complemento}\n\nLink: *{_sistemaWebUrl}*";
     }
 
     private Task<string> ProcessarCartao(Usuario usuario, string? parametros)

@@ -14,8 +14,21 @@ import {
   type CriarLancamentoRequest,
   type AtualizarCartaoRequest,
   type AtualizarPerfilRequest,
+  type CriarLembreteRequest,
+  type AtualizarLembreteRequest,
+  type AvaliarGastoRequest,
 } from "@/lib/api";
 import { toast } from "sonner";
+
+// ── Cache Timing Constants (milliseconds) ──────────────────
+const STALE_1_MIN = 1 * 60 * 1000;
+const STALE_2_MIN = 2 * 60 * 1000;
+const STALE_5_MIN = 5 * 60 * 1000;
+const STALE_10_MIN = 10 * 60 * 1000;
+const GC_5_MIN = 5 * 60 * 1000;
+const GC_10_MIN = 10 * 60 * 1000;
+const GC_15_MIN = 15 * 60 * 1000;
+const GC_30_MIN = 30 * 60 * 1000;
 
 // ── Query Keys ─────────────────────────────────────────────
 export const queryKeys = {
@@ -29,6 +42,7 @@ export const queryKeys = {
   metas: (status?: string) => ["metas", status ?? "all"] as const,
   historicoSimulacao: ["historico-simulacao"] as const,
   usuario: ["usuario-perfil"] as const,
+  lembretes: ["lembretes"] as const,
 };
 
 // ── Dashboard ──────────────────────────────────────────────
@@ -36,8 +50,8 @@ export function useResumo(mes?: string) {
   return useQuery({
     queryKey: queryKeys.resumo(mes),
     queryFn: () => api.lancamentos.resumo(mes),
-    staleTime: 2 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: STALE_2_MIN,
+    gcTime: GC_10_MIN,
   });
 }
 
@@ -52,7 +66,7 @@ export function useResumoHistorico(mesesAtras: number = 6) {
     queries: meses.map((mes) => ({
       queryKey: queryKeys.resumo(mes),
       queryFn: () => api.lancamentos.resumo(mes),
-      staleTime: 10 * 60 * 1000,
+      staleTime: STALE_10_MIN,
     })),
     combine: (results) => ({
       data: results
@@ -84,8 +98,8 @@ export function useLancamentos(params?: {
   return useQuery({
     queryKey: queryKeys.lancamentos(params as Record<string, unknown>),
     queryFn: () => api.lancamentos.listar(params),
-    staleTime: 1 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: STALE_1_MIN,
+    gcTime: GC_5_MIN,
   });
 }
 
@@ -124,8 +138,8 @@ export function useCategorias() {
   return useQuery({
     queryKey: queryKeys.categorias,
     queryFn: () => api.categorias.listar(),
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+    staleTime: STALE_10_MIN,
+    gcTime: GC_30_MIN,
   });
 }
 
@@ -133,8 +147,8 @@ export function useCartoes() {
   return useQuery({
     queryKey: queryKeys.cartoes,
     queryFn: () => api.cartoes.listar(),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: STALE_5_MIN,
+    gcTime: GC_15_MIN,
   });
 }
 
@@ -143,7 +157,7 @@ export function usePerfilFinanceiro() {
   return useQuery({
     queryKey: queryKeys.perfil,
     queryFn: () => api.previsao.perfil(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_5_MIN,
   });
 }
 
@@ -161,7 +175,7 @@ export function useHistoricoSimulacao() {
   return useQuery({
     queryKey: queryKeys.historicoSimulacao,
     queryFn: () => api.previsao.historico(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_5_MIN,
     enabled: false, // carrega sob demanda
   });
 }
@@ -171,7 +185,7 @@ export function useLimites() {
   return useQuery({
     queryKey: queryKeys.limites,
     queryFn: () => api.limites.listar(),
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_2_MIN,
   });
 }
 
@@ -208,7 +222,7 @@ export function useMetas(status?: string) {
   return useQuery({
     queryKey: queryKeys.metas(status),
     queryFn: () => api.metas.listar(status),
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_2_MIN,
   });
 }
 
@@ -320,7 +334,7 @@ export function useFaturas(cartaoId: number) {
     queryKey: queryKeys.fatura(cartaoId),
     queryFn: () => api.cartoes.faturas(cartaoId),
     enabled: cartaoId > 0,
-    staleTime: 2 * 60 * 1000,
+    staleTime: STALE_2_MIN,
     retry: false,
   });
 }
@@ -397,6 +411,69 @@ export function useCriarLancamento() {
     },
     onError: (err: Error) => {
       toast.error(err.message || "Erro ao registrar");
+    },
+  });
+}
+
+// ── Lembretes / Contas Fixas ───────────────────────────────
+export function useLembretes() {
+  return useQuery({
+    queryKey: queryKeys.lembretes,
+    queryFn: () => api.lembretes.listar(),
+    staleTime: STALE_2_MIN,
+    gcTime: GC_10_MIN,
+  });
+}
+
+export function useCriarLembrete() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CriarLembreteRequest) => api.lembretes.criar(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.lembretes });
+      toast.success("Lembrete criado com sucesso!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao criar lembrete");
+    },
+  });
+}
+
+export function useAtualizarLembrete() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: AtualizarLembreteRequest }) =>
+      api.lembretes.atualizar(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.lembretes });
+      toast.success("Lembrete atualizado!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao atualizar lembrete");
+    },
+  });
+}
+
+export function useDesativarLembrete() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.lembretes.desativar(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.lembretes });
+      toast.success("Lembrete desativado!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao desativar lembrete");
+    },
+  });
+}
+
+// ── Decisão de Gasto ───────────────────────────────────────
+export function useAvaliarGasto() {
+  return useMutation({
+    mutationFn: (data: AvaliarGastoRequest) => api.decisao.avaliar(data),
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao avaliar gasto");
     },
   });
 }
