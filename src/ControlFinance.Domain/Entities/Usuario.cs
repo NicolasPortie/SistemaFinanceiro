@@ -1,3 +1,5 @@
+using ControlFinance.Domain.Enums;
+
 namespace ControlFinance.Domain.Entities;
 
 public class Usuario
@@ -16,6 +18,9 @@ public class Usuario
     public string Nome { get; set; } = string.Empty;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public bool Ativo { get; set; } = true;
+
+    // Role
+    public RoleUsuario Role { get; set; } = RoleUsuario.Usuario;
 
     // Segurança
     public int TentativasLoginFalhadas { get; set; }

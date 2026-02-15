@@ -23,10 +23,6 @@ var encryptionKey = builder.Configuration["Encryption:Key"];
 if (string.IsNullOrWhiteSpace(encryptionKey))
     throw new InvalidOperationException("Encryption:Key não configurada. Configure via variáveis de ambiente ou User Secrets.");
 
-var inviteCodeHash = builder.Configuration["InviteCode:Hash"];
-if (string.IsNullOrWhiteSpace(inviteCodeHash))
-    throw new InvalidOperationException("InviteCode:Hash não configurado. Configure via variáveis de ambiente ou User Secrets.");
-
 // === Configuração das camadas ===
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();

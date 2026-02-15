@@ -13,6 +13,7 @@ export interface Usuario {
   email: string;
   telegramVinculado: boolean;
   criadoEm: string;
+  role: string;
 }
 
 export interface AuthResponse {
@@ -578,4 +579,172 @@ export const api = {
         body: data,
       }),
   },
+
+  admin: {
+    dashboard: () => request<AdminDashboardData>("/admin/dashboard"),
+
+    usuarios: {
+      listar: () => request<AdminUsuario[]>("/admin/usuarios"),
+      detalhe: (id: number) => request<AdminUsuarioDetalhe>(`/admin/usuarios/${id}`),
+      bloquear: (id: number) =>
+        request<{ message: string }>(`/admin/usuarios/${id}/bloquear`, { method: "POST" }),
+      desbloquear: (id: number) =>
+        request<{ message: string }>(`/admin/usuarios/${id}/desbloquear`, { method: "POST" }),
+      desativar: (id: number) =>
+        request<{ message: string }>(`/admin/usuarios/${id}/desativar`, { method: "POST" }),
+      resetarLogin: (id: number) =>
+        request<{ message: string }>(`/admin/usuarios/${id}/resetar-login`, { method: "POST" }),
+      revogarSessoes: (id: number) =>
+        request<{ message: string }>(`/admin/usuarios/${id}/revogar-sessoes`, { method: "POST" }),
+      promover: (id: number) =>
+        request<{ message: string }>(`/admin/usuarios/${id}/promover`, { method: "POST" }),
+      rebaixar: (id: number) =>
+        request<{ message: string }>(`/admin/usuarios/${id}/rebaixar`, { method: "POST" }),
+    },
+
+    convites: {
+      listar: () => request<AdminCodigoConvite[]>("/admin/convites"),
+      criar: (data: CriarConviteRequest) =>
+        request<AdminCodigoConvite>("/admin/convites", { method: "POST", body: data }),
+      remover: (id: number) =>
+        request<{ message: string }>(`/admin/convites/${id}`, { method: "DELETE" }),
+    },
+
+    seguranca: {
+      resumo: () => request<AdminSegurancaResumo>("/admin/seguranca"),
+      revogarSessao: (tokenId: number) =>
+        request<{ message: string }>(`/admin/seguranca/sessoes/${tokenId}/revogar`, { method: "POST" }),
+      revogarTodas: () =>
+        request<{ message: string }>("/admin/seguranca/sessoes/revogar-todas", { method: "POST" }),
+    },
+
+    lancamentos: (params?: { usuarioId?: number; pagina?: number; tamanhoPagina?: number }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.usuarioId) searchParams.set("usuarioId", params.usuarioId.toString());
+      if (params?.pagina) searchParams.set("pagina", params.pagina.toString());
+      if (params?.tamanhoPagina) searchParams.set("tamanhoPagina", params.tamanhoPagina.toString());
+      const qs = searchParams.toString();
+      return request<AdminLancamento[]>(`/admin/lancamentos${qs ? `?${qs}` : ""}`);
+    },
+  },
 };
+
+// ── Admin Types ────────────────────────────────────────────
+
+export interface AdminDashboardData {
+  totalUsuarios: number;
+  usuariosAtivos: number;
+  usuariosInativos: number;
+  usuariosBloqueados: number;
+  novosUltimos7Dias: number;
+  novosUltimos30Dias: number;
+  usuariosComTelegram: number;
+  totalLancamentosMes: number;
+  volumeReceitasMes: number;
+  volumeGastosMes: number;
+  totalCartoes: number;
+  metasAtivas: number;
+  sessoesAtivas: number;
+  codigosConviteAtivos: number;
+  cadastrosPorDia: { data: string; quantidade: number }[];
+}
+
+export interface AdminUsuario {
+  id: number;
+  nome: string;
+  email: string;
+  criadoEm: string;
+  ativo: boolean;
+  telegramVinculado: boolean;
+  role: string;
+  tentativasLoginFalhadas: number;
+  bloqueadoAte: string | null;
+  totalLancamentos: number;
+  totalCartoes: number;
+  totalMetas: number;
+}
+
+export interface AdminCartaoResumo {
+  id: number;
+  nome: string;
+  limite: number;
+  diaVencimento: number;
+  ativo: boolean;
+}
+
+export interface AdminMetaResumo {
+  id: number;
+  nome: string;
+  tipo: string;
+  valorAlvo: number;
+  valorAtual: number;
+  status: string;
+  prazo: string;
+}
+
+export interface AdminLancamento {
+  id: number;
+  usuarioNome: string;
+  descricao: string;
+  valor: number;
+  tipo: string;
+  categoria: string;
+  formaPagamento: string;
+  origem: string;
+  data: string;
+  criadoEm: string;
+}
+
+export interface AdminUsuarioDetalhe extends AdminUsuario {
+  receitaMedia: number;
+  gastoMedio: number;
+  saldoAtual: number;
+  sessoesAtivas: number;
+  cartoes: AdminCartaoResumo[];
+  ultimosLancamentos: AdminLancamento[];
+  metasAtivas: AdminMetaResumo[];
+}
+
+export interface AdminCodigoConvite {
+  id: number;
+  codigo: string;
+  descricao: string | null;
+  criadoEm: string;
+  expiraEm: string;
+  usado: boolean;
+  usadoEm: string | null;
+  usadoPorNome: string | null;
+  criadoPorNome: string;
+  expirado: boolean;
+}
+
+export interface CriarConviteRequest {
+  descricao?: string;
+  horasValidade: number;
+}
+
+export interface AdminSessao {
+  id: number;
+  usuarioId: number;
+  usuarioNome: string;
+  usuarioEmail: string;
+  criadoEm: string;
+  expiraEm: string;
+  ipCriacao: string | null;
+}
+
+export interface AdminUsuarioBloqueado {
+  id: number;
+  nome: string;
+  email: string;
+  tentativasLoginFalhadas: number;
+  bloqueadoAte: string | null;
+}
+
+export interface AdminSegurancaResumo {
+  sessoesAtivas: number;
+  usuariosBloqueados: number;
+  tentativasLoginFalhadas: number;
+  sessoes: AdminSessao[];
+  usuariosBloqueadosLista: AdminUsuarioBloqueado[];
+}

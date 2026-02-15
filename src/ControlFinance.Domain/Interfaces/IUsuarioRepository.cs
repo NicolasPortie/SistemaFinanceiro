@@ -11,4 +11,8 @@ public interface IUsuarioRepository
     Task<bool> EmailExisteAsync(string email);
     Task<Usuario> CriarAsync(Usuario usuario);
     Task AtualizarAsync(Usuario usuario);
+    Task<List<Usuario>> ObterTodosAsync();
+    Task<int> ContarAsync();
+    Task<int> ContarAtivosAsync();
+    Task<int> ContarNovosAsync(DateTime desde);
 }

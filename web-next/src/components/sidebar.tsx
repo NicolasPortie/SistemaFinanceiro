@@ -22,6 +22,10 @@ import {
   Sparkles,
   CalendarClock,
   Brain,
+  Shield,
+  Users,
+  KeyRound,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -46,6 +50,13 @@ const navItems = [
   { href: "/limites", label: "Limites", icon: Gauge },
   { href: "/metas", label: "Metas", icon: Target },
   { href: "/perfil", label: "Perfil", icon: User },
+];
+
+const adminNavItems = [
+  { href: "/admin", label: "Painel Admin", icon: Shield },
+  { href: "/admin/usuarios", label: "Usuários", icon: Users },
+  { href: "/admin/convites", label: "Convites", icon: KeyRound },
+  { href: "/admin/seguranca", label: "Segurança", icon: Lock },
 ];
 
 function NavLink({
@@ -103,7 +114,7 @@ function NavLink({
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const { usuario, logout } = useAuth();
+  const { usuario, logout, isAdmin } = useAuth();
   const { theme, setTheme } = useTheme();
 
   return (
@@ -140,6 +151,24 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
             />
           ))}
+
+          {isAdmin && (
+            <>
+              <div className="mx-2 my-3 divider-premium" />
+              <p className="px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-500/80 flex items-center gap-1.5">
+                <Shield className="h-3 w-3" />
+                Administração
+              </p>
+              {adminNavItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  {...item}
+                  isActive={pathname === item.href}
+                  onClick={onNavigate}
+                />
+              ))}
+            </>
+          )}
         </TooltipProvider>
       </nav>
 

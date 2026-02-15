@@ -56,6 +56,7 @@ public class UsuarioDto
     public string Email { get; set; } = string.Empty;
     public bool TelegramVinculado { get; set; }
     public DateTime CriadoEm { get; set; }
+    public string Role { get; set; } = "Usuario";
 }
 
 public class GerarCodigoTelegramDto

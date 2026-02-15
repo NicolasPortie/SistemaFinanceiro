@@ -26,6 +26,7 @@ services:
       dockerfile: src/ControlFinance.Api/Dockerfile
       args:
         CONFIGURATION: Release
+        VERSION: ${APP_VERSION:-0.0.0-dev}
     image: controlfinance-api:latest
     container_name: controlfinance-api-prod
     restart: always

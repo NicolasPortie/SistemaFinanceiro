@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IMetaFinanceiraRepository, MetaFinanceiraRepository>();
         services.AddScoped<ILembretePagamentoRepository, LembretePagamentoRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<ICodigoConviteRepository, CodigoConviteRepository>();
 
         // Codigo Verificacao
         services.AddScoped<ICodigoVerificacaoRepository, CodigoVerificacaoRepository>();

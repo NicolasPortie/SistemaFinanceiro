@@ -57,4 +57,27 @@ public class UsuarioRepository : IUsuarioRepository
         _context.Usuarios.Update(usuario);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<List<Usuario>> ObterTodosAsync()
+    {
+        return await _context.Usuarios
+            .OrderByDescending(u => u.CriadoEm)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    public async Task<int> ContarAsync()
+    {
+        return await _context.Usuarios.CountAsync();
+    }
+
+    public async Task<int> ContarAtivosAsync()
+    {
+        return await _context.Usuarios.CountAsync(u => u.Ativo);
+    }
+
+    public async Task<int> ContarNovosAsync(DateTime desde)
+    {
+        return await _context.Usuarios.CountAsync(u => u.CriadoEm >= desde);
+    }
 }

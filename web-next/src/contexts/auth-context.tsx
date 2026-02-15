@@ -7,6 +7,7 @@ import { api, AUTH_EXPIRED_EVENT, type Usuario } from "@/lib/api";
 interface AuthContextType {
   usuario: Usuario | null;
   loading: boolean;
+  isAdmin: boolean;
   login: (email: string, senha: string) => Promise<void>;
   registrar: (nome: string, email: string, senha: string, codigoConvite: string) => Promise<void>;
   logout: () => void;
@@ -30,6 +31,7 @@ function getStoredUsuario(): Usuario | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(getStoredUsuario);
   const loading = false;
+  const isAdmin = usuario?.role === "Admin";
   const router = useRouter();
 
   // Listen for session expiry dispatched by the API layer
@@ -77,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ usuario, loading, login, registrar, logout, atualizarPerfil }}>
+    <AuthContext.Provider value={{ usuario, loading, isAdmin, login, registrar, logout, atualizarPerfil }}>
       {children}
     </AuthContext.Provider>
   );

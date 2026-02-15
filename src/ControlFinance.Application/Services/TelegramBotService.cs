@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Globalization;
+using System.Reflection;
 using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
@@ -1540,8 +1541,22 @@ public class TelegramBotService
             ),
             "/gasto" when partes.Length > 1 => await ProcessarComIAAsync(usuario, partes[1]),
             "/receita" when partes.Length > 1 => await ProcessarComIAAsync(usuario, $"recebi {partes[1]}"),
+            "/versao" => ObterVersaoSistema(),
             _ => await ProcessarComIAAsync(usuario, mensagem) // Send unknown commands to AI instead of rejecting
         };
+    }
+
+    private static string ObterVersaoSistema()
+    {
+        var versao = Assembly.GetEntryAssembly()?
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion ?? "desconhecida";
+
+        // Remove metadata do hash do commit (ex: 1.4.0+abc123 → 1.4.0)
+        var idx = versao.IndexOf('+');
+        if (idx > 0) versao = versao[..idx];
+
+        return $"📦 *ControlFinance*\n\n🏷️ Versão: `{versao}`";
     }
 
     private static bool EhMensagemGestaoNoWeb(string msgLower)

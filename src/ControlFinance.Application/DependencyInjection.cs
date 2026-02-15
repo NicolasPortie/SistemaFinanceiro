@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<IDecisaoGastoService, DecisaoGastoService>();
         services.AddScoped<ILimiteCategoriaService, LimiteCategoriaService>();
         services.AddScoped<IMetaFinanceiraService, MetaFinanceiraService>();
+        services.AddScoped<IAdminService, AdminService>();
 
         // TelegramBotService mantém registro concreto (depende de estado estático)
         services.AddScoped<TelegramBotService>();

@@ -41,6 +41,12 @@ docker image prune -f
 
 # Build das novas imagens
 echo -e "${YELLOW}🔨 Construindo novas imagens...${NC}"
+
+# Detectar versão a partir da tag Git
+APP_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0-dev")
+export APP_VERSION
+echo -e "${GREEN}📦 Versão detectada: ${APP_VERSION}${NC}"
+
 docker compose -f docker-compose.prod.yml build --no-cache
 
 # Iniciar containers

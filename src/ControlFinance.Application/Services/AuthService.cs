@@ -5,6 +5,7 @@ using System.Text;
 using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
+using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ public class AuthService : IAuthService
     private readonly ICodigoVerificacaoRepository _codigoRepo;
     private readonly IRefreshTokenRepository _refreshTokenRepo;
     private readonly IEmailService _emailService;
+    private readonly ICodigoConviteRepository _codigoConviteRepo;
     private readonly IConfiguration _config;
     private readonly ILogger<AuthService> _logger;
 
@@ -27,6 +29,7 @@ public class AuthService : IAuthService
         ICategoriaRepository categoriaRepo,
         ICodigoVerificacaoRepository codigoRepo,
         IRefreshTokenRepository refreshTokenRepo,
+        ICodigoConviteRepository codigoConviteRepo,
         IEmailService emailService,
         IConfiguration config,
         ILogger<AuthService> logger)
@@ -35,6 +38,7 @@ public class AuthService : IAuthService
         _categoriaRepo = categoriaRepo;
         _codigoRepo = codigoRepo;
         _refreshTokenRepo = refreshTokenRepo;
+        _codigoConviteRepo = codigoConviteRepo;
         _emailService = emailService;
         _config = config;
         _logger = logger;
@@ -42,12 +46,12 @@ public class AuthService : IAuthService
 
     public async Task<(AuthResponseDto? Response, string? Erro)> RegistrarAsync(RegistrarUsuarioDto dto, string? ipAddress = null)
     {
-        // Validar código de convite
-        var inviteHash = _config["InviteCode:Hash"] ?? "";
-        if (string.IsNullOrWhiteSpace(dto.CodigoConvite) || !BCrypt.Net.BCrypt.Verify(dto.CodigoConvite.Trim(), inviteHash))
+        // Validar código de convite via banco de dados
+        var codigoConvite = await _codigoConviteRepo.ObterPorCodigoAsync(dto.CodigoConvite.Trim());
+        if (codigoConvite == null || codigoConvite.Usado || codigoConvite.ExpiraEm < DateTime.UtcNow)
         {
             _logger.LogWarning("Tentativa de registro com código de convite inválido. IP: {IP}", ipAddress);
-            return (null, "Código de convite inválido.");
+            return (null, "Código de convite inválido ou expirado.");
         }
 
         var erroSenha = ValidarForcaSenha(dto.Senha);
@@ -70,6 +74,12 @@ public class AuthService : IAuthService
 
         await _usuarioRepo.CriarAsync(usuario);
         await _categoriaRepo.CriarCategoriasIniciais(usuario.Id);
+
+        // Marcar código de convite como usado
+        codigoConvite.Usado = true;
+        codigoConvite.UsadoEm = DateTime.UtcNow;
+        codigoConvite.UsadoPorUsuarioId = usuario.Id;
+        await _codigoConviteRepo.AtualizarAsync(codigoConvite);
 
         _logger.LogInformation("Novo usuário registrado: {UserId}", usuario.Id);
 
@@ -218,7 +228,8 @@ public class AuthService : IAuthService
             Nome = usuario.Nome,
             Email = usuario.Email,
             TelegramVinculado = usuario.TelegramVinculado,
-            CriadoEm = usuario.CriadoEm
+            CriadoEm = usuario.CriadoEm,
+            Role = usuario.Role.ToString()
         };
     }
 
@@ -254,7 +265,8 @@ public class AuthService : IAuthService
             Nome = usuario.Nome,
             Email = usuario.Email,
             TelegramVinculado = usuario.TelegramVinculado,
-            CriadoEm = usuario.CriadoEm
+            CriadoEm = usuario.CriadoEm,
+            Role = usuario.Role.ToString()
         }, null);
     }
 
@@ -359,7 +371,8 @@ public class AuthService : IAuthService
                 Nome = usuario.Nome,
                 Email = usuario.Email,
                 TelegramVinculado = usuario.TelegramVinculado,
-                CriadoEm = usuario.CriadoEm
+                CriadoEm = usuario.CriadoEm,
+                Role = usuario.Role.ToString()
             }
         };
     }
@@ -375,6 +388,7 @@ public class AuthService : IAuthService
             new Claim(JwtRegisteredClaimNames.Jti, jwtId),
             new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
             new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+            new Claim(ClaimTypes.Role, usuario.Role.ToString()),
         };
 
         var token = new JwtSecurityToken(

@@ -33,6 +33,7 @@ public class AppDbContext : DbContext
     public DbSet<LembretePagamento> LembretesPagamento => Set<LembretePagamento>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AjusteLimiteCartao> AjustesLimitesCartao => Set<AjusteLimiteCartao>();
+    public DbSet<CodigoConvite> CodigosConvite => Set<CodigoConvite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -60,9 +61,38 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Ativo).HasColumnName("ativo");
             entity.Property(e => e.TentativasLoginFalhadas).HasColumnName("tentativas_login_falhadas").HasDefaultValue(0);
             entity.Property(e => e.BloqueadoAte).HasColumnName("bloqueado_ate");
+            entity.Property(e => e.Role).HasColumnName("role").HasDefaultValue(Domain.Enums.RoleUsuario.Usuario);
 
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.TelegramChatId).IsUnique().HasFilter("telegram_chat_id IS NOT NULL");
+        });
+
+        // === CodigoConvite ===
+        modelBuilder.Entity<CodigoConvite>(entity =>
+        {
+            entity.ToTable("codigos_convite");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Codigo).HasColumnName("codigo").HasMaxLength(50);
+            entity.Property(e => e.Descricao).HasColumnName("descricao").HasMaxLength(200);
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.ExpiraEm).HasColumnName("expira_em");
+            entity.Property(e => e.Usado).HasColumnName("usado");
+            entity.Property(e => e.UsadoEm).HasColumnName("usado_em");
+            entity.Property(e => e.UsadoPorUsuarioId).HasColumnName("usado_por_usuario_id");
+            entity.Property(e => e.CriadoPorUsuarioId).HasColumnName("criado_por_usuario_id");
+
+            entity.HasIndex(e => e.Codigo).IsUnique();
+
+            entity.HasOne(e => e.UsadoPorUsuario)
+                  .WithMany()
+                  .HasForeignKey(e => e.UsadoPorUsuarioId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.CriadoPorUsuario)
+                  .WithMany()
+                  .HasForeignKey(e => e.CriadoPorUsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // === CodigoVerificacao ===

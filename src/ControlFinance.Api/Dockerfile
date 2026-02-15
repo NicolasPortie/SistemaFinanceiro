@@ -9,7 +9,9 @@ COPY ["src/ControlFinance.Infrastructure/ControlFinance.Infrastructure.csproj", 
 RUN dotnet restore "src/ControlFinance.Api/ControlFinance.Api.csproj"
 
 COPY src ./src
-RUN dotnet publish "src/ControlFinance.Api/ControlFinance.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+ARG VERSION=0.0.0-dev
+RUN dotnet publish "src/ControlFinance.Api/ControlFinance.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:VERSION=${VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
