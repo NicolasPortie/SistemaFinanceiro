@@ -62,7 +62,10 @@ jobs:
     - name: Extrair versão da tag
       id: version
       run: |
-        echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        TAG_VERSION="${GITHUB_REF#refs/tags/}"
+        APP_VERSION="${TAG_VERSION#v}"
+        echo "TAG_VERSION=${TAG_VERSION}" >> $GITHUB_OUTPUT
+        echo "VERSION=${APP_VERSION}" >> $GITHUB_OUTPUT
 
     - name: Sincronizar arquivos para pasta de deploy
       run: |
@@ -114,7 +117,7 @@ jobs:
       run: |
         echo "## Deploy concluído com sucesso!" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- **Versão:** ${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Versão:** ${{ steps.version.outputs.TAG_VERSION }}" >> $GITHUB_STEP_SUMMARY
         echo "- **API:** https://api.nicolasportie.com" >> $GITHUB_STEP_SUMMARY
         echo "- **Frontend:** https://finance.nicolasportie.com" >> $GITHUB_STEP_SUMMARY
         echo "- **Timestamp:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
