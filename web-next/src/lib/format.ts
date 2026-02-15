@@ -50,8 +50,18 @@ export function getInitials(name: string): string {
     .toUpperCase();
 }
 
+export function formatFormaPagamento(forma: string): string {
+  switch (forma?.toLowerCase()) {
+    case "pix": return "PIX";
+    case "debito": return "Débito";
+    case "credito": return "Crédito";
+    default: return forma || "—";
+  }
+}
+
 export function getGreeting(): string {
   const hour = new Date().getHours();
+  if (hour >= 0 && hour < 6) return "Boa madrugada";
   if (hour < 12) return "Bom dia";
   if (hour < 18) return "Boa tarde";
   return "Boa noite";

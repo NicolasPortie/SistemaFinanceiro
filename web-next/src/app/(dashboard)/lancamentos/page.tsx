@@ -11,7 +11,7 @@ import {
   useRemoverLancamento,
   queryKeys,
 } from "@/hooks/use-queries";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatFormaPagamento } from "@/lib/format";
 import {
   lancamentoSchema,
   editarLancamentoSchema,
@@ -38,6 +38,12 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Eye,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Calendar,
+  Tag,
 } from "lucide-react";
 import {
   PageShell,
@@ -80,6 +86,7 @@ import { useQueryClient } from "@tanstack/react-query";
 export default function LancamentosPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<Lancamento | null>(null);
+  const [viewingItem, setViewingItem] = useState<Lancamento | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
   const [filtroCategoria, setFiltroCategoria] = useState<string>("todas");
@@ -112,7 +119,7 @@ export default function LancamentosPage() {
 
   const form = useForm<LancamentoData>({
     resolver: zodResolver(lancamentoSchema),
-    defaultValues: { descricao: "", valor: "", tipo: "despesa", categoria: "", cartaoId: "" },
+    defaultValues: { descricao: "", valor: "", tipo: "despesa", categoria: "", cartaoId: "", formaPagamento: "" },
   });
 
   const editForm = useForm<EditarLancamentoData>({
@@ -127,12 +134,22 @@ export default function LancamentosPage() {
     const valor = parseFloat(data.valor.replace(",", "."));
     const cartaoId = data.cartaoId ? parseInt(data.cartaoId, 10) : undefined;
 
+    // Determinar forma de pagamento: se tem cartão = Credito(3), senão usa o selecionado ou Debito(2)
+    let formaPagamento: 1 | 2 | 3 = 2;
+    if (cartaoId) {
+      formaPagamento = 3;
+    } else if (data.formaPagamento === "pix") {
+      formaPagamento = 1;
+    } else if (data.formaPagamento === "debito") {
+      formaPagamento = 2;
+    }
+
     criarLancamento.mutate(
       {
         descricao: data.descricao,
         valor,
         tipo: data.tipo === "despesa" ? 1 : 2,
-        formaPagamento: cartaoId ? 3 : 2,
+        formaPagamento,
         categoria: data.categoria || "Outros",
         numeroParcelas: 1,
         cartaoCreditoId: cartaoId,
@@ -260,22 +277,24 @@ export default function LancamentosPage() {
             <div className="divide-y divide-border/50">
               <AnimatePresence>
                 {lancamentosData.items.map((l, i) => (
-                    <motion.div key={l.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.02 * i }} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-muted/30 transition-colors group">
+                    <motion.div key={l.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.02 * i }} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-muted/30 transition-colors group cursor-pointer" onClick={() => setViewingItem(l)}>
                     <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${l.tipo === "receita" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}`}>
                       {l.tipo === "receita" ? <ArrowUpCircle className="h-4 w-4" /> : <ArrowDownCircle className="h-4 w-4" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-semibold truncate">{l.descricao}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-[11px] text-muted-foreground/60 font-medium">{formatDate(l.data)}</span>
                         <Badge variant="outline" className="text-[10px] h-5 px-1.5">{l.categoria}</Badge>
+                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{formatFormaPagamento(l.formaPagamento)}</Badge>
                         {l.parcelado && <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{l.numeroParcelas}x</Badge>}
                       </div>
                     </div>
                     <span className={`text-sm font-bold tabular-nums whitespace-nowrap ${l.tipo === "receita" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
                       {l.tipo === "receita" ? "+" : "-"} {formatCurrency(l.valor)}
                     </span>
-                    <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setViewingItem(l)} aria-label="Ver detalhes"><Eye className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openEdit(l)} aria-label="Editar lançamento"><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => setDeletingId(l.id)} aria-label="Excluir lançamento"><Trash2 className="h-4 w-4" /></Button>
                     </div>
@@ -309,7 +328,7 @@ export default function LancamentosPage() {
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant={tipoSelecionado === "receita" ? "default" : "outline"} className="h-11 gap-2" onClick={() => form.setValue("tipo", "receita")}><ArrowUpCircle className="h-4 w-4" />Receita</Button>
+              <Button type="button" variant={tipoSelecionado === "receita" ? "default" : "outline"} className="h-11 gap-2" onClick={() => { form.setValue("tipo", "receita"); form.setValue("cartaoId", ""); }}><ArrowUpCircle className="h-4 w-4" />Receita</Button>
               <Button type="button" variant={tipoSelecionado === "despesa" ? "default" : "outline"} className="h-11 gap-2" onClick={() => form.setValue("tipo", "despesa")}><ArrowDownCircle className="h-4 w-4" />Despesa</Button>
             </div>
             <div className="space-y-2">
@@ -329,12 +348,24 @@ export default function LancamentosPage() {
                 <SelectContent>{categorias.map((c) => (<SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>))}</SelectContent>
               </Select>
             </div>
-            {cartoes.length > 0 && (
+            {cartoes.length > 0 && tipoSelecionado === "despesa" && (
               <div className="space-y-2">
                 <Label>Cartão (opcional)</Label>
                 <Select value={cartaoSelecionado} onValueChange={(v) => form.setValue("cartaoId", v)}>
                   <SelectTrigger className="h-11"><SelectValue placeholder="Sem cartão" /></SelectTrigger>
                   <SelectContent>{cartoes.map((c) => (<SelectItem key={c.id} value={c.id.toString()}>{c.nome}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+            )}
+            {tipoSelecionado === "despesa" && !cartaoSelecionado && (
+              <div className="space-y-2">
+                <Label>Forma de Pagamento</Label>
+                <Select value={form.watch("formaPagamento") ?? ""} onValueChange={(v) => form.setValue("formaPagamento", v)}>
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="debito">Débito</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
             )}
@@ -357,6 +388,17 @@ export default function LancamentosPage() {
             <DialogDescription>Altere os dados do lançamento</DialogDescription>
           </DialogHeader>
           <form onSubmit={editForm.handleSubmit(onEdit)} className="space-y-5">
+            {editingItem && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${editingItem.tipo === "receita" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}`}>
+                  {editingItem.tipo === "receita" ? <ArrowUpCircle className="h-4 w-4" /> : <ArrowDownCircle className="h-4 w-4" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium capitalize">{editingItem.tipo}</span>
+                  <span className="text-xs text-muted-foreground ml-2">· {formatFormaPagamento(editingItem.formaPagamento)}</span>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Descrição</Label>
               <Input className="h-11" {...editForm.register("descricao")} />
@@ -382,6 +424,89 @@ export default function LancamentosPage() {
               {atualizarLancamento.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar alterações"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Detail Dialog */}
+      <Dialog open={viewingItem !== null} onOpenChange={() => setViewingItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Lançamento</DialogTitle>
+            <DialogDescription>Informações completas do lançamento</DialogDescription>
+          </DialogHeader>
+          {viewingItem && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${viewingItem.tipo === "receita" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}`}>
+                  {viewingItem.tipo === "receita" ? <ArrowUpCircle className="h-5 w-5" /> : <ArrowDownCircle className="h-5 w-5" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{viewingItem.descricao}</p>
+                  <Badge variant={viewingItem.tipo === "receita" ? "default" : "destructive"} className="text-[11px] mt-1 capitalize">{viewingItem.tipo}</Badge>
+                </div>
+                <span className={`text-lg font-bold tabular-nums ${viewingItem.tipo === "receita" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                  {viewingItem.tipo === "receita" ? "+" : "-"} {formatCurrency(viewingItem.valor)}
+                </span>
+              </div>
+
+              <div className="grid gap-3">
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50">
+                  <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-[11px] text-muted-foreground font-medium">Categoria</p>
+                    <p className="text-sm font-semibold">{viewingItem.categoria}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50">
+                  {viewingItem.formaPagamento?.toLowerCase() === "pix" ? <Smartphone className="h-4 w-4 text-muted-foreground shrink-0" /> :
+                   viewingItem.formaPagamento?.toLowerCase() === "credito" ? <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" /> :
+                   <Banknote className="h-4 w-4 text-muted-foreground shrink-0" />}
+                  <div>
+                    <p className="text-[11px] text-muted-foreground font-medium">Forma de Pagamento</p>
+                    <p className="text-sm font-semibold">{formatFormaPagamento(viewingItem.formaPagamento)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50">
+                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-[11px] text-muted-foreground font-medium">Data</p>
+                    <p className="text-sm font-semibold">{formatDate(viewingItem.data)}</p>
+                  </div>
+                </div>
+
+                {viewingItem.parcelado && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50">
+                    <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-[11px] text-muted-foreground font-medium">Parcelas</p>
+                      <p className="text-sm font-semibold">{viewingItem.numeroParcelas}x de {formatCurrency(viewingItem.valor / viewingItem.numeroParcelas)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {viewingItem.criadoEm && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50">
+                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-[11px] text-muted-foreground font-medium">Criado em</p>
+                      <p className="text-sm font-semibold">{formatDate(viewingItem.criadoEm)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="flex-1 gap-2" onClick={() => { setViewingItem(null); openEdit(viewingItem); }}>
+                  <Pencil className="h-4 w-4" />Editar
+                </Button>
+                <Button variant="destructive" className="flex-1 gap-2" onClick={() => { setViewingItem(null); setDeletingId(viewingItem.id); }}>
+                  <Trash2 className="h-4 w-4" />Excluir
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

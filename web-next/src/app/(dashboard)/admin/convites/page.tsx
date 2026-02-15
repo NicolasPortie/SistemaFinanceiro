@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type AdminCodigoConvite } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,10 +27,21 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminConvitesPage() {
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [removingId, setRemovingId] = useState<number | null>(null);
   const [descricao, setDescricao] = useState("");
   const [horasValidade, setHorasValidade] = useState(48);
 
@@ -60,6 +71,7 @@ export default function AdminConvitesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "convites"] });
       toast.success("Código removido");
+      setRemovingId(null);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -191,8 +203,7 @@ export default function AdminConvitesPage() {
                       variant="outline"
                       size="sm"
                       className="h-8 text-xs text-red-600"
-                      onClick={() => remover.mutate(c.id)}
-                      disabled={remover.isPending}
+                      onClick={() => setRemovingId(c.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5 mr-1" />
                       Remover
@@ -217,6 +228,29 @@ export default function AdminConvitesPage() {
           </Card>
         )}
       </div>
+
+      {/* Remove Confirmation */}
+      <AlertDialog open={removingId !== null} onOpenChange={() => setRemovingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover código de convite?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O código será removido permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => removingId && remover.mutate(removingId)}
+              disabled={remover.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>

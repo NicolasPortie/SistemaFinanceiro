@@ -93,6 +93,7 @@ export const lancamentoSchema = z.object({
   tipo: z.enum(["despesa", "receita"]),
   categoria: z.string().optional(),
   cartaoId: z.string().optional(),
+  formaPagamento: z.string().optional(),
   data: z.string().optional(),
 });
 

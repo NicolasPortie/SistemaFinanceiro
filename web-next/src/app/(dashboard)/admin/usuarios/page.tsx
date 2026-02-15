@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type AdminUsuario } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatCurrency } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,12 +30,29 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 export default function AdminUsuariosPage() {
   const queryClient = useQueryClient();
   const { usuario: currentUser } = useAuth();
   const [selectedUser, setSelectedUser] = useState<AdminUsuario | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    userId: number;
+    action: string;
+    label: string;
+    description: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const { data: usuarios, isLoading } = useQuery({
     queryKey: ["admin", "usuarios"],
@@ -223,7 +240,13 @@ export default function AdminUsuariosPage() {
                           variant="outline"
                           size="sm"
                           className="h-8 text-xs text-emerald-600"
-                          onClick={() => desbloquear.mutate(u.id)}
+                          onClick={() => setConfirmAction({
+                            userId: u.id,
+                            action: "desbloquear",
+                            label: `Desbloquear ${u.nome}?`,
+                            description: "O usuário poderá acessar o sistema novamente.",
+                            onConfirm: () => desbloquear.mutate(u.id),
+                          })}
                           disabled={desbloquear.isPending}
                         >
                           <Unlock className="h-3.5 w-3.5 mr-1" />
@@ -234,7 +257,13 @@ export default function AdminUsuariosPage() {
                           variant="outline"
                           size="sm"
                           className="h-8 text-xs text-red-600"
-                          onClick={() => bloquear.mutate(u.id)}
+                          onClick={() => setConfirmAction({
+                            userId: u.id,
+                            action: "bloquear",
+                            label: `Bloquear ${u.nome}?`,
+                            description: "O usuário será bloqueado temporariamente e não poderá acessar o sistema.",
+                            onConfirm: () => bloquear.mutate(u.id),
+                          })}
                           disabled={bloquear.isPending}
                         >
                           <Ban className="h-3.5 w-3.5 mr-1" />
@@ -246,7 +275,15 @@ export default function AdminUsuariosPage() {
                         variant="outline"
                         size="sm"
                         className="h-8 text-xs"
-                        onClick={() => desativar.mutate(u.id)}
+                        onClick={() => setConfirmAction({
+                          userId: u.id,
+                          action: u.ativo ? "desativar" : "ativar",
+                          label: u.ativo ? `Desativar ${u.nome}?` : `Ativar ${u.nome}?`,
+                          description: u.ativo
+                            ? "A conta do usuário será desativada."
+                            : "A conta do usuário será reativada.",
+                          onConfirm: () => desativar.mutate(u.id),
+                        })}
                         disabled={desativar.isPending}
                       >
                         {u.ativo ? (
@@ -283,7 +320,13 @@ export default function AdminUsuariosPage() {
                       variant="outline"
                       size="sm"
                       className="h-8 text-xs text-orange-600"
-                      onClick={() => revogarSessoes.mutate(u.id)}
+                      onClick={() => setConfirmAction({
+                        userId: u.id,
+                        action: "revogar",
+                        label: `Revogar sessões de ${u.nome}?`,
+                        description: "Todas as sessões ativas do usuário serão encerradas.",
+                        onConfirm: () => revogarSessoes.mutate(u.id),
+                      })}
                       disabled={revogarSessoes.isPending}
                     >
                       <Trash2 className="h-3.5 w-3.5 mr-1" />
@@ -301,6 +344,15 @@ export default function AdminUsuariosPage() {
             </CardContent>
           </Card>
         ))}
+
+        {(!usuarios || usuarios.length === 0) && !isLoading && (
+          <Card className="col-span-full">
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="h-12 w-12 text-muted-foreground/40 mb-3" />
+              <p className="text-muted-foreground">Nenhum usuário encontrado.</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Detail Dialog */}
@@ -308,6 +360,27 @@ export default function AdminUsuariosPage() {
         usuario={selectedUser}
         onClose={() => setSelectedUser(null)}
       />
+
+      {/* Confirm Dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmAction?.label}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmAction?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                confirmAction?.onConfirm();
+                setConfirmAction(null);
+              }}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -376,19 +449,19 @@ function UserDetailDialog({
                 <div className="bg-emerald-500/10 rounded-lg p-3 text-center">
                   <p className="text-xs text-muted-foreground">Receitas</p>
                   <p className="font-bold text-emerald-500">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(detalhe.receitaMedia)}
+                    {formatCurrency(detalhe.receitaMedia)}
                   </p>
                 </div>
                 <div className="bg-red-500/10 rounded-lg p-3 text-center">
                   <p className="text-xs text-muted-foreground">Gastos</p>
                   <p className="font-bold text-red-500">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(detalhe.gastoMedio)}
+                    {formatCurrency(detalhe.gastoMedio)}
                   </p>
                 </div>
                 <div className="bg-blue-500/10 rounded-lg p-3 text-center">
                   <p className="text-xs text-muted-foreground">Saldo</p>
                   <p className={`font-bold ${detalhe.saldoAtual >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(detalhe.saldoAtual)}
+                    {formatCurrency(detalhe.saldoAtual)}
                   </p>
                 </div>
               </div>
@@ -403,7 +476,7 @@ function UserDetailDialog({
                       <span>{c.nome}</span>
                       <div className="flex items-center gap-3">
                         <span className="text-muted-foreground">
-                          Limite: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(c.limite)}
+                          Limite: {formatCurrency(c.limite)}
                         </span>
                         {!c.ativo && <Badge variant="secondary" className="text-[10px]">Inativo</Badge>}
                       </div>
@@ -421,8 +494,8 @@ function UserDetailDialog({
                     <div key={m.id} className="flex justify-between text-sm py-1 border-b border-border/20">
                       <span>{m.nome}</span>
                       <span className="text-muted-foreground">
-                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(m.valorAtual)} /{" "}
-                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(m.valorAlvo)}
+                        {formatCurrency(m.valorAtual)} /{" "}
+                        {formatCurrency(m.valorAlvo)}
                       </span>
                     </div>
                   ))}
@@ -442,7 +515,7 @@ function UserDetailDialog({
                       </div>
                       <span className={l.tipo === "Receita" ? "text-emerald-500" : "text-red-500"}>
                         {l.tipo === "Receita" ? "+" : "-"}
-                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(l.valor)}
+                        {formatCurrency(l.valor)}
                       </span>
                     </div>
                   ))}

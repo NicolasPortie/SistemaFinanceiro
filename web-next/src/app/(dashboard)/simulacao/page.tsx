@@ -316,7 +316,7 @@ export default function SimulacaoPage() {
                           </div>
                           <p className="text-lg font-bold tabular-nums">
                             {formatCurrency(c.valorParcela)}
-                            <span className="text-[11px] text-muted-foreground/60 font-medium font-normal">/mês</span>
+                            <span className="text-[11px] text-muted-foreground/60 font-normal">/mês</span>
                           </p>
                           <p className="text-[11px] text-muted-foreground/60 font-medium">
                             Menor saldo: {formatCurrency(c.menorSaldoProjetado)}

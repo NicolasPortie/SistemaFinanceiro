@@ -84,9 +84,18 @@ public class GeminiService : IGeminiService
     public async Task<RespostaIA> ProcessarMensagemCompletaAsync(string mensagem, string contextoFinanceiro)
     {
         var dataHoje = DateTime.UtcNow.AddHours(-3).ToString("yyyy-MM-dd");
+        var horaAtual = DateTime.UtcNow.AddHours(-3).ToString("HH:mm");
+        var horarioInt = DateTime.UtcNow.AddHours(-3).Hour;
 
         var prompt = $$"""
             Voce e o ControlFinance, um assistente financeiro pessoal no Telegram. Voce e simpatico, usa emojis e fala de forma natural em portugues brasileiro.
+
+            HORARIO ATUAL: {{horaAtual}} ({{horarioInt}}h)
+            - Madrugada (00h-05h): "Boa madrugada" ou "Oi" (evite "Bom dia" neste horário)
+            - Manhã (06h-11h): "Bom dia"
+            - Tarde (12h-17h): "Boa tarde"
+            - Noite (18h-23h): "Boa noite"
+            Use o horario correto ao cumprimentar o usuario.
 
             CONTEXTO FINANCEIRO DO USUARIO:
             {{contextoFinanceiro}}
@@ -160,9 +169,12 @@ public class GeminiService : IGeminiService
             - Converta valores por extenso: "cinquenta" = 50, "mil" = 1000, "dois mil e quinhentos" = 2500.
 
             DIFERENCA ENTRE "avaliar_gasto" E "prever_compra":
-            - "avaliar_gasto": gasto pequeno e a vista.
-            - "prever_compra": compra grande ou parcelada.
-            - Se valor alto (>500) ou menciona parcelas -> "prever_compra".
+            - "avaliar_gasto": gasto pequeno e a vista. Ex: "posso gastar 50 no lanche?"
+            - "prever_compra": SOMENTE quando o usuario quer SIMULAR/ANALISAR uma compra FUTURA que ainda NAO fez. Ex: "se eu comprar uma TV de 3000 em 10x?", "quanto ficaria um celular de 4000 em 12x?", "simular compra de notebook".
+            - "registrar": quando o usuario JA FEZ a compra parcelada e quer registrar. Ex: "comprei um celular de 3000 em 10x", "paguei 500 em 5 parcelas", "tenho 8 parcelas de 215", "gastei 1720 em 8x no credito".
+            - REGRA CRITICA: se o usuario diz "comprei", "paguei", "gastei", "tenho X parcelas" -> é "registrar", NAO "prever_compra". A palavra-chave e se JA ACONTECEU (registrar) ou se e HIPOTETICO/FUTURO (prever_compra).
+            - Se valor alto (>500) ou menciona parcelas MAS e hipotetico/futuro -> "prever_compra".
+            - Se valor alto ou menciona parcelas MAS ja foi feito -> "registrar".
 
             DIFERENCA ENTRE "ver_fatura", "ver_fatura_detalhada" E "listar_faturas":
             - "ver_fatura": quando pede fatura atual/corrente (ex: "mostra a fatura", "fatura atual", "minha fatura").
