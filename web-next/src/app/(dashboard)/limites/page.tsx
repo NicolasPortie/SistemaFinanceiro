@@ -13,18 +13,21 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  X,
+  DollarSign,
+  Shield,
+  BarChart3,
 } from "lucide-react";
 import {
   PageShell,
-  PageHeader,
   EmptyState,
-  CardSkeleton,
   ErrorState,
+  CardSkeleton,
 } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -32,8 +35,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,35 +52,51 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
 function statusIcon(status: string) {
   switch (status) {
-    case "ok":
-      return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
-    case "atencao":
-      return <AlertTriangle className="h-4 w-4 text-amber-500" />;
-    case "critico":
-      return <AlertCircle className="h-4 w-4 text-red-500" />;
-    case "excedido":
-      return <XCircle className="h-4 w-4 text-red-600" />;
-    default:
-      return null;
+    case "ok": return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
+    case "atencao": return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+    case "critico": return <AlertCircle className="h-5 w-5 text-red-500" />;
+    case "excedido": return <XCircle className="h-5 w-5 text-red-600" />;
+    default: return <Gauge className="h-5 w-5" />;
   }
 }
 
 function statusLabel(status: string) {
   switch (status) {
-    case "ok":
-      return "Dentro do limite";
-    case "atencao":
-      return "Atenção";
-    case "critico":
-      return "Crítico";
-    case "excedido":
-      return "Excedido";
-    default:
-      return status;
+    case "ok": return "Dentro do limite";
+    case "atencao": return "Atenção";
+    case "critico": return "Crítico";
+    case "excedido": return "Excedido";
+    default: return status;
+  }
+}
+
+function statusBgColor(status: string) {
+  switch (status) {
+    case "ok": return "bg-emerald-100 dark:bg-emerald-500/15";
+    case "atencao": return "bg-amber-100 dark:bg-amber-500/15";
+    case "critico": return "bg-red-100 dark:bg-red-500/15";
+    case "excedido": return "bg-red-100 dark:bg-red-500/15";
+    default: return "bg-muted/50";
+  }
+}
+
+function progressColor(status: string) {
+  switch (status) {
+    case "ok": return "bg-emerald-500";
+    case "atencao": return "bg-amber-500";
+    case "critico": return "bg-red-500";
+    case "excedido": return "bg-red-600";
+    default: return "bg-primary";
   }
 }
 
@@ -94,19 +118,10 @@ export default function LimitesPage() {
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
     const valorNum = parseFloat(valor.replace(",", "."));
-    if (isNaN(valorNum) || valorNum <= 0) {
-      toast.error("Informe um valor válido");
-      return;
-    }
+    if (isNaN(valorNum) || valorNum <= 0) { toast.error("Informe um valor válido"); return; }
     definirLimite.mutate(
       { categoria, valor: valorNum },
-      {
-        onSuccess: () => {
-          setCategoria("");
-          setValor("");
-          setShowForm(false);
-        },
-      }
+      { onSuccess: () => { setCategoria(""); setValor(""); setShowForm(false); } }
     );
   };
 
@@ -114,184 +129,266 @@ export default function LimitesPage() {
     if (!deleteId) return;
     const limite = limites.find((l) => l.id === deleteId);
     if (!limite) return;
-
-    removerLimite.mutate(limite.categoriaNome, {
-      onSuccess: () => setDeleteId(null),
-    });
+    removerLimite.mutate(limite.categoriaNome, { onSuccess: () => setDeleteId(null) });
   };
+
+  // Summary stats
+  const okCount = limites.filter(l => l.status === "ok").length;
+  const alertCount = limites.filter(l => l.status === "atencao" || l.status === "critico").length;
+  const avgUse = limites.length > 0 ? Math.round(limites.reduce((s, l) => s + l.percentualConsumido, 0) / limites.length) : 0;
 
   return (
     <PageShell>
-      <PageHeader
-        title="Limites por Categoria"
-        description="Defina limites de gasto por categoria para manter o controle"
-      >
-        <Button
-          onClick={() => setShowForm(!showForm)}
-          className="gap-2"
-          disabled={categoriasDisponiveis.length === 0}
-        >
-          {showForm ? (
-            <>
-              <X className="h-4 w-4" /> Cancelar
-            </>
-          ) : (
-            <>
-              <Plus className="h-4 w-4" /> Definir Limite
-            </>
-          )}
-        </Button>
-      </PageHeader>
+      {/* ── Page Header ── */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">Limites por Categoria</h1>
+          <p className="text-sm text-muted-foreground mt-1">Defina limites de gasto para manter o controle financeiro</p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex items-center gap-2 mt-3 sm:mt-0">
+          <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold" disabled={categoriasDisponiveis.length === 0}>
+            <Plus className="h-4 w-4" />
+            Definir Limite
+          </Button>
+        </motion.div>
+      </div>
 
-      {/* Form */}
-      <AnimatePresence>
-        {showForm && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <form
-              onSubmit={handleSalvar}
-              className="card-premium p-6 space-y-4"
-            >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Categoria</Label>
-                  <Select value={categoria} onValueChange={setCategoria}>
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Selecione a categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoriasDisponiveis.map((c) => (
-                        <SelectItem key={c.id} value={c.nome}>
-                          {c.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Valor Limite (R$)</Label>
-                  <Input
-                    placeholder="0,00"
-                    value={valor}
-                    onChange={(e) => setValor(e.target.value)}
-                    className="h-11 tabular-nums"
-                    required
-                  />
-                </div>
-              </div>
-              <Button
-                type="submit"
-                disabled={definirLimite.isPending || !categoria}
-                className="gap-2"
-              >
-                {definirLimite.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4" />
-                    Salvar Limite
-                  </>
-                )}
-              </Button>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Limits list */}
+      {/* ── Stats Overview ── */}
       {loading ? (
-        <CardSkeleton count={3} />
+        <CardSkeleton count={4} />
       ) : isError ? (
         <ErrorState message={error?.message} onRetry={() => refetch()} />
       ) : limites.length > 0 ? (
-        <div className="space-y-3">
-          <AnimatePresence>
-            {limites.map((l, i) => (
-              <motion.div
-                key={l.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ delay: i * 0.05 }}
-                className="card-premium p-5 transition-all hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-2.5">
-                    {statusIcon(l.status)}
-                    <div>
-                      <h4 className="font-bold tracking-tight">{l.categoriaNome}</h4>
-                      <Badge variant="secondary" className={statusColor(l.status).badge}>
-                        {statusLabel(l.status)}
-                      </Badge>
+        <>
+          <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-premium p-5 group">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Limites Ativos</p>
+                  <p className="text-2xl font-extrabold tabular-nums tracking-tight">{limites.length}</p>
+                </div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
+                  <Gauge className="h-5 w-5" />
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-5 group">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Dentro do Limite</p>
+                  <p className="text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">{okCount}</p>
+                </div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110">
+                  <Shield className="h-5 w-5" />
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-5 group">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Em Alerta</p>
+                  <p className={`text-2xl font-extrabold tabular-nums tracking-tight ${alertCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{alertCount}</p>
+                </div>
+                <div className={`flex h-11 w-11 items-center justify-center rounded-xl transition-transform duration-500 group-hover:scale-110 ${alertCount > 0 ? "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400" : "bg-muted/50 text-muted-foreground"}`}>
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5 group">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Uso Médio</p>
+                  <p className="text-2xl font-extrabold tabular-nums tracking-tight">{avgUse}%</p>
+                </div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
+                  <BarChart3 className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="mt-3 h-1 rounded-full bg-muted/40 overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-1000 ${avgUse > 80 ? "bg-red-500" : avgUse > 60 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.min(avgUse, 100)}%` }} />
+              </div>
+            </motion.div>
+          </div>
+
+          {/* ── Limits Grid ── */}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <AnimatePresence>
+              {limites.map((l, i) => (
+                <motion.div
+                  key={l.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="card-premium p-5 group transition-all hover:shadow-lg"
+                >
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${statusBgColor(l.status)} transition-transform duration-300 group-hover:scale-105`}>
+                        {statusIcon(l.status)}
+                      </div>
+                      <div>
+                        <h4 className="font-bold tracking-tight text-sm">{l.categoriaNome}</h4>
+                        <Badge variant="secondary" className={`text-[10px] font-semibold mt-0.5 ${statusColor(l.status).badge}`}>
+                          {statusLabel(l.status)}
+                        </Badge>
+                      </div>
+                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all" onClick={() => setDeleteId(l.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Remover limite</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
+                  {/* Circular progress visual */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="relative h-16 w-16 shrink-0">
+                      <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">
+                        <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" strokeWidth="5" className="text-muted/30" />
+                        <circle
+                          cx="32" cy="32" r="26" fill="none"
+                          strokeWidth="5" strokeLinecap="round"
+                          className={progressColor(l.status)}
+                          stroke="currentColor"
+                          strokeDasharray={`${Math.min(l.percentualConsumido, 100) * 1.634} 163.4`}
+                          style={{ transition: "stroke-dasharray 1s ease-out" }}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-sm font-extrabold tabular-nums">{l.percentualConsumido.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground/70 font-medium">Gasto</span>
+                        <span className="font-bold tabular-nums">{formatCurrency(l.gastoAtual)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground/70 font-medium">Limite</span>
+                        <span className="font-bold tabular-nums">{formatCurrency(l.valorLimite)}</span>
+                      </div>
+                      <Separator className="my-1" />
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground/70 font-medium">Disponível</span>
+                        <span className={`font-bold tabular-nums ${l.valorLimite - l.gastoAtual >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                          {formatCurrency(Math.max(l.valorLimite - l.gastoAtual, 0))}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-muted-foreground hover:text-destructive"
-                    onClick={() => setDeleteId(l.id)}
-                    aria-label="Remover limite"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
 
-                <div className="space-y-2">
-                  <Progress value={Math.min(l.percentualConsumido, 100)} className="h-2" />
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {formatCurrency(l.gastoAtual)} <span className="text-xs">de</span>{" "}
-                      {formatCurrency(l.valorLimite)}
-                    </span>
-                    <span className="font-bold tabular-nums">
-                      {l.percentualConsumido.toFixed(0)}%
-                    </span>
+                  {/* Bottom progress bar */}
+                  <div className="h-1.5 rounded-full bg-muted/30 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ${progressColor(l.status)}`}
+                      style={{ width: `${Math.min(l.percentualConsumido, 100)}%` }}
+                    />
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </>
       ) : (
         <EmptyState
           icon={<Gauge className="h-6 w-6" />}
           title="Nenhum limite definido"
-          description="Defina limites de gasto por categoria para acompanhar seus gastos"
+          description="Defina limites de gasto por categoria para acompanhar seus gastos de forma visual"
           action={
-            <Button onClick={() => setShowForm(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Definir primeiro limite
+            <Button onClick={() => setShowForm(true)} className="gap-2 shadow-premium">
+              <Plus className="h-4 w-4" />Definir primeiro limite
             </Button>
           }
         />
       )}
 
-      {/* Delete Dialog */}
+      {/* ── New Limit Sheet ── */}
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader className="pb-6">
+            <SheetTitle className="text-xl font-bold">Definir Limite</SheetTitle>
+            <SheetDescription>Configure um limite de gasto para uma categoria</SheetDescription>
+          </SheetHeader>
+          <form onSubmit={handleSalvar} className="space-y-6">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</Label>
+              <Select value={categoria} onValueChange={setCategoria}>
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoriasDisponiveis.map((c) => (
+                    <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {categoriasDisponiveis.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Todas as categorias já possuem limites definidos.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Limite (R$)</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                <Input placeholder="0,00" value={valor} onChange={(e) => setValor(e.target.value)} className="h-11 rounded-xl pl-9 text-lg tabular-nums font-semibold" required />
+              </div>
+            </div>
+
+            {/* Preview */}
+            {categoria && valor && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl bg-muted/20 border border-border/30 space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Preview</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-500/15">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-sm">{categoria}</p>
+                    <p className="text-xs text-muted-foreground">Limite: {formatCurrency(parseFloat(valor.replace(",", ".")) || 0)}</p>
+                  </div>
+                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 border-0">0%</Badge>
+                </div>
+              </motion.div>
+            )}
+
+            <Separator />
+
+            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={definirLimite.isPending || !categoria}>
+              {definirLimite.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Gauge className="h-4 w-4" />
+                  Salvar Limite
+                </>
+              )}
+            </Button>
+          </form>
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Delete Dialog ── */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover limite</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja remover este limite? Essa ação não pode ser desfeita.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Remover limite?</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja remover este limite? Essa ação não pode ser desfeita.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRemover}
-              disabled={removerLimite.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
-            >
-              {removerLimite.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-              Remover
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemover} disabled={removerLimite.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
+              {removerLimite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" />Remover</>}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

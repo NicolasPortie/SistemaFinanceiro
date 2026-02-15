@@ -329,10 +329,22 @@ interface RequestOptions {
 
 let csrfTokenCache: string | null = null;
 
+// Endpoints de pré-autenticação isentos de CSRF (alinhado com o middleware do backend)
+const PRE_AUTH_PATHS = [
+  "/auth/csrf",
+  "/auth/login",
+  "/auth/registrar",
+  "/auth/verificar-registro",
+  "/auth/reenviar-codigo-registro",
+  "/auth/recuperar-senha",
+  "/auth/redefinir-senha",
+  "/auth/refresh",
+];
+
 function precisaCsrf(method: string, path: string): boolean {
   const m = method.toUpperCase();
   if (m === "GET" || m === "HEAD" || m === "OPTIONS" || m === "TRACE") return false;
-  if (path === "/auth/csrf") return false;
+  if (PRE_AUTH_PATHS.some((p) => path === p || path.startsWith(p + "/"))) return false;
   return true;
 }
 
@@ -400,6 +412,10 @@ async function tryRefreshToken(): Promise<boolean> {
     const data = await res.json().catch(() => null);
     if (data?.usuario) {
       localStorage.setItem("cf_user", JSON.stringify(data.usuario));
+    }
+    // Atualizar cache CSRF com o token retornado pelo refresh
+    if (typeof data?.csrfToken === "string") {
+      csrfTokenCache = data.csrfToken;
     }
     return true;
   } catch {
@@ -472,7 +488,15 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const text = await res.text();
   if (!text) return undefined as unknown as T;
-  return JSON.parse(text) as T;
+  const parsed = JSON.parse(text);
+
+  // Auto-atualizar cache CSRF quando a resposta contém um novo token
+  // (login, verificar-registro e refresh retornam csrfToken)
+  if (parsed && typeof parsed.csrfToken === "string") {
+    csrfTokenCache = parsed.csrfToken;
+  }
+
+  return parsed as T;
 }
 
 // ── API Endpoints ──────────────────────────────────────────

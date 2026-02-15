@@ -26,8 +26,12 @@ public class SecurityHeadersMiddleware
         // Content Security Policy
         context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'");
 
-        // Prevenir cache de dados sensíveis em respostas autenticadas
-        if (context.Request.Headers.ContainsKey("Authorization"))
+        // Restringir acesso a APIs do browser
+        context.Response.Headers.Append("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+        // Prevenir cache de dados sensíveis em respostas autenticadas (cookie-based auth)
+        if (context.Request.Cookies.ContainsKey("cf_access_token") ||
+            context.Request.Headers.ContainsKey("Authorization"))
         {
             context.Response.Headers.Append("Cache-Control", "no-store, no-cache, must-revalidate");
             context.Response.Headers.Append("Pragma", "no-cache");

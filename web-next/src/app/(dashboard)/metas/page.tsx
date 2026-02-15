@@ -25,11 +25,22 @@ import {
   Minus,
   Loader2,
   Trophy,
+  DollarSign,
+  Calendar,
+  Flag,
+  Zap,
 } from "lucide-react";
-import { PageShell, PageHeader, StatCard, EmptyState } from "@/components/shared/page-components";
+import {
+  PageShell,
+  EmptyState,
+  CardSkeleton,
+} from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -37,10 +48,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +73,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
 const tiposLabel: Record<string, string> = {
@@ -67,10 +87,16 @@ const tiposLabel: Record<string, string> = {
   reserva_mensal: "Reserva Mensal",
 };
 
-const prioridadeBadge: Record<string, string> = {
-  alta: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
-  media: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
-  baixa: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
+const tiposIcon: Record<string, React.ReactNode> = {
+  juntar_valor: <DollarSign className="h-4 w-4" />,
+  reduzir_gasto: <TrendingDown className="h-4 w-4" />,
+  reserva_mensal: <Zap className="h-4 w-4" />,
+};
+
+const prioridadeConfig: Record<string, { badge: string; color: string }> = {
+  alta: { badge: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-800", color: "text-red-500" },
+  media: { badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border-amber-200 dark:border-amber-800", color: "text-amber-500" },
+  baixa: { badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-800", color: "text-blue-500" },
 };
 
 const desvioIcon = (desvio: string) => {
@@ -79,6 +105,13 @@ const desvioIcon = (desvio: string) => {
   return <Minus className="h-3.5 w-3.5 text-amber-500" />;
 };
 
+function progressColor(pct: number) {
+  if (pct >= 100) return "bg-emerald-500";
+  if (pct >= 70) return "bg-emerald-500";
+  if (pct >= 40) return "bg-amber-500";
+  return "bg-primary";
+}
+
 export default function MetasPage() {
   const { data: metas = [], isLoading: loading } = useMetas();
   const { data: categorias = [] } = useCategorias();
@@ -86,9 +119,9 @@ export default function MetasPage() {
   const atualizarMeta = useAtualizarMeta();
   const removerMeta = useRemoverMeta();
 
-  const [tab, setTab] = useState("metas");
+  const [showForm, setShowForm] = useState(false);
 
-  // Create form
+  // Create form state
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("juntar_valor");
   const [prioridade, setPrioridade] = useState("media");
@@ -103,34 +136,22 @@ export default function MetasPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
+  const resetForm = () => {
+    setNome(""); setTipo("juntar_valor"); setPrioridade("media");
+    setValorAlvo(""); setValorAtual(""); setPrazo(""); setCategoria("");
+  };
+
   const handleCriar = async (e: React.FormEvent) => {
     e.preventDefault();
     const alvo = parseFloat(valorAlvo.replace(",", "."));
     const atual = parseFloat(valorAtual.replace(",", ".") || "0");
-    if (isNaN(alvo) || alvo <= 0) {
-      toast.error("Informe um valor alvo válido");
-      return;
-    }
+    if (isNaN(alvo) || alvo <= 0) { toast.error("Informe um valor alvo válido"); return; }
     const data: CriarMetaRequest = {
-      nome,
-      tipo,
-      valorAlvo: alvo,
-      valorAtual: atual,
-      prazo,
-      prioridade,
+      nome, tipo, valorAlvo: alvo, valorAtual: atual, prazo, prioridade,
       categoria: tipo === "reduzir_gasto" ? categoria : undefined,
     };
     criarMeta.mutate(data, {
-      onSuccess: () => {
-        setNome("");
-        setTipo("juntar_valor");
-        setPrioridade("media");
-        setValorAlvo("");
-        setValorAtual("");
-        setPrazo("");
-        setCategoria("");
-        setTab("metas");
-      },
+      onSuccess: () => { resetForm(); setShowForm(false); },
     });
   };
 
@@ -141,10 +162,7 @@ export default function MetasPage() {
     setActionLoading(editMeta.id);
     atualizarMeta.mutate(
       { id: editMeta.id, data: { valorAtual: val } },
-      {
-        onSuccess: () => setEditMeta(null),
-        onSettled: () => setActionLoading(null),
-      }
+      { onSuccess: () => setEditMeta(null), onSettled: () => setActionLoading(null) }
     );
   };
 
@@ -170,322 +188,319 @@ export default function MetasPage() {
   const pausadas = metas.filter((m) => m.status === "pausada");
   const concluidas = metas.filter((m) => m.status === "concluida");
 
+  // Summary values
+  const totalAlvo = ativas.reduce((s, m) => s + m.valorAlvo, 0);
+  const totalAtual = ativas.reduce((s, m) => s + m.valorAtual, 0);
+  const avgProgress = ativas.length > 0 ? Math.round(ativas.reduce((s, m) => s + m.percentualConcluido, 0) / ativas.length) : 0;
+
   return (
     <PageShell>
-      <PageHeader
-        title="Metas Financeiras"
-        description="Defina e acompanhe suas metas financeiras"
-      />
-
-      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 h-11">
-          <TabsTrigger value="metas" className="gap-2">
-            <Target className="h-4 w-4" />
-            Metas
-          </TabsTrigger>
-          <TabsTrigger value="nova" className="gap-2">
+      {/* ── Page Header ── */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">Metas Financeiras</h1>
+          <p className="text-sm text-muted-foreground mt-1">Defina e acompanhe suas metas de economia e investimento</p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex items-center gap-2 mt-3 sm:mt-0">
+          <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
             <Plus className="h-4 w-4" />
             Nova Meta
-          </TabsTrigger>
-        </TabsList>
+          </Button>
+        </motion.div>
+      </div>
 
-        {/* ── Tab Metas ── */}
-        <TabsContent value="metas" className="space-y-6">
-          {/* Summary */}
-          <div className="grid gap-5 sm:grid-cols-3">
-            <StatCard
-              title="Ativas"
-              value={ativas.length.toString()}
-              icon={<Target className="h-5 w-5" />}
-              delay={0}
-            />
-            <StatCard
-              title="Concluídas"
-              value={concluidas.length.toString()}
-              icon={<Trophy className="h-5 w-5" />}
-              trend="up"
-              delay={1}
-            />
-            <StatCard
-              title="Pausadas"
-              value={pausadas.length.toString()}
-              icon={<Pause className="h-5 w-5" />}
-              delay={2}
-            />
-          </div>
+      {/* ── Stats Overview ── */}
+      {loading ? (
+        <CardSkeleton count={4} />
+      ) : (
+        <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-premium p-5 group">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Ativas</p>
+                <p className="text-2xl font-extrabold tabular-nums tracking-tight">{ativas.length}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
+                <Target className="h-5 w-5" />
+              </div>
+            </div>
+          </motion.div>
 
-          {/* Active Goals */}
-          {ativas.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground">
-                Metas Ativas
-              </h3>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-5 group">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Concluídas</p>
+                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">{concluidas.length}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110">
+                <Trophy className="h-5 w-5" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-5 group">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Progresso Médio</p>
+                <p className="text-2xl font-extrabold tabular-nums tracking-tight">{avgProgress}%</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="mt-3 h-1 rounded-full bg-muted/40 overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-1000 ${progressColor(avgProgress)}`} style={{ width: `${Math.min(avgProgress, 100)}%` }} />
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5 group">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Total Guardado</p>
+                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">{formatCurrency(totalAtual)}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110">
+                <DollarSign className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground font-medium tabular-nums">de {formatCurrency(totalAlvo)} total</p>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ── Active Goals ── */}
+      {ativas.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Metas Ativas</h3>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <AnimatePresence>
               {ativas.map((meta, i) => (
                 <MetaCard
                   key={meta.id}
                   meta={meta}
                   index={i}
                   actionLoading={actionLoading}
-                  onEdit={() => {
-                    setEditMeta(meta);
-                    setEditValor(meta.valorAtual.toString());
-                  }}
+                  onEdit={() => { setEditMeta(meta); setEditValor(meta.valorAtual.toString()); }}
                   onPausar={() => handlePausarResumir(meta)}
                   onRemover={() => setDeleteId(meta.id)}
                 />
               ))}
-            </div>
-          )}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
 
-          {/* Paused Goals */}
-          {pausadas.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground">
-                Pausadas
-              </h3>
-              {pausadas.map((meta, i) => (
-                <MetaCard
-                  key={meta.id}
-                  meta={meta}
-                  index={i}
-                  actionLoading={actionLoading}
-                  onEdit={() => {
-                    setEditMeta(meta);
-                    setEditValor(meta.valorAtual.toString());
-                  }}
-                  onPausar={() => handlePausarResumir(meta)}
-                  onRemover={() => setDeleteId(meta.id)}
-                />
-              ))}
-            </div>
-          )}
+      {/* ── Paused Goals ── */}
+      {pausadas.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Pausadas</h3>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {pausadas.map((meta, i) => (
+              <MetaCard
+                key={meta.id}
+                meta={meta}
+                index={i}
+                actionLoading={actionLoading}
+                onEdit={() => { setEditMeta(meta); setEditValor(meta.valorAtual.toString()); }}
+                onPausar={() => handlePausarResumir(meta)}
+                onRemover={() => setDeleteId(meta.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
-          {/* Completed Goals */}
-          {concluidas.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground">
-                Concluídas
-              </h3>
-              {concluidas.map((meta) => (
-                <motion.div
-                  key={meta.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center gap-3 card-premium p-4"
-                >
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{meta.nome}</p>
-                    <p className="text-[11px] text-muted-foreground/60 font-medium">
-                      {formatCurrency(meta.valorAlvo)}
-                    </p>
+      {/* ── Completed Goals ── */}
+      {concluidas.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Concluídas</h3>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {concluidas.map((meta, i) => (
+              <motion.div key={meta.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="card-premium p-5 group">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                    <CheckCircle2 className="h-5 w-5" />
                   </div>
-                  <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm truncate">{meta.nome}</p>
+                    <p className="text-[11px] text-muted-foreground/60 font-medium tabular-nums">{formatCurrency(meta.valorAlvo)}</p>
+                  </div>
+                  <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-0 font-semibold text-[10px]">
                     Concluída
                   </Badge>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Empty state ── */}
+      {metas.length === 0 && !loading && (
+        <EmptyState
+          icon={<Target className="h-6 w-6" />}
+          title="Nenhuma meta"
+          description="Crie sua primeira meta financeira para começar a acompanhar seu progresso"
+          action={
+            <Button onClick={() => setShowForm(true)} className="gap-2 shadow-premium">
+              <Plus className="h-4 w-4" /> Criar meta
+            </Button>
+          }
+        />
+      )}
+
+      {/* ── New Goal Sheet ── */}
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader className="pb-6">
+            <SheetTitle className="text-xl font-bold">Nova Meta</SheetTitle>
+            <SheetDescription>Defina uma meta financeira para acompanhar</SheetDescription>
+          </SheetHeader>
+          <form onSubmit={handleCriar} className="space-y-6">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome da Meta</Label>
+              <Input placeholder="Ex: Reserva de emergência" value={nome} onChange={(e) => setNome(e.target.value)} required className="h-11 rounded-xl" />
+            </div>
+
+            {/* Type selector */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["juntar_valor", "reduzir_gasto", "reserva_mensal"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTipo(t)}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-semibold transition-all ${tipo === t ? "bg-primary/10 text-primary border-2 border-primary/30" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40"}`}
+                  >
+                    {tiposIcon[t]}
+                    {tiposLabel[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Priority */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prioridade</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["baixa", "media", "alta"] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPrioridade(p)}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${prioridade === p ? `${prioridadeConfig[p].badge} border-2` : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40"}`}
+                  >
+                    <Flag className={`h-3 w-3 ${prioridade === p ? prioridadeConfig[p].color : ""}`} />
+                    {p === "baixa" ? "Baixa" : p === "media" ? "Média" : "Alta"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Values */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Alvo (R$)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <Input placeholder="0,00" value={valorAlvo} onChange={(e) => setValorAlvo(e.target.value)} required className="h-11 rounded-xl pl-9 tabular-nums font-semibold" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Já guardado (R$)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <Input placeholder="0,00" value={valorAtual} onChange={(e) => setValorAtual(e.target.value)} className="h-11 rounded-xl pl-9 tabular-nums font-semibold" />
+                </div>
+              </div>
+            </div>
+
+            {/* Deadline */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prazo</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                <Input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} required className="h-11 rounded-xl pl-9" />
+              </div>
+            </div>
+
+            {/* Category (for "reduzir_gasto") */}
+            <AnimatePresence>
+              {tipo === "reduzir_gasto" && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-2 overflow-hidden">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</Label>
+                  <Select value={categoria} onValueChange={setCategoria}>
+                    <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
+                    <SelectContent>{categorias.map((c) => (<SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>))}</SelectContent>
+                  </Select>
                 </motion.div>
-              ))}
+              )}
+            </AnimatePresence>
+
+            <Separator />
+
+            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={criarMeta.isPending}>
+              {criarMeta.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Target className="h-4 w-4" />Criar Meta</>}
+            </Button>
+          </form>
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Edit Value Dialog ── */}
+      <Dialog open={editMeta !== null} onOpenChange={() => setEditMeta(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Atualizar valor</DialogTitle>
+            <DialogDescription>Informe o novo valor atual da meta &quot;{editMeta?.nome}&quot;</DialogDescription>
+          </DialogHeader>
+          {editMeta && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border/30">
+              <div className="relative h-12 w-12 shrink-0">
+                <svg className="h-12 w-12 -rotate-90" viewBox="0 0 48 48">
+                  <circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/30" />
+                  <circle cx="24" cy="24" r="18" fill="none" strokeWidth="4" strokeLinecap="round" className={progressColor(editMeta.percentualConcluido)} stroke="currentColor" strokeDasharray={`${Math.min(editMeta.percentualConcluido, 100) * 1.131} 113.1`} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-[10px] font-extrabold tabular-nums">{editMeta.percentualConcluido.toFixed(0)}%</span>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm truncate">{editMeta.nome}</p>
+                <p className="text-[11px] text-muted-foreground/60 tabular-nums font-medium">Alvo: {formatCurrency(editMeta.valorAlvo)}</p>
+              </div>
             </div>
           )}
-
-          {metas.length === 0 && !loading && (
-            <EmptyState
-              icon={<Target className="h-6 w-6" />}
-              title="Nenhuma meta"
-              description="Crie sua primeira meta financeira para começar a acompanhar seu progresso"
-              action={
-                <Button onClick={() => setTab("nova")} className="gap-2">
-                  <Plus className="h-4 w-4" /> Criar meta
-                </Button>
-              }
-            />
-          )}
-        </TabsContent>
-
-        {/* ── Tab Nova Meta ── */}
-        <TabsContent value="nova">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="card-premium p-6"
-          >
-            <form onSubmit={handleCriar} className="space-y-5">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Nome da Meta</Label>
-                  <Input
-                    placeholder="Ex: Reserva de emergência"
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tipo</Label>
-                  <Select value={tipo} onValueChange={setTipo}>
-                    <SelectTrigger className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="juntar_valor">Juntar Valor</SelectItem>
-                      <SelectItem value="reduzir_gasto">Reduzir Gasto</SelectItem>
-                      <SelectItem value="reserva_mensal">Reserva Mensal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Prioridade</Label>
-                  <Select value={prioridade} onValueChange={setPrioridade}>
-                    <SelectTrigger className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="baixa">Baixa</SelectItem>
-                      <SelectItem value="media">Média</SelectItem>
-                      <SelectItem value="alta">Alta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Valor Alvo (R$)</Label>
-                  <Input
-                    placeholder="0,00"
-                    value={valorAlvo}
-                    onChange={(e) => setValorAlvo(e.target.value)}
-                    required
-                    className="h-11 tabular-nums"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Já guardado (R$)</Label>
-                  <Input
-                    placeholder="0,00"
-                    value={valorAtual}
-                    onChange={(e) => setValorAtual(e.target.value)}
-                    className="h-11 tabular-nums"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Prazo</Label>
-                  <Input
-                    type="date"
-                    value={prazo}
-                    onChange={(e) => setPrazo(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-
-                <AnimatePresence>
-                  {tipo === "reduzir_gasto" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-2 overflow-hidden"
-                    >
-                      <Label>Categoria</Label>
-                      <Select value={categoria} onValueChange={setCategoria}>
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categorias.map((c) => (
-                            <SelectItem key={c.id} value={c.nome}>
-                              {c.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={criarMeta.isPending}
-                className="w-full sm:w-auto gap-2 h-11 font-semibold shadow-premium"
-              >
-                {criarMeta.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Target className="h-4 w-4" />
-                    Criar Meta
-                  </>
-                )}
-              </Button>
-            </form>
-          </motion.div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Edit Dialog */}
-      <Dialog open={editMeta !== null} onOpenChange={() => setEditMeta(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Atualizar valor</DialogTitle>
-            <DialogDescription>
-              Informe o novo valor atual da meta &quot;{editMeta?.nome}&quot;
-            </DialogDescription>
-          </DialogHeader>
           <div className="space-y-2">
-            <Label>Valor Atual (R$)</Label>
-            <Input
-              value={editValor}
-              onChange={(e) => setEditValor(e.target.value)}
-              className="h-11 tabular-nums"
-            />
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Atual (R$)</Label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+              <Input value={editValor} onChange={(e) => setEditValor(e.target.value)} className="h-11 rounded-xl pl-9 tabular-nums font-semibold" />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditMeta(null)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleAtualizar}
-              disabled={actionLoading === editMeta?.id}
-              className="gap-2"
-            >
-              {actionLoading === editMeta?.id ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
+            <Button variant="outline" onClick={() => setEditMeta(null)} className="rounded-xl">Cancelar</Button>
+            <Button onClick={handleAtualizar} disabled={actionLoading === editMeta?.id} className="gap-2 rounded-xl shadow-premium font-semibold">
+              {actionLoading === editMeta?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" /> }
               Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
+      {/* ── Delete Dialog ── */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover meta</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja remover esta meta? Essa ação não pode ser desfeita.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Remover meta?</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza que deseja remover esta meta? Essa ação não pode ser desfeita.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRemover}
-              disabled={actionLoading === deleteId}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
-            >
-              {actionLoading === deleteId ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-              Remover
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemover} disabled={actionLoading === deleteId} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
+              {actionLoading === deleteId ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" />Remover</>}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -512,88 +527,97 @@ function MetaCard({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="card-premium p-5 space-y-4 transition-all hover:shadow-md"
+      className="card-premium group transition-all hover:shadow-lg"
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
+      <div className="p-5 pb-0">
+        <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="font-bold tracking-tight">{meta.nome}</h4>
-            <Badge variant="secondary" className={prioridadeBadge[meta.prioridade]}>
+            <h4 className="font-bold tracking-tight text-sm">{meta.nome}</h4>
+            <Badge variant="outline" className={`text-[10px] font-semibold ${prioridadeConfig[meta.prioridade]?.badge ?? ""}`}>
               {meta.prioridade}
             </Badge>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60 font-medium">
-            <span>{tiposLabel[meta.tipo] || meta.tipo}</span>
-            {meta.categoriaNome && (
-              <>
-                <span>•</span>
-                <span>{meta.categoriaNome}</span>
-              </>
-            )}
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {formatShortDate(meta.prazo)}
-            </span>
+          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onEdit}><Edit3 className="h-3.5 w-3.5" /></Button>
+                </TooltipTrigger>
+                <TooltipContent>Atualizar valor</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onPausar} disabled={actionLoading === meta.id}>
+                    {meta.status === "pausada" ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{meta.status === "pausada" ? "Retomar" : "Pausar"}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onRemover}><Trash2 className="h-3.5 w-3.5" /></Button>
+                </TooltipTrigger>
+                <TooltipContent>Remover</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onEdit} aria-label="Editar meta">
-            <Edit3 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            onClick={onPausar}
-            disabled={actionLoading === meta.id}
-            aria-label={meta.status === "pausada" ? "Retomar meta" : "Pausar meta"}
-          >
-            {meta.status === "pausada" ? (
-              <Play className="h-4 w-4" />
-            ) : (
-              <Pause className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 text-muted-foreground hover:text-destructive"
-            onClick={onRemover}
-            aria-label="Remover meta"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60 font-medium flex-wrap mb-4">
+          <span className="flex items-center gap-1">{tiposIcon[meta.tipo]}{tiposLabel[meta.tipo] || meta.tipo}</span>
+          {meta.categoriaNome && (<><span>·</span><span>{meta.categoriaNome}</span></>)}
+          <span>·</span>
+          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatShortDate(meta.prazo)}</span>
         </div>
       </div>
 
-      {/* Progress */}
-      <div className="space-y-2">
-        <Progress value={Math.min(meta.percentualConcluido, 100)} className="h-2" />
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground tabular-nums">
-            {formatCurrency(meta.valorAtual)} de {formatCurrency(meta.valorAlvo)}
-          </span>
-          <span className="font-bold tabular-nums">{meta.percentualConcluido.toFixed(0)}%</span>
+      {/* Progress visual */}
+      <div className="px-5 pb-4">
+        <div className="flex items-center gap-4 mb-3">
+          <div className="relative h-14 w-14 shrink-0">
+            <svg className="h-14 w-14 -rotate-90" viewBox="0 0 56 56">
+              <circle cx="28" cy="28" r="22" fill="none" stroke="currentColor" strokeWidth="4.5" className="text-muted/30" />
+              <circle
+                cx="28" cy="28" r="22" fill="none"
+                strokeWidth="4.5" strokeLinecap="round"
+                className={progressColor(meta.percentualConcluido)}
+                stroke="currentColor"
+                strokeDasharray={`${Math.min(meta.percentualConcluido, 100) * 1.382} 138.2`}
+                style={{ transition: "stroke-dasharray 1s ease-out" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-extrabold tabular-nums">{meta.percentualConcluido.toFixed(0)}%</span>
+            </div>
+          </div>
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground/70 font-medium">Atual</span>
+              <span className="font-bold tabular-nums">{formatCurrency(meta.valorAtual)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground/70 font-medium">Meta</span>
+              <span className="font-bold tabular-nums">{formatCurrency(meta.valorAlvo)}</span>
+            </div>
+          </div>
         </div>
+
+        <Progress value={Math.min(meta.percentualConcluido, 100)} className="h-1.5 mb-3" />
       </div>
 
-      {/* Meta info */}
-      <div className="flex items-center gap-4 text-[11px] text-muted-foreground/60 font-medium flex-wrap">
-        <span className="flex items-center gap-1">
-          {desvioIcon(meta.desvio)}
-          {meta.desvio}
-        </span>
-        <Separator orientation="vertical" className="h-4" />
-        <span className="tabular-nums">{formatCurrency(meta.valorMensalNecessario)}/mês</span>
-        <Separator orientation="vertical" className="h-4" />
-        <span>
-          {meta.mesesRestantes} {meta.mesesRestantes === 1 ? "mês" : "meses"} restantes
-        </span>
+      {/* Footer info */}
+      <div className="px-5 py-3 border-t border-border/30 bg-muted/10 rounded-b-2xl">
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground/60 font-medium flex-wrap">
+          <span className="flex items-center gap-1">{desvioIcon(meta.desvio)}{meta.desvio}</span>
+          <Separator orientation="vertical" className="h-3.5" />
+          <span className="tabular-nums">{formatCurrency(meta.valorMensalNecessario)}/mês</span>
+          <Separator orientation="vertical" className="h-3.5" />
+          <span>{meta.mesesRestantes} {meta.mesesRestantes === 1 ? "mês" : "meses"}</span>
+        </div>
       </div>
     </motion.div>
   );

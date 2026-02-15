@@ -10,7 +10,6 @@ namespace ControlFinance.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-[EnableRateLimiting("auth")]
 public class AuthController : ControllerBase
 {
     private const string AccessCookieName = "cf_access_token";
@@ -34,6 +33,7 @@ public class AuthController : ControllerBase
     private string? ClientIp => HttpContext.Connection.RemoteIpAddress?.ToString();
 
     [HttpPost("registrar")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Registrar([FromBody] RegistrarUsuarioDto dto)
     {
         if (!ModelState.IsValid)
@@ -57,7 +57,7 @@ public class AuthController : ControllerBase
             return BadRequest(new { erro });
 
         DefinirCookiesAutenticacao(response!);
-        return Ok(MontarSessaoResposta(response!));
+        return Ok(MontarSessaoRespostaComCsrf(response!));
     }
 
     [HttpPost("reenviar-codigo-registro")]
@@ -74,6 +74,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
         if (!ModelState.IsValid)
@@ -84,7 +85,7 @@ public class AuthController : ControllerBase
             return Unauthorized(new { erro });
 
         DefinirCookiesAutenticacao(response!);
-        return Ok(MontarSessaoResposta(response!));
+        return Ok(MontarSessaoRespostaComCsrf(response!));
     }
 
     [HttpGet("csrf")]
@@ -109,7 +110,7 @@ public class AuthController : ControllerBase
             return Unauthorized(new { erro });
 
         DefinirCookiesAutenticacao(response!);
-        return Ok(MontarSessaoResposta(response!));
+        return Ok(MontarSessaoRespostaComCsrf(response!));
     }
 
     [Authorize]
@@ -166,6 +167,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("recuperar-senha")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> RecuperarSenha([FromBody] RecuperarSenhaDto dto)
     {
         if (!ModelState.IsValid)
@@ -192,6 +194,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("redefinir-senha")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> RedefinirSenha([FromBody] RedefinirSenhaDto dto)
     {
         if (!ModelState.IsValid)
@@ -267,7 +270,7 @@ public class AuthController : ControllerBase
         {
             HttpOnly = false,
             Secure = secure,
-            SameSite = SameSiteMode.Strict,
+            SameSite = SameSiteMode.Lax,
             Path = "/",
             Expires = DateTime.UtcNow.AddHours(8)
         };
@@ -291,6 +294,32 @@ public class AuthController : ControllerBase
         {
             expiraEm = response.ExpiraEm,
             usuario = response.Usuario
+        };
+    }
+
+    /// <summary>
+    /// Monta resposta de sessão incluindo o CSRF token para que o cliente possa atualizar seu cache.
+    /// Sem isso, o cliente fica com o token antigo e o próximo POST falha.
+    /// </summary>
+    private object MontarSessaoRespostaComCsrf(AuthResponseDto response)
+    {
+        var csrfToken = Request.HttpContext.Response.Headers["Set-Cookie"]
+            .FirstOrDefault(c => c?.Contains("cf_csrf_token=") == true);
+
+        string? tokenValue = null;
+        if (csrfToken != null)
+        {
+            var start = csrfToken.IndexOf("cf_csrf_token=") + "cf_csrf_token=".Length;
+            var end = csrfToken.IndexOf(';', start);
+            if (end > start)
+                tokenValue = csrfToken[start..end];
+        }
+
+        return new
+        {
+            expiraEm = response.ExpiraEm,
+            usuario = response.Usuario,
+            csrfToken = tokenValue
         };
     }
 }

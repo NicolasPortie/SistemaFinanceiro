@@ -41,7 +41,13 @@ import {
   Tag,
   Save,
 } from "lucide-react";
-import { PageShell, PageHeader } from "@/components/shared/page-components";
+import { PageShell } from "@/components/shared/page-components";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -187,7 +193,11 @@ export default function PerfilPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Meu Perfil" description="Gerencie suas informações, segurança e categorias" />
+      {/* ── Page Header ── */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">Meu Perfil</h1>
+        <p className="text-sm text-muted-foreground mt-1">Gerencie suas informações, segurança e categorias</p>
+      </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* User Info Card */}
@@ -208,7 +218,7 @@ export default function PerfilPage() {
                 <h3 className="text-xl font-bold">{usuario.nome}</h3>
                 <p className="text-sm text-muted-foreground">{usuario.email}</p>
               </div>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { nomeForm.reset({ nome: usuario.nome }); setEditandoNome(true); }}>
+              <Button variant="outline" size="sm" className="gap-1.5 rounded-xl" onClick={() => { nomeForm.reset({ nome: usuario.nome }); setEditandoNome(true); }}>
                 <Pencil className="h-3.5 w-3.5" />
                 Editar
               </Button>
@@ -233,7 +243,7 @@ export default function PerfilPage() {
 
             <Separator />
 
-            <Button variant="outline" className="w-full gap-2" onClick={() => setShowSenha(true)}>
+            <Button variant="outline" className="w-full gap-2 rounded-xl" onClick={() => setShowSenha(true)}>
               <Lock className="h-4 w-4" />
               Alterar senha
             </Button>
@@ -256,7 +266,7 @@ export default function PerfilPage() {
               )}
             </div>
             <Separator />
-            <Button asChild variant="outline" className="w-full gap-2 h-11">
+            <Button asChild variant="outline" className="w-full gap-2 h-11 rounded-xl">
               <a href={telegramBotUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4" />
                 Abrir bot no Telegram
@@ -318,7 +328,7 @@ export default function PerfilPage() {
                   <p className="text-[11px] text-muted-foreground/60 font-medium">Gerencie suas categorias de lançamento</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { categoriaForm.reset(); setShowNovaCategoria(true); }}>
+              <Button variant="outline" size="sm" className="gap-1.5 rounded-xl" onClick={() => { categoriaForm.reset(); setShowNovaCategoria(true); }}>
                 <Plus className="h-3.5 w-3.5" />
                 Nova
               </Button>
@@ -326,20 +336,32 @@ export default function PerfilPage() {
             <Separator />
             <div className="flex flex-wrap gap-2">
               {categorias.map((cat) => (
-                <div key={cat.id} className="group flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-sm">
-                  <Tag className="h-3 w-3 text-muted-foreground" />
-                  <span className="font-medium">{cat.nome}</span>
+                <div key={cat.id} className="group flex items-center gap-1.5 rounded-xl bg-muted/40 border border-border/30 px-3.5 py-2.5 text-sm">
+                  <Tag className="h-3 w-3 text-muted-foreground/60" />
+                  <span className="font-semibold text-[13px]">{cat.nome}</span>
                   {cat.padrao ? (
-                    <span className="text-[10px] text-muted-foreground">(padrão)</span>
+                    <Badge variant="secondary" className="ml-1 text-[10px] font-semibold h-5 px-1.5">padrão</Badge>
                   ) : (
-                    <div className="flex items-center gap-0.5 ml-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                      <button className="p-1.5 rounded-md hover:bg-background" onClick={() => { editCategoriaForm.reset({ nome: cat.nome }); setEditandoCategoria({ id: cat.id, nome: cat.nome }); }} aria-label="Editar categoria">
-                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
-                      <button className="p-1.5 rounded-md hover:bg-background" onClick={() => setRemovendoCategoria(cat.id)} aria-label="Remover categoria">
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </button>
-                    </div>
+                    <TooltipProvider>
+                      <div className="flex items-center gap-0.5 ml-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className="p-1.5 rounded-lg hover:bg-background transition-colors" onClick={() => { editCategoriaForm.reset({ nome: cat.nome }); setEditandoCategoria({ id: cat.id, nome: cat.nome }); }}>
+                              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Editar</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors" onClick={() => setRemovendoCategoria(cat.id)}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Remover</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TooltipProvider>
                   )}
                 </div>
               ))}
@@ -352,16 +374,16 @@ export default function PerfilPage() {
       <Dialog open={editandoNome} onOpenChange={setEditandoNome}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Editar Nome</DialogTitle>
+            <DialogTitle className="text-lg font-bold">Editar Nome</DialogTitle>
             <DialogDescription>Altere seu nome de exibição</DialogDescription>
           </DialogHeader>
           <form onSubmit={nomeForm.handleSubmit(onSalvarNome)} className="space-y-4">
             <div className="space-y-2">
-              <Label>Nome</Label>
-              <Input className="h-11" {...nomeForm.register("nome")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome</Label>
+              <Input className="h-11 rounded-xl" {...nomeForm.register("nome")} />
               {nomeForm.formState.errors.nome && <p className="text-xs text-red-500">{nomeForm.formState.errors.nome.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-11 gap-2 font-semibold shadow-premium" disabled={atualizarPerfilMutation.isPending}>
+            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={atualizarPerfilMutation.isPending}>
               {atualizarPerfilMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4" />Salvar</>}
             </Button>
           </form>
@@ -372,26 +394,26 @@ export default function PerfilPage() {
       <Dialog open={showSenha} onOpenChange={setShowSenha}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Alterar Senha</DialogTitle>
+            <DialogTitle className="text-lg font-bold">Alterar Senha</DialogTitle>
             <DialogDescription>Informe sua senha atual e a nova senha</DialogDescription>
           </DialogHeader>
           <form onSubmit={senhaForm.handleSubmit(onAlterarSenha)} className="space-y-4">
             <div className="space-y-2">
-              <Label>Senha atual</Label>
-              <Input type="password" className="h-11" {...senhaForm.register("senhaAtual")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Senha atual</Label>
+              <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("senhaAtual")} />
               {senhaForm.formState.errors.senhaAtual && <p className="text-xs text-red-500">{senhaForm.formState.errors.senhaAtual.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Nova senha</Label>
-              <Input type="password" className="h-11" {...senhaForm.register("novaSenha")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nova senha</Label>
+              <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("novaSenha")} />
               {senhaForm.formState.errors.novaSenha && <p className="text-xs text-red-500">{senhaForm.formState.errors.novaSenha.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Confirmar nova senha</Label>
-              <Input type="password" className="h-11" {...senhaForm.register("confirmarSenha")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Confirmar nova senha</Label>
+              <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("confirmarSenha")} />
               {senhaForm.formState.errors.confirmarSenha && <p className="text-xs text-red-500">{senhaForm.formState.errors.confirmarSenha.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-11 gap-2 font-semibold shadow-premium" disabled={atualizarPerfilMutation.isPending}>
+            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={atualizarPerfilMutation.isPending}>
               {atualizarPerfilMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Lock className="h-4 w-4" />Alterar senha</>}
             </Button>
           </form>
@@ -402,16 +424,16 @@ export default function PerfilPage() {
       <Dialog open={showNovaCategoria} onOpenChange={setShowNovaCategoria}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Nova Categoria</DialogTitle>
+            <DialogTitle className="text-lg font-bold">Nova Categoria</DialogTitle>
             <DialogDescription>Crie uma categoria personalizada</DialogDescription>
           </DialogHeader>
           <form onSubmit={categoriaForm.handleSubmit(onCriarCategoria)} className="space-y-4">
             <div className="space-y-2">
-              <Label>Nome da categoria</Label>
-              <Input className="h-11" placeholder="Ex: Pets, Investimentos..." {...categoriaForm.register("nome")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome da categoria</Label>
+              <Input className="h-11 rounded-xl" placeholder="Ex: Pets, Investimentos..." {...categoriaForm.register("nome")} />
               {categoriaForm.formState.errors.nome && <p className="text-xs text-red-500">{categoriaForm.formState.errors.nome.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-11 gap-2 font-semibold shadow-premium" disabled={criarCategoria.isPending}>
+            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={criarCategoria.isPending}>
               {criarCategoria.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Tag className="h-4 w-4" />Criar categoria</>}
             </Button>
           </form>
@@ -422,16 +444,16 @@ export default function PerfilPage() {
       <Dialog open={editandoCategoria !== null} onOpenChange={() => setEditandoCategoria(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Editar Categoria</DialogTitle>
+            <DialogTitle className="text-lg font-bold">Editar Categoria</DialogTitle>
             <DialogDescription>Altere o nome da categoria</DialogDescription>
           </DialogHeader>
           <form onSubmit={editCategoriaForm.handleSubmit(onEditarCategoria)} className="space-y-4">
             <div className="space-y-2">
-              <Label>Nome</Label>
-              <Input className="h-11" {...editCategoriaForm.register("nome")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome</Label>
+              <Input className="h-11 rounded-xl" {...editCategoriaForm.register("nome")} />
               {editCategoriaForm.formState.errors.nome && <p className="text-xs text-red-500">{editCategoriaForm.formState.errors.nome.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-11 font-semibold" disabled={atualizarCategoria.isPending}>
+            <Button type="submit" className="w-full h-12 rounded-xl font-bold text-sm shadow-premium" disabled={atualizarCategoria.isPending}>
               {atualizarCategoria.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
             </Button>
           </form>
@@ -446,9 +468,9 @@ export default function PerfilPage() {
             <AlertDialogDescription>Esta ação não pode ser desfeita. Os lançamentos vinculados a esta categoria não serão removidos.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={onRemoverCategoria} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {removerCategoria.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remover"}
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onRemoverCategoria} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
+              {removerCategoria.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" />Remover</>}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

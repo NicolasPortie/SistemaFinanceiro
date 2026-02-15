@@ -24,13 +24,27 @@ import {
   Calendar,
   Wifi,
   TrendingUp,
+  DollarSign,
+  Wallet,
 } from "lucide-react";
 import {
   PageShell,
-  PageHeader,
   EmptyState,
   CardSkeleton,
 } from "@/components/shared/page-components";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -159,14 +173,80 @@ export default function CartoesPage() {
     );
   };
 
+  const totalLimite = cartoes.reduce((s, c) => s + c.limite, 0);
+  const totalUsado = cartoes.reduce((s, c) => s + c.limiteUsado, 0);
+  const totalDisponivel = cartoes.reduce((s, c) => s + (c.limiteDisponivel ?? c.limite), 0);
+
   return (
     <PageShell>
-      <PageHeader title="Cartões de Crédito" description="Gerencie seus cartões e visualize faturas">
-        <Button onClick={() => setShowForm(true)} className="gap-2 shadow-premium">
-          <Plus className="h-4 w-4" />
-          Novo Cartão
-        </Button>
-      </PageHeader>
+      {/* ── Page Header ── */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">Cartões de Crédito</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie seus cartões e visualize faturas</p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex items-center gap-2 mt-3 sm:mt-0">
+          <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
+            <Plus className="h-4 w-4" />
+            Novo Cartão
+          </Button>
+        </motion.div>
+      </div>
+
+      {/* ── Stat Cards ── */}
+      {!isLoading && cartoes.length > 0 && (
+        <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-premium p-5 group">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Cartões</p>
+                <p className="text-2xl font-extrabold tabular-nums tracking-tight">{cartoes.length}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
+                <CreditCard className="h-5 w-5" />
+              </div>
+            </div>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-5 group">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Limite Total</p>
+                <p className="text-2xl font-extrabold tabular-nums tracking-tight">{formatCurrency(totalLimite)}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
+                <DollarSign className="h-5 w-5" />
+              </div>
+            </div>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-5 group">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Usado</p>
+                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-red-600 dark:text-red-400">{formatCurrency(totalUsado)}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 transition-transform duration-500 group-hover:scale-110">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+            </div>
+            {totalLimite > 0 && (
+              <div className="mt-3 h-1 rounded-full bg-muted/40 overflow-hidden">
+                <div className="h-full rounded-full bg-red-500 transition-all duration-1000" style={{ width: `${Math.min((totalUsado / totalLimite) * 100, 100)}%` }} />
+              </div>
+            )}
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5 group">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Disponível</p>
+                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">{formatCurrency(totalDisponivel)}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110">
+                <Wallet className="h-5 w-5" />
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {
         isLoading ? (
@@ -185,13 +265,13 @@ export default function CartoesPage() {
                   {/* Card visual */}
                   <div className={`rounded-2xl bg-linear-to-br ${cardGradients[i % cardGradients.length]} p-6 text-white shadow-xl shadow-black/20 dark:shadow-black/40 relative overflow-hidden transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl noise-overlay`}>
                     {/* Background pattern */}
-                    <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-white/[0.04] -translate-y-1/2 translate-x-1/2" />
-                    <div className="absolute bottom-0 left-0 w-28 h-28 rounded-full bg-white/[0.04] translate-y-1/2 -translate-x-1/2" />
+                    <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-white/4 -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute bottom-0 left-0 w-28 h-28 rounded-full bg-white/4 translate-y-1/2 -translate-x-1/2" />
                     {/* Holographic shimmer overlay */}
                     <div className="absolute inset-0 holographic opacity-0 group-hover:opacity-100 transition-opacity duration-700 mix-blend-overlay" />
                     {/* Subtle line pattern */}
-                    <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-white/[0.06] to-transparent" />
-                    <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-white/[0.04] to-transparent" />
+                    <div className="absolute top-0 left-1/4 w-px h-full bg-linear-to-b from-transparent via-white/6 to-transparent" />
+                    <div className="absolute top-0 right-1/3 w-px h-full bg-linear-to-b from-transparent via-white/4 to-transparent" />
 
                     <div className="relative z-10 space-y-5">
                       <div className="flex items-start justify-between">
@@ -200,20 +280,42 @@ export default function CartoesPage() {
                           <div className="chip-pattern" />
                           <Wifi className="h-5 w-5 opacity-50 rotate-90" />
                         </div>
-                        <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
-                          <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => setViewingFaturaId({ id: cartao.id, nome: cartao.nome })} aria-label="Ver fatura">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => openEdit(cartao)} aria-label="Editar cartão">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-emerald-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => openAjuste(cartao)} title="Ajuste de Limite Extra" aria-label="Ajuste de limite extra">
-                            <TrendingUp className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-red-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => setDeletingId(cartao.id)} aria-label="Excluir cartão">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        <TooltipProvider>
+                          <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => setViewingFaturaId({ id: cartao.id, nome: cartao.nome })}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Ver fatura</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => openEdit(cartao)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Editar</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-emerald-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => openAjuste(cartao)}>
+                                  <TrendingUp className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Limite extra</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-red-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => setDeletingId(cartao.id)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Desativar</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TooltipProvider>
                       </div>
 
                       <div>
@@ -260,72 +362,84 @@ export default function CartoesPage() {
           />
         )}
 
-      {/* Create Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Novo Cartão</DialogTitle>
-            <DialogDescription>Adicione um cartão de crédito à sua conta</DialogDescription>
-          </DialogHeader>
+      {/* Create Sheet */}
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader className="pb-6">
+            <SheetTitle className="text-xl font-bold">Novo Cartão</SheetTitle>
+            <SheetDescription>Adicione um cartão de crédito à sua conta</SheetDescription>
+          </SheetHeader>
           <form onSubmit={form.handleSubmit(onSubmitCreate)} className="space-y-5">
             <div className="space-y-2">
-              <Label>Nome do cartão</Label>
-              <Input placeholder="Ex: Nubank, Inter..." className="h-11" {...form.register("nome")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome do cartão</Label>
+              <Input placeholder="Ex: Nubank, Inter..." className="h-11 rounded-xl" {...form.register("nome")} />
               {form.formState.errors.nome && <p className="text-xs text-red-500">{form.formState.errors.nome.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Limite (R$)</Label>
-              <Input placeholder="0,00" className="h-11 tabular-nums" {...form.register("limite")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Limite (R$)</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                <Input placeholder="0,00" className="h-11 rounded-xl pl-9 tabular-nums font-semibold" {...form.register("limite")} />
+              </div>
               {form.formState.errors.limite && <p className="text-xs text-red-500">{form.formState.errors.limite.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Dia de vencimento</Label>
-              <Input placeholder="Ex: 10" className="h-11" {...form.register("diaVencimento")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de vencimento</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                <Input placeholder="Ex: 10" className="h-11 rounded-xl pl-9" {...form.register("diaVencimento")} />
+              </div>
               {form.formState.errors.diaVencimento && <p className="text-xs text-red-500">{form.formState.errors.diaVencimento.message}</p>}
             </div>
-            <div className="rounded-lg bg-muted/60 p-3 border border-border">
+            <div className="rounded-xl bg-muted/40 p-4 border border-border/30">
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
                 <span><strong>Fechamento:</strong> 1º dia útil do mês (automático)</span>
               </p>
             </div>
-            <Button type="submit" className="w-full h-11 gap-2 font-semibold" disabled={criarCartao.isPending}>
+            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={criarCartao.isPending}>
               {criarCartao.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CreditCard className="h-4 w-4" />Criar cartão</>}
             </Button>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Edit Dialog */}
       <Dialog open={editingCard !== null} onOpenChange={() => setEditingCard(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar Cartão</DialogTitle>
+            <DialogTitle className="text-lg font-bold">Editar Cartão</DialogTitle>
             <DialogDescription>Altere os dados do cartão</DialogDescription>
           </DialogHeader>
           <form onSubmit={editFormState.handleSubmit(onSubmitEdit)} className="space-y-5">
             <div className="space-y-2">
-              <Label>Nome do cartão</Label>
-              <Input className="h-11" {...editFormState.register("nome")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome do cartão</Label>
+              <Input className="h-11 rounded-xl" {...editFormState.register("nome")} />
               {editFormState.formState.errors.nome && <p className="text-xs text-red-500">{editFormState.formState.errors.nome.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Limite (R$)</Label>
-              <Input className="h-11 tabular-nums" {...editFormState.register("limite")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Limite (R$)</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                <Input className="h-11 rounded-xl pl-9 tabular-nums font-semibold" {...editFormState.register("limite")} />
+              </div>
               {editFormState.formState.errors.limite && <p className="text-xs text-red-500">{editFormState.formState.errors.limite.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Dia de vencimento</Label>
-              <Input className="h-11" {...editFormState.register("diaVencimento")} />
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de vencimento</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                <Input className="h-11 rounded-xl pl-9" {...editFormState.register("diaVencimento")} />
+              </div>
               {editFormState.formState.errors.diaVencimento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaVencimento.message}</p>}
             </div>
-            <div className="rounded-lg bg-muted/60 p-3 border border-border">
+            <div className="rounded-xl bg-muted/40 p-4 border border-border/30">
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
                 <span><strong>Fechamento:</strong> 1º dia útil do mês (automático)</span>
               </p>
             </div>
-            <Button type="submit" className="w-full h-11 font-semibold" disabled={atualizarCartao.isPending}>
+            <Button type="submit" className="w-full h-12 rounded-xl font-bold text-sm shadow-premium" disabled={atualizarCartao.isPending}>
               {atualizarCartao.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar alterações"}
             </Button>
           </form>
@@ -354,7 +468,7 @@ export default function CartoesPage() {
       <Dialog open={ajusteLimiteCard !== null} onOpenChange={() => setAjusteLimiteCard(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Limite Extra</DialogTitle>
+            <DialogTitle className="text-lg font-bold">Limite Extra</DialogTitle>
             <DialogDescription>
               Adicione um valor ao limite e aplique um percentual extra.
             </DialogDescription>
@@ -362,17 +476,20 @@ export default function CartoesPage() {
           <form onSubmit={ajusteForm.handleSubmit(onSubmitAjuste)} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Valor Adicional (R$)</Label>
-                <Input
-                  className="h-11 tabular-nums"
-                  placeholder="0,00"
-                  {...ajusteForm.register("valorAdicional", { required: true })}
-                />
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Adicional (R$)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <Input
+                    className="h-11 rounded-xl pl-9 tabular-nums font-semibold"
+                    placeholder="0,00"
+                    {...ajusteForm.register("valorAdicional", { required: true })}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Percentual Extra (%)</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Percentual Extra (%)</Label>
                 <Input
-                  className="h-11 tabular-nums"
+                  className="h-11 rounded-xl tabular-nums font-semibold"
                   placeholder="40"
                   {...ajusteForm.register("percentualExtra", { required: true })}
                 />
@@ -380,27 +497,27 @@ export default function CartoesPage() {
             </div>
 
             {/* Live Calculation Preview */}
-            <div className="rounded-lg bg-muted/60 p-4 space-y-3 border border-border">
+            <div className="rounded-xl bg-muted/20 p-5 space-y-3 border border-border/30">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Limite Atual:</span>
-                <span className="font-medium">{formatCurrency(ajusteLimiteCard?.limite || 0)}</span>
+                <span className="text-muted-foreground/70 font-medium">Limite Atual:</span>
+                <span className="font-bold tabular-nums">{formatCurrency(ajusteLimiteCard?.limite || 0)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Valor Base:</span>
-                <span className="font-medium">+ {formatCurrency(valorAdicionalWatch)}</span>
+                <span className="text-muted-foreground/70 font-medium">Valor Base:</span>
+                <span className="font-bold tabular-nums">+ {formatCurrency(valorAdicionalWatch)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Extra ({percentualExtraWatch}%):</span>
-                <span className="font-medium">+ {formatCurrency(valorExtraCalculado)}</span>
+                <span className="text-muted-foreground/70 font-medium">Extra ({percentualExtraWatch}%):</span>
+                <span className="font-bold tabular-nums">+ {formatCurrency(valorExtraCalculado)}</span>
               </div>
-              <div className="h-px bg-border/50 my-2" />
+              <div className="h-px bg-border/30 my-2" />
               <div className="flex justify-between items-center text-base">
-                <span className="font-bold text-foreground">Novo Limite:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(novoLimiteCalculado)}</span>
+                <span className="font-extrabold text-foreground">Novo Limite:</span>
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(novoLimiteCalculado)}</span>
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-11 font-semibold gap-2" disabled={adicionarLimiteExtra.isPending}>
+            <Button type="submit" className="w-full h-12 rounded-xl font-bold text-sm gap-2 shadow-premium" disabled={adicionarLimiteExtra.isPending}>
               {adicionarLimiteExtra.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><TrendingUp className="h-4 w-4" /> Aplicar Limite Extra</>}
             </Button>
           </form>
@@ -415,13 +532,13 @@ export default function CartoesPage() {
             <AlertDialogDescription>O cartão será desativado e não aparecerá mais na listagem. As faturas existentes serão mantidas.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {desativarCartao.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Desativar"}
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
+              {desativarCartao.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" />Desativar</>}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </PageShell >
+    </PageShell>
   );
 }

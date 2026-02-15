@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginData } from "@/lib/schemas";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import {
   TrendingUp,
   Mail,
@@ -20,11 +21,13 @@ import {
   Bot,
   Target,
   CreditCard,
+  Shield,
+  Zap,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { useState } from "react";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -55,263 +58,388 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#fafbfc] dark:bg-[#0a0b0f]">
-      {/* ─── Painel Esquerdo ─── */}
-      <div className="hidden lg:flex lg:w-130 xl:w-145 relative overflow-hidden">
-        {/* Background com gradiente único */}
+    <div className="flex min-h-svh bg-background">
+      {/* ════════════════════════════════════════════
+          LEFT PANEL — Desktop only
+         ════════════════════════════════════════════ */}
+      <div className="hidden lg:flex lg:w-[44%] xl:w-[42%] relative overflow-hidden">
+        {/* Background gradient */}
         <div className="absolute inset-0 bg-linear-to-br from-emerald-950 via-teal-900 to-cyan-950" />
 
-        {/* Grid pattern sutil */}
+        {/* Grid pattern */}
         <div
-          className="absolute inset-0 opacity-[0.04]"
+          className="absolute inset-0 opacity-[0.03]"
           style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)
-            `,
-            backgroundSize: "40px 40px",
+            backgroundImage: `linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)`,
+            backgroundSize: "48px 48px",
           }}
         />
 
-        {/* Elementos decorativos geométricos */}
-        <div className="absolute top-0 right-0 w-100 h-100 bg-linear-to-bl from-emerald-400/10 to-transparent rounded-bl-full" />
-        <div className="absolute bottom-0 left-0 w-75 h-75 bg-linear-to-tr from-cyan-400/8 to-transparent rounded-tr-full" />
+        {/* Animated floating orbs */}
+        <motion.div
+          className="absolute top-[12%] right-[15%] w-72 h-72 rounded-full bg-emerald-400/8 blur-3xl"
+          animate={{ y: [0, -30, 0], x: [0, 15, 0], scale: [1, 1.1, 1] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute bottom-[18%] left-[8%] w-56 h-56 rounded-full bg-teal-400/6 blur-3xl"
+          animate={{ y: [0, 20, 0], x: [0, -10, 0], scale: [1, 1.15, 1] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        />
+        <motion.div
+          className="absolute top-[48%] left-[45%] w-40 h-40 rounded-full bg-cyan-400/5 blur-3xl"
+          animate={{ y: [0, -15, 0], x: [0, 20, 0] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+        />
 
-        {/* Linhas decorativas */}
-        <div className="absolute top-[20%] right-12 w-px h-32 bg-linear-to-b from-transparent via-emerald-400/30 to-transparent" />
-        <div className="absolute bottom-[25%] left-16 w-24 h-px bg-linear-to-r from-transparent via-teal-400/30 to-transparent" />
+        {/* Geometric accent lines */}
+        <div className="absolute top-[18%] right-10 w-px h-36 bg-linear-to-b from-transparent via-emerald-400/25 to-transparent" />
+        <div className="absolute bottom-[28%] left-14 w-24 h-px bg-linear-to-r from-transparent via-teal-400/25 to-transparent" />
+        <div className="absolute top-[55%] right-20 w-16 h-px bg-linear-to-r from-transparent via-cyan-400/15 to-transparent" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-linear-to-bl from-emerald-400/8 to-transparent rounded-bl-full" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-linear-to-tr from-cyan-400/6 to-transparent rounded-tr-full" />
 
-        <div className="relative flex flex-col justify-between p-10 xl:p-12 text-white w-full z-10">
+        <div className="relative flex flex-col justify-between p-10 xl:p-14 text-white w-full z-10">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 border border-white/10 backdrop-blur-sm">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/8 border border-white/10 backdrop-blur-sm shadow-lg shadow-black/10">
               <TrendingUp className="h-5 w-5 text-emerald-300" />
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-bold tracking-tight leading-none">ControlFinance</span>
-              <span className="text-[10px] text-emerald-300/60 font-medium tracking-widest uppercase">Financial Platform</span>
+              <span className="text-[10px] text-emerald-300/50 font-medium tracking-[0.15em] uppercase mt-0.5">Financial Platform</span>
             </div>
           </div>
 
-          {/* Conteúdo central */}
-          <div className="space-y-10 -mt-8">
+          {/* Hero content */}
+          <div className="space-y-10">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.7 }}
+              transition={{ delay: 0.2, duration: 0.7 }}
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-400/10 border border-emerald-400/20 mb-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-400/8 border border-emerald-400/15 mb-7">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs text-emerald-300 font-medium">Plataforma ativa</span>
+                <span className="text-[11px] text-emerald-300/80 font-semibold tracking-wide">Plataforma ativa</span>
               </div>
 
-              <h2 className="text-[2rem] xl:text-[2.25rem] font-bold leading-[1.15] tracking-tight">
+              <h2 className="text-[2rem] xl:text-[2.5rem] font-extrabold leading-[1.1] tracking-tight">
                 Suas finanças no
                 <br />
                 <span className="bg-linear-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent">
                   controle total.
                 </span>
               </h2>
-              <p className="mt-4 text-[15px] text-white/50 leading-relaxed max-w-sm">
-                Gestão inteligente com dashboards em tempo real, IA integrada e
-                análises que impulsionam decisões.
+              <p className="mt-5 text-[14px] text-white/40 leading-relaxed max-w-[340px]">
+                Gestão inteligente com dashboards em tempo real, IA integrada e análises que impulsionam suas decisões financeiras.
               </p>
             </motion.div>
 
-            {/* Feature cards compactos */}
-            <div className="space-y-3">
+            {/* Feature cards */}
+            <div className="space-y-2">
               {[
                 { icon: PieChart, label: "Dashboard completo", detail: "Gráficos e métricas em tempo real" },
                 { icon: Bot, label: "IA no Telegram", detail: "Registre gastos por voz ou texto" },
-                { icon: Target, label: "Metas inteligentes", detail: "Acompanhe o progresso automaticamente" },
+                { icon: Target, label: "Metas inteligentes", detail: "Acompanhe progresso automaticamente" },
                 { icon: CreditCard, label: "Cartões e faturas", detail: "Controle total de múltiplos cartões" },
               ].map((item, i) => (
                 <motion.div
                   key={item.label}
-                  initial={{ opacity: 0, x: -16 }}
+                  initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + i * 0.1, duration: 0.5 }}
-                  className="group flex items-center gap-3.5 py-2.5 px-3 -mx-3 rounded-xl hover:bg-white/4 transition-colors"
+                  transition={{ delay: 0.4 + i * 0.1 }}
+                  className="group flex items-center gap-3.5 py-3 px-3.5 -mx-3.5 rounded-xl hover:bg-white/[0.03] transition-all duration-300"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/6 border border-white/6 group-hover:border-emerald-400/20 transition-colors">
-                    <item.icon className="h-4 w-4 text-emerald-400/80" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] border border-white/[0.06] group-hover:bg-white/[0.08] group-hover:border-emerald-400/15 transition-all duration-300">
+                    <item.icon className="h-4 w-4 text-emerald-400/70 group-hover:text-emerald-300 transition-colors" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-white/90">{item.label}</p>
-                    <p className="text-xs text-white/35">{item.detail}</p>
+                    <p className="text-[13px] font-semibold text-white/85">{item.label}</p>
+                    <p className="text-[11px] text-white/30">{item.detail}</p>
                   </div>
                 </motion.div>
               ))}
             </div>
           </div>
 
-          {/* Rodapé */}
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] text-white/25">
-              © {new Date().getFullYear()} ControlFinance
-            </p>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-1 rounded-full bg-emerald-400/40" />
-              <div className="w-1 h-1 rounded-full bg-teal-400/40" />
-              <div className="w-1 h-1 rounded-full bg-cyan-400/40" />
+          {/* Stats bar + Footer */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-8 py-4 border-t border-white/[0.06]">
+              {[
+                { value: "10K+", label: "Transações" },
+                { value: "R$2M+", label: "Gerenciados" },
+                { value: "99.9%", label: "Uptime" },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8 + i * 0.1 }}
+                >
+                  <p className="text-[15px] font-bold tabular-nums text-white/80">{stat.value}</p>
+                  <p className="text-[10px] text-white/25 font-medium mt-0.5">{stat.label}</p>
+                </motion.div>
+              ))}
             </div>
+            <p className="text-[11px] text-white/20">© {new Date().getFullYear()} ControlFinance</p>
           </div>
         </div>
       </div>
 
-      {/* ─── Painel Direito - Formulário ─── */}
-      <div className="flex flex-1 items-center justify-center p-6 sm:p-8 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute -top-40 -right-40 w-125 h-125 rounded-full bg-emerald-500/2 dark:bg-emerald-500/3 blur-[100px]" />
-        <div className="absolute -bottom-40 -left-40 w-100 h-100 rounded-full bg-teal-500/2 dark:bg-teal-500/3 blur-[100px]" />
+      {/* ════════════════════════════════════════════
+          RIGHT PANEL — Form
+         ════════════════════════════════════════════ */}
+      <div className="flex-1 flex flex-col relative overflow-hidden">
+        {/* Subtle background blobs */}
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-emerald-500/[0.03] dark:bg-emerald-500/[0.05] blur-[100px] pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-teal-500/[0.03] dark:bg-teal-500/[0.05] blur-[100px] pointer-events-none" />
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-105 relative z-10"
-        >
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-2.5 mb-10">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20">
-              <TrendingUp className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-bold tracking-tight">
-              Control<span className="text-emerald-600 dark:text-emerald-400">Finance</span>
-            </span>
-          </div>
+        {/* ── Mobile Hero Header ── */}
+        <div className="lg:hidden relative overflow-hidden">
+          <div className="bg-linear-to-br from-emerald-950 via-teal-900 to-cyan-950 px-6 pt-safe-top relative">
+            <div className="pt-8 pb-10">
+              {/* Mobile orbs */}
+              <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-emerald-400/10 blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-teal-400/8 blur-3xl" />
 
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-[1.75rem] font-bold tracking-tight text-foreground">
-              Acessar conta
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Informe suas credenciais para continuar
-            </p>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Email */}
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-[13px] font-semibold text-foreground/80 uppercase tracking-wider">
-                E-mail
-              </label>
-              <div className={`relative rounded-xl border transition-all duration-200 ${
-                focusedField === "email"
-                  ? "border-emerald-500/50 ring-[3px] ring-emerald-500/10 dark:ring-emerald-400/10"
-                  : errors.email
-                    ? "border-red-400/50"
-                    : "border-border hover:border-border/80"
-              }`}>
-                <Mail className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-colors ${
-                  focusedField === "email" ? "text-emerald-500 dark:text-emerald-400" : "text-muted-foreground/50"
-                }`} />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="nome@exemplo.com"
-                  className="pl-11 h-12 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/40"
-                  autoComplete="email"
-                  {...register("email")}
-                  onFocus={() => setFocusedField("email")}
-                  onBlur={() => setFocusedField(null)}
-                />
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 border border-white/10 backdrop-blur-sm">
+                    <TrendingUp className="h-5 w-5 text-emerald-300" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-base font-bold text-white tracking-tight leading-none">ControlFinance</span>
+                    <span className="text-[9px] text-emerald-300/50 font-medium tracking-[0.15em] uppercase mt-0.5">Financial Platform</span>
+                  </div>
+                </div>
+                <h2 className="text-xl font-bold text-white/90 tracking-tight">
+                  Bem-vindo de volta
+                </h2>
+                <p className="text-[13px] text-white/40 mt-1.5 max-w-xs">
+                  Acesse sua conta e gerencie suas finanças
+                </p>
               </div>
-              {errors.email && (
-                <p className="text-xs text-red-500 pl-1">{errors.email.message}</p>
-              )}
+            </div>
+          </div>
+          {/* Curved bottom edge */}
+          <div className="h-5 bg-background relative -mt-5 rounded-t-[1.5rem]" />
+        </div>
+
+        {/* ── Form Area ── */}
+        <div className="flex flex-1 items-center justify-center px-5 py-6 sm:px-8 lg:px-12 lg:py-0">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="w-full max-w-[420px]"
+          >
+            {/* Desktop header */}
+            <div className="hidden lg:block mb-10">
+              <motion.h1
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-[1.85rem] font-extrabold tracking-tight text-foreground"
+              >
+                Acessar conta
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="mt-2 text-[14px] text-muted-foreground/70"
+              >
+                Informe suas credenciais para continuar
+              </motion.p>
             </div>
 
-            {/* Senha */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="senha" className="text-[13px] font-semibold text-foreground/80 uppercase tracking-wider">
-                  Senha
+            {/* Mobile header (below gradient strip) */}
+            <div className="lg:hidden mb-6">
+              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+                Entrar na conta
+              </h1>
+              <p className="mt-1.5 text-[13px] text-muted-foreground/70">
+                Informe suas credenciais para continuar
+              </p>
+            </div>
+
+            {/* ── Form ── */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              {/* Email */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="space-y-2"
+              >
+                <label htmlFor="email" className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.12em]">
+                  E-mail
                 </label>
-                <Link
-                  href="/recuperar-senha"
-                  className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium transition-colors"
+                <div
+                  className={`relative rounded-xl border-2 transition-all duration-300 ${
+                    focusedField === "email"
+                      ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
+                      : errors.email
+                        ? "border-red-400/50 ring-4 ring-red-500/5"
+                        : "border-border/50 hover:border-border/80"
+                  }`}
                 >
-                  Esqueceu?
-                </Link>
-              </div>
-              <div className={`relative rounded-xl border transition-all duration-200 ${
-                focusedField === "senha"
-                  ? "border-emerald-500/50 ring-[3px] ring-emerald-500/10 dark:ring-emerald-400/10"
-                  : errors.senha
-                    ? "border-red-400/50"
-                    : "border-border hover:border-border/80"
-              }`}>
-                <Lock className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-colors ${
-                  focusedField === "senha" ? "text-emerald-500 dark:text-emerald-400" : "text-muted-foreground/50"
-                }`} />
-                <Input
-                  id="senha"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  className="pl-11 pr-11 h-12 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/40"
-                  autoComplete="current-password"
-                  {...register("senha")}
-                  onFocus={() => setFocusedField("senha")}
-                  onBlur={() => setFocusedField(null)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground/70 transition-colors"
-                  tabIndex={-1}
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  <Mail
+                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-[18px] w-[18px] transition-all duration-300 ${
+                      focusedField === "email" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
+                    }`}
+                  />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="nome@exemplo.com"
+                    className="pl-12 h-[52px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
+                    autoComplete="email"
+                    {...register("email")}
+                    onFocus={() => setFocusedField("email")}
+                    onBlur={() => setFocusedField(null)}
+                  />
+                </div>
+                {errors.email && (
+                  <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-red-500 pl-1 font-medium">
+                    {errors.email.message}
+                  </motion.p>
+                )}
+              </motion.div>
+
+              {/* Password */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="space-y-2"
+              >
+                <div className="flex items-center justify-between">
+                  <label htmlFor="senha" className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.12em]">
+                    Senha
+                  </label>
+                  <Link
+                    href="/recuperar-senha"
+                    className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-semibold transition-colors"
+                  >
+                    Esqueceu a senha?
+                  </Link>
+                </div>
+                <div
+                  className={`relative rounded-xl border-2 transition-all duration-300 ${
+                    focusedField === "senha"
+                      ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
+                      : errors.senha
+                        ? "border-red-400/50 ring-4 ring-red-500/5"
+                        : "border-border/50 hover:border-border/80"
+                  }`}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.senha && (
-                <p className="text-xs text-red-500 pl-1">{errors.senha.message}</p>
-              )}
-            </div>
+                  <Lock
+                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-[18px] w-[18px] transition-all duration-300 ${
+                      focusedField === "senha" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
+                    }`}
+                  />
+                  <Input
+                    id="senha"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="pl-12 pr-12 h-[52px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
+                    autoComplete="current-password"
+                    {...register("senha")}
+                    onFocus={() => setFocusedField("senha")}
+                    onBlur={() => setFocusedField(null)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-foreground/60 transition-colors p-1"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.senha && (
+                  <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-red-500 pl-1 font-medium">
+                    {errors.senha.message}
+                  </motion.p>
+                )}
+              </motion.div>
 
-            {/* Submit */}
-            <Button
-              type="submit"
-              className="w-full h-12 text-[15px] font-semibold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-500/25 transition-all duration-300 border-0 gap-2"
-              disabled={isSubmitting}
+              {/* Submit */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="pt-1"
+              >
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xl shadow-emerald-600/15 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      Entrar
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                    </>
+                  )}
+                </Button>
+              </motion.div>
+            </form>
+
+            {/* Divider */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="my-8 flex items-center gap-4"
             >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  Entrar
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </form>
+              <div className="flex-1 h-px bg-linear-to-r from-transparent via-border/60 to-transparent" />
+              <span className="text-[11px] text-muted-foreground/40 font-semibold">Não tem conta?</span>
+              <div className="flex-1 h-px bg-linear-to-r from-transparent via-border/60 to-transparent" />
+            </motion.div>
 
-          {/* Divider */}
-          <div className="my-8 flex items-center gap-4">
-            <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
-            <span className="text-xs text-muted-foreground/60 font-medium">Não tem conta?</span>
-            <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
-          </div>
+            {/* Register link */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+              <Link href="/registro">
+                <Button
+                  variant="outline"
+                  className="w-full h-12 rounded-xl text-sm font-semibold border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 gap-2"
+                >
+                  <Wallet className="h-4 w-4" />
+                  Criar conta com convite
+                </Button>
+              </Link>
+            </motion.div>
 
-          {/* Registro link */}
-          <Link href="/registro" className="block">
-            <Button
-              variant="outline"
-              className="w-full h-11 rounded-xl text-sm font-medium border-border/60 hover:border-emerald-500/30 hover:bg-emerald-500/3 transition-all duration-200 gap-2"
+            {/* Trust indicators */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="mt-8 flex items-center justify-center gap-3 sm:gap-4 flex-wrap"
             >
-              <Wallet className="h-4 w-4" />
-              Criar conta com convite
-            </Button>
-          </Link>
+              {[
+                { icon: Shield, text: "SSL Seguro" },
+                { icon: Zap, text: "Login rápido" },
+                { icon: Sparkles, text: "IA integrada" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/30 font-medium">
+                  <item.icon className="h-3 w-3" />
+                  <span>{item.text}</span>
+                </div>
+              ))}
+            </motion.div>
 
-          {/* Footer */}
-          <p className="mt-8 text-center text-[11px] text-muted-foreground/40">
-            Ao entrar, você concorda com os termos de uso da plataforma.
-          </p>
-        </motion.div>
+            {/* Footer */}
+            <p className="mt-6 text-center text-[10px] text-muted-foreground/25">
+              Ao entrar, você concorda com os termos de uso da plataforma.
+            </p>
+          </motion.div>
+        </div>
       </div>
     </div>
   );

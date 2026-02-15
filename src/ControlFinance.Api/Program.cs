@@ -84,28 +84,32 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Limite global: 100 req/min por IP (aplicado automaticamente a todos os endpoints)
+    // Limite global: 300 req/min por IP com janela deslizante (2 segmentos de 30s)
+    // Permite picos de uso alto (troca rápida de abas, dashboard com polling) sem bloquear
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
+        RateLimitPartition.GetSlidingWindowLimiter(
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions
+            _ => new SlidingWindowRateLimiterOptions
             {
-                PermitLimit = 100,
+                PermitLimit = 300,
                 Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 2,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 5
+                QueueLimit = 10
             }));
 
-    // Limite auth: 10 req/min por IP (login, registro)
+    // Limite auth: 15 req por 5 min por IP (login, registro, recuperar/redefinir senha)
+    // Generoso o suficiente para uso normal, mas protege contra brute-force
     options.AddPolicy("auth", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
+        RateLimitPartition.GetSlidingWindowLimiter(
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions
+            _ => new SlidingWindowRateLimiterOptions
             {
-                PermitLimit = 10,
-                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 15,
+                Window = TimeSpan.FromMinutes(5),
+                SegmentsPerWindow = 5,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 2
+                QueueLimit = 3
             }));
 });
 

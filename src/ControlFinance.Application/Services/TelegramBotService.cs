@@ -40,6 +40,8 @@ public class TelegramBotService
     private static readonly ConcurrentDictionary<long, ExclusaoPendente> _exclusaoPendente = new();
     // Teclados inline pendentes para enviar junto à próxima resposta (chatId → linhas de botões)
     private static readonly ConcurrentDictionary<long, List<List<(string Label, string Data)>>> _tecladosPendentes = new();
+    // Semáforos por chat para evitar processamento concorrente que corrompe o estado
+    private static readonly ConcurrentDictionary<long, SemaphoreSlim> _chatLocks = new();
 
     /// <summary>
     /// Estados possíveis no fluxo de lançamento em etapas
@@ -54,7 +56,21 @@ public class TelegramBotService
         AguardandoConfirmacao,
         AguardandoCorrecao,
         AguardandoNovoValorCorrecao,
-        AguardandoNovaDataCorrecao
+        AguardandoNovaDataCorrecao,
+        AguardandoNovaDescricaoCorrecao
+    }
+
+    /// <summary>
+    /// Campo que está sendo corrigido (usado para recuperar contexto se estado for perdido)
+    /// </summary>
+    private enum CampoCorrecao
+    {
+        Nenhum,
+        Descricao,
+        Valor,
+        Categoria,
+        FormaPagamento,
+        Data
     }
 
     private class LancamentoPendente
@@ -66,6 +82,10 @@ public class TelegramBotService
         public List<CartaoCredito>? CartoesDisponiveis { get; set; }
         public List<Categoria>? CategoriasDisponiveis { get; set; }
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+        /// <summary>
+        /// Rastreia qual campo está sendo corrigido para recuperar contexto
+        /// </summary>
+        public CampoCorrecao CorrigindoCampo { get; set; } = CampoCorrecao.Nenhum;
     }
 
     private class ExclusaoPendente
@@ -134,7 +154,32 @@ public class TelegramBotService
         _tecladosPendentes[chatId] = linhas.Select(l => l.ToList()).ToList();
     }
 
+    /// <summary>
+    /// Obtém (ou cria) um semáforo exclusivo por chat para serializar o processamento.
+    /// Evita que dois callbacks/mensagens do mesmo usuário sejam processados ao mesmo tempo,
+    /// o que corrompia o estado do fluxo de correção.
+    /// </summary>
+    private static SemaphoreSlim ObterChatLock(long chatId)
+    {
+        return _chatLocks.GetOrAdd(chatId, _ => new SemaphoreSlim(1, 1));
+    }
+
     public async Task<string> ProcessarMensagemAsync(long chatId, string mensagem, string nomeUsuario)
+    {
+        // Serializar processamento por chat — evita race conditions que corrompem estado
+        var chatLock = ObterChatLock(chatId);
+        await chatLock.WaitAsync();
+        try
+        {
+            return await ProcessarMensagemInternoAsync(chatId, mensagem, nomeUsuario);
+        }
+        finally
+        {
+            chatLock.Release();
+        }
+    }
+
+    private async Task<string> ProcessarMensagemInternoAsync(long chatId, string mensagem, string nomeUsuario)
     {
         // Limpar teclado anterior para evitar botões obsoletos
         _tecladosPendentes.TryRemove(chatId, out _);
@@ -189,20 +234,22 @@ public class TelegramBotService
     /// </summary>
     private async Task<string?> ProcessarEtapaPendenteAsync(long chatId, Usuario usuario, string mensagem)
     {
-        // Limpar pendentes expirados (mais de 5 minutos)
+        // Limpar pendentes expirados (10 minutos — estendido para dar tempo ao fluxo de correção)
         foreach (var kv in _pendentes)
         {
-            if ((DateTime.UtcNow - kv.Value.CriadoEm).TotalMinutes > 5)
+            if ((DateTime.UtcNow - kv.Value.CriadoEm).TotalMinutes > 10)
                 _pendentes.TryRemove(kv.Key, out _);
         }
 
         if (!_pendentes.TryGetValue(chatId, out var pendente))
             return null;
 
+        _logger.LogDebug("Etapa pendente para chat {ChatId}: Estado={Estado}, Campo={Campo}", chatId, pendente.Estado, pendente.CorrigindoCampo);
+
         var msg = mensagem.Trim().ToLower();
 
         // Cancelar a qualquer momento
-        if (msg is "cancelar" or "cancela" or "❌" or "👎")
+        if (msg is "cancelar" or "cancela" or "❌" or "👎" || EhCancelamento(msg))
         {
             _pendentes.TryRemove(chatId, out _);
             return "❌ Cancelado! O lançamento não foi registrado.";
@@ -212,6 +259,9 @@ public class TelegramBotService
         {
             case EstadoPendente.AguardandoDescricao:
                 return await ProcessarRespostaDescricaoAsync(chatId, pendente, mensagem.Trim());
+
+            case EstadoPendente.AguardandoNovaDescricaoCorrecao:
+                return ProcessarEntradaNovaDescricaoCorrecao(chatId, pendente, mensagem.Trim());
 
             case EstadoPendente.AguardandoFormaPagamento:
                 return await ProcessarRespostaFormaPagamentoAsync(chatId, pendente, msg);
@@ -308,8 +358,10 @@ public class TelegramBotService
         // Identificar qual campo quer corrigir
         if (msg is "1" or "descricao" or "descrição" or "nome" or "📝")
         {
-            pendente.Estado = EstadoPendente.AguardandoDescricao;
+            pendente.Estado = EstadoPendente.AguardandoNovaDescricaoCorrecao;
+            pendente.CorrigindoCampo = CampoCorrecao.Descricao;
             pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
             return "📝 Digite a nova descrição:";
         }
 
@@ -318,6 +370,7 @@ public class TelegramBotService
             // Aguardar novo valor em estado dedicado
             pendente.CriadoEm = DateTime.UtcNow;
             pendente.Estado = EstadoPendente.AguardandoNovoValorCorrecao;
+            pendente.CorrigindoCampo = CampoCorrecao.Valor;
             _pendentes[chatId] = pendente;
             return "💵 Digite o novo valor (ex: 45,90):";
         }
@@ -326,6 +379,7 @@ public class TelegramBotService
         {
             // Resetar categoria e re-perguntar
             pendente.Dados.Categoria = "Outros";
+            pendente.CorrigindoCampo = CampoCorrecao.Categoria;
             pendente.CriadoEm = DateTime.UtcNow;
             _pendentes[chatId] = pendente;
             return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
@@ -334,6 +388,7 @@ public class TelegramBotService
         if (msg is "4" or "pagamento" or "forma" or "💳")
         {
             pendente.Estado = EstadoPendente.AguardandoFormaPagamento;
+            pendente.CorrigindoCampo = CampoCorrecao.FormaPagamento;
             pendente.CriadoEm = DateTime.UtcNow;
             _pendentes[chatId] = pendente;
 
@@ -357,16 +412,18 @@ public class TelegramBotService
         {
             pendente.CriadoEm = DateTime.UtcNow;
             pendente.Estado = EstadoPendente.AguardandoNovaDataCorrecao;
+            pendente.CorrigindoCampo = CampoCorrecao.Data;
             _pendentes[chatId] = pendente;
             return "📅 Digite a nova data (dd/MM/yyyy):";
         }
 
-        // Se digitou um valor numérico, pode ser correção de valor
+        // Se digitou um valor numérico, pode ser correção de valor (atalho direto)
         if (TryParseValor(msg, out var novoValor) && novoValor > 0)
         {
             pendente.Dados.Valor = novoValor;
             pendente.CriadoEm = DateTime.UtcNow;
             pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+            pendente.CorrigindoCampo = CampoCorrecao.Nenhum;
             _pendentes[chatId] = pendente;
             var nomeCartao = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
             DefinirTeclado(chatId,
@@ -375,13 +432,14 @@ public class TelegramBotService
             return "✅ Valor atualizado!\n\n" + MontarPreviewLancamento(pendente.Dados, nomeCartao);
         }
 
-        // Se digitou uma data
+        // Se digitou uma data (atalho direto)
         if (DateTime.TryParseExact(msg, new[] { "dd/MM/yyyy", "d/M/yyyy", "dd/MM" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out var novaData))
         {
             if (novaData.Year < 2000) novaData = new DateTime(DateTime.UtcNow.Year, novaData.Month, novaData.Day, 0, 0, 0, DateTimeKind.Utc);
             pendente.Dados.Data = DateTime.SpecifyKind(novaData, DateTimeKind.Utc);
             pendente.CriadoEm = DateTime.UtcNow;
             pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+            pendente.CorrigindoCampo = CampoCorrecao.Nenhum;
             _pendentes[chatId] = pendente;
             var nomeCartao = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
             DefinirTeclado(chatId,
@@ -390,14 +448,55 @@ public class TelegramBotService
             return "✅ Data atualizada!\n\n" + MontarPreviewLancamento(pendente.Dados, nomeCartao);
         }
 
+        // Se digitou texto que não é número nem data, pode ser uma nova descrição (atalho direto)
+        if (msg.Length >= 2 && !msg.All(c => char.IsDigit(c) || c == ',' || c == '.' || c == '/'))
+        {
+            pendente.Dados.Descricao = msg.Length > 200 ? msg[..200] : msg;
+            pendente.CriadoEm = DateTime.UtcNow;
+            pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+            pendente.CorrigindoCampo = CampoCorrecao.Nenhum;
+            _pendentes[chatId] = pendente;
+            var nomeCartao = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
+            DefinirTeclado(chatId,
+                new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
+            );
+            return "✅ Descrição atualizada!\n\n" + MontarPreviewLancamento(pendente.Dados, nomeCartao);
+        }
+
         // Não reconheceu — re-perguntar
         pendente.CriadoEm = DateTime.UtcNow;
+        _pendentes[chatId] = pendente;
         DefinirTeclado(chatId,
             new[] { ("📝 Descrição", "descricao"), ("💵 Valor", "valor") },
             new[] { ("🏷️ Categoria", "categoria"), ("💳 Pagamento", "pagamento") },
             new[] { ("📅 Data", "data"), ("❌ Cancelar", "cancelar") }
         );
         return "⚠️ Não entendi. O que deseja corrigir?\n\n1️⃣ Descrição\n2️⃣ Valor\n3️⃣ Categoria\n4️⃣ Pagamento\n5️⃣ Data\n\nEscolha abaixo 👇";
+    }
+
+    private string ProcessarEntradaNovaDescricaoCorrecao(long chatId, LancamentoPendente pendente, string descricao)
+    {
+        if (string.IsNullOrWhiteSpace(descricao) || descricao.Length < 2)
+        {
+            pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
+            return "⚠️ Descrição muito curta. Diga o nome do gasto (ex: Mercado, Uber, Netflix):";
+        }
+
+        if (descricao.Length > 200)
+            descricao = descricao[..200];
+
+        pendente.Dados.Descricao = descricao;
+        pendente.CriadoEm = DateTime.UtcNow;
+        pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+        pendente.CorrigindoCampo = CampoCorrecao.Nenhum;
+        _pendentes[chatId] = pendente;
+
+        var nomeCartao = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
+        );
+        return "✅ Descrição atualizada!\n\n" + MontarPreviewLancamento(pendente.Dados, nomeCartao);
     }
 
     private string ProcessarEntradaNovoValorCorrecao(long chatId, LancamentoPendente pendente, string msg)
@@ -412,6 +511,7 @@ public class TelegramBotService
         pendente.Dados.Valor = novoValor;
         pendente.CriadoEm = DateTime.UtcNow;
         pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+        pendente.CorrigindoCampo = CampoCorrecao.Nenhum;
         _pendentes[chatId] = pendente;
 
         var nomeCartao = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
@@ -437,6 +537,7 @@ public class TelegramBotService
         pendente.Dados.Data = DateTime.SpecifyKind(novaData, DateTimeKind.Utc);
         pendente.CriadoEm = DateTime.UtcNow;
         pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+        pendente.CorrigindoCampo = CampoCorrecao.Nenhum;
         _pendentes[chatId] = pendente;
 
         var nomeCartao = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
@@ -711,7 +812,9 @@ public class TelegramBotService
         if (msg is "corrigir" or "editar" or "alterar" or "mudar" or "corrige" or "ajustar" or "✏️")
         {
             pendente.Estado = EstadoPendente.AguardandoCorrecao;
+            pendente.CorrigindoCampo = CampoCorrecao.Nenhum;
             pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
             DefinirTeclado(chatId,
                 new[] { ("📝 Descrição", "descricao"), ("💵 Valor", "valor") },
                 new[] { ("🏷️ Categoria", "categoria"), ("💳 Pagamento", "pagamento") },
@@ -720,12 +823,97 @@ public class TelegramBotService
             return "✏️ O que deseja corrigir?\n\n1️⃣ Descrição\n2️⃣ Valor\n3️⃣ Categoria\n4️⃣ Forma de Pagamento\n5️⃣ Data\n\nEscolha abaixo 👇";
         }
 
+        // Atalhos: usuário pode já dizer qual campo quer corrigir sem escrever "corrigir"
+        if (msg is "1" or "descricao" or "descrição" or "nome" or "📝"
+            or "2" or "valor" or "preço" or "preco" or "💵"
+            or "3" or "categoria" or "🏷️" or "🏷"
+            or "4" or "pagamento" or "forma" or "💳"
+            or "5" or "data" or "📅")
+        {
+            pendente.Estado = EstadoPendente.AguardandoCorrecao;
+            pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
+            return await ProcessarRespostaCorrecaoAsync(chatId, pendente, usuario, msg);
+        }
+
+        // Entrada direta de novo valor durante confirmação
+        if (TryParseValor(msg, out var novoValor) && novoValor > 0)
+        {
+            pendente.Estado = EstadoPendente.AguardandoNovoValorCorrecao;
+            pendente.CorrigindoCampo = CampoCorrecao.Valor;
+            _pendentes[chatId] = pendente;
+            return ProcessarEntradaNovoValorCorrecao(chatId, pendente, msg);
+        }
+
+        // Entrada direta de nova data durante confirmação
+        if (msg.Contains('/'))
+        {
+            pendente.Estado = EstadoPendente.AguardandoNovaDataCorrecao;
+            pendente.CorrigindoCampo = CampoCorrecao.Data;
+            _pendentes[chatId] = pendente;
+            return ProcessarEntradaNovaDataCorrecao(chatId, pendente, msg);
+        }
+
+        // Recuperação inteligente: se o campo estava sendo corrigido mas o estado voltou para confirmação,
+        // tentar interpretar a mensagem com base no último campo corrigido
+        if (pendente.CorrigindoCampo != CampoCorrecao.Nenhum)
+        {
+            return await RecuperarCorrecaoAsync(chatId, pendente, usuario, msg);
+        }
+
         // Não reconheceu — re-perguntar ao invés de descartar silenciosamente
         pendente.CriadoEm = DateTime.UtcNow;
+        _pendentes[chatId] = pendente;
         DefinirTeclado(chatId,
             new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
         );
         return "⚠️ Não entendi. Deseja confirmar, corrigir ou cancelar?\n\nEscolha abaixo 👇";
+    }
+
+    /// <summary>
+    /// Recuperação inteligente: quando o estado voltou para AguardandoConfirmacao mas o campo estava
+    /// sendo corrigido, tenta interpretar a mensagem de acordo com o último campo selecionado.
+    /// </summary>
+    private async Task<string> RecuperarCorrecaoAsync(long chatId, LancamentoPendente pendente, Usuario usuario, string msg)
+    {
+        _logger.LogWarning("Recuperando correção para chat {ChatId}: campo={Campo}, msg={Msg}", chatId, pendente.CorrigindoCampo, msg);
+
+        switch (pendente.CorrigindoCampo)
+        {
+            case CampoCorrecao.Valor:
+                pendente.Estado = EstadoPendente.AguardandoNovoValorCorrecao;
+                _pendentes[chatId] = pendente;
+                return ProcessarEntradaNovoValorCorrecao(chatId, pendente, msg);
+
+            case CampoCorrecao.Data:
+                pendente.Estado = EstadoPendente.AguardandoNovaDataCorrecao;
+                _pendentes[chatId] = pendente;
+                return ProcessarEntradaNovaDataCorrecao(chatId, pendente, msg);
+
+            case CampoCorrecao.Descricao:
+                pendente.Estado = EstadoPendente.AguardandoNovaDescricaoCorrecao;
+                _pendentes[chatId] = pendente;
+                return ProcessarEntradaNovaDescricaoCorrecao(chatId, pendente, msg);
+
+            case CampoCorrecao.FormaPagamento:
+                pendente.Estado = EstadoPendente.AguardandoFormaPagamento;
+                _pendentes[chatId] = pendente;
+                return await ProcessarRespostaFormaPagamentoAsync(chatId, pendente, msg) ?? "⚠️ Não reconheci a forma de pagamento.";
+
+            case CampoCorrecao.Categoria:
+                pendente.Estado = EstadoPendente.AguardandoCorrecao;
+                _pendentes[chatId] = pendente;
+                return await ProcessarRespostaCorrecaoAsync(chatId, pendente, usuario, "categoria") ?? "⚠️ Erro ao processar categoria.";
+
+            default:
+                pendente.CorrigindoCampo = CampoCorrecao.Nenhum;
+                pendente.CriadoEm = DateTime.UtcNow;
+                _pendentes[chatId] = pendente;
+                DefinirTeclado(chatId,
+                    new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
+                );
+                return "⚠️ Não entendi. Deseja confirmar, corrigir ou cancelar?\n\nEscolha abaixo 👇";
+        }
     }
 
     /// <summary>
@@ -1078,8 +1266,18 @@ public class TelegramBotService
             if (string.IsNullOrWhiteSpace(texto))
                 return "❌ Não consegui extrair informações da imagem.";
 
-            var resultado = await ProcessarComIAAsync(usuario, texto, OrigemDado.Imagem);
-            return $"📷 Imagem processada!\n\n{resultado}";
+            // Usar lock do chat para evitar conflito com fluxo pendente
+            var chatLock = ObterChatLock(chatId);
+            await chatLock.WaitAsync();
+            try
+            {
+                var resultado = await ProcessarComIAAsync(usuario, texto, OrigemDado.Imagem);
+                return $"📷 Imagem processada!\n\n{resultado}";
+            }
+            finally
+            {
+                chatLock.Release();
+            }
         }
         catch (Exception ex)
         {
@@ -2767,11 +2965,25 @@ public class TelegramBotService
 
     private static bool TryParseValor(string input, out decimal valor)
     {
+        // Normalizar caracteres Unicode que podem vir de teclados mobile
         var normalizado = input
             .Replace("R$", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("\u00A0", "")   // Non-breaking space
+            .Replace("\u200B", "")   // Zero-width space
+            .Replace("\u200C", "")   // Zero-width non-joiner
+            .Replace("\u200D", "")   // Zero-width joiner
+            .Replace("\uFEFF", "")   // BOM
             .Replace(" ", "")
+            .Replace("\t", "")
+            .Replace("\u066B", ",")  // Arabic decimal separator
+            .Replace("\uFF0C", ",")  // Fullwidth comma
+            .Replace("\u060C", ",")  // Arabic comma
+            .Replace("\uFE50", ",")  // Small comma
             .Replace(".", "")
             .Replace(",", ".");
+
+        // Remover qualquer caractere que não seja dígito, ponto ou sinal
+        normalizado = System.Text.RegularExpressions.Regex.Replace(normalizado, @"[^\d.\-+]", "");
 
         return decimal.TryParse(
             normalizado,
