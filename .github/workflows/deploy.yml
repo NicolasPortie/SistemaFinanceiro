@@ -61,12 +61,12 @@ jobs:
 
     - name: Extrair versão da tag
       id: version
-      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      run: |
+        echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
     - name: Sincronizar arquivos para pasta de deploy
       run: |
         rsync -av --delete \
-          --exclude '.git' \
           --exclude 'bin' \
           --exclude 'obj' \
           --exclude 'node_modules' \
