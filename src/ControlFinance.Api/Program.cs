@@ -16,12 +16,19 @@ var builder = WebApplication.CreateBuilder(args);
 // === Validar segredos obrigatórios ===
 var jwtSecret = builder.Configuration["Jwt:Secret"];
 var jwtSecretBytes = string.IsNullOrWhiteSpace(jwtSecret) ? 0 : Encoding.UTF8.GetByteCount(jwtSecret);
-if (jwtSecretBytes < 64)
+if (jwtSecretBytes < 64 ||
+    jwtSecret!.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase) ||
+    jwtSecret.Contains("SEU_SEGREDO", StringComparison.OrdinalIgnoreCase) ||
+    jwtSecret.Contains("DEV_ONLY", StringComparison.OrdinalIgnoreCase))
     throw new InvalidOperationException("JWT Secret não configurado ou muito curto para HS512 (mínimo 64 bytes). Configure em appsettings.Development.json, User Secrets ou variáveis de ambiente.");
 
 var encryptionKey = builder.Configuration["Encryption:Key"];
-if (string.IsNullOrWhiteSpace(encryptionKey))
-    throw new InvalidOperationException("Encryption:Key não configurada. Configure via variáveis de ambiente ou User Secrets.");
+var encryptionKeyBytes = string.IsNullOrWhiteSpace(encryptionKey) ? 0 : Encoding.UTF8.GetByteCount(encryptionKey);
+if (encryptionKeyBytes < 32 ||
+    encryptionKey!.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase) ||
+    encryptionKey.Contains("SEU_SEGREDO", StringComparison.OrdinalIgnoreCase) ||
+    encryptionKey.Contains("DEV_ONLY", StringComparison.OrdinalIgnoreCase))
+    throw new InvalidOperationException("Encryption:Key não configurada ou fraca (mínimo 32 bytes). Configure via variáveis de ambiente ou User Secrets.");
 
 // === Configuração das camadas ===
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -49,6 +56,19 @@ builder.Services.AddAuthentication(options =>
 
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            if (!string.IsNullOrWhiteSpace(context.Token))
+                return Task.CompletedTask;
+
+            if (context.Request.Cookies.TryGetValue("cf_access_token", out var accessToken) &&
+                !string.IsNullOrWhiteSpace(accessToken))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        },
         OnAuthenticationFailed = context =>
         {
             if (context.Exception is SecurityTokenExpiredException)
@@ -96,7 +116,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(corsOrigins)
-            .WithHeaders("Content-Type", "Authorization", "X-Requested-With")
+            .WithHeaders("Content-Type", "Authorization", "X-Requested-With", "X-CSRF-Token")
             .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
             .AllowCredentials();
     });
@@ -246,6 +266,7 @@ if (!app.Environment.IsDevelopment())
 app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<CsrfProtectionMiddleware>();
 app.UseAuthorization();
 app.UseHealthChecks("/health");
 app.MapControllers();

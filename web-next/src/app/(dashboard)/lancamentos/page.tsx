@@ -119,7 +119,7 @@ export default function LancamentosPage() {
 
   const form = useForm<LancamentoData>({
     resolver: zodResolver(lancamentoSchema),
-    defaultValues: { descricao: "", valor: "", tipo: "despesa", categoria: "", cartaoId: "", formaPagamento: "" },
+    defaultValues: { descricao: "", valor: "", tipo: "despesa", categoria: "", cartaoId: "", formaPagamento: "", numeroParcelas: "" },
   });
 
   const editForm = useForm<EditarLancamentoData>({
@@ -129,15 +129,23 @@ export default function LancamentosPage() {
   const tipoSelecionado = useWatch({ control: form.control, name: "tipo" });
   const categoriaSelecionada = useWatch({ control: form.control, name: "categoria" });
   const cartaoSelecionado = useWatch({ control: form.control, name: "cartaoId" });
+  const formaPagamentoSelecionada = useWatch({ control: form.control, name: "formaPagamento" });
 
   const onSubmit = async (data: LancamentoData) => {
     const valor = parseFloat(data.valor.replace(",", "."));
-    const cartaoId = data.cartaoId ? parseInt(data.cartaoId, 10) : undefined;
 
-    // Determinar forma de pagamento: se tem cartão = Credito(3), senão usa o selecionado ou Debito(2)
+    // Determinar forma de pagamento
     let formaPagamento: 1 | 2 | 3 = 2;
-    if (cartaoId) {
+    let cartaoId: number | undefined;
+    let parcelas = 1;
+
+    if (data.tipo === "receita") {
+      formaPagamento = 1; // receita não tem forma de pagamento relevante
+    } else if (data.formaPagamento === "credito") {
       formaPagamento = 3;
+      cartaoId = data.cartaoId ? parseInt(data.cartaoId, 10) : undefined;
+      parcelas = data.numeroParcelas ? parseInt(data.numeroParcelas, 10) : 1;
+      if (parcelas < 1 || isNaN(parcelas)) parcelas = 1;
     } else if (data.formaPagamento === "pix") {
       formaPagamento = 1;
     } else if (data.formaPagamento === "debito") {
@@ -151,7 +159,7 @@ export default function LancamentosPage() {
         tipo: data.tipo === "despesa" ? 1 : 2,
         formaPagamento,
         categoria: data.categoria || "Outros",
-        numeroParcelas: 1,
+        numeroParcelas: parcelas,
         cartaoCreditoId: cartaoId,
         data: data.data || undefined,
       },
@@ -328,7 +336,7 @@ export default function LancamentosPage() {
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant={tipoSelecionado === "receita" ? "default" : "outline"} className="h-11 gap-2" onClick={() => { form.setValue("tipo", "receita"); form.setValue("cartaoId", ""); }}><ArrowUpCircle className="h-4 w-4" />Receita</Button>
+              <Button type="button" variant={tipoSelecionado === "receita" ? "default" : "outline"} className="h-11 gap-2" onClick={() => { form.setValue("tipo", "receita"); form.setValue("cartaoId", ""); form.setValue("formaPagamento", ""); form.setValue("numeroParcelas", ""); }}><ArrowUpCircle className="h-4 w-4" />Receita</Button>
               <Button type="button" variant={tipoSelecionado === "despesa" ? "default" : "outline"} className="h-11 gap-2" onClick={() => form.setValue("tipo", "despesa")}><ArrowDownCircle className="h-4 w-4" />Despesa</Button>
             </div>
             <div className="space-y-2">
@@ -348,26 +356,38 @@ export default function LancamentosPage() {
                 <SelectContent>{categorias.map((c) => (<SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>))}</SelectContent>
               </Select>
             </div>
-            {cartoes.length > 0 && tipoSelecionado === "despesa" && (
-              <div className="space-y-2">
-                <Label>Cartão (opcional)</Label>
-                <Select value={cartaoSelecionado} onValueChange={(v) => form.setValue("cartaoId", v)}>
-                  <SelectTrigger className="h-11"><SelectValue placeholder="Sem cartão" /></SelectTrigger>
-                  <SelectContent>{cartoes.map((c) => (<SelectItem key={c.id} value={c.id.toString()}>{c.nome}</SelectItem>))}</SelectContent>
-                </Select>
-              </div>
-            )}
-            {tipoSelecionado === "despesa" && !cartaoSelecionado && (
+            {tipoSelecionado === "despesa" && (
               <div className="space-y-2">
                 <Label>Forma de Pagamento</Label>
-                <Select value={form.watch("formaPagamento") ?? ""} onValueChange={(v) => form.setValue("formaPagamento", v)}>
+                <Select value={formaPagamentoSelecionada ?? ""} onValueChange={(v) => { form.setValue("formaPagamento", v); if (v !== "credito") { form.setValue("cartaoId", ""); form.setValue("numeroParcelas", ""); } }}>
                   <SelectTrigger className="h-11"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pix">PIX</SelectItem>
                     <SelectItem value="debito">Débito</SelectItem>
+                    {cartoes.length > 0 && <SelectItem value="credito">Cartão de Crédito</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
+            )}
+            {tipoSelecionado === "despesa" && formaPagamentoSelecionada === "credito" && cartoes.length > 0 && (
+              <>
+                <div className="space-y-2">
+                  <Label>Cartão</Label>
+                  <Select value={cartaoSelecionado} onValueChange={(v) => form.setValue("cartaoId", v)}>
+                    <SelectTrigger className="h-11"><SelectValue placeholder="Selecione o cartão" /></SelectTrigger>
+                    <SelectContent>{cartoes.map((c) => (<SelectItem key={c.id} value={c.id.toString()}>{c.nome}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Parcelas</Label>
+                  <Select value={form.watch("numeroParcelas") ?? ""} onValueChange={(v) => form.setValue("numeroParcelas", v)}>
+                    <SelectTrigger className="h-11"><SelectValue placeholder="À vista (1x)" /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (<SelectItem key={n} value={n.toString()}>{n}x{n === 1 ? " (à vista)" : ""}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <Label>Data (opcional)</Label>

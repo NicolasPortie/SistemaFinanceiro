@@ -109,6 +109,9 @@ public class GeminiService : IGeminiService
             - Palavras podem estar juntas ou separadas diferente do esperado.
             - Converta SEMPRE numeros por extenso para valores numericos decimais.
             - "cem conto" ou "cem reais" = 100.00, "dois e cinquenta" = 2.50, "mil e quinhentos" = 1500.00.
+            - REGRA CRITICA DE VALOR: "X e Y" onde Y < 100 = X.Y (centavos). Exemplos:
+              "75 e 90" = 75.90, "150 e 50" = 150.50, "42 e 99" = 42.99, "10 e 5" = 10.05.
+              NAO some os numeros! "75 e 90" NAO e 165. E 75.90 (setenta e cinco reais e noventa centavos).
             - "ontem" = dia anterior a {{dataHoje}}, "anteontem" = 2 dias antes de {{dataHoje}}.
 
             REGRAS:
@@ -150,6 +153,7 @@ public class GeminiService : IGeminiService
             - "editar_cartao" -> editar/alterar/corrigir dados de um cartao ja cadastrado (nome, limite ou vencimento). Preencher "cartao" com os dados novos e colocar o nome atual do cartao no campo "resposta".
             - "excluir_cartao" -> excluir/remover/desativar um cartao cadastrado. Colocar o nome do cartao no campo "resposta".
             - "excluir_lancamento" -> apagar/remover/excluir um lancamento ja registrado. Colocar descricao ou detalhes no campo "resposta".
+            - "criar_categoria" -> criar/adicionar uma nova categoria personalizada. Colocar o nome da categoria no campo "resposta". Ex: "criar categoria Roupas", "adicionar categoria Pets", "nova categoria Educação".
             - "categorizar_ultimo" -> alterar a categoria do último lançamento registrado (ex: "esse último gasto foi Lazer"). Preencher "resposta" com o nome da NOVA categoria.
             - "pagar_fatura" -> registrar pagamento de fatura de cartao de credito. Preencher "pagamentoFatura".
             - "pergunta" -> pergunta financeira geral.
@@ -175,6 +179,14 @@ public class GeminiService : IGeminiService
             - REGRA CRITICA: se o usuario diz "comprei", "paguei", "gastei", "tenho X parcelas" -> é "registrar", NAO "prever_compra". A palavra-chave e se JA ACONTECEU (registrar) ou se e HIPOTETICO/FUTURO (prever_compra).
             - Se valor alto (>500) ou menciona parcelas MAS e hipotetico/futuro -> "prever_compra".
             - Se valor alto ou menciona parcelas MAS ja foi feito -> "registrar".
+
+            REGRA CRITICA PARA COMPRAS PARCELADAS:
+            - Se o usuario menciona "parcelado/parcelada" mas NAO informa quantas parcelas, use numeroParcelas = 0. O sistema ira perguntar.
+            - Se o usuario diz "valor total" ou "no total", o valor informado e o TOTAL da compra, NAO o valor por parcela.
+            - Ex: "comprei parcelado no valor total de 75,90" -> valor = 75.90, numeroParcelas = 0 (perguntar).
+            - Ex: "comprei algo de 500 em 10x" -> valor = 500.00, numeroParcelas = 10.
+            - Ex: "tenho 8 parcelas de 215" -> valor = 215.00 * 8 = 1720.00, numeroParcelas = 8.
+            - NUNCA assuma um numero de parcelas se o usuario nao informou. Use 0 para indicar que precisa perguntar.
 
             DIFERENCA ENTRE "ver_fatura", "ver_fatura_detalhada" E "listar_faturas":
             - "ver_fatura": quando pede fatura atual/corrente (ex: "mostra a fatura", "fatura atual", "minha fatura").

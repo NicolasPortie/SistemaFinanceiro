@@ -75,17 +75,19 @@ jobs:
           ./ ~/controlfinance/
 
     - name: Deploy com Docker Compose
+      env:
+        APP_VERSION: ${{ steps.version.outputs.VERSION }}
       run: |
         cd ~/controlfinance
         
-        echo "=== Deploy ${{ steps.version.outputs.VERSION }} ==="
+        echo "=== Deploy ${APP_VERSION} ==="
         
-        # Build novos containers
-        docker compose -f docker-compose.prod.yml build --no-cache
+        # Build novos containers com a versão da tag
+        APP_VERSION=${APP_VERSION} docker compose -f docker-compose.prod.yml build --no-cache
         
         # Parar containers antigos e iniciar novos
         docker compose -f docker-compose.prod.yml down
-        docker compose -f docker-compose.prod.yml up -d
+        APP_VERSION=${APP_VERSION} docker compose -f docker-compose.prod.yml up -d
         
         # Limpar imagens não utilizadas
         docker image prune -f

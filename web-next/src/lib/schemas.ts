@@ -94,6 +94,7 @@ export const lancamentoSchema = z.object({
   categoria: z.string().optional(),
   cartaoId: z.string().optional(),
   formaPagamento: z.string().optional(),
+  numeroParcelas: z.string().optional(),
   data: z.string().optional(),
 });
 

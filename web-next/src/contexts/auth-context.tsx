@@ -47,8 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, senha: string) => {
     const res = await api.auth.login({ email, senha });
-    localStorage.setItem("cf_token", res.token);
-    localStorage.setItem("cf_refresh_token", res.refreshToken);
     localStorage.setItem("cf_user", JSON.stringify(res.usuario));
     setUsuario(res.usuario);
   }, []);
@@ -59,16 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verificarRegistro = useCallback(async (email: string, codigo: string) => {
     const res = await api.auth.verificarRegistro({ email, codigo });
-    localStorage.setItem("cf_token", res.token);
-    localStorage.setItem("cf_refresh_token", res.refreshToken);
     localStorage.setItem("cf_user", JSON.stringify(res.usuario));
     setUsuario(res.usuario);
   }, []);
 
   const logout = useCallback(() => {
     api.auth.logout().catch(() => {});
-    localStorage.removeItem("cf_token");
-    localStorage.removeItem("cf_refresh_token");
     localStorage.removeItem("cf_user");
     setUsuario(null);
   }, []);

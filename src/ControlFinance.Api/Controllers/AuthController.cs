@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +13,10 @@ namespace ControlFinance.Api.Controllers;
 [EnableRateLimiting("auth")]
 public class AuthController : ControllerBase
 {
+    private const string AccessCookieName = "cf_access_token";
+    private const string RefreshCookieName = "cf_refresh_token";
+    private const string CsrfCookieName = "cf_csrf_token";
+
     private readonly IAuthService _authService;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
@@ -51,7 +56,8 @@ public class AuthController : ControllerBase
         if (erro != null)
             return BadRequest(new { erro });
 
-        return Ok(response);
+        DefinirCookiesAutenticacao(response!);
+        return Ok(MontarSessaoResposta(response!));
     }
 
     [HttpPost("reenviar-codigo-registro")]
@@ -77,20 +83,33 @@ public class AuthController : ControllerBase
         if (erro != null)
             return Unauthorized(new { erro });
 
-        return Ok(response);
+        DefinirCookiesAutenticacao(response!);
+        return Ok(MontarSessaoResposta(response!));
+    }
+
+    [HttpGet("csrf")]
+    public IActionResult ObterCsrfToken()
+    {
+        var token = DefinirCsrfCookie();
+        return Ok(new { csrfToken = token });
     }
 
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto dto)
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto? dto)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        var refreshToken = dto?.RefreshToken;
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            Request.Cookies.TryGetValue(RefreshCookieName, out refreshToken);
 
-        var (response, erro) = await _authService.RefreshAsync(dto.RefreshToken, ClientIp);
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return Unauthorized(new { erro = "Refresh token ausente." });
+
+        var (response, erro) = await _authService.RefreshAsync(refreshToken, ClientIp);
         if (erro != null)
             return Unauthorized(new { erro });
 
-        return Ok(response);
+        DefinirCookiesAutenticacao(response!);
+        return Ok(MontarSessaoResposta(response!));
     }
 
     [Authorize]
@@ -101,6 +120,7 @@ public class AuthController : ControllerBase
         if (userId == null) return Unauthorized();
 
         await _authService.RevogarTokensAsync(userId.Value);
+        LimparCookiesAutenticacao();
         return Ok(new { mensagem = "Sessão encerrada." });
     }
 
@@ -190,5 +210,87 @@ public class AuthController : ControllerBase
         if (claim == null || !int.TryParse(claim.Value, out var id))
             return null;
         return id;
+    }
+
+    private void DefinirCookiesAutenticacao(AuthResponseDto response)
+    {
+        var secure = !Request.IsHttps ? !_environment.IsDevelopment() : true;
+
+        var accessOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = secure,
+            SameSite = SameSiteMode.Lax,
+            Path = "/",
+            Expires = response.ExpiraEm
+        };
+
+        var refreshDays = _configuration.GetValue("Jwt:RefreshTokenExpirationDays", 30);
+        var refreshOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = secure,
+            SameSite = SameSiteMode.Lax,
+            Path = "/",
+            Expires = DateTime.UtcNow.AddDays(refreshDays)
+        };
+
+        Response.Cookies.Append(AccessCookieName, response.Token, accessOptions);
+        Response.Cookies.Append(RefreshCookieName, response.RefreshToken, refreshOptions);
+        DefinirCsrfCookie();
+    }
+
+    private void LimparCookiesAutenticacao()
+    {
+        var secure = !Request.IsHttps ? !_environment.IsDevelopment() : true;
+
+        var options = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = secure,
+            SameSite = SameSiteMode.Lax,
+            Path = "/",
+            Expires = DateTime.UtcNow.AddDays(-1)
+        };
+
+        Response.Cookies.Append(AccessCookieName, string.Empty, options);
+        Response.Cookies.Append(RefreshCookieName, string.Empty, options);
+        Response.Cookies.Append(CsrfCookieName, string.Empty, options);
+    }
+
+    private string DefinirCsrfCookie()
+    {
+        var secure = !Request.IsHttps ? !_environment.IsDevelopment() : true;
+        var token = GerarTokenSeguro(32);
+
+        var options = new CookieOptions
+        {
+            HttpOnly = false,
+            Secure = secure,
+            SameSite = SameSiteMode.Strict,
+            Path = "/",
+            Expires = DateTime.UtcNow.AddHours(8)
+        };
+
+        Response.Cookies.Append(CsrfCookieName, token, options);
+        return token;
+    }
+
+    private static string GerarTokenSeguro(int bytes)
+    {
+        var random = RandomNumberGenerator.GetBytes(bytes);
+        return Convert.ToBase64String(random)
+            .Replace("+", "-")
+            .Replace("/", "_")
+            .TrimEnd('=');
+    }
+
+    private static object MontarSessaoResposta(AuthResponseDto response)
+    {
+        return new
+        {
+            expiraEm = response.ExpiraEm,
+            usuario = response.Usuario
+        };
     }
 }

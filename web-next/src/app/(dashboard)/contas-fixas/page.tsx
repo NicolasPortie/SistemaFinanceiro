@@ -209,7 +209,7 @@ export default function ContasFixasPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 items-end">
                 <div className="space-y-2">
                   <Label>Data de Vencimento</Label>
                   <Input
@@ -220,30 +220,29 @@ export default function ContasFixasPage() {
                     required
                   />
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 pt-6">
-                    <Switch
-                      checked={recorrente}
-                      onCheckedChange={setRecorrente}
-                    />
-                    <Label className="cursor-pointer">Recorrente mensal</Label>
-                  </div>
-                  {recorrente && (
-                    <div className="space-y-2">
-                      <Label>Dia de vencimento (1-31)</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={31}
-                        placeholder="Dia"
-                        value={diaRecorrente}
-                        onChange={(e) => setDiaRecorrente(e.target.value)}
-                        className="h-11"
-                      />
-                    </div>
-                  )}
+                <div className="flex items-center gap-3 h-11">
+                  <Switch
+                    checked={recorrente}
+                    onCheckedChange={setRecorrente}
+                  />
+                  <Label className="cursor-pointer">Recorrente mensal</Label>
                 </div>
               </div>
+
+              {recorrente && (
+                <div className="space-y-2 sm:w-1/2">
+                  <Label>Dia de vencimento (1-31)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={31}
+                    placeholder="Dia"
+                    value={diaRecorrente}
+                    onChange={(e) => setDiaRecorrente(e.target.value)}
+                    className="h-11"
+                  />
+                </div>
+              )}
 
               <Button
                 type="submit"

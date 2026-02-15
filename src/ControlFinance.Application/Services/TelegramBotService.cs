@@ -36,8 +36,8 @@ public class TelegramBotService
     private static readonly ConcurrentDictionary<long, LancamentoPendente> _pendentes = new();
     // Cache de desvinculações pendentes de confirmação
     private static readonly ConcurrentDictionary<long, DateTime> _desvinculacaoPendente = new();
-    // Cache de cartões pendentes de confirmação
-    private static readonly ConcurrentDictionary<long, CartaoPendente> _cartaoPendente = new();
+    // Cache de exclusões pendentes de confirmação
+    private static readonly ConcurrentDictionary<long, ExclusaoPendente> _exclusaoPendente = new();
     // Teclados inline pendentes para enviar junto à próxima resposta (chatId → linhas de botões)
     private static readonly ConcurrentDictionary<long, List<List<(string Label, string Data)>>> _tecladosPendentes = new();
 
@@ -46,22 +46,13 @@ public class TelegramBotService
     /// </summary>
     private enum EstadoPendente
     {
+        AguardandoDescricao,
         AguardandoFormaPagamento,
         AguardandoCartao,
+        AguardandoParcelas,
         AguardandoCategoria,
-        AguardandoConfirmacao
-    }
-
-    private class CartaoPendente
-    {
-        public string Nome { get; set; } = null!;
-        public decimal Limite { get; set; }
-        public int DiaVencimento { get; set; }
-        public int UsuarioId { get; set; }
-        public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
-        // Para edição: armazena o ID do cartão existente e as alterações formatadas
-        public int? CartaoIdEdicao { get; set; }
-        public string? AlteracoesResumo { get; set; }
+        AguardandoConfirmacao,
+        AguardandoCorrecao
     }
 
     private class LancamentoPendente
@@ -72,6 +63,13 @@ public class TelegramBotService
         public EstadoPendente Estado { get; set; } = EstadoPendente.AguardandoConfirmacao;
         public List<CartaoCredito>? CartoesDisponiveis { get; set; }
         public List<Categoria>? CategoriasDisponiveis { get; set; }
+        public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+    }
+
+    private class ExclusaoPendente
+    {
+        public Domain.Entities.Lancamento Lancamento { get; set; } = null!;
+        public int UsuarioId { get; set; }
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     }
 
@@ -156,6 +154,11 @@ public class TelegramBotService
         if (respostaDesvinc != null)
             return respostaDesvinc;
 
+        // Verificar confirmação de exclusão pendente
+        var respostaExclusao = await ProcessarConfirmacaoExclusaoAsync(chatId, usuario, mensagem);
+        if (respostaExclusao != null)
+            return respostaExclusao;
+
         // Verificar se há lançamento pendente em etapas (forma, cartão, categoria, confirmação)
         var respostaEtapa = await ProcessarEtapaPendenteAsync(chatId, usuario, mensagem);
         if (respostaEtapa != null)
@@ -205,22 +208,189 @@ public class TelegramBotService
 
         switch (pendente.Estado)
         {
+            case EstadoPendente.AguardandoDescricao:
+                return await ProcessarRespostaDescricaoAsync(chatId, pendente, mensagem.Trim());
+
             case EstadoPendente.AguardandoFormaPagamento:
                 return await ProcessarRespostaFormaPagamentoAsync(chatId, pendente, msg);
 
             case EstadoPendente.AguardandoCartao:
                 return await ProcessarRespostaCartaoEscolhaAsync(chatId, pendente, msg);
 
+            case EstadoPendente.AguardandoParcelas:
+                return await ProcessarRespostaParcelasAsync(chatId, pendente, msg);
+
             case EstadoPendente.AguardandoCategoria:
-                return await ProcessarRespostaCategoriaAsync(chatId, pendente, usuario, msg);
+                return await ProcessarRespostaCategoriaAsync(chatId, pendente, usuario, msg, mensagem.Trim());
 
             case EstadoPendente.AguardandoConfirmacao:
                 return await ProcessarConfirmacaoFinalAsync(chatId, pendente, usuario, msg);
+
+            case EstadoPendente.AguardandoCorrecao:
+                return await ProcessarRespostaCorrecaoAsync(chatId, pendente, usuario, msg);
 
             default:
                 _pendentes.TryRemove(chatId, out _);
                 return null;
         }
+    }
+
+    private async Task<string?> ProcessarRespostaDescricaoAsync(long chatId, LancamentoPendente pendente, string descricao)
+    {
+        if (string.IsNullOrWhiteSpace(descricao) || descricao.Length < 2)
+        {
+            pendente.CriadoEm = DateTime.UtcNow;
+            return "⚠️ Descrição muito curta. Diga o nome do gasto (ex: Mercado, Uber, Netflix):";
+        }
+
+        if (descricao.Length > 200)
+            descricao = descricao[..200];
+
+        pendente.Dados.Descricao = descricao;
+        pendente.CriadoEm = DateTime.UtcNow;
+
+        // Continuar o fluxo normal (forma de pagamento, etc.)
+        var ehReceita = pendente.Dados.Tipo?.ToLower() == "receita";
+        if (ehReceita)
+        {
+            pendente.Dados.FormaPagamento = "pix";
+            pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+            _pendentes[chatId] = pendente;
+            var preview = MontarPreviewLancamento(pendente.Dados);
+            DefinirTeclado(chatId,
+                new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
+            );
+            return preview + "\n\nEscolha abaixo 👇";
+        }
+
+        var formaPag = pendente.Dados.FormaPagamento?.ToLower();
+        var formaPagAusente = string.IsNullOrWhiteSpace(formaPag) || formaPag is "nao_informado" or "nao informado";
+
+        if (formaPagAusente)
+        {
+            pendente.Estado = EstadoPendente.AguardandoFormaPagamento;
+            _pendentes[chatId] = pendente;
+
+            var usuario = await _usuarioRepo.ObterPorIdAsync(pendente.UsuarioId);
+            var texto = $"💰 Registrar: *{pendente.Dados.Descricao}* — R$ {pendente.Dados.Valor:N2}\n\n💳 Qual a forma de pagamento?\n\n1️⃣ PIX\n2️⃣ Débito\n";
+            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(pendente.UsuarioId);
+            if (cartoes.Any())
+            {
+                var nomes = string.Join(", ", cartoes.Select(c => c.Nome));
+                texto += $"3️⃣ Crédito ({nomes})\n";
+            }
+            else
+            {
+                texto += "3️⃣ Crédito\n";
+            }
+            texto += "\nEscolha abaixo 👇";
+            DefinirTeclado(chatId,
+                new[] { ("1️⃣ PIX", "pix"), ("2️⃣ Débito", "debito"), ("3️⃣ Crédito", "credito") },
+                new[] { ("❌ Cancelar", "cancelar") }
+            );
+            return texto;
+        }
+
+        _pendentes[chatId] = pendente;
+        return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
+    }
+
+    private async Task<string?> ProcessarRespostaCorrecaoAsync(long chatId, LancamentoPendente pendente, Usuario usuario, string msg)
+    {
+        // Identificar qual campo quer corrigir
+        if (msg is "1" or "descricao" or "descrição" or "nome" or "📝")
+        {
+            pendente.Estado = EstadoPendente.AguardandoDescricao;
+            pendente.CriadoEm = DateTime.UtcNow;
+            return "📝 Digite a nova descrição:";
+        }
+
+        if (msg is "2" or "valor" or "preço" or "preco" or "💵")
+        {
+            // Aguardar novo valor — reutilizar estado de descrição com flag
+            pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
+            // Tratamento especial: guardar que é correção de valor
+            pendente.Estado = EstadoPendente.AguardandoConfirmacao; // temporário
+            return "💵 Digite o novo valor (ex: 45,90):";
+        }
+
+        if (msg is "3" or "categoria" or "🏷️" or "🏷")
+        {
+            // Resetar categoria e re-perguntar
+            pendente.Dados.Categoria = "Outros";
+            pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
+            return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
+        }
+
+        if (msg is "4" or "pagamento" or "forma" or "💳")
+        {
+            pendente.Estado = EstadoPendente.AguardandoFormaPagamento;
+            pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
+
+            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
+            var texto = "💳 Qual a forma de pagamento?\n\n1️⃣ PIX\n2️⃣ Débito\n";
+            if (cartoes.Any())
+            {
+                var nomes = string.Join(", ", cartoes.Select(c => c.Nome));
+                texto += $"3️⃣ Crédito ({nomes})\n";
+            }
+            else texto += "3️⃣ Crédito\n";
+            texto += "\nEscolha abaixo 👇";
+            DefinirTeclado(chatId,
+                new[] { ("1️⃣ PIX", "pix"), ("2️⃣ Débito", "debito"), ("3️⃣ Crédito", "credito") },
+                new[] { ("❌ Cancelar", "cancelar") }
+            );
+            return texto;
+        }
+
+        if (msg is "5" or "data" or "📅")
+        {
+            pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
+            pendente.Estado = EstadoPendente.AguardandoConfirmacao; // temporário
+            return "📅 Digite a nova data (dd/MM/yyyy):";
+        }
+
+        // Se digitou um valor numérico, pode ser correção de valor
+        if (TryParseValor(msg, out var novoValor) && novoValor > 0)
+        {
+            pendente.Dados.Valor = novoValor;
+            pendente.CriadoEm = DateTime.UtcNow;
+            pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+            _pendentes[chatId] = pendente;
+            var nomeCartao = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
+            DefinirTeclado(chatId,
+                new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
+            );
+            return "✅ Valor atualizado!\n\n" + MontarPreviewLancamento(pendente.Dados, nomeCartao);
+        }
+
+        // Se digitou uma data
+        if (DateTime.TryParseExact(msg, new[] { "dd/MM/yyyy", "d/M/yyyy", "dd/MM" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out var novaData))
+        {
+            if (novaData.Year < 2000) novaData = new DateTime(DateTime.UtcNow.Year, novaData.Month, novaData.Day, 0, 0, 0, DateTimeKind.Utc);
+            pendente.Dados.Data = DateTime.SpecifyKind(novaData, DateTimeKind.Utc);
+            pendente.CriadoEm = DateTime.UtcNow;
+            pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+            _pendentes[chatId] = pendente;
+            var nomeCartao = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
+            DefinirTeclado(chatId,
+                new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
+            );
+            return "✅ Data atualizada!\n\n" + MontarPreviewLancamento(pendente.Dados, nomeCartao);
+        }
+
+        // Não reconheceu — re-perguntar
+        pendente.CriadoEm = DateTime.UtcNow;
+        DefinirTeclado(chatId,
+            new[] { ("📝 Descrição", "descricao"), ("💵 Valor", "valor") },
+            new[] { ("🏷️ Categoria", "categoria"), ("💳 Pagamento", "pagamento") },
+            new[] { ("📅 Data", "data"), ("❌ Cancelar", "cancelar") }
+        );
+        return "⚠️ Não entendi. O que deseja corrigir?\n\n1️⃣ Descrição\n2️⃣ Valor\n3️⃣ Categoria\n4️⃣ Pagamento\n5️⃣ Data\n\nEscolha abaixo 👇";
     }
 
     private async Task<string?> ProcessarRespostaFormaPagamentoAsync(long chatId, LancamentoPendente pendente, string msg)
@@ -329,7 +499,35 @@ public class TelegramBotService
         return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
     }
 
-    private async Task<string?> ProcessarRespostaCategoriaAsync(long chatId, LancamentoPendente pendente, Usuario usuario, string msg)
+    private async Task<string?> ProcessarRespostaParcelasAsync(long chatId, LancamentoPendente pendente, string msg)
+    {
+        // Tentar extrair número de parcelas
+        var numStr = msg.Replace("x", "", StringComparison.OrdinalIgnoreCase)
+                       .Replace("vezes", "", StringComparison.OrdinalIgnoreCase)
+                       .Replace("parcelas", "", StringComparison.OrdinalIgnoreCase)
+                       .Replace("parcela", "", StringComparison.OrdinalIgnoreCase)
+                       .Trim();
+
+        if (int.TryParse(numStr, out var parcelas) && parcelas >= 1 && parcelas <= 48)
+        {
+            pendente.Dados.NumeroParcelas = parcelas;
+            pendente.CriadoEm = DateTime.UtcNow;
+            return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
+        }
+
+        // Não reconheceu — re-perguntar
+        pendente.CriadoEm = DateTime.UtcNow;
+        DefinirTeclado(chatId,
+            new[] { ("1️⃣ 1x", "1"), ("2️⃣ 2x", "2"), ("3️⃣ 3x", "3") },
+            new[] { ("4️⃣ 4x", "4"), ("5️⃣ 5x", "5"), ("6️⃣ 6x", "6") },
+            new[] { ("7️⃣ 7x", "7"), ("8️⃣ 8x", "8"), ("9️⃣ 9x", "9") },
+            new[] { ("🔟 10x", "10"), ("1️⃣1️⃣ 11x", "11"), ("1️⃣2️⃣ 12x", "12") },
+            new[] { ("❌ Cancelar", "cancelar") }
+        );
+        return "⚠️ Não entendi. Em quantas parcelas foi? Escolha ou digite o número (ex: 3, 6x, 10):";
+    }
+
+    private async Task<string?> ProcessarRespostaCategoriaAsync(long chatId, LancamentoPendente pendente, Usuario usuario, string msg, string mensagemOriginal)
     {
         if (pendente.CategoriasDisponiveis == null || !pendente.CategoriasDisponiveis.Any())
         {
@@ -353,25 +551,49 @@ public class TelegramBotService
 
         if (categoriaEscolhida == null)
         {
-            // Não reconheceu — re-perguntar (NÃO descartar o pendente!)
-            pendente.CriadoEm = DateTime.UtcNow;
-            var texto = "⚠️ Não entendi. Escolha uma categoria:\n";
-            for (int i = 0; i < pendente.CategoriasDisponiveis.Count; i++)
-                texto += $"\n{i + 1}️⃣ {pendente.CategoriasDisponiveis[i].Nome}";
-            texto += "\n\nOu digite *cancelar* para cancelar.";
-            var linhasCat = pendente.CategoriasDisponiveis.Select((c, i) => new (string, string)[] { ($"🏷️ {c.Nome}", (i + 1).ToString()) })
-                .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
-            DefinirTeclado(chatId, linhasCat);
-            return texto;
+            // Verificar se o usuário quer criar uma nova categoria
+            var nomeNovo = mensagemOriginal;
+            if (nomeNovo.Length >= 2 && nomeNovo.Length <= 50 && !nomeNovo.Any(char.IsDigit))
+            {
+                // Criar a categoria inline
+                try
+                {
+                    var novaCat = await _categoriaRepo.CriarAsync(new Categoria
+                    {
+                        Nome = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(nomeNovo.ToLower()),
+                        UsuarioId = pendente.UsuarioId,
+                        Padrao = false
+                    });
+                    categoriaEscolhida = novaCat;
+                }
+                catch
+                {
+                    // Se falhou (nome duplicado, etc.), re-perguntar
+                }
+            }
+
+            if (categoriaEscolhida == null)
+            {
+                // Não reconheceu — re-perguntar (NÃO descartar o pendente!)
+                pendente.CriadoEm = DateTime.UtcNow;
+                var texto = "⚠️ Não entendi. Escolha uma categoria ou *digite o nome* para criar uma nova:\n";
+                for (int i = 0; i < pendente.CategoriasDisponiveis.Count; i++)
+                    texto += $"\n{i + 1}️⃣ {pendente.CategoriasDisponiveis[i].Nome}";
+                texto += "\n\nOu digite *cancelar* para cancelar.";
+                var linhasCat = pendente.CategoriasDisponiveis.Select((c, i) => new (string, string)[] { ($"🏷️ {c.Nome}", (i + 1).ToString()) })
+                    .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+                DefinirTeclado(chatId, linhasCat);
+                return texto;
+            }
         }
 
         pendente.Dados.Categoria = categoriaEscolhida.Nome;
         pendente.CriadoEm = DateTime.UtcNow;
 
-        // Avançar para confirmação — com botões!
+        // Avançar para confirmação — com botões (incluindo Corrigir)!
         pendente.Estado = EstadoPendente.AguardandoConfirmacao;
         DefinirTeclado(chatId,
-            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+            new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
         );
         var nomeCartaoPreview = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
         return MontarPreviewLancamento(pendente.Dados, nomeCartaoPreview);
@@ -431,12 +653,25 @@ public class TelegramBotService
             return "❌ Cancelado! O lançamento não foi registrado.";
         }
 
+        // Corrigir — permite alterar campos antes de confirmar
+        if (msg is "corrigir" or "editar" or "alterar" or "mudar" or "corrige" or "ajustar" or "✏️")
+        {
+            pendente.Estado = EstadoPendente.AguardandoCorrecao;
+            pendente.CriadoEm = DateTime.UtcNow;
+            DefinirTeclado(chatId,
+                new[] { ("📝 Descrição", "descricao"), ("💵 Valor", "valor") },
+                new[] { ("🏷️ Categoria", "categoria"), ("💳 Pagamento", "pagamento") },
+                new[] { ("📅 Data", "data"), ("❌ Cancelar", "cancelar") }
+            );
+            return "✏️ O que deseja corrigir?\n\n1️⃣ Descrição\n2️⃣ Valor\n3️⃣ Categoria\n4️⃣ Forma de Pagamento\n5️⃣ Data\n\nEscolha abaixo 👇";
+        }
+
         // Não reconheceu — re-perguntar ao invés de descartar silenciosamente
         pendente.CriadoEm = DateTime.UtcNow;
         DefinirTeclado(chatId,
-            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+            new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
         );
-        return "⚠️ Não entendi. Deseja confirmar ou cancelar este lançamento?\n\nEscolha abaixo 👇";
+        return "⚠️ Não entendi. Deseja confirmar, corrigir ou cancelar?\n\nEscolha abaixo 👇";
     }
 
     /// <summary>
@@ -445,6 +680,34 @@ public class TelegramBotService
     /// </summary>
     private async Task<string> AvancarParaCategoriaOuConfirmacaoAsync(long chatId, LancamentoPendente pendente)
     {
+        // Se a compra é parcelada mas não informou quantas parcelas, perguntar
+        // Só faz sentido perguntar parcelas para crédito; PIX/Débito é sempre 1x
+        var formaPagAtual = pendente.Dados.FormaPagamento?.ToLower();
+        if (pendente.Dados.NumeroParcelas == 0)
+        {
+            if (formaPagAtual is "credito" or "crédito" or "nao_informado" or "nao informado" or null or "")
+            {
+                pendente.Estado = EstadoPendente.AguardandoParcelas;
+                pendente.CriadoEm = DateTime.UtcNow;
+                _pendentes[chatId] = pendente;
+
+                var valorStr = $"R$ {pendente.Dados.Valor:N2}";
+                DefinirTeclado(chatId,
+                    new[] { ("1️⃣ 1x", "1"), ("2️⃣ 2x", "2"), ("3️⃣ 3x", "3") },
+                    new[] { ("4️⃣ 4x", "4"), ("5️⃣ 5x", "5"), ("6️⃣ 6x", "6") },
+                    new[] { ("7️⃣ 7x", "7"), ("8️⃣ 8x", "8"), ("9️⃣ 9x", "9") },
+                    new[] { ("🔟 10x", "10"), ("1️⃣1️⃣ 11x", "11"), ("1️⃣2️⃣ 12x", "12") },
+                    new[] { ("❌ Cancelar", "cancelar") }
+                );
+                return $"💳 Compra parcelada de {valorStr}\n\n🔢 Em quantas parcelas foi?\n\nEscolha abaixo ou digite o número 👇";
+            }
+            else
+            {
+                // PIX ou Débito não parcelam — definir como 1x
+                pendente.Dados.NumeroParcelas = 1;
+            }
+        }
+
         // Categoria ausente ou genérica? Perguntar.
         var catNome = pendente.Dados.Categoria?.Trim();
         var ehReceita = pendente.Dados.Tipo?.ToLower() == "receita";
@@ -496,7 +759,9 @@ public class TelegramBotService
                 if (!string.IsNullOrEmpty(sugerida))
                     texto += $"\n\n💡 Sugiro: *{sugerida}*";
                 else
-                    texto += "\n\nEscolha abaixo 👇";
+                    texto += "\n\n💡 Ou *digite o nome* para criar uma nova categoria";
+
+                texto += "\n\nEscolha abaixo 👇";
 
                 var linhasCat = categorias.Select((c, i) => new (string, string)[] { ($"🏷️ {c.Nome}", (i + 1).ToString()) })
                     .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
@@ -508,7 +773,7 @@ public class TelegramBotService
         // Tudo preenchido: ir para confirmação
         pendente.Estado = EstadoPendente.AguardandoConfirmacao;
         DefinirTeclado(chatId,
-            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+            new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
         );
         var nomeCartaoPreview2 = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
         return MontarPreviewLancamento(pendente.Dados, nomeCartaoPreview2);
@@ -833,6 +1098,11 @@ public class TelegramBotService
             return await ProcessarExcluirLancamentoAsync(usuario, resposta.Resposta);
         }
 
+        if (resposta.Intencao == "criar_categoria" && !string.IsNullOrWhiteSpace(resposta.Resposta))
+        {
+            return await CriarCategoriaViaBot(usuario, resposta.Resposta);
+        }
+
         // Se a IA identificou mudança de categoria do último lançamento
         if (resposta.Intencao == "categorizar_ultimo" && !string.IsNullOrWhiteSpace(resposta.Resposta))
         {
@@ -985,6 +1255,13 @@ public class TelegramBotService
         if (!string.IsNullOrEmpty(dados.Descricao) && dados.Descricao.Length > 200)
             dados.Descricao = dados.Descricao[..200];
 
+        // Se descrição está vazia ou genérica, perguntar
+        var descricaoAusente = string.IsNullOrWhiteSpace(dados.Descricao)
+            || dados.Descricao.Equals("Gasto não especificado", StringComparison.OrdinalIgnoreCase)
+            || dados.Descricao.Equals("gasto", StringComparison.OrdinalIgnoreCase)
+            || dados.Descricao.Equals("compra", StringComparison.OrdinalIgnoreCase)
+            || dados.Descricao.Equals("despesa", StringComparison.OrdinalIgnoreCase);
+
         var pendente = new LancamentoPendente
         {
             Dados = dados,
@@ -992,6 +1269,13 @@ public class TelegramBotService
             UsuarioId = usuario.Id,
             CriadoEm = DateTime.UtcNow
         };
+
+        if (descricaoAusente)
+        {
+            pendente.Estado = EstadoPendente.AguardandoDescricao;
+            _pendentes[chatId] = pendente;
+            return $"📝 Qual a descrição deste lançamento de R$ {dados.Valor:N2}?\n\nExemplo: Mercado, Uber, Netflix, etc.";
+        }
 
         // Receita não precisa de forma de pagamento — pular direto pra confirmação
         var ehReceita = dados.Tipo?.ToLower() == "receita";
@@ -1004,7 +1288,7 @@ public class TelegramBotService
 
             var preview = MontarPreviewLancamento(pendente.Dados);
             DefinirTeclado(chatId,
-                new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
+                new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
             );
             return preview + "\n\nEscolha abaixo 👇";
         }
@@ -1230,7 +1514,14 @@ public class TelegramBotService
             "credito" or "crédito" => !string.IsNullOrEmpty(nomeCartao) ? $"Crédito ({nomeCartao})" : "Crédito",
             _ => "PIX"
         };
-        var parcelaInfo = dados.NumeroParcelas > 1 ? $" em {dados.NumeroParcelas}x" : "";
+        var parcelaInfo = "";
+        var linhaParcelaDetalhe = "";
+        if (dados.NumeroParcelas > 1)
+        {
+            parcelaInfo = $" em {dados.NumeroParcelas}x";
+            var valorParcela = dados.Valor / dados.NumeroParcelas;
+            linhaParcelaDetalhe = $"🔢 {dados.NumeroParcelas}x de R$ {valorParcela:N2}\n";
+        }
         var data = dados.Data?.ToString("dd/MM/yyyy") ?? DateTime.UtcNow.ToString("dd/MM/yyyy");
 
         var linhaFormaPag = tipo == "Receita" ? "" : $"💳 {formaPag}\n";
@@ -1238,6 +1529,7 @@ public class TelegramBotService
                $"{emoji} *{tipo}*\n" +
                $"📝 {dados.Descricao}\n" +
                $"💵 R$ {dados.Valor:N2}{parcelaInfo}\n" +
+               linhaParcelaDetalhe +
                $"🏷️ {dados.Categoria}\n" +
                linhaFormaPag +
                $"📅 {data}";
@@ -1507,6 +1799,50 @@ public class TelegramBotService
         return texto;
     }
 
+    private async Task<string> GerarExtratoFormatado(Usuario usuario)
+    {
+        try
+        {
+            var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(usuario.Id);
+            var recentes = lancamentos
+                .OrderByDescending(l => l.Data)
+                .ThenByDescending(l => l.Id)
+                .Take(15)
+                .ToList();
+
+            if (!recentes.Any())
+                return "📭 Nenhum lançamento registrado ainda.";
+
+            var texto = "📋 *Extrato — Últimos lançamentos*\n\n";
+            var totalReceita = 0m;
+            var totalDespesa = 0m;
+
+            foreach (var l in recentes)
+            {
+                var emoji = l.Tipo == TipoLancamento.Receita ? "💰" : "💸";
+                var sinal = l.Tipo == TipoLancamento.Receita ? "+" : "-";
+                texto += $"{emoji} {l.Data:dd/MM} | {sinal} R$ {l.Valor:N2} | {l.Descricao}\n";
+
+                if (l.Tipo == TipoLancamento.Receita)
+                    totalReceita += l.Valor;
+                else
+                    totalDespesa += l.Valor;
+            }
+
+            texto += $"\n📊 *Neste extrato:*\n";
+            texto += $"💰 Receitas: R$ {totalReceita:N2}\n";
+            texto += $"💸 Despesas: R$ {totalDespesa:N2}\n";
+            texto += $"📈 Saldo: R$ {(totalReceita - totalDespesa):N2}";
+
+            return texto;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao gerar extrato");
+            return "❌ Erro ao gerar o extrato. Tente novamente.";
+        }
+    }
+
     private async Task<string> ProcessarComandoAsync(Usuario usuario, string mensagem)
     {
         var partes = mensagem.Split(' ', 2);
@@ -1515,7 +1851,36 @@ public class TelegramBotService
         return comando switch
         {
             "/start" => $"👋 Oi, {usuario.Nome}! Eu sou o ControlFinance!\n\nFala comigo naturalmente:\n💸 \"paguei 45 no mercado\"\n💰 \"recebi 5000 de salário\"\n❓ \"posso gastar 50 num lanche?\"\n🔍 \"se eu comprar uma TV de 3000 em 10x?\"\n📊 \"limitar alimentação em 800\"\n🎯 \"quero juntar 10 mil até dezembro\"\n\nPode mandar texto, áudio ou foto de cupom! 🚀",
-            "/ajuda" or "/help" => "📖 Fala comigo naturalmente! Exemplos:\n\n💸 \"gastei 50 no mercado\"\n💰 \"recebi 3000 de salário\"\n❓ \"posso gastar 80 no iFood?\"\n💳 \"ifood 89,90 no crédito 3x\"\n📊 \"quanto gastei esse mês?\"\n🧾 \"me mostra a fatura\" ou /fatura\n📋 \"listar faturas\" ou /faturas\n🧾 \"fatura detalhada\"\n📋 \"detalhar Alimentação\"\n🔍 \"se eu comprar um celular de 4000 em 12x?\"\n📊 \"limitar lazer em 500\"\n🎯 \"meta de juntar 5000 pra viagem até junho\"\n🔔 \"/conta_fixa Aluguel;1500;5\"\n\nPara cadastrar/editar/excluir cartões, use o sistema web: finance.nicolasportie.com.",
+            "/ajuda" or "/help" => "📖 *Comandos disponíveis:*\n\n" +
+                "💸 *Lançamentos*\n" +
+                "• \"gastei 50 no mercado\" — registra gasto\n" +
+                "• \"recebi 3000 de salário\" — registra receita\n" +
+                "• \"ifood 89,90 no crédito 3x\" — parcelado\n" +
+                "• \"excluir mercado\" — exclui lançamento\n" +
+                "• /extrato — últimos lançamentos\n\n" +
+                "💳 *Cartões e Faturas*\n" +
+                "• /fatura — fatura do mês\n" +
+                "• /faturas — todas as faturas\n" +
+                "• /fatura\\_detalhada — com detalhes\n\n" +
+                "📊 *Análises*\n" +
+                "• /resumo — resumo do mês\n" +
+                "• /detalhar Alimentação — gastos da categoria\n" +
+                "• \"posso gastar 80 no iFood?\" — decisão\n" +
+                "• \"se eu comprar TV de 3000 em 12x?\" — simulação\n\n" +
+                "🔧 *Configurações*\n" +
+                "• /categorias — listar categorias\n" +
+                "• \"criar categoria Roupas\" — nova categoria\n" +
+                "• /limite Alimentação 800 — definir limite\n" +
+                "• /limites — ver limites\n" +
+                "• /meta juntar 5000 viagem até junho\n" +
+                "• /metas — ver metas\n" +
+                "• /conta\\_fixa Aluguel;1500;5\n" +
+                "• /lembrete — lembretes de pagamento\n" +
+                "• /salario\\_mensal — consultar salário\n\n" +
+                "⚙️ *Sistema*\n" +
+                "• /versao — versão do sistema\n" +
+                "• /desvincular — desvincular Telegram\n\n" +
+                "💡 Também aceito áudio e foto de cupom!",
             "/simular" => await ProcessarComandoSimularAsync(usuario, partes.Length > 1 ? partes[1] : null),
             "/posso" => await ProcessarComandoPossoAsync(usuario, partes.Length > 1 ? partes[1] : null),
             "/limite" => await ProcessarComandoLimiteAsync(usuario, partes.Length > 1 ? partes[1] : null),
@@ -1534,6 +1899,7 @@ public class TelegramBotService
                 ? await DetalharCategoriaAsync(usuario, partes[1])
                 : "📋 Use: /detalhar NomeCategoria\nExemplo: /detalhar Alimentação",
             "/categorias" => await ListarCategorias(usuario),
+            "/extrato" => await GerarExtratoFormatado(usuario),
             "/cartao" => MensagemGestaoNoWeb(
                 usuario.TelegramChatId,
                 "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
@@ -1588,7 +1954,8 @@ public class TelegramBotService
         {
             "excluir_lancamento",
             "remover_lancamento",
-            "deletar_lancamento"
+            "deletar_lancamento",
+            "criar_categoria"
         };
         if (intentsCrudSuportadasNoBot.Contains(normalizada))
             return null;
@@ -1627,70 +1994,7 @@ public class TelegramBotService
             "Depois de cadastrar ou ajustar o cartão, me chame aqui para consultar fatura, pagar fatura ou registrar compras."
         ));
 
-    private async Task<string?> ProcessarConfirmacaoCartaoAsync(long chatId, string mensagem)
-    {
-        // Limpar expirados (5 min)
-        foreach (var kv in _cartaoPendente)
-        {
-            if ((DateTime.UtcNow - kv.Value.CriadoEm).TotalMinutes > 5)
-                _cartaoPendente.TryRemove(kv.Key, out _);
-        }
 
-        if (!_cartaoPendente.TryGetValue(chatId, out var pendente))
-            return null;
-
-        var msg = mensagem.Trim().ToLower();
-
-        if (EhConfirmacao(msg))
-        {
-            _cartaoPendente.TryRemove(chatId, out _);
-            try
-            {
-                // Modo edição
-                if (pendente.CartaoIdEdicao.HasValue)
-                {
-                    var cartao = await _cartaoRepo.ObterPorIdAsync(pendente.CartaoIdEdicao.Value);
-                    if (cartao == null)
-                        return "❌ Cartão não encontrado. Pode ter sido removido.";
-
-                    cartao.Nome = pendente.Nome;
-                    if (pendente.Limite > 0) cartao.Limite = pendente.Limite;
-                    if (pendente.DiaVencimento > 0 && pendente.DiaVencimento <= 28) cartao.DiaVencimento = pendente.DiaVencimento;
-
-                    await _cartaoRepo.AtualizarAsync(cartao);
-                    return $"✅ Cartão atualizado com sucesso!\n\n{pendente.AlteracoesResumo}\n\n💳 *{cartao.Nome}* — Limite: R$ {cartao.Limite:N2} — Venc: dia {cartao.DiaVencimento}";
-                }
-
-                // Modo criação
-                var novoCartao = await _cartaoRepo.CriarAsync(new CartaoCredito
-                {
-                    Nome = pendente.Nome,
-                    Limite = pendente.Limite,
-                    DiaVencimento = pendente.DiaVencimento,
-                    UsuarioId = pendente.UsuarioId
-                });
-                return $"✅ Cartão {novoCartao.Nome} cadastrado!\n💰 Limite: R$ {novoCartao.Limite:N2}\n📅 Vencimento: dia {novoCartao.DiaVencimento}";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao processar cartão");
-                return "❌ Erro ao processar o cartão. Tente novamente.";
-            }
-        }
-
-        if (EhCancelamento(msg))
-        {
-            _cartaoPendente.TryRemove(chatId, out _);
-            return "❌ Cancelado!";
-        }
-
-        // Não reconheceu — re-perguntar
-        pendente.CriadoEm = DateTime.UtcNow;
-        DefinirTeclado(chatId,
-            new[] { ("✅ Confirmar", "sim"), ("❌ Cancelar", "cancelar") }
-        );
-        return "⚠️ Não entendi. Deseja confirmar ou cancelar?\n\nEscolha abaixo 👇";
-    }
 
     private string ProcessarPedidoDesvinculacao(long chatId)
     {
@@ -1717,7 +2021,7 @@ public class TelegramBotService
 
         var msg = mensagem.Trim().ToLower();
 
-        if (msg is "sim" or "s" or "confirmar" or "confirma" or "ok" or "✅" or "👍")
+        if (EhConfirmacao(msg))
         {
             _desvinculacaoPendente.TryRemove(chatId, out _);
             usuario.TelegramChatId = null;
@@ -1729,15 +2033,17 @@ public class TelegramBotService
                    "Para vincular novamente, gere um novo código em finance.nicolasportie.com";
         }
 
-        if (msg is "nao" or "não" or "n" or "cancelar" or "cancela" or "❌" or "👎")
+        if (EhCancelamento(msg))
         {
             _desvinculacaoPendente.TryRemove(chatId, out _);
             return "👍 Cancelado! Seu Telegram continua vinculado.";
         }
 
-        // Qualquer outra coisa: cancela a desvinculação
-        _desvinculacaoPendente.TryRemove(chatId, out _);
-        return null;
+        // Não reconheceu — re-perguntar ao invés de cancelar silenciosamente
+        DefinirTeclado(chatId,
+            new[] { ("✅ Sim, desvincular", "sim"), ("❌ Cancelar", "cancelar") }
+        );
+        return "⚠️ Não entendi. Deseja confirmar a desvinculação ou cancelar?\n\nEscolha abaixo 👇";
     }
 
     private async Task<string> ProcessarPrevisaoCompraAsync(Usuario usuario, DadosSimulacaoIA simulacao)
@@ -1964,7 +2270,6 @@ public class TelegramBotService
     {
         try
         {
-            // Buscar últimos lançamentos do usuário para encontrar o mencionado
             var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(usuario.Id);
             var recentes = lancamentos
                 .OrderByDescending(l => l.Data)
@@ -1978,29 +2283,85 @@ public class TelegramBotService
 
             if (!string.IsNullOrWhiteSpace(descricao))
             {
-                // Tentar encontrar pelo nome/descrição
                 lancamento = recentes.FirstOrDefault(l =>
                     l.Descricao.Contains(descricao, StringComparison.OrdinalIgnoreCase) ||
                     descricao.Contains(l.Descricao, StringComparison.OrdinalIgnoreCase));
             }
 
-            // Se não encontrou, pegar o último
             if (lancamento == null)
             {
-                lancamento = recentes.First();
+                if (string.IsNullOrWhiteSpace(descricao))
+                    return "❓ Qual lançamento deseja excluir? Diga o nome.\nExemplo: \"excluir mercado\" ou \"apagar ifood\"";
+                return $"🔍 Não encontrei nenhum lançamento com \"{descricao}\".\nTente novamente com outro nome.";
             }
 
-            await _lancamentoRepo.RemoverAsync(lancamento.Id);
-            await _perfilService.InvalidarAsync(usuario.Id);
+            // Pedir confirmação ao invés de excluir imediatamente
+            var chatId = usuario.TelegramChatId!.Value;
+            _exclusaoPendente[chatId] = new ExclusaoPendente
+            {
+                Lancamento = lancamento,
+                UsuarioId = usuario.Id
+            };
 
             var emoji = lancamento.Tipo == TipoLancamento.Receita ? "💰" : "💸";
-            return $"🗑️ Lançamento excluído!\n\n{emoji} {lancamento.Descricao}\n💵 R$ {lancamento.Valor:N2}\n📅 {lancamento.Data:dd/MM/yyyy}";
+            DefinirTeclado(chatId,
+                new[] { ("✅ Confirmar exclusão", "sim"), ("❌ Cancelar", "cancelar") }
+            );
+            return $"⚠️ *Confirma a exclusão deste lançamento?*\n\n" +
+                   $"{emoji} {lancamento.Descricao}\n" +
+                   $"💵 R$ {lancamento.Valor:N2}\n" +
+                   $"📅 {lancamento.Data:dd/MM/yyyy}";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao excluir lançamento");
             return "❌ Erro ao excluir o lançamento. Tente novamente.";
         }
+    }
+
+    private async Task<string?> ProcessarConfirmacaoExclusaoAsync(long chatId, Usuario usuario, string mensagem)
+    {
+        // Limpar expirados (5 min)
+        foreach (var kv in _exclusaoPendente)
+        {
+            if ((DateTime.UtcNow - kv.Value.CriadoEm).TotalMinutes > 5)
+                _exclusaoPendente.TryRemove(kv.Key, out _);
+        }
+
+        if (!_exclusaoPendente.TryGetValue(chatId, out var pendente))
+            return null;
+
+        var msg = mensagem.Trim().ToLower();
+
+        if (EhConfirmacao(msg))
+        {
+            _exclusaoPendente.TryRemove(chatId, out _);
+            try
+            {
+                await _lancamentoRepo.RemoverAsync(pendente.Lancamento.Id);
+                await _perfilService.InvalidarAsync(pendente.UsuarioId);
+
+                var emoji = pendente.Lancamento.Tipo == TipoLancamento.Receita ? "💰" : "💸";
+                return $"🗑️ Lançamento excluído!\n\n{emoji} {pendente.Lancamento.Descricao}\n💵 R$ {pendente.Lancamento.Valor:N2}\n📅 {pendente.Lancamento.Data:dd/MM/yyyy}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao excluir lançamento");
+                return "❌ Erro ao excluir o lançamento. Tente novamente.";
+            }
+        }
+
+        if (EhCancelamento(msg))
+        {
+            _exclusaoPendente.TryRemove(chatId, out _);
+            return "👍 Exclusão cancelada! O lançamento foi mantido.";
+        }
+
+        // Não reconheceu — re-perguntar
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar exclusão", "sim"), ("❌ Cancelar", "cancelar") }
+        );
+        return "⚠️ Não entendi. Deseja confirmar a exclusão ou cancelar?\n\nEscolha abaixo 👇";
     }
 
     private async Task<string> ProcessarComandoPossoAsync(Usuario usuario, string? parametros)
@@ -2554,5 +2915,41 @@ public class TelegramBotService
             return "❌ Erro ao atualizar categoria.";
         }
     }
-}
 
+    private async Task<string> CriarCategoriaViaBot(Usuario usuario, string nomeCategoria)
+    {
+        try
+        {
+            var nome = System.Globalization.CultureInfo.CurrentCulture.TextInfo
+                .ToTitleCase(nomeCategoria.Trim().ToLower());
+
+            if (nome.Length < 2 || nome.Length > 50)
+                return "❌ O nome da categoria deve ter entre 2 e 50 caracteres.";
+
+            // Verificar se já existe
+            var existente = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, nome);
+            if (existente != null)
+                return $"⚠️ A categoria *{existente.Nome}* já existe!";
+
+            var todas = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
+            existente = todas.FirstOrDefault(c =>
+                c.Nome.Equals(nome, StringComparison.OrdinalIgnoreCase));
+            if (existente != null)
+                return $"⚠️ A categoria *{existente.Nome}* já existe!";
+
+            await _categoriaRepo.CriarAsync(new Categoria
+            {
+                Nome = nome,
+                UsuarioId = usuario.Id,
+                Padrao = false
+            });
+
+            return $"✅ Categoria *{nome}* criada com sucesso!\n\nAgora você pode usá-la ao registrar lançamentos.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao criar categoria via bot");
+            return "❌ Erro ao criar a categoria. Tente novamente.";
+        }
+    }
+}

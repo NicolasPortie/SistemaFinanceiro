@@ -17,8 +17,6 @@ export interface Usuario {
 }
 
 export interface AuthResponse {
-  token: string;
-  refreshToken: string;
   expiraEm: string;
   usuario: Usuario;
 }
@@ -329,6 +327,33 @@ interface RequestOptions {
   _isRetry?: boolean;
 }
 
+let csrfTokenCache: string | null = null;
+
+function precisaCsrf(method: string, path: string): boolean {
+  const m = method.toUpperCase();
+  if (m === "GET" || m === "HEAD" || m === "OPTIONS" || m === "TRACE") return false;
+  if (path === "/auth/csrf") return false;
+  return true;
+}
+
+async function obterCsrfToken(forceRefresh = false): Promise<string | null> {
+  if (!forceRefresh && csrfTokenCache) return csrfTokenCache;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/csrf`, {
+      method: "GET",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    csrfTokenCache = typeof data?.csrfToken === "string" ? data.csrfToken : null;
+    return csrfTokenCache;
+  } catch {
+    return null;
+  }
+}
+
 function toSnakeCase(value: string): string {
   return value
     .normalize("NFD")
@@ -354,9 +379,8 @@ function normalizeMeta(meta: MetaFinanceira): MetaFinanceira {
 export const AUTH_EXPIRED_EVENT = "cf:auth-expired";
 
 function dispatchAuthExpired() {
-  localStorage.removeItem("cf_token");
-  localStorage.removeItem("cf_refresh_token");
   localStorage.removeItem("cf_user");
+  csrfTokenCache = null;
   window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
 }
 
@@ -365,22 +389,18 @@ function dispatchAuthExpired() {
 let refreshPromise: Promise<boolean> | null = null;
 
 async function tryRefreshToken(): Promise<boolean> {
-  const refreshToken = localStorage.getItem("cf_refresh_token");
-  if (!refreshToken) return false;
-
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
+      credentials: "include",
     });
 
     if (!res.ok) return false;
 
-    const data = await res.json();
-    localStorage.setItem("cf_token", data.token);
-    localStorage.setItem("cf_refresh_token", data.refreshToken);
-    localStorage.setItem("cf_user", JSON.stringify(data.usuario));
+    const data = await res.json().catch(() => null);
+    if (data?.usuario) {
+      localStorage.setItem("cf_user", JSON.stringify(data.usuario));
+    }
     return true;
   } catch {
     return false;
@@ -392,20 +412,23 @@ async function tryRefreshToken(): Promise<boolean> {
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, headers = {}, _isRetry = false } = options;
 
-  const token = localStorage.getItem("cf_token");
   const finalHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...headers,
   };
 
-  if (token) {
-    finalHeaders["Authorization"] = `Bearer ${token}`;
+  if (precisaCsrf(method, path)) {
+    const csrfToken = await obterCsrfToken();
+    if (csrfToken) {
+      finalHeaders["X-CSRF-Token"] = csrfToken;
+    }
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: finalHeaders,
     body: body ? JSON.stringify(body) : undefined,
+    credentials: "include",
   });
 
   // Rate limit
@@ -433,6 +456,17 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => null);
+
+    if (res.status === 403 && !_isRetry) {
+      const mensagem = String(errorData?.erro || errorData?.message || "").toLowerCase();
+      if (mensagem.includes("csrf")) {
+        const novoToken = await obterCsrfToken(true);
+        if (novoToken) {
+          return request<T>(path, { ...options, _isRetry: true });
+        }
+      }
+    }
+
     throw new Error(errorData?.erro || errorData?.message || `Erro ${res.status}`);
   }
 
