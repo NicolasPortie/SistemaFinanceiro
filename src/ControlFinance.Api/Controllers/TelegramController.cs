@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using ControlFinance.Application.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -19,6 +20,7 @@ public class TelegramController : ControllerBase
     private readonly ITelegramBotClient? _botClient;
     private readonly ILogger<TelegramController> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     // Deduplicação: guarda os update_ids recentes para evitar processar o mesmo update duas vezes
     private static readonly ConcurrentDictionary<int, DateTime> _processedUpdates = new();
@@ -27,12 +29,14 @@ public class TelegramController : ControllerBase
         TelegramBotService botService,
         ILogger<TelegramController> logger,
         IConfiguration configuration,
+        IServiceScopeFactory scopeFactory,
         ITelegramBotClient? botClient = null)
     {
         _botService = botService;
         _botClient = botClient;
         _logger = logger;
         _configuration = configuration;
+        _scopeFactory = scopeFactory;
     }
 
     [HttpPost("webhook")]
@@ -89,7 +93,9 @@ public class TelegramController : ControllerBase
             {
                 _ = Task.Run(async () =>
                 {
-                    try { await ProcessarMensagem(message); }
+                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    var botService = scope.ServiceProvider.GetRequiredService<TelegramBotService>();
+                    try { await ProcessarMensagem(message, botService); }
                     catch (Exception ex) { _logger.LogError(ex, "Erro ao processar mensagem em background"); }
                 });
             }
@@ -97,7 +103,9 @@ public class TelegramController : ControllerBase
             {
                 _ = Task.Run(async () =>
                 {
-                    try { await ProcessarCallback(callback); }
+                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    var botService = scope.ServiceProvider.GetRequiredService<TelegramBotService>();
+                    try { await ProcessarCallback(callback, botService); }
                     catch (Exception ex) { _logger.LogError(ex, "Erro ao processar callback em background"); }
                 });
             }
@@ -111,7 +119,7 @@ public class TelegramController : ControllerBase
         return Ok();
     }
 
-    private async Task ProcessarMensagem(Message message)
+    private async Task ProcessarMensagem(Message message, TelegramBotService botService)
     {
         if (_botClient == null)
         {
@@ -129,23 +137,23 @@ public class TelegramController : ControllerBase
             {
                 case MessageType.Text when !string.IsNullOrWhiteSpace(message.Text):
                     _logger.LogInformation("Texto recebido de {Nome} ({ChatId}): {Texto}", nomeUsuario, chatId, message.Text);
-                    resposta = await _botService.ProcessarMensagemAsync(chatId, message.Text, nomeUsuario);
+                    resposta = await botService.ProcessarMensagemAsync(chatId, message.Text, nomeUsuario);
                     break;
 
                 case MessageType.Voice:
-                    resposta = await ProcessarVoz(message);
+                    resposta = await ProcessarVoz(message, botService);
                     break;
 
                 case MessageType.Audio:
-                    resposta = await ProcessarAudioArquivo(message);
+                    resposta = await ProcessarAudioArquivo(message, botService);
                     break;
 
                 case MessageType.VideoNote:
-                    resposta = await ProcessarVideoNote(message);
+                    resposta = await ProcessarVideoNote(message, botService);
                     break;
 
                 case MessageType.Photo:
-                    resposta = await ProcessarFoto(message);
+                    resposta = await ProcessarFoto(message, botService);
                     break;
 
                 default:
@@ -162,7 +170,7 @@ public class TelegramController : ControllerBase
         await EnviarResposta(chatId, resposta);
     }
 
-    private async Task ProcessarCallback(CallbackQuery callback)
+    private async Task ProcessarCallback(CallbackQuery callback, TelegramBotService botService)
     {
         if (_botClient == null || callback.Data == null || callback.Message == null) return;
 
@@ -183,7 +191,7 @@ public class TelegramController : ControllerBase
 
             // Processar callback como se fosse mensagem de texto
             _logger.LogInformation("Callback de {Nome} ({ChatId}): {Data}", nomeUsuario, chatId, callback.Data);
-            var resposta = await _botService.ProcessarMensagemAsync(chatId, callback.Data, nomeUsuario);
+            var resposta = await botService.ProcessarMensagemAsync(chatId, callback.Data, nomeUsuario);
 
             await EnviarResposta(chatId, resposta);
         }
@@ -252,7 +260,7 @@ public class TelegramController : ControllerBase
         return texto;
     }
 
-    private async Task<string> ProcessarVoz(Message message)
+    private async Task<string> ProcessarVoz(Message message, TelegramBotService botService)
     {
         if (_botClient == null)
             return "❌ Bot do Telegram está desativado no servidor.";
@@ -279,7 +287,7 @@ public class TelegramController : ControllerBase
                 return "❌ Áudio vazio. Tente novamente.";
 
             var audioData = ms.ToArray();
-            return await _botService.ProcessarAudioAsync(chatId, audioData, "audio/ogg", nomeUsuario);
+            return await botService.ProcessarAudioAsync(chatId, audioData, "audio/ogg", nomeUsuario);
         }
         catch (Exception ex)
         {
@@ -288,7 +296,7 @@ public class TelegramController : ControllerBase
         }
     }
 
-    private async Task<string> ProcessarAudioArquivo(Message message)
+    private async Task<string> ProcessarAudioArquivo(Message message, TelegramBotService botService)
     {
         if (_botClient == null)
             return "❌ Bot do Telegram está desativado no servidor.";
@@ -322,7 +330,7 @@ public class TelegramController : ControllerBase
             else if (file.FilePath.EndsWith(".wav")) mimeType = "audio/wav";
             else if (file.FilePath.EndsWith(".m4a")) mimeType = "audio/m4a";
 
-            return await _botService.ProcessarAudioAsync(chatId, audioData, mimeType, nomeUsuario);
+            return await botService.ProcessarAudioAsync(chatId, audioData, mimeType, nomeUsuario);
         }
         catch (Exception ex)
         {
@@ -331,7 +339,7 @@ public class TelegramController : ControllerBase
         }
     }
 
-    private async Task<string> ProcessarVideoNote(Message message)
+    private async Task<string> ProcessarVideoNote(Message message, TelegramBotService botService)
     {
         if (_botClient == null)
             return "❌ Bot do Telegram está desativado no servidor.";
@@ -358,7 +366,7 @@ public class TelegramController : ControllerBase
 
             var audioData = ms.ToArray();
             // Video notes são MP4 (MPEG-4)
-            return await _botService.ProcessarAudioAsync(chatId, audioData, "audio/mp4", nomeUsuario);
+            return await botService.ProcessarAudioAsync(chatId, audioData, "audio/mp4", nomeUsuario);
         }
         catch (Exception ex)
         {
@@ -367,7 +375,7 @@ public class TelegramController : ControllerBase
         }
     }
 
-    private async Task<string> ProcessarFoto(Message message)
+    private async Task<string> ProcessarFoto(Message message, TelegramBotService botService)
     {
         if (_botClient == null)
             return "❌ Bot do Telegram está desativado no servidor.";
@@ -391,7 +399,7 @@ public class TelegramController : ControllerBase
             var imageData = ms.ToArray();
 
             var mimeType = file.FilePath.EndsWith(".png") ? "image/png" : "image/jpeg";
-            return await _botService.ProcessarImagemAsync(chatId, imageData, mimeType, nomeUsuario);
+            return await botService.ProcessarImagemAsync(chatId, imageData, mimeType, nomeUsuario);
         }
         catch (Exception ex)
         {
