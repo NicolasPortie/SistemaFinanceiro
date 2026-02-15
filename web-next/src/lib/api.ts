@@ -23,6 +23,12 @@ export interface AuthResponse {
   usuario: Usuario;
 }
 
+export interface RegistroPendenteResponse {
+  pendente: boolean;
+  email: string;
+  mensagem: string;
+}
+
 export interface CodigoTelegramResponse {
   codigo: string;
   expiraEm: string;
@@ -440,7 +446,13 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 export const api = {
   auth: {
     registrar: (data: { nome: string; email: string; senha: string; codigoConvite: string }) =>
-      request<AuthResponse>("/auth/registrar", { method: "POST", body: data }),
+      request<RegistroPendenteResponse>("/auth/registrar", { method: "POST", body: data }),
+
+    verificarRegistro: (data: { email: string; codigo: string }) =>
+      request<AuthResponse>("/auth/verificar-registro", { method: "POST", body: data }),
+
+    reenviarCodigoRegistro: (data: { email: string }) =>
+      request<RegistroPendenteResponse>("/auth/reenviar-codigo-registro", { method: "POST", body: data }),
 
     login: (data: { email: string; senha: string }) =>
       request<AuthResponse>("/auth/login", { method: "POST", body: data }),

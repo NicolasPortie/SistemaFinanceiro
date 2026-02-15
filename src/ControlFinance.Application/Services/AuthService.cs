@@ -21,6 +21,7 @@ public class AuthService : IAuthService
     private readonly IRefreshTokenRepository _refreshTokenRepo;
     private readonly IEmailService _emailService;
     private readonly ICodigoConviteRepository _codigoConviteRepo;
+    private readonly IRegistroPendenteRepository _registroPendenteRepo;
     private readonly IConfiguration _config;
     private readonly ILogger<AuthService> _logger;
 
@@ -30,6 +31,7 @@ public class AuthService : IAuthService
         ICodigoVerificacaoRepository codigoRepo,
         IRefreshTokenRepository refreshTokenRepo,
         ICodigoConviteRepository codigoConviteRepo,
+        IRegistroPendenteRepository registroPendenteRepo,
         IEmailService emailService,
         IConfiguration config,
         ILogger<AuthService> logger)
@@ -39,14 +41,15 @@ public class AuthService : IAuthService
         _codigoRepo = codigoRepo;
         _refreshTokenRepo = refreshTokenRepo;
         _codigoConviteRepo = codigoConviteRepo;
+        _registroPendenteRepo = registroPendenteRepo;
         _emailService = emailService;
         _config = config;
         _logger = logger;
     }
 
-    public async Task<(AuthResponseDto? Response, string? Erro)> RegistrarAsync(RegistrarUsuarioDto dto, string? ipAddress = null)
+    public async Task<(RegistroPendenteResponseDto? Response, string? Erro)> RegistrarAsync(RegistrarUsuarioDto dto, string? ipAddress = null)
     {
-        // Validar código de convite via banco de dados
+        // Validar código de convite
         var codigoConvite = await _codigoConviteRepo.ObterPorCodigoAsync(dto.CodigoConvite.Trim());
         if (codigoConvite == null || codigoConvite.Usado || codigoConvite.ExpiraEm < DateTime.UtcNow)
         {
@@ -63,11 +66,108 @@ public class AuthService : IAuthService
         if (await _usuarioRepo.EmailExisteAsync(emailNormalizado))
             return (null, "Este e-mail já está cadastrado.");
 
+        // Gerar código de verificação
+        var codigoVerificacao = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+        var expiraEm = DateTime.UtcNow.AddMinutes(15);
+
+        // Verificar se já existe registro pendente para este email
+        var pendente = await _registroPendenteRepo.ObterPorEmailAsync(emailNormalizado);
+        if (pendente != null)
+        {
+            // Atualizar registro pendente existente
+            pendente.Nome = SanitizarTexto(dto.Nome);
+            pendente.SenhaHash = HashSenha(dto.Senha);
+            pendente.CodigoConvite = dto.CodigoConvite.Trim();
+            pendente.CodigoVerificacao = codigoVerificacao;
+            pendente.ExpiraEm = expiraEm;
+            pendente.TentativasVerificacao = 0;
+            pendente.CriadoEm = DateTime.UtcNow;
+            await _registroPendenteRepo.AtualizarAsync(pendente);
+        }
+        else
+        {
+            pendente = new RegistroPendente
+            {
+                Email = emailNormalizado,
+                Nome = SanitizarTexto(dto.Nome),
+                SenhaHash = HashSenha(dto.Senha),
+                CodigoConvite = dto.CodigoConvite.Trim(),
+                CodigoVerificacao = codigoVerificacao,
+                ExpiraEm = expiraEm,
+                TentativasVerificacao = 0
+            };
+            await _registroPendenteRepo.CriarAsync(pendente);
+        }
+
+        // Enviar e-mail de verificação
+        var emailEnviado = await _emailService.EnviarCodigoVerificacaoRegistroAsync(
+            emailNormalizado,
+            SanitizarTexto(dto.Nome),
+            codigoVerificacao,
+            expiraEm);
+
+        if (!emailEnviado)
+            _logger.LogWarning("Não foi possível enviar e-mail de verificação para {Email}.", emailNormalizado);
+
+        _logger.LogInformation("Registro pendente criado para {Email}. IP: {IP}", emailNormalizado, ipAddress);
+
+        return (new RegistroPendenteResponseDto
+        {
+            Pendente = true,
+            Email = emailNormalizado,
+            Mensagem = "Código de verificação enviado para seu e-mail."
+        }, null);
+    }
+
+    public async Task<(AuthResponseDto? Response, string? Erro)> VerificarRegistroAsync(VerificarRegistroDto dto, string? ipAddress = null)
+    {
+        var emailNormalizado = dto.Email.ToLower().Trim();
+        var pendente = await _registroPendenteRepo.ObterPorEmailAsync(emailNormalizado);
+
+        if (pendente == null)
+            return (null, "Nenhum registro pendente encontrado. Inicie o cadastro novamente.");
+
+        if (pendente.ExpiraEm < DateTime.UtcNow)
+        {
+            await _registroPendenteRepo.RemoverAsync(pendente.Id);
+            return (null, "Código expirado. Inicie o cadastro novamente.");
+        }
+
+        if (pendente.TentativasVerificacao >= 5)
+        {
+            await _registroPendenteRepo.RemoverAsync(pendente.Id);
+            return (null, "Muitas tentativas incorretas. Inicie o cadastro novamente.");
+        }
+
+        if (pendente.CodigoVerificacao != dto.Codigo.Trim())
+        {
+            pendente.TentativasVerificacao++;
+            await _registroPendenteRepo.AtualizarAsync(pendente);
+            var restantes = 5 - pendente.TentativasVerificacao;
+            return (null, $"Código incorreto. {restantes} tentativa(s) restante(s).");
+        }
+
+        // Revalidar convite (pode ter sido usado enquanto aguardava verificação)
+        var codigoConvite = await _codigoConviteRepo.ObterPorCodigoAsync(pendente.CodigoConvite);
+        if (codigoConvite == null || codigoConvite.Usado || codigoConvite.ExpiraEm < DateTime.UtcNow)
+        {
+            await _registroPendenteRepo.RemoverAsync(pendente.Id);
+            return (null, "Código de convite expirado ou já utilizado. Solicite um novo convite.");
+        }
+
+        // Revalidar email
+        if (await _usuarioRepo.EmailExisteAsync(emailNormalizado))
+        {
+            await _registroPendenteRepo.RemoverAsync(pendente.Id);
+            return (null, "Este e-mail já está cadastrado.");
+        }
+
+        // Criar usuário
         var usuario = new Usuario
         {
-            Nome = SanitizarTexto(dto.Nome),
+            Nome = pendente.Nome,
             Email = emailNormalizado,
-            SenhaHash = HashSenha(dto.Senha),
+            SenhaHash = pendente.SenhaHash,
             EmailConfirmado = true,
             Ativo = true
         };
@@ -75,16 +175,64 @@ public class AuthService : IAuthService
         await _usuarioRepo.CriarAsync(usuario);
         await _categoriaRepo.CriarCategoriasIniciais(usuario.Id);
 
-        // Marcar código de convite como usado
+        // Marcar convite como usado
         codigoConvite.Usado = true;
         codigoConvite.UsadoEm = DateTime.UtcNow;
         codigoConvite.UsadoPorUsuarioId = usuario.Id;
         await _codigoConviteRepo.AtualizarAsync(codigoConvite);
 
-        _logger.LogInformation("Novo usuário registrado: {UserId}", usuario.Id);
+        // Limpar registro pendente
+        await _registroPendenteRepo.RemoverAsync(pendente.Id);
+
+        _logger.LogInformation("Novo usuário registrado via verificação de e-mail: {UserId}", usuario.Id);
 
         var response = await GerarTokenResponseAsync(usuario, ipAddress);
         return (response, null);
+    }
+
+    public async Task<(RegistroPendenteResponseDto? Response, string? Erro)> ReenviarCodigoRegistroAsync(ReenviarCodigoRegistroDto dto)
+    {
+        var emailNormalizado = dto.Email.ToLower().Trim();
+        var pendente = await _registroPendenteRepo.ObterPorEmailAsync(emailNormalizado);
+
+        if (pendente == null)
+            return (null, "Nenhum registro pendente encontrado. Inicie o cadastro novamente.");
+
+        // Rate limiting: não permitir reenvio em menos de 60 segundos
+        var tempoDesdeUltimoEnvio = DateTime.UtcNow - pendente.CriadoEm;
+        if (tempoDesdeUltimoEnvio.TotalSeconds < 60)
+        {
+            var aguardar = 60 - (int)tempoDesdeUltimoEnvio.TotalSeconds;
+            return (null, $"Aguarde {aguardar} segundos para solicitar um novo código.");
+        }
+
+        // Gerar novo código
+        var codigoVerificacao = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+        var expiraEm = DateTime.UtcNow.AddMinutes(15);
+
+        pendente.CodigoVerificacao = codigoVerificacao;
+        pendente.ExpiraEm = expiraEm;
+        pendente.TentativasVerificacao = 0;
+        pendente.CriadoEm = DateTime.UtcNow;
+        await _registroPendenteRepo.AtualizarAsync(pendente);
+
+        var emailEnviado = await _emailService.EnviarCodigoVerificacaoRegistroAsync(
+            emailNormalizado,
+            pendente.Nome,
+            codigoVerificacao,
+            expiraEm);
+
+        if (!emailEnviado)
+            _logger.LogWarning("Não foi possível reenviar e-mail de verificação para {Email}.", emailNormalizado);
+
+        _logger.LogInformation("Código de verificação reenviado para {Email}.", emailNormalizado);
+
+        return (new RegistroPendenteResponseDto
+        {
+            Pendente = true,
+            Email = emailNormalizado,
+            Mensagem = "Novo código enviado para seu e-mail."
+        }, null);
     }
 
     public async Task<(AuthResponseDto? Response, string? Erro)> LoginAsync(LoginDto dto, string? ipAddress = null)

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { api } from "@/lib/api";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { registroSchema, type RegistroData } from "@/lib/schemas";
+import { registroSchema, verificarRegistroSchema, type RegistroData, type VerificarRegistroData } from "@/lib/schemas";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   TrendingUp,
@@ -15,6 +16,7 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
+  ArrowLeft,
   User,
   Check,
   X,
@@ -25,10 +27,14 @@ import {
   Bot,
   Target,
   CreditCard,
+  RefreshCw,
+  MailCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+
+type Step = "form" | "verify";
 
 const passwordRules = [
   { label: "Mínimo 8 caracteres", test: (s: string) => s.length >= 8 },
@@ -40,7 +46,12 @@ const passwordRules = [
 export default function RegistroPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const { registrar, usuario } = useAuth();
+  const [step, setStep] = useState<Step>("form");
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const { registrar, verificarRegistro, usuario } = useAuth();
   const router = useRouter();
 
   const {
@@ -53,6 +64,11 @@ export default function RegistroPage() {
     defaultValues: { nome: "", email: "", senha: "", codigoConvite: "" },
   });
 
+  const verifyForm = useForm<VerificarRegistroData>({
+    resolver: zodResolver(verificarRegistroSchema),
+    defaultValues: { codigo: "" },
+  });
+
   const senha = useWatch({ control, name: "senha" });
   const passedRules = useMemo(
     () => passwordRules.map((r) => ({ ...r, passed: r.test(senha || "") })),
@@ -60,6 +76,28 @@ export default function RegistroPage() {
   );
   const allPassed = passedRules.every((r) => r.passed);
   const strength = passedRules.filter((r) => r.passed).length;
+
+  // Cooldown timer for resend
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  const handleResend = useCallback(async () => {
+    if (resendCooldown > 0 || resending) return;
+    setResending(true);
+    try {
+      await api.auth.reenviarCodigoRegistro({ email: pendingEmail });
+      setResendCooldown(60);
+      verifyForm.reset();
+      toast.success("Novo código enviado!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao reenviar código");
+    } finally {
+      setResending(false);
+    }
+  }, [pendingEmail, resendCooldown, resending, verifyForm]);
 
   if (usuario) {
     router.replace("/dashboard");
@@ -69,10 +107,28 @@ export default function RegistroPage() {
   const onSubmit = async (data: RegistroData) => {
     if (!allPassed) return;
     try {
-      await registrar(data.nome, data.email, data.senha, data.codigoConvite);
-      router.push("/dashboard");
+      const res = await registrar(data.nome, data.email, data.senha, data.codigoConvite);
+      if (res.pendente) {
+        setPendingEmail(res.email);
+        setStep("verify");
+        setResendCooldown(60);
+        toast.success("Código de verificação enviado para seu e-mail!");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao criar conta");
+    }
+  };
+
+  const onVerify = async (data: VerificarRegistroData) => {
+    setVerifying(true);
+    try {
+      await verificarRegistro(pendingEmail, data.codigo);
+      toast.success("Conta criada com sucesso!");
+      router.push("/dashboard");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Código inválido");
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -221,219 +277,345 @@ export default function RegistroPage() {
         </div>
       </div>
 
-      {/* ─── Painel Direito - Formulário ─── */}
+      {/* ─── Painel Direito ─── */}
       <div className="flex flex-1 items-center justify-center p-6 sm:p-8 relative overflow-hidden">
         <div className="absolute -top-40 -right-40 w-125 h-125 rounded-full bg-emerald-500/2 dark:bg-emerald-500/3 blur-[100px]" />
         <div className="absolute -bottom-40 -left-40 w-100 h-100 rounded-full bg-teal-500/2 dark:bg-teal-500/3 blur-[100px]" />
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-105 relative z-10"
-        >
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-2.5 mb-10">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20">
-              <TrendingUp className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-bold tracking-tight">
-              Control<span className="text-emerald-600 dark:text-emerald-400">Finance</span>
-            </span>
-          </div>
-
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-[1.75rem] font-bold tracking-tight text-foreground">Criar conta</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Preencha os dados e informe seu código de convite
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Código de Convite — destaque especial */}
-            <div className="space-y-2">
-              <label htmlFor="codigoConvite" className="text-[13px] font-semibold text-foreground/80 uppercase tracking-wider flex items-center gap-1.5">
-                <KeyRound className="h-3.5 w-3.5 text-emerald-500" />
-                Código de convite
-              </label>
-              <div
-                className={`relative rounded-xl border transition-all duration-200 ${
-                  focusedField === "codigoConvite"
-                    ? "border-emerald-500/50 ring-[3px] ring-emerald-500/10 dark:ring-emerald-400/10"
-                    : errors.codigoConvite
-                      ? "border-red-400/50"
-                      : "border-emerald-500/20 dark:border-emerald-400/15 bg-emerald-500/2 dark:bg-emerald-400/2"
-                }`}
-              >
-                <ShieldCheck
-                  className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-colors ${
-                    focusedField === "codigoConvite" ? "text-emerald-500 dark:text-emerald-400" : "text-emerald-500/50 dark:text-emerald-400/50"
-                  }`}
-                />
-                <Input
-                  id="codigoConvite"
-                  placeholder="Insira o código recebido"
-                  className="pl-11 h-12 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/40 font-mono tracking-wider uppercase"
-                  autoComplete="off"
-                  {...register("codigoConvite")}
-                  onFocus={() => setFocusedField("codigoConvite")}
-                  onBlur={() => setFocusedField(null)}
-                />
+        <AnimatePresence mode="wait">
+          {step === "form" ? (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.35 }}
+              className="w-full max-w-105 relative z-10"
+            >
+              {/* Mobile logo */}
+              <div className="lg:hidden flex items-center gap-2.5 mb-10">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-lg font-bold tracking-tight">
+                  Control<span className="text-emerald-600 dark:text-emerald-400">Finance</span>
+                </span>
               </div>
-              {errors.codigoConvite && (
-                <p className="text-xs text-red-500 pl-1">{errors.codigoConvite.message}</p>
-              )}
-              <p className="text-[11px] text-muted-foreground/50 pl-1">
-                Código fornecido pelo administrador da plataforma
-              </p>
-            </div>
 
-            {/* Separador visual */}
-            <div className="flex items-center gap-3 py-1">
-              <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
-              <span className="text-[10px] text-muted-foreground/40 uppercase tracking-widest font-medium">Dados pessoais</span>
-              <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
-            </div>
+              {/* Header */}
+              <div className="mb-8">
+                <h1 className="text-[1.75rem] font-bold tracking-tight text-foreground">Criar conta</h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Preencha os dados e informe seu código de convite
+                </p>
+              </div>
 
-            {/* Nome */}
-            {renderField(
-              "nome",
-              "Nome completo",
-              <User className="h-4.5 w-4.5" />,
-              { placeholder: "Seu nome completo", autoComplete: "name", ...register("nome") },
-              errors.nome?.message
-            )}
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {/* Código de Convite — destaque especial */}
+                <div className="space-y-2">
+                  <label htmlFor="codigoConvite" className="text-[13px] font-semibold text-foreground/80 uppercase tracking-wider flex items-center gap-1.5">
+                    <KeyRound className="h-3.5 w-3.5 text-emerald-500" />
+                    Código de convite
+                  </label>
+                  <div
+                    className={`relative rounded-xl border transition-all duration-200 ${
+                      focusedField === "codigoConvite"
+                        ? "border-emerald-500/50 ring-[3px] ring-emerald-500/10 dark:ring-emerald-400/10"
+                        : errors.codigoConvite
+                          ? "border-red-400/50"
+                          : "border-emerald-500/20 dark:border-emerald-400/15 bg-emerald-500/2 dark:bg-emerald-400/2"
+                    }`}
+                  >
+                    <ShieldCheck
+                      className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-colors ${
+                        focusedField === "codigoConvite" ? "text-emerald-500 dark:text-emerald-400" : "text-emerald-500/50 dark:text-emerald-400/50"
+                      }`}
+                    />
+                    <Input
+                      id="codigoConvite"
+                      placeholder="Insira o código recebido"
+                      className="pl-11 h-12 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/40 font-mono tracking-wider uppercase"
+                      autoComplete="off"
+                      {...register("codigoConvite")}
+                      onFocus={() => setFocusedField("codigoConvite")}
+                      onBlur={() => setFocusedField(null)}
+                    />
+                  </div>
+                  {errors.codigoConvite && (
+                    <p className="text-xs text-red-500 pl-1">{errors.codigoConvite.message}</p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground/50 pl-1">
+                    Código fornecido pelo administrador da plataforma
+                  </p>
+                </div>
 
-            {/* Email */}
-            {renderField(
-              "email",
-              "E-mail",
-              <Mail className="h-4.5 w-4.5" />,
-              { type: "email", placeholder: "nome@exemplo.com", autoComplete: "email", ...register("email") },
-              errors.email?.message
-            )}
+                {/* Separador visual */}
+                <div className="flex items-center gap-3 py-1">
+                  <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
+                  <span className="text-[10px] text-muted-foreground/40 uppercase tracking-widest font-medium">Dados pessoais</span>
+                  <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
+                </div>
 
-            {/* Senha */}
-            <div className="space-y-2">
-              <label htmlFor="senha" className="text-[13px] font-semibold text-foreground/80 uppercase tracking-wider">
-                Senha
-              </label>
-              <div
-                className={`relative rounded-xl border transition-all duration-200 ${
-                  focusedField === "senha"
-                    ? "border-emerald-500/50 ring-[3px] ring-emerald-500/10 dark:ring-emerald-400/10"
-                    : errors.senha
-                      ? "border-red-400/50"
-                      : "border-border hover:border-border/80"
-                }`}
-              >
-                <Lock
-                  className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-colors ${
-                    focusedField === "senha" ? "text-emerald-500 dark:text-emerald-400" : "text-muted-foreground/50"
-                  }`}
-                />
-                <Input
-                  id="senha"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  className="pl-11 pr-11 h-12 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/40"
-                  autoComplete="new-password"
-                  {...register("senha")}
-                  onFocus={() => setFocusedField("senha")}
-                  onBlur={() => setFocusedField(null)}
-                />
+                {/* Nome */}
+                {renderField(
+                  "nome",
+                  "Nome completo",
+                  <User className="h-4.5 w-4.5" />,
+                  { placeholder: "Seu nome completo", autoComplete: "name", ...register("nome") },
+                  errors.nome?.message
+                )}
+
+                {/* Email */}
+                {renderField(
+                  "email",
+                  "E-mail",
+                  <Mail className="h-4.5 w-4.5" />,
+                  { type: "email", placeholder: "nome@exemplo.com", autoComplete: "email", ...register("email") },
+                  errors.email?.message
+                )}
+
+                {/* Senha */}
+                <div className="space-y-2">
+                  <label htmlFor="senha" className="text-[13px] font-semibold text-foreground/80 uppercase tracking-wider">
+                    Senha
+                  </label>
+                  <div
+                    className={`relative rounded-xl border transition-all duration-200 ${
+                      focusedField === "senha"
+                        ? "border-emerald-500/50 ring-[3px] ring-emerald-500/10 dark:ring-emerald-400/10"
+                        : errors.senha
+                          ? "border-red-400/50"
+                          : "border-border hover:border-border/80"
+                    }`}
+                  >
+                    <Lock
+                      className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-colors ${
+                        focusedField === "senha" ? "text-emerald-500 dark:text-emerald-400" : "text-muted-foreground/50"
+                      }`}
+                    />
+                    <Input
+                      id="senha"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      className="pl-11 pr-11 h-12 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/40"
+                      autoComplete="new-password"
+                      {...register("senha")}
+                      onFocus={() => setFocusedField("senha")}
+                      onBlur={() => setFocusedField(null)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground/70 transition-colors"
+                      tabIndex={-1}
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+
+                  {/* Password strength indicator */}
+                  <AnimatePresence>
+                    {senha && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="space-y-2.5 pt-1 overflow-hidden"
+                      >
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4].map((level) => (
+                            <div
+                              key={level}
+                              className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                                strength >= level
+                                  ? strength <= 2
+                                    ? "bg-red-400"
+                                    : strength === 3
+                                      ? "bg-amber-400"
+                                      : "bg-emerald-500"
+                                  : "bg-muted"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                          {passedRules.map((rule) => (
+                            <div
+                              key={rule.label}
+                              className={`flex items-center gap-1.5 text-[11px] transition-colors ${
+                                rule.passed
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-muted-foreground/50"
+                              }`}
+                            >
+                              {rule.passed ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                              {rule.label}
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Submit */}
+                <div className="pt-1">
+                  <Button
+                    type="submit"
+                    className="w-full h-12 text-[15px] font-semibold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-500/25 transition-all duration-300 border-0 gap-2"
+                    disabled={isSubmitting || !allPassed}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        Criar conta
+                        <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+
+              {/* Divider */}
+              <div className="my-7 flex items-center gap-4">
+                <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
+                <span className="text-xs text-muted-foreground/60 font-medium">Já tem conta?</span>
+                <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
+              </div>
+
+              <Link href="/login" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full h-11 rounded-xl text-sm font-medium border-border/60 hover:border-emerald-500/30 hover:bg-emerald-500/3 transition-all duration-200"
+                >
+                  Fazer login
+                </Button>
+              </Link>
+            </motion.div>
+          ) : (
+            /* ─── Step 2: Verificação de e-mail ─── */
+            <motion.div
+              key="verify"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.35 }}
+              className="w-full max-w-md relative z-10"
+            >
+              {/* Mobile logo */}
+              <div className="lg:hidden flex items-center gap-2.5 mb-10">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-lg font-bold tracking-tight">
+                  Control<span className="text-emerald-600 dark:text-emerald-400">Finance</span>
+                </span>
+              </div>
+
+              {/* Icon + Title */}
+              <div className="flex flex-col items-center text-center mb-8">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/10 mb-5">
+                  <MailCheck className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h1 className="text-[1.75rem] font-bold tracking-tight text-foreground">
+                  Verifique seu e-mail
+                </h1>
+                <p className="mt-3 text-sm text-muted-foreground leading-relaxed max-w-sm">
+                  Enviamos um código de 6 dígitos para{" "}
+                  <span className="font-semibold text-foreground">{pendingEmail}</span>.
+                  <br />
+                  Insira o código abaixo para concluir seu cadastro.
+                </p>
+              </div>
+
+              <form onSubmit={verifyForm.handleSubmit(onVerify)} className="space-y-6">
+                {/* Code input */}
+                <div className="space-y-2">
+                  <label htmlFor="codigo" className="text-[13px] font-semibold text-foreground/80 uppercase tracking-wider text-center block">
+                    Código de verificação
+                  </label>
+                  <div
+                    className={`relative rounded-xl border transition-all duration-200 ${
+                      focusedField === "codigo"
+                        ? "border-emerald-500/50 ring-[3px] ring-emerald-500/10 dark:ring-emerald-400/10"
+                        : verifyForm.formState.errors.codigo
+                          ? "border-red-400/50"
+                          : "border-border hover:border-border/80"
+                    }`}
+                  >
+                    <KeyRound
+                      className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-colors ${
+                        focusedField === "codigo" ? "text-emerald-500 dark:text-emerald-400" : "text-muted-foreground/50"
+                      }`}
+                    />
+                    <Input
+                      id="codigo"
+                      placeholder="000000"
+                      className="pl-11 h-14 border-0 bg-transparent shadow-none focus-visible:ring-0 text-center text-2xl font-mono tracking-[0.5em] placeholder:text-muted-foreground/30 placeholder:tracking-[0.5em]"
+                      maxLength={6}
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      autoFocus
+                      {...verifyForm.register("codigo")}
+                      onFocus={() => setFocusedField("codigo")}
+                      onBlur={() => setFocusedField(null)}
+                    />
+                  </div>
+                  {verifyForm.formState.errors.codigo && (
+                    <p className="text-xs text-red-500 text-center">{verifyForm.formState.errors.codigo.message}</p>
+                  )}
+                </div>
+
+                {/* Verify button */}
+                <Button
+                  type="submit"
+                  className="w-full h-12 text-[15px] font-semibold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-500/25 transition-all duration-300 border-0 gap-2"
+                  disabled={verifying}
+                >
+                  {verifying ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      Verificar e criar conta
+                      <Check className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              {/* Resend + Back */}
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-sm text-muted-foreground">Não recebeu o código?</span>
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resendCooldown > 0 || resending}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 disabled:text-muted-foreground/40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {resending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                    {resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : "Reenviar"}
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground/70 transition-colors"
-                  tabIndex={-1}
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  onClick={() => setStep("form")}
+                  className="flex items-center justify-center gap-1.5 mx-auto text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Voltar ao formulário
                 </button>
               </div>
-
-              {/* Password strength indicator */}
-              <AnimatePresence>
-                {senha && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-2.5 pt-1 overflow-hidden"
-                  >
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4].map((level) => (
-                        <div
-                          key={level}
-                          className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                            strength >= level
-                              ? strength <= 2
-                                ? "bg-red-400"
-                                : strength === 3
-                                  ? "bg-amber-400"
-                                  : "bg-emerald-500"
-                              : "bg-muted"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                      {passedRules.map((rule) => (
-                        <div
-                          key={rule.label}
-                          className={`flex items-center gap-1.5 text-[11px] transition-colors ${
-                            rule.passed
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-muted-foreground/50"
-                          }`}
-                        >
-                          {rule.passed ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                          {rule.label}
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Submit */}
-            <div className="pt-1">
-              <Button
-                type="submit"
-                className="w-full h-12 text-[15px] font-semibold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-xl hover:shadow-emerald-500/25 transition-all duration-300 border-0 gap-2"
-                disabled={isSubmitting || !allPassed}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    Criar conta
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-
-          {/* Divider */}
-          <div className="my-7 flex items-center gap-4">
-            <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
-            <span className="text-xs text-muted-foreground/60 font-medium">Já tem conta?</span>
-            <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
-          </div>
-
-          <Link href="/login" className="block">
-            <Button
-              variant="outline"
-              className="w-full h-11 rounded-xl text-sm font-medium border-border/60 hover:border-emerald-500/30 hover:bg-emerald-500/3 transition-all duration-200"
-            >
-              Fazer login
-            </Button>
-          </Link>
-        </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

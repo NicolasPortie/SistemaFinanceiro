@@ -2,14 +2,15 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { api, AUTH_EXPIRED_EVENT, type Usuario } from "@/lib/api";
+import { api, AUTH_EXPIRED_EVENT, type Usuario, type RegistroPendenteResponse } from "@/lib/api";
 
 interface AuthContextType {
   usuario: Usuario | null;
   loading: boolean;
   isAdmin: boolean;
   login: (email: string, senha: string) => Promise<void>;
-  registrar: (nome: string, email: string, senha: string, codigoConvite: string) => Promise<void>;
+  registrar: (nome: string, email: string, senha: string, codigoConvite: string) => Promise<RegistroPendenteResponse>;
+  verificarRegistro: (email: string, codigo: string) => Promise<void>;
   logout: () => void;
   atualizarPerfil: () => Promise<void>;
 }
@@ -53,7 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const registrar = useCallback(async (nome: string, email: string, senha: string, codigoConvite: string) => {
-    const res = await api.auth.registrar({ nome, email, senha, codigoConvite });
+    return await api.auth.registrar({ nome, email, senha, codigoConvite });
+  }, []);
+
+  const verificarRegistro = useCallback(async (email: string, codigo: string) => {
+    const res = await api.auth.verificarRegistro({ email, codigo });
     localStorage.setItem("cf_token", res.token);
     localStorage.setItem("cf_refresh_token", res.refreshToken);
     localStorage.setItem("cf_user", JSON.stringify(res.usuario));
@@ -79,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ usuario, loading, isAdmin, login, registrar, logout, atualizarPerfil }}>
+    <AuthContext.Provider value={{ usuario, loading, isAdmin, login, registrar, verificarRegistro, logout, atualizarPerfil }}>
       {children}
     </AuthContext.Provider>
   );

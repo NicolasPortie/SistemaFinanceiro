@@ -8,4 +8,11 @@ public interface IEmailService
         string codigo,
         DateTime expiraEmUtc,
         CancellationToken cancellationToken = default);
+
+    Task<bool> EnviarCodigoVerificacaoRegistroAsync(
+        string emailDestino,
+        string nomeDestino,
+        string codigo,
+        DateTime expiraEmUtc,
+        CancellationToken cancellationToken = default);
 }

@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<ILembretePagamentoRepository, LembretePagamentoRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ICodigoConviteRepository, CodigoConviteRepository>();
+        services.AddScoped<IRegistroPendenteRepository, RegistroPendenteRepository>();
 
         // Codigo Verificacao
         services.AddScoped<ICodigoVerificacaoRepository, CodigoVerificacaoRepository>();

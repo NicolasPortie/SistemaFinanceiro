@@ -41,6 +41,32 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("verificar-registro")]
+    public async Task<IActionResult> VerificarRegistro([FromBody] VerificarRegistroDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var (response, erro) = await _authService.VerificarRegistroAsync(dto, ClientIp);
+        if (erro != null)
+            return BadRequest(new { erro });
+
+        return Ok(response);
+    }
+
+    [HttpPost("reenviar-codigo-registro")]
+    public async Task<IActionResult> ReenviarCodigoRegistro([FromBody] ReenviarCodigoRegistroDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var (response, erro) = await _authService.ReenviarCodigoRegistroAsync(dto);
+        if (erro != null)
+            return BadRequest(new { erro });
+
+        return Ok(response);
+    }
+
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {

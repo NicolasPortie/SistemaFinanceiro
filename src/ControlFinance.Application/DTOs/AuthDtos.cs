@@ -107,3 +107,29 @@ public class RedefinirSenhaDto
         ErrorMessage = "Senha deve conter pelo menos uma letra maiúscula, uma minúscula e um número")]
     public string NovaSenha { get; set; } = string.Empty;
 }
+
+public class VerificarRegistroDto
+{
+    [Required(ErrorMessage = "E-mail é obrigatório")]
+    [EmailAddress(ErrorMessage = "E-mail inválido")]
+    public string Email { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Código é obrigatório")]
+    [MinLength(6, ErrorMessage = "Código deve ter 6 dígitos")]
+    [MaxLength(6, ErrorMessage = "Código deve ter 6 dígitos")]
+    public string Codigo { get; set; } = string.Empty;
+}
+
+public class ReenviarCodigoRegistroDto
+{
+    [Required(ErrorMessage = "E-mail é obrigatório")]
+    [EmailAddress(ErrorMessage = "E-mail inválido")]
+    public string Email { get; set; } = string.Empty;
+}
+
+public class RegistroPendenteResponseDto
+{
+    public bool Pendente { get; set; } = true;
+    public string Email { get; set; } = string.Empty;
+    public string Mensagem { get; set; } = string.Empty;
+}

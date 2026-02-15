@@ -155,9 +155,14 @@ export const redefinirSenhaSchema = z
     path: ["confirmarSenha"],
   });
 
+export const verificarRegistroSchema = z.object({
+  codigo: z.string().min(6, "Código deve ter 6 dígitos").max(6, "Código deve ter 6 dígitos"),
+});
+
 // ── Inferred Types ─────────────────────────────────────────
 export type LoginData = z.infer<typeof loginSchema>;
 export type RegistroData = z.infer<typeof registroSchema>;
+export type VerificarRegistroData = z.infer<typeof verificarRegistroSchema>;
 export type SimulacaoData = z.infer<typeof simulacaoSchema>;
 export type LimiteData = z.infer<typeof limiteSchema>;
 export type MetaData = z.infer<typeof metaSchema>;

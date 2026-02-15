@@ -34,6 +34,7 @@ public class AppDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AjusteLimiteCartao> AjustesLimitesCartao => Set<AjusteLimiteCartao>();
     public DbSet<CodigoConvite> CodigosConvite => Set<CodigoConvite>();
+    public DbSet<RegistroPendente> RegistrosPendentes => Set<RegistroPendente>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -465,6 +466,26 @@ public class AppDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.CartaoId);
+        });
+
+        // === RegistroPendente ===
+        modelBuilder.Entity<RegistroPendente>(entity =>
+        {
+            entity.ToTable("registros_pendentes");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(600)
+                .HasConversion(deterministicConverter);
+            entity.Property(e => e.Nome).HasColumnName("nome").HasMaxLength(200);
+            entity.Property(e => e.SenhaHash).HasColumnName("senha_hash").HasMaxLength(500);
+            entity.Property(e => e.CodigoConvite).HasColumnName("codigo_convite").HasMaxLength(50);
+            entity.Property(e => e.CodigoVerificacao).HasColumnName("codigo_verificacao").HasMaxLength(200)
+                .HasConversion(deterministicConverter);
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.ExpiraEm).HasColumnName("expira_em");
+            entity.Property(e => e.TentativasVerificacao).HasColumnName("tentativas_verificacao").HasDefaultValue(0);
+
+            entity.HasIndex(e => e.Email).IsUnique();
         });
 
         // Converter global: forçar todas as propriedades DateTime para UTC
