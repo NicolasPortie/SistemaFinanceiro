@@ -63,8 +63,8 @@ services:
       InviteCode__Hash: ${INVITE_CODE_HASH}
     networks:
       - controlfinance-network
-    expose:
-      - "5000"
+    ports:
+      - "5000:5000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
