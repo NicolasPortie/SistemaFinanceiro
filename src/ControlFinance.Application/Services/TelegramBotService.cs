@@ -52,7 +52,9 @@ public class TelegramBotService
         AguardandoParcelas,
         AguardandoCategoria,
         AguardandoConfirmacao,
-        AguardandoCorrecao
+        AguardandoCorrecao,
+        AguardandoNovoValorCorrecao,
+        AguardandoNovaDataCorrecao
     }
 
     private class LancamentoPendente
@@ -229,6 +231,12 @@ public class TelegramBotService
             case EstadoPendente.AguardandoCorrecao:
                 return await ProcessarRespostaCorrecaoAsync(chatId, pendente, usuario, msg);
 
+            case EstadoPendente.AguardandoNovoValorCorrecao:
+                return ProcessarEntradaNovoValorCorrecao(chatId, pendente, msg);
+
+            case EstadoPendente.AguardandoNovaDataCorrecao:
+                return ProcessarEntradaNovaDataCorrecao(chatId, pendente, msg);
+
             default:
                 _pendentes.TryRemove(chatId, out _);
                 return null;
@@ -307,11 +315,10 @@ public class TelegramBotService
 
         if (msg is "2" or "valor" or "preço" or "preco" or "💵")
         {
-            // Aguardar novo valor — reutilizar estado de descrição com flag
+            // Aguardar novo valor em estado dedicado
             pendente.CriadoEm = DateTime.UtcNow;
+            pendente.Estado = EstadoPendente.AguardandoNovoValorCorrecao;
             _pendentes[chatId] = pendente;
-            // Tratamento especial: guardar que é correção de valor
-            pendente.Estado = EstadoPendente.AguardandoConfirmacao; // temporário
             return "💵 Digite o novo valor (ex: 45,90):";
         }
 
@@ -349,8 +356,8 @@ public class TelegramBotService
         if (msg is "5" or "data" or "📅")
         {
             pendente.CriadoEm = DateTime.UtcNow;
+            pendente.Estado = EstadoPendente.AguardandoNovaDataCorrecao;
             _pendentes[chatId] = pendente;
-            pendente.Estado = EstadoPendente.AguardandoConfirmacao; // temporário
             return "📅 Digite a nova data (dd/MM/yyyy):";
         }
 
@@ -391,6 +398,53 @@ public class TelegramBotService
             new[] { ("📅 Data", "data"), ("❌ Cancelar", "cancelar") }
         );
         return "⚠️ Não entendi. O que deseja corrigir?\n\n1️⃣ Descrição\n2️⃣ Valor\n3️⃣ Categoria\n4️⃣ Pagamento\n5️⃣ Data\n\nEscolha abaixo 👇";
+    }
+
+    private string ProcessarEntradaNovoValorCorrecao(long chatId, LancamentoPendente pendente, string msg)
+    {
+        if (!TryParseValor(msg, out var novoValor) || novoValor <= 0)
+        {
+            pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
+            return "⚠️ Valor inválido. Digite no formato 45,90:";
+        }
+
+        pendente.Dados.Valor = novoValor;
+        pendente.CriadoEm = DateTime.UtcNow;
+        pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+        _pendentes[chatId] = pendente;
+
+        var nomeCartao = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
+        );
+
+        return "✅ Valor atualizado!\n\n" + MontarPreviewLancamento(pendente.Dados, nomeCartao);
+    }
+
+    private string ProcessarEntradaNovaDataCorrecao(long chatId, LancamentoPendente pendente, string msg)
+    {
+        if (!DateTime.TryParseExact(msg, new[] { "dd/MM/yyyy", "d/M/yyyy", "dd/MM" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out var novaData))
+        {
+            pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
+            return "⚠️ Data inválida. Use dd/MM/yyyy (ex: 15/02/2026):";
+        }
+
+        if (novaData.Year < 2000)
+            novaData = new DateTime(DateTime.UtcNow.Year, novaData.Month, novaData.Day, 0, 0, 0, DateTimeKind.Utc);
+
+        pendente.Dados.Data = DateTime.SpecifyKind(novaData, DateTimeKind.Utc);
+        pendente.CriadoEm = DateTime.UtcNow;
+        pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+        _pendentes[chatId] = pendente;
+
+        var nomeCartao = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
+        );
+
+        return "✅ Data atualizada!\n\n" + MontarPreviewLancamento(pendente.Dados, nomeCartao);
     }
 
     private async Task<string?> ProcessarRespostaFormaPagamentoAsync(long chatId, LancamentoPendente pendente, string msg)
