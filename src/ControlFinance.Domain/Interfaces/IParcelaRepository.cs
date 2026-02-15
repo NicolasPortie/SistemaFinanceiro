@@ -8,4 +8,5 @@ public interface IParcelaRepository
     Task<List<Parcela>> ObterPorLancamentoAsync(int lancamentoId);
     Task<List<Parcela>> ObterPorFaturaAsync(int faturaId);
     Task AtualizarAsync(Parcela parcela);
+    Task RemoverPorLancamentoAsync(int lancamentoId);
 }

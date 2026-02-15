@@ -193,8 +193,16 @@ public class LancamentoService : ILancamentoService
         if (lancamento == null || lancamento.UsuarioId != usuarioId)
             throw new InvalidOperationException("Lançamento não encontrado.");
 
+        var dataAnterior = lancamento.Data;
+        var valorAnterior = lancamento.Valor;
+        var mudouValor = false;
+        var mudouData = false;
+
         if (dto.Valor.HasValue && dto.Valor.Value > 0)
+        {
             lancamento.Valor = dto.Valor.Value;
+            mudouValor = lancamento.Valor != valorAnterior;
+        }
 
         if (!string.IsNullOrWhiteSpace(dto.Descricao))
             lancamento.Descricao = dto.Descricao;
@@ -204,6 +212,7 @@ public class LancamentoService : ILancamentoService
             var data = dto.Data.Value;
             if (data.Kind == DateTimeKind.Unspecified)
                 data = DateTime.SpecifyKind(data, DateTimeKind.Utc);
+            mudouData = data.Year != dataAnterior.Year || data.Month != dataAnterior.Month;
             lancamento.Data = data;
         }
 
@@ -223,7 +232,71 @@ public class LancamentoService : ILancamentoService
         }
 
         await _lancamentoRepo.AtualizarAsync(lancamento);
-        _logger.LogInformation("Lançamento {Id} atualizado", lancamentoId);
+
+        // Se mudou data (mês diferente) ou valor, recalcular parcelas e faturas
+        if ((mudouData || mudouValor) && lancamento.FormaPagamento == FormaPagamento.Credito)
+        {
+            await RecalcularParcelasFaturaAsync(lancamento);
+        }
+
+        _logger.LogInformation("Lançamento {Id} atualizado (mudouData={MudouData}, mudouValor={MudouValor})",
+            lancamentoId, mudouData, mudouValor);
+    }
+
+    /// <summary>
+    /// Remove as parcelas antigas do lançamento, recria na fatura correta e recalcula totais.
+    /// </summary>
+    private async Task RecalcularParcelasFaturaAsync(Lancamento lancamento)
+    {
+        // Coletar faturas antigas afetadas para recalcular depois
+        var parcelasAntigas = await _parcelaRepo.ObterPorLancamentoAsync(lancamento.Id);
+        var faturaIdsAntigas = parcelasAntigas
+            .Where(p => p.FaturaId.HasValue)
+            .Select(p => p.FaturaId!.Value)
+            .Distinct()
+            .ToList();
+
+        // Descobrir o cartão a partir das parcelas antigas
+        int? cartaoId = null;
+        foreach (var parcela in parcelasAntigas)
+        {
+            if (parcela.FaturaId.HasValue)
+            {
+                var fatura = await _faturaRepo.ObterPorIdAsync(parcela.FaturaId.Value);
+                if (fatura != null)
+                {
+                    cartaoId = fatura.CartaoCreditoId;
+                    break;
+                }
+            }
+        }
+
+        if (cartaoId == null)
+        {
+            _logger.LogWarning("Não foi possível determinar o cartão do lançamento {Id} para recalcular parcelas", lancamento.Id);
+            return;
+        }
+
+        // Remover parcelas antigas
+        await _parcelaRepo.RemoverPorLancamentoAsync(lancamento.Id);
+
+        // Recriar parcelas com a nova data/valor
+        if (lancamento.NumeroParcelas > 1)
+        {
+            await GerarParcelasAsync(lancamento, cartaoId);
+        }
+        else
+        {
+            await GerarParcelaUnicaAsync(lancamento, cartaoId);
+        }
+
+        // Recalcular totais das faturas antigas (que agora perderam parcelas)
+        foreach (var faturaId in faturaIdsAntigas)
+        {
+            await AtualizarTotalFaturaAsync(faturaId);
+        }
+
+        _logger.LogInformation("Parcelas do lançamento {Id} recalculadas para nova data/valor", lancamento.Id);
     }
 
     public async Task RemoverAsync(int lancamentoId, int? usuarioId = null)

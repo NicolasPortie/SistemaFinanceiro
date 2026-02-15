@@ -108,7 +108,7 @@ export function StatCard({
         ease: [0.22, 1, 0.36, 1],
       }}
       className={cn(
-        "group card-premium p-5",
+        "group card-premium p-3.5 sm:p-5",
         colors.border,
         className
       )}
@@ -123,30 +123,30 @@ export function StatCard({
 
       {/* Decorative corner orb */}
       <div className={cn(
-        "absolute -right-6 -top-6 h-24 w-24 rounded-full transition-all duration-700 opacity-0 group-hover:opacity-100 group-hover:-right-3 group-hover:-top-3",
+        "absolute -right-6 -top-6 h-24 w-24 rounded-full transition-all duration-700 opacity-0 group-hover:opacity-100 group-hover:-right-3 group-hover:-top-3 hidden sm:block",
         trend === "up" ? "bg-emerald-500/5" : trend === "down" ? "bg-red-500/5" : "bg-primary/5"
       )} />
 
-      <div className="relative z-10 flex items-start justify-between">
-        <div className="space-y-2.5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">
+      <div className="relative z-10 flex items-start justify-between gap-2">
+        <div className="space-y-1.5 sm:space-y-2.5 min-w-0 flex-1">
+          <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70 truncate">
             {title}
           </p>
           <p
             className={cn(
-              "text-[1.7rem] font-extrabold tabular-nums tracking-tight leading-none",
+              "text-lg sm:text-[1.7rem] font-extrabold tabular-nums tracking-tight leading-none truncate",
               colors.value
             )}
           >
             {value}
           </p>
           {subtitle && (
-            <p className="text-xs text-muted-foreground/80 font-medium">{subtitle}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground/80 font-medium truncate">{subtitle}</p>
           )}
         </div>
         <div
           className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-500",
+            "flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl transition-all duration-500 shrink-0",
             "group-hover:scale-110 group-hover:shadow-lg",
             colors.icon
           )}

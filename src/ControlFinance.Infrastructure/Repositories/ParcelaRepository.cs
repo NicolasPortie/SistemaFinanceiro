@@ -44,4 +44,17 @@ public class ParcelaRepository : IParcelaRepository
         _context.Parcelas.Update(parcela);
         await _context.SaveChangesAsync();
     }
+
+    public async Task RemoverPorLancamentoAsync(int lancamentoId)
+    {
+        var parcelas = await _context.Parcelas
+            .Where(p => p.LancamentoId == lancamentoId)
+            .ToListAsync();
+
+        if (parcelas.Count > 0)
+        {
+            _context.Parcelas.RemoveRange(parcelas);
+            await _context.SaveChangesAsync();
+        }
+    }
 }
