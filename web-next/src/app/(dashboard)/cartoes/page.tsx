@@ -195,37 +195,37 @@ export default function CartoesPage() {
 
       {/* ── Stat Cards ── */}
       {!isLoading && cartoes.length > 0 && (
-        <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Cartões</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight">{cartoes.length}</p>
+        <div className="grid gap-2 sm:gap-4 grid-cols-2 xl:grid-cols-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-premium p-3 sm:p-5 group">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Cartões</p>
+                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight">{cartoes.length}</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
-                <CreditCard className="h-5 w-5" />
-              </div>
-            </div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Limite Total</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight">{formatCurrency(totalLimite)}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
-                <DollarSign className="h-5 w-5" />
+              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110 shrink-0">
+                <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Usado</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-red-600 dark:text-red-400">{formatCurrency(totalUsado)}</p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-3 sm:p-5 group">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Limite Total</p>
+                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight truncate">{formatCurrency(totalLimite)}</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 transition-transform duration-500 group-hover:scale-110">
-                <TrendingUp className="h-5 w-5" />
+              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110 shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+            </div>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-3 sm:p-5 group">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Usado</p>
+                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight text-red-600 dark:text-red-400 truncate">{formatCurrency(totalUsado)}</p>
+              </div>
+              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 transition-transform duration-500 group-hover:scale-110 shrink-0">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
             {totalLimite > 0 && (
@@ -234,14 +234,14 @@ export default function CartoesPage() {
               </div>
             )}
           </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Disponível</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">{formatCurrency(totalDisponivel)}</p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-3 sm:p-5 group">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Disponível</p>
+                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400 truncate">{formatCurrency(totalDisponivel)}</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110">
-                <Wallet className="h-5 w-5" />
+              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110 shrink-0">
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
           </motion.div>

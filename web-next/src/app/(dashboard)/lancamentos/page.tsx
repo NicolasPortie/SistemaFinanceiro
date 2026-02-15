@@ -273,9 +273,10 @@ export default function LancamentosPage() {
               <TooltipContent>Atualizar dados</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
+          <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-3 sm:px-5 rounded-xl shadow-premium font-semibold">
             <Plus className="h-4 w-4" />
-            Novo Lançamento
+            <span className="hidden sm:inline">Novo Lançamento</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </motion.div>
       </div>
@@ -286,15 +287,15 @@ export default function LancamentosPage() {
       ) : isError ? (
         <ErrorState message={error?.message} onRetry={handleRefresh} />
       ) : resumo ? (
-        <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Receitas</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">{formatCurrency(resumo.totalReceitas)}</p>
+        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="card-premium p-3 sm:p-5 group">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Receitas</p>
+                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400 truncate">{formatCurrency(resumo.totalReceitas)}</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110">
-                <TrendingUp className="h-5 w-5" />
+              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110 shrink-0">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
             <div className="mt-3 h-1 rounded-full bg-emerald-100 dark:bg-emerald-500/10 overflow-hidden">
@@ -302,14 +303,14 @@ export default function LancamentosPage() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Despesas</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-red-600 dark:text-red-400">{formatCurrency(resumo.totalGastos)}</p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-3 sm:p-5 group">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Despesas</p>
+                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight text-red-600 dark:text-red-400 truncate">{formatCurrency(resumo.totalGastos)}</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 transition-transform duration-500 group-hover:scale-110">
-                <TrendingDown className="h-5 w-5" />
+              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 transition-transform duration-500 group-hover:scale-110 shrink-0">
+                <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
             <div className="mt-3 h-1 rounded-full bg-red-100 dark:bg-red-500/10 overflow-hidden">
@@ -317,14 +318,14 @@ export default function LancamentosPage() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Saldo</p>
-                <p className={`text-2xl font-extrabold tabular-nums tracking-tight ${resumo.saldo >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{formatCurrency(resumo.saldo)}</p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-3 sm:p-5 group">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Saldo</p>
+                <p className={`text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight truncate ${resumo.saldo >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{formatCurrency(resumo.saldo)}</p>
               </div>
-              <div className={`flex h-11 w-11 items-center justify-center rounded-xl transition-transform duration-500 group-hover:scale-110 ${resumo.saldo >= 0 ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}`}>
-                <Wallet className="h-5 w-5" />
+              <div className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl transition-transform duration-500 group-hover:scale-110 shrink-0 ${resumo.saldo >= 0 ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}`}>
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -334,14 +335,14 @@ export default function LancamentosPage() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Transações</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight">{lancamentosData?.total ?? 0}</p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-3 sm:p-5 group">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Transações</p>
+                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight">{lancamentosData?.total ?? 0}</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
-                <Receipt className="h-5 w-5" />
+              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110 shrink-0">
+                <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -358,7 +359,7 @@ export default function LancamentosPage() {
         transition={{ delay: 0.2 }}
         className="card-premium"
       >
-        <div className="p-4 flex flex-col lg:flex-row items-start lg:items-center gap-3">
+        <div className="p-3 sm:p-4 flex flex-col lg:flex-row items-start lg:items-center gap-3">
           {/* Search */}
           <div className="relative flex-1 w-full lg:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
@@ -380,7 +381,7 @@ export default function LancamentosPage() {
           {/* Filter pills */}
           <div className="flex items-center gap-2 flex-wrap flex-1">
             <SlidersHorizontal className="h-4 w-4 text-muted-foreground/60 hidden sm:block" />
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-wrap">
               <button
                 onClick={() => { setFiltroTipo("todos"); setPagina(1); }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filtroTipo === "todos" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"}`}
@@ -404,7 +405,7 @@ export default function LancamentosPage() {
             </div>
 
             <Select value={filtroCategoria} onValueChange={(v) => { setFiltroCategoria(v); setPagina(1); }}>
-              <SelectTrigger className="w-40 h-8 rounded-lg text-xs border-transparent bg-muted/50 hover:bg-muted">
+              <SelectTrigger className="w-full sm:w-40 h-8 rounded-lg text-xs border-transparent bg-muted/50 hover:bg-muted">
                 <Tag className="h-3 w-3 mr-1.5 text-muted-foreground/60" />
                 <SelectValue />
               </SelectTrigger>
@@ -447,7 +448,7 @@ export default function LancamentosPage() {
         </div>
 
         {loadingLancamentos ? (
-          <div className="p-12 flex flex-col items-center justify-center gap-3">
+          <div className="p-6 sm:p-12 flex flex-col items-center justify-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">Carregando lançamentos...</p>
           </div>
@@ -589,7 +590,7 @@ export default function LancamentosPage() {
             )}
           </>
         ) : (
-          <div className="p-12">
+          <div className="p-6 sm:p-12">
             <EmptyState
               icon={<Receipt className="h-6 w-6" />}
               title="Nenhum lançamento encontrado"
@@ -615,11 +616,11 @@ export default function LancamentosPage() {
       {/* ── New Transaction Sheet (Side Panel) ── */}
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader className="pb-6">
-            <SheetTitle className="text-xl font-bold">Novo Lançamento</SheetTitle>
+          <SheetHeader className="pb-4 sm:pb-6">
+            <SheetTitle className="text-lg sm:text-xl font-bold">Novo Lançamento</SheetTitle>
             <SheetDescription>Registre uma nova receita ou despesa</SheetDescription>
           </SheetHeader>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
             {/* Type selector */}
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -831,21 +832,21 @@ export default function LancamentosPage() {
           {viewingItem && (
             <div className="space-y-5">
               {/* Header card */}
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/20 border border-border/30">
-                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${viewingItem.tipo === "receita" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}`}>
+              <div className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-xl bg-muted/20 border border-border/30">
+                <div className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl shrink-0 ${viewingItem.tipo === "receita" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}`}>
                   {viewingItem.tipo === "receita" ? <ArrowUpCircle className="h-5 w-5" /> : <ArrowDownCircle className="h-5 w-5" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold truncate">{viewingItem.descricao}</p>
+                  <p className="font-bold truncate text-sm sm:text-base">{viewingItem.descricao}</p>
                   <Badge variant={viewingItem.tipo === "receita" ? "default" : "destructive"} className="text-[11px] mt-1 capitalize">{viewingItem.tipo}</Badge>
                 </div>
-                <span className={`text-xl font-extrabold tabular-nums ${viewingItem.tipo === "receita" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                <span className={`text-base sm:text-xl font-extrabold tabular-nums shrink-0 ${viewingItem.tipo === "receita" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
                   {viewingItem.tipo === "receita" ? "+" : "−"} {formatCurrency(viewingItem.valor)}
                 </span>
               </div>
 
               {/* Detail grid */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div className="p-3.5 rounded-xl border border-border/30 bg-muted/10">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Tag className="h-3.5 w-3.5 text-muted-foreground/60" />

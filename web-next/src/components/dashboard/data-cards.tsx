@@ -37,7 +37,7 @@ export function CategorySpendingCard({ gastosPorCategoria }: CategorySpendingCar
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.25 }}
-      className="card-premium p-6 space-y-5"
+      className="card-premium p-4 sm:p-6 space-y-4 sm:space-y-5"
     >
       <div className="section-header">
         <div className="section-header-icon bg-gradient-to-br from-violet-500/10 to-violet-500/20 text-violet-600 dark:text-violet-400">
@@ -101,7 +101,7 @@ export function RecentTransactionsCard({ lancamentos }: RecentTransactionsCardPr
       transition={{ delay: 0.25 }}
       className="card-premium overflow-hidden flex flex-col"
     >
-      <div className="p-6 pb-4 flex items-center justify-between">
+      <div className="p-4 sm:p-6 pb-3 sm:pb-4 flex items-center justify-between">
         <div className="section-header">
           <div className="section-header-icon bg-gradient-to-br from-blue-500/10 to-blue-500/20 text-blue-600 dark:text-blue-400">
             <Receipt className="h-4.5 w-4.5" />
@@ -118,7 +118,7 @@ export function RecentTransactionsCard({ lancamentos }: RecentTransactionsCardPr
         {lancamentos.length > 0 ? (
           <div className="divide-y divide-border/30">
             {lancamentos.slice(0, 6).map((l) => (
-              <div key={l.id} className="flex items-center gap-3 px-6 py-3.5 hover:bg-muted/20 transition-all duration-300 group">
+                <div key={l.id} className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-3.5 hover:bg-muted/20 transition-all duration-300 group">
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-105 ${
                   l.tipo === "receita"
                     ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/12 dark:text-emerald-400 group-hover:shadow-md group-hover:shadow-emerald-500/10"

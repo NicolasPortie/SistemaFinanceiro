@@ -26,9 +26,9 @@ export function AlertsCard({ limitesAlerta }: AlertsCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.35 }}
-      className="card-premium p-6"
+      className="card-premium p-4 sm:p-6"
     >
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4 sm:mb-5">
         <div className="section-header">
           <div className="section-header-icon bg-gradient-to-br from-amber-500/10 to-amber-500/20 text-amber-600 dark:text-amber-400">
             <Zap className="h-4.5 w-4.5" />
@@ -83,9 +83,9 @@ export function CardsOverviewCard({ cartoes }: CardsOverviewCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.35 }}
-      className="card-premium p-6"
+      className="card-premium p-4 sm:p-6"
     >
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4 sm:mb-5">
         <div className="section-header">
           <div className="section-header-icon bg-gradient-to-br from-violet-500/10 to-violet-500/20 text-violet-600 dark:text-violet-400">
             <CreditCard className="h-4.5 w-4.5" />
@@ -139,9 +139,9 @@ export function ActiveMetasCard({ metasAtivas }: ActiveMetasCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
-      className="card-premium p-6"
+      className="card-premium p-4 sm:p-6"
     >
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4 sm:mb-5">
         <div className="section-header">
           <div className="section-header-icon bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 text-cyan-600 dark:text-cyan-400">
             <Target className="h-4.5 w-4.5" />

@@ -294,21 +294,21 @@ export function LoadingState({
 
 export function CardSkeleton({ count = 3 }: { count?: number }) {
   return (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="relative h-[120px] overflow-hidden rounded-2xl border border-border/30 bg-card/60"
+          className="relative h-[100px] sm:h-[120px] overflow-hidden rounded-2xl border border-border/30 bg-card/60"
           style={{ animationDelay: `${i * 100}ms` }}
         >
           {/* Skeleton structure */}
-          <div className="p-5 space-y-4">
+          <div className="p-3 sm:p-5 space-y-3 sm:space-y-4">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <div className="h-2.5 w-16 rounded-full bg-muted/60" />
-                <div className="h-7 w-24 rounded-lg bg-muted/40" />
+                <div className="h-6 sm:h-7 w-20 sm:w-24 rounded-lg bg-muted/40" />
               </div>
-              <div className="h-12 w-12 rounded-2xl bg-muted/40" />
+              <div className="h-9 w-9 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-muted/40" />
             </div>
           </div>
           {/* Shimmer overlay */}

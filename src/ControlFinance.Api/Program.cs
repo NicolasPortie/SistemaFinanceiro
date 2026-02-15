@@ -171,6 +171,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // === Background Services ===
+builder.Services.AddHostedService<FaturaRecalculoBackgroundService>(); // Correção automática de faturas na inicialização
 if (telegramConfigurado)
 {
     builder.Services.AddHostedService<BotNotificationService>();

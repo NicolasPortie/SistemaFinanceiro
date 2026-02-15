@@ -209,7 +209,7 @@ export default function DashboardPage() {
               transition={{ delay: 0.15 }}
               className="card-premium p-6"
             >
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
                 <div className="section-header">
                   <div className="section-header-icon bg-gradient-to-br from-primary/10 to-primary/20 text-primary">
                     <Activity className="h-4.5 w-4.5" />
@@ -235,13 +235,13 @@ export default function DashboardPage() {
           )}
 
           {/* ── Category Spending + Recent Transactions ── */}
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
             <CategorySpendingCard gastosPorCategoria={resumo.gastosPorCategoria} />
             <RecentTransactionsCard lancamentos={lancamentos?.items ?? []} />
           </div>
 
           {/* ── Bottom Row: Alerts + Cards + Metas ── */}
-          <div className="grid gap-5 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
             <AlertsCard limitesAlerta={limitesAlerta} />
             <CardsOverviewCard cartoes={cartoes} />
             <ActiveMetasCard metasAtivas={metasAtivas} />
@@ -253,9 +253,9 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.45 }}
-              className="card-premium p-6"
+              className="card-premium p-4 sm:p-6"
             >
-              <div className="section-header mb-5">
+              <div className="section-header mb-4 sm:mb-5">
                 <div className="section-header-icon bg-gradient-to-br from-pink-500/10 to-pink-500/20 text-pink-600 dark:text-pink-400">
                   <Tag className="h-4.5 w-4.5" />
                 </div>
