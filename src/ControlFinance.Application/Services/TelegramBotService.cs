@@ -1556,7 +1556,7 @@ public class TelegramBotService
         var idx = versao.IndexOf('+');
         if (idx > 0) versao = versao[..idx];
 
-        return $"📦 *ControlFinance*\n\n🏷️ Versão: `{versao}`";
+        return $"📦 *ControlFinance*\n\n🏷️ Versão: `v{versao}`";
     }
 
     private static bool EhMensagemGestaoNoWeb(string msgLower)

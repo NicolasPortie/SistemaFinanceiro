@@ -44,6 +44,7 @@ echo -e "${YELLOW}🔨 Construindo novas imagens...${NC}"
 
 # Detectar versão a partir da tag Git
 APP_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0-dev")
+APP_VERSION="${APP_VERSION#v}"  # Remove prefixo 'v' (v1.4.0 → 1.4.0)
 export APP_VERSION
 echo -e "${GREEN}📦 Versão detectada: ${APP_VERSION}${NC}"
 
