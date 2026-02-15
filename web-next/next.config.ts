@@ -18,8 +18,17 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           {
             key: "Content-Security-Policy",
-            value:
-              "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self';",
+            value: [
+              "default-src 'self'",
+              "base-uri 'self'",
+              "object-src 'none'",
+              "frame-ancestors 'none'",
+              "form-action 'self'",
+              "img-src 'self' data: blob:",
+              "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+              "style-src 'self' 'unsafe-inline'",
+              "connect-src 'self' https://cloudflareinsights.com",
+            ].join("; ") + ";",
           },
         ],
       },
