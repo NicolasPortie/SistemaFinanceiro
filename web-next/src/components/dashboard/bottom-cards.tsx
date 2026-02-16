@@ -23,9 +23,9 @@ interface AlertsCardProps {
 export function AlertsCard({ limitesAlerta }: AlertsCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.35 }}
+      transition={{ delay: 0.3, duration: 0.5 }}
       className="card-premium p-4 sm:p-6"
     >
       <div className="flex items-center justify-between mb-4 sm:mb-5">
@@ -37,15 +37,15 @@ export function AlertsCard({ limitesAlerta }: AlertsCardProps) {
         </div>
       </div>
       {limitesAlerta.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {limitesAlerta.slice(0, 4).map((l) => (
-            <div key={l.id} className="flex items-center gap-3 rounded-xl bg-muted/20 p-3.5 border border-border/20 transition-all duration-300 hover:bg-muted/40 hover:border-border/40">
+            <div key={l.id} className="flex items-center gap-3 rounded-xl bg-muted/15 p-3 border border-border/15 transition-all duration-300 hover:bg-muted/30 hover:border-border/30">
               <Gauge className={`h-4 w-4 shrink-0 ${
                 l.status === "excedido" || l.status === "critico" ? "text-red-500" : "text-amber-500"
               }`} />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold truncate">{l.categoriaNome}</p>
-                <p className="text-[11px] text-muted-foreground/60 font-medium">
+                <p className="text-[11px] text-muted-foreground/50 font-medium">
                   {formatCurrency(l.gastoAtual)} de {formatCurrency(l.valorLimite)}
                 </p>
               </div>
@@ -55,18 +55,18 @@ export function AlertsCard({ limitesAlerta }: AlertsCardProps) {
             </div>
           ))}
           <Link href="/limites">
-            <Button variant="ghost" size="sm" className="w-full text-xs gap-1 text-primary hover:text-primary font-semibold mt-1">
+            <Button variant="ghost" size="sm" className="w-full text-xs gap-1.5 text-primary hover:text-primary font-semibold mt-1">
               Ver limites <ArrowRight className="h-3 w-3" />
             </Button>
           </Link>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-6 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-500/12 mb-3 shadow-sm">
-            <Sparkles className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 mb-3">
+            <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <p className="text-sm font-bold">Tudo em ordem!</p>
-          <p className="text-[11px] text-muted-foreground/60 mt-1 font-medium">Nenhum limite ultrapassado</p>
+          <p className="text-[11px] text-muted-foreground/50 mt-1 font-medium">Nenhum limite ultrapassado</p>
         </div>
       )}
     </motion.div>
@@ -80,9 +80,9 @@ interface CardsOverviewCardProps {
 export function CardsOverviewCard({ cartoes }: CardsOverviewCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.35 }}
+      transition={{ delay: 0.33, duration: 0.5 }}
       className="card-premium p-4 sm:p-6"
     >
       <div className="flex items-center justify-between mb-4 sm:mb-5">
@@ -93,36 +93,36 @@ export function CardsOverviewCard({ cartoes }: CardsOverviewCardProps) {
           <h3 className="text-sm font-bold tracking-tight">Cartões</h3>
         </div>
         <Link href="/cartoes">
-          <Button variant="ghost" size="sm" className="gap-1 h-7 text-xs text-primary hover:text-primary font-semibold">
+          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs text-primary hover:text-primary font-semibold">
             Gerenciar <ArrowRight className="h-3 w-3" />
           </Button>
         </Link>
       </div>
       {cartoes.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {cartoes.slice(0, 3).map((c) => (
-            <div key={c.id} className="flex items-center gap-3 rounded-xl bg-muted/20 p-3.5 border border-border/20 transition-all duration-300 hover:bg-muted/40 hover:border-border/40 group">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-card-purple text-white shadow-md shadow-violet-500/20 transition-transform duration-300 group-hover:scale-105">
-                <CreditCard className="h-4 w-4" />
+            <div key={c.id} className="flex items-center gap-3 rounded-xl bg-muted/15 p-3 border border-border/15 transition-all duration-300 hover:bg-muted/30 hover:border-border/30 group">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-card-purple text-white shadow-sm shadow-violet-500/15 transition-transform duration-300 group-hover:scale-105">
+                <CreditCard className="h-3.5 w-3.5" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold truncate">{c.nome}</p>
-                <p className="text-[11px] text-muted-foreground/60 font-medium">Venc. dia {c.diaVencimento}</p>
+                <p className="text-[11px] text-muted-foreground/50 font-medium">Venc. dia {c.diaVencimento}</p>
               </div>
-              <p className="text-sm font-bold tabular-nums">{formatCurrency(c.limite)}</p>
+              <p className="text-[13px] font-bold tabular-nums">{formatCurrency(c.limite)}</p>
             </div>
           ))}
           {cartoes.length > 3 && (
-            <p className="text-[11px] text-muted-foreground/60 text-center font-medium">+{cartoes.length - 3} cartões</p>
+            <p className="text-[11px] text-muted-foreground/50 text-center font-medium">+{cartoes.length - 3} cartões</p>
           )}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-6 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 mb-3 shadow-sm">
-            <CreditCard className="h-6 w-6 text-muted-foreground/60" />
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/40 mb-3">
+            <CreditCard className="h-5 w-5 text-muted-foreground/50" />
           </div>
           <p className="text-sm font-bold">Nenhum cartão</p>
-          <p className="text-[11px] text-muted-foreground/60 mt-1 font-medium">Adicione na aba Cartões</p>
+          <p className="text-[11px] text-muted-foreground/50 mt-1 font-medium">Adicione na aba Cartões</p>
         </div>
       )}
     </motion.div>
@@ -136,9 +136,9 @@ interface ActiveMetasCardProps {
 export function ActiveMetasCard({ metasAtivas }: ActiveMetasCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.4 }}
+      transition={{ delay: 0.36, duration: 0.5 }}
       className="card-premium p-4 sm:p-6"
     >
       <div className="flex items-center justify-between mb-4 sm:mb-5">
@@ -149,35 +149,35 @@ export function ActiveMetasCard({ metasAtivas }: ActiveMetasCardProps) {
           <h3 className="text-sm font-bold tracking-tight">Metas Ativas</h3>
         </div>
         <Link href="/metas">
-          <Button variant="ghost" size="sm" className="gap-1 h-7 text-xs text-primary hover:text-primary font-semibold">
+          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs text-primary hover:text-primary font-semibold">
             Ver todas <ArrowRight className="h-3 w-3" />
           </Button>
         </Link>
       </div>
       {metasAtivas.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {metasAtivas.slice(0, 3).map((meta) => (
-            <div key={meta.id} className="space-y-2.5 rounded-xl bg-muted/20 p-3.5 border border-border/20 transition-all duration-300 hover:bg-muted/40 hover:border-border/40">
+            <div key={meta.id} className="space-y-2.5 rounded-xl bg-muted/15 p-3 border border-border/15 transition-all duration-300 hover:bg-muted/30 hover:border-border/30">
               <div className="flex items-center justify-between">
                 <p className="text-[13px] font-semibold truncate">{meta.nome}</p>
                 <span className="text-xs font-extrabold tabular-nums text-primary">{meta.percentualConcluido.toFixed(0)}%</span>
               </div>
-              <Progress value={Math.min(meta.percentualConcluido, 100)} className="h-2" />
-              <p className="text-[11px] text-muted-foreground/60 tabular-nums font-medium">
+              <Progress value={Math.min(meta.percentualConcluido, 100)} className="h-1.5" />
+              <p className="text-[11px] text-muted-foreground/50 tabular-nums font-medium">
                 {formatCurrency(meta.valorAtual)} de {formatCurrency(meta.valorAlvo)}
               </p>
             </div>
           ))}
           {metasAtivas.length > 3 && (
-            <p className="text-[11px] text-muted-foreground/60 text-center font-medium">
+            <p className="text-[11px] text-muted-foreground/50 text-center font-medium">
               +{metasAtivas.length - 3} metas ativas
             </p>
           )}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-6 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/50 mb-3 shadow-sm">
-            <Target className="h-6 w-6 text-muted-foreground/60" />
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/40 mb-3">
+            <Target className="h-5 w-5 text-muted-foreground/50" />
           </div>
           <p className="text-sm font-bold">Sem metas ativas</p>
           <Link href="/metas">

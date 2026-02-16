@@ -34,9 +34,9 @@ interface CategorySpendingCardProps {
 export function CategorySpendingCard({ gastosPorCategoria }: CategorySpendingCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.25 }}
+      transition={{ delay: 0.2, duration: 0.5 }}
       className="card-premium p-4 sm:p-6 space-y-4 sm:space-y-5"
     >
       <div className="section-header">
@@ -54,19 +54,19 @@ export function CategorySpendingCard({ gastosPorCategoria }: CategorySpendingCar
               {gastosPorCategoria.slice(0, 5).map((g, i) => (
                 <motion.div
                   key={g.categoria}
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.04 * i }}
+                  transition={{ delay: 0.05 * i, duration: 0.4 }}
                   className="space-y-2 group"
                 >
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2.5">
-                      <div className={`h-3 w-3 rounded-full ${categoryColors[i % categoryColors.length]} shadow-sm ring-2 ring-offset-1 ring-offset-card`} />
+                      <div className={`h-2.5 w-2.5 rounded-full ${categoryColors[i % categoryColors.length]} shadow-sm ring-2 ring-offset-1 ring-offset-card`} />
                       <span className="font-semibold text-[13px]">{g.categoria}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="tabular-nums text-muted-foreground/80 font-medium">{formatCurrency(g.total)}</span>
-                      <span className="text-[11px] tabular-nums text-muted-foreground/60 w-10 text-right font-bold">{g.percentual.toFixed(0)}%</span>
+                      <span className="tabular-nums text-muted-foreground/70 font-medium text-[13px]">{formatCurrency(g.total)}</span>
+                      <span className="text-[11px] tabular-nums text-muted-foreground/50 w-10 text-right font-bold">{g.percentual.toFixed(0)}%</span>
                     </div>
                   </div>
                   <Progress value={g.percentual} className="h-1.5" />
@@ -74,14 +74,14 @@ export function CategorySpendingCard({ gastosPorCategoria }: CategorySpendingCar
               ))}
             </AnimatePresence>
             {gastosPorCategoria.length > 5 && (
-              <p className="text-[11px] text-muted-foreground/60 text-center pt-1 font-medium">
+              <p className="text-[11px] text-muted-foreground/50 text-center pt-1 font-medium">
                 +{gastosPorCategoria.length - 5} categorias
               </p>
             )}
           </div>
         </>
       ) : (
-        <div className="py-8 text-center text-sm text-muted-foreground">
+        <div className="py-10 text-center text-sm text-muted-foreground/70">
           Nenhum gasto registrado neste período
         </div>
       )}
@@ -96,9 +96,9 @@ interface RecentTransactionsCardProps {
 export function RecentTransactionsCard({ lancamentos }: RecentTransactionsCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.25 }}
+      transition={{ delay: 0.2, duration: 0.5 }}
       className="card-premium overflow-hidden flex flex-col"
     >
       <div className="p-4 sm:p-6 pb-3 sm:pb-4 flex items-center justify-between">
@@ -109,28 +109,28 @@ export function RecentTransactionsCard({ lancamentos }: RecentTransactionsCardPr
           <h3 className="text-sm font-bold tracking-tight">Últimos Lançamentos</h3>
         </div>
         <Link href="/lancamentos">
-          <Button variant="ghost" size="sm" className="gap-1 h-7 text-xs text-primary hover:text-primary font-semibold">
+          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs text-primary hover:text-primary font-semibold">
             Ver todos <ArrowRight className="h-3 w-3" />
           </Button>
         </Link>
       </div>
       <div className="flex-1 overflow-hidden">
         {lancamentos.length > 0 ? (
-          <div className="divide-y divide-border/30">
+          <div className="divide-y divide-border/20">
             {lancamentos.slice(0, 6).map((l) => (
-                <div key={l.id} className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-3.5 hover:bg-muted/20 transition-all duration-300 group">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-105 ${
+                <div key={l.id} className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-3.5 hover:bg-muted/15 transition-all duration-300 group">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-105 ${
                   l.tipo === "receita"
-                    ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/12 dark:text-emerald-400 group-hover:shadow-md group-hover:shadow-emerald-500/10"
-                    : "bg-red-100 text-red-600 dark:bg-red-500/12 dark:text-red-400 group-hover:shadow-md group-hover:shadow-red-500/10"
+                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                    : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
                 }`}>
-                  {l.tipo === "receita" ? <ArrowUpCircle className="h-4.5 w-4.5" /> : <ArrowDownCircle className="h-4.5 w-4.5" />}
+                  {l.tipo === "receita" ? <ArrowUpCircle className="h-4 w-4" /> : <ArrowDownCircle className="h-4 w-4" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold truncate">{l.descricao}</p>
-                  <p className="text-[11px] text-muted-foreground/60 font-medium">{l.categoria} · {formatDate(l.data)}</p>
+                  <p className="text-[11px] text-muted-foreground/50 font-medium">{l.categoria} · {formatDate(l.data)}</p>
                 </div>
-                <span className={`text-sm font-bold tabular-nums whitespace-nowrap ${
+                <span className={`text-[13px] font-bold tabular-nums whitespace-nowrap ${
                   l.tipo === "receita"
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-red-600 dark:text-red-400"

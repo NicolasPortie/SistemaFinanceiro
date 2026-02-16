@@ -128,7 +128,8 @@ public class GeminiService : IGeminiService
                 "meta": null,
                 "aporteMeta": null,
                 "pagamentoFatura": null,
-                "cartao": null
+                "cartao": null,
+                "divisaoGasto": null
             }
 
             INTENCOES POSSIVEIS:
@@ -156,6 +157,8 @@ public class GeminiService : IGeminiService
             - "criar_categoria" -> criar/adicionar uma nova categoria personalizada. Colocar o nome da categoria no campo "resposta". Ex: "criar categoria Roupas", "adicionar categoria Pets", "nova categoria Educação".
             - "categorizar_ultimo" -> alterar a categoria do último lançamento registrado (ex: "esse último gasto foi Lazer"). Preencher "resposta" com o nome da NOVA categoria.
             - "pagar_fatura" -> registrar pagamento de fatura de cartao de credito. Preencher "pagamentoFatura".
+            - "dividir_gasto" -> dividir/rachar conta ou gasto com outras pessoas. Preencher "divisaoGasto" com valorTotal, numeroPessoas, descricao, categoria e formaPagamento (quando informados).
+            - "ver_recorrentes" -> ver receitas recorrentes detectadas (salario, freelance, etc.).
             - "pergunta" -> pergunta financeira geral.
             - "conversa" -> conversa casual.
 
@@ -347,6 +350,29 @@ public class GeminiService : IGeminiService
                     "data": "{{dataHoje}}"
                 }
             }
+
+            EXEMPLO "dividir_gasto":
+            {
+                "intencao": "dividir_gasto",
+                "resposta": "Vou registrar sua parte!",
+                "divisaoGasto": {
+                    "valorTotal": 120.00,
+                    "numeroPessoas": 3,
+                    "descricao": "Jantar no restaurante",
+                    "categoria": "Alimentação",
+                    "formaPagamento": "nao_informado",
+                    "data": "{{dataHoje}}"
+                }
+            }
+
+            REGRA PARA "dividir_gasto":
+            - Quando o usuario diz "dividi", "rachei", "dividir", "rachar", "split", "metade", "dividi com", "rachei com", "paguei metade".
+            - Se diz "dividi com 2 amigos" -> numeroPessoas = 3 (usuario + 2 amigos).
+            - Se diz "dividi no meio" ou "metade" -> numeroPessoas = 2.
+            - Se diz "rachamos em 4" -> numeroPessoas = 4.
+            - O valorTotal eh o valor TOTAL da conta, nao a parte do usuario.
+            - Se o usuario so informar "sua parte" (ex: "paguei 40 que era minha parte"), NAO use dividir_gasto. Use "registrar" direto com o valor da parte.
+
             NOTA SOBRE "editar_cartao":
             - No campo "resposta", coloque o nome ATUAL do cartao que o usuario quer editar (como esta cadastrado).
             - No campo "cartao", coloque os dados NOVOS. Se o usuario so quer mudar o nome, coloque limite=0 e diaVencimento=0 (serao ignorados).

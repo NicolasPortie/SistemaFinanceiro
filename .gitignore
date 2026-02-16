@@ -58,3 +58,7 @@ next-env.d.ts
 
 ## Local env files
 .env*.local
+
+nul
+tmpclaude-*
+

@@ -172,7 +172,7 @@ export default function RecuperarSenhaPage() {
                   nós ajudamos.
                 </span>
               </h2>
-              <p className="mt-5 text-[14px] text-white/40 leading-relaxed max-w-[340px]">
+              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-[340px]">
                 Redefina sua senha de forma rápida e segura. Basta verificar seu e-mail e criar uma nova senha.
               </p>
             </motion.div>
@@ -216,7 +216,7 @@ export default function RecuperarSenhaPage() {
 
           {/* Footer */}
           <div className="flex items-center justify-between">
-            <p className="text-[11px] text-white/20">© {new Date().getFullYear()} ControlFinance</p>
+            <p className="text-[11px] text-white/25">© {new Date().getFullYear()} ControlFinance</p>
             <div className="flex items-center gap-1.5">
               <div className="w-1 h-1 rounded-full bg-emerald-400/40" />
               <div className="w-1 h-1 rounded-full bg-teal-400/40" />
@@ -254,7 +254,7 @@ export default function RecuperarSenhaPage() {
                 <h2 className="text-xl font-bold text-white/90 tracking-tight">
                   {stepLabels[step].title}
                 </h2>
-                <p className="text-[13px] text-white/40 mt-1.5 max-w-xs">
+                <p className="text-[13px] text-white/35 mt-1.5 max-w-xs">
                   {stepLabels[step].desc}
                 </p>
               </div>
@@ -341,7 +341,7 @@ export default function RecuperarSenhaPage() {
                     <Button
                       type="submit"
                       disabled={emailForm.formState.isSubmitting}
-                      className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xl shadow-emerald-600/15 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
+                      className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
                     >
                       {emailForm.formState.isSubmitting ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -373,7 +373,7 @@ export default function RecuperarSenhaPage() {
                 </Link>
 
                 {/* Trust */}
-                <div className="mt-8 flex items-center justify-center gap-4 text-[10px] text-muted-foreground/30">
+                <div className="mt-8 flex items-center justify-center gap-4 text-[10px] text-muted-foreground/40">
                   <div className="flex items-center gap-1.5 font-medium">
                     <Shield className="h-3 w-3" />
                     <span>SSL Seguro</span>
@@ -542,7 +542,7 @@ export default function RecuperarSenhaPage() {
                     <Button
                       type="submit"
                       disabled={codeForm.formState.isSubmitting}
-                      className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xl shadow-emerald-600/15 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
+                      className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
                     >
                       {codeForm.formState.isSubmitting ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -613,7 +613,7 @@ export default function RecuperarSenhaPage() {
                 >
                   <Link href="/login">
                     <Button
-                      className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xl shadow-emerald-600/15 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
+                      className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
                     >
                       Ir para o login
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />

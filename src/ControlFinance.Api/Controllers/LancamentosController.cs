@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
+using ControlFinance.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,13 +14,16 @@ public class LancamentosController : BaseAuthController
 {
     private readonly ILancamentoService _lancamentoService;
     private readonly IResumoService _resumoService;
+    private readonly ILancamentoRepository _lancamentoRepo;
 
     public LancamentosController(
         ILancamentoService lancamentoService,
-        IResumoService resumoService)
+        IResumoService resumoService,
+        ILancamentoRepository lancamentoRepo)
     {
         _lancamentoService = lancamentoService;
         _resumoService = resumoService;
+        _lancamentoRepo = lancamentoRepo;
     }
 
     [HttpPost]
@@ -71,20 +75,51 @@ public class LancamentosController : BaseAuthController
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanhoPagina = 20)
     {
-        // Obter gastos e receitas separados e depois unir
+        // Filtro por tipo usa query paginada no banco quando possível
+        if (!string.IsNullOrEmpty(tipo) && Enum.TryParse<Domain.Enums.TipoLancamento>(tipo, true, out var tipoEnum)
+            && !categoriaId.HasValue && string.IsNullOrWhiteSpace(busca))
+        {
+            // Paginação 100% server-side (tipo + período)
+            var (itens, total) = await _lancamentoRepo.ObterPorUsuarioETipoPaginadoAsync(
+                UsuarioId, tipoEnum, pagina, tamanhoPagina, de, ate);
+
+            return Ok(new
+            {
+                items = itens.Select(MapearLancamento).ToList(),
+                total,
+                pagina,
+                tamanhoPagina,
+                totalPaginas = (int)Math.Ceiling((double)total / tamanhoPagina)
+            });
+        }
+
+        // Sem filtro de tipo ou com filtros adicionais: paginação server-side geral
+        if (!categoriaId.HasValue && string.IsNullOrWhiteSpace(busca) && string.IsNullOrEmpty(tipo))
+        {
+            var (itens, total) = await _lancamentoRepo.ObterPorUsuarioPaginadoAsync(
+                UsuarioId, pagina, tamanhoPagina, de, ate);
+
+            return Ok(new
+            {
+                items = itens.Select(MapearLancamento).ToList(),
+                total,
+                pagina,
+                tamanhoPagina,
+                totalPaginas = (int)Math.Ceiling((double)total / tamanhoPagina)
+            });
+        }
+
+        // Fallback com filtros complexos (categoria, busca): carrega e filtra in-memory
         var gastos = await _lancamentoService.ObterGastosAsync(UsuarioId, de, ate);
         var receitas = await _lancamentoService.ObterReceitasAsync(UsuarioId, de, ate);
         var lancamentos = gastos.Concat(receitas).ToList();
 
-        // Filtrar por tipo
-        if (!string.IsNullOrEmpty(tipo) && Enum.TryParse<Domain.Enums.TipoLancamento>(tipo, true, out var tipoEnum))
-            lancamentos = lancamentos.Where(l => l.Tipo == tipoEnum).ToList();
+        if (!string.IsNullOrEmpty(tipo) && Enum.TryParse<Domain.Enums.TipoLancamento>(tipo, true, out var tipoFallback))
+            lancamentos = lancamentos.Where(l => l.Tipo == tipoFallback).ToList();
 
-        // Filtrar por categoria
         if (categoriaId.HasValue)
             lancamentos = lancamentos.Where(l => l.CategoriaId == categoriaId.Value).ToList();
 
-        // Filtrar por descrição
         if (!string.IsNullOrWhiteSpace(busca))
         {
             var termoBusca = busca.Trim();
@@ -94,7 +129,7 @@ public class LancamentosController : BaseAuthController
                 .ToList();
         }
 
-        var total = lancamentos.Count;
+        var totalFallback = lancamentos.Count;
         var items = lancamentos
             .OrderByDescending(l => l.Data)
             .Skip((pagina - 1) * tamanhoPagina)
@@ -105,10 +140,10 @@ public class LancamentosController : BaseAuthController
         return Ok(new
         {
             items,
-            total,
+            total = totalFallback,
             pagina,
             tamanhoPagina,
-            totalPaginas = (int)Math.Ceiling((double)total / tamanhoPagina)
+            totalPaginas = (int)Math.Ceiling((double)totalFallback / tamanhoPagina)
         });
     }
 

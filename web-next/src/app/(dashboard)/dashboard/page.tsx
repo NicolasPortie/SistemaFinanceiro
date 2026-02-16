@@ -139,25 +139,25 @@ export default function DashboardPage() {
 
       {/* ── Month Selector ── */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.08 }}
-        className="flex items-center justify-center gap-3"
+        transition={{ delay: 0.08, duration: 0.4 }}
+        className="flex items-center justify-center gap-2.5"
       >
-        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/40 shadow-sm hover:shadow-md transition-all duration-300" onClick={prev} aria-label="Mês anterior">
+        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/30 shadow-sm hover:shadow-md transition-all duration-300" onClick={prev} aria-label="Mês anterior">
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <button
           onClick={reset}
-          className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl bg-card border border-border/40 hover:border-primary/30 hover:shadow-lg transition-all duration-300 min-w-45 justify-center shadow-sm group"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-card border border-border/30 hover:border-primary/25 hover:shadow-md transition-all duration-300 min-w-45 justify-center shadow-sm group"
         >
-          <CalendarDays className="h-4 w-4 text-primary transition-transform duration-300 group-hover:scale-110" />
+          <CalendarDays className="h-4 w-4 text-primary transition-transform duration-300 group-hover:scale-105" />
           <span className="text-sm font-bold tracking-tight">{label}</span>
           {!isCurrentMonth && (
             <span className="text-[10px] text-primary ml-0.5 font-semibold">(atual)</span>
           )}
         </button>
-        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/40 shadow-sm hover:shadow-md transition-all duration-300" onClick={next} disabled={isCurrentMonth} aria-label="Próximo mês">
+        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/30 shadow-sm hover:shadow-md transition-all duration-300" onClick={next} disabled={isCurrentMonth} aria-label="Próximo mês">
           <ChevronRight className="h-4 w-4" />
         </Button>
       </motion.div>
@@ -204,10 +204,10 @@ export default function DashboardPage() {
           {/* ── Evolution Chart ── */}
           {!loadingHistorico && historicoData.length >= 2 && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="card-premium p-6"
+              transition={{ delay: 0.12, duration: 0.5 }}
+              className="card-premium p-5 sm:p-6"
             >
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
                 <div className="section-header">
@@ -216,16 +216,16 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold tracking-tight">Evolução Financeira</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Receitas vs Gastos dos últimos meses</p>
+                    <p className="text-[11px] text-muted-foreground/60 mt-0.5">Receitas vs Gastos dos últimos meses</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-5 text-xs font-medium">
                   <span className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 ring-2 ring-emerald-500/20" />
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-500/15" />
                     Receitas
                   </span>
                   <span className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/40 ring-2 ring-red-500/20" />
+                    <span className="h-2 w-2 rounded-full bg-red-500 ring-2 ring-red-500/15" />
                     Gastos
                   </span>
                 </div>
@@ -250,9 +250,9 @@ export default function DashboardPage() {
           {/* ── Categories Tags ── */}
           {categorias.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
               className="card-premium p-4 sm:p-6"
             >
               <div className="section-header mb-4 sm:mb-5">
@@ -266,9 +266,9 @@ export default function DashboardPage() {
                   <Badge
                     key={cat.id}
                     variant="secondary"
-                    className="gap-2 py-2 px-3.5 text-xs border border-border/30 hover:border-primary/20 hover:shadow-sm transition-all duration-300 font-semibold"
+                    className="gap-2 py-1.5 px-3 text-xs border border-border/20 hover:border-primary/15 hover:shadow-sm transition-all duration-300 font-semibold"
                   >
-                    <div className={`h-2.5 w-2.5 rounded-full ${categoryColors[i % categoryColors.length]} shadow-sm`} />
+                    <div className={`h-2 w-2 rounded-full ${categoryColors[i % categoryColors.length]}`} />
                     {cat.nome}
                   </Badge>
                 ))}

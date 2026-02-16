@@ -41,7 +41,7 @@ public class LancamentoRepository : ILancamentoRepository
         if (ate.HasValue)
             query = query.Where(l => l.Data <= ate.Value);
 
-        return await query.OrderByDescending(l => l.Data).ToListAsync();
+        return await query.OrderByDescending(l => l.Data).ThenByDescending(l => l.CriadoEm).ToListAsync();
     }
 
     public async Task<List<Lancamento>> ObterPorUsuarioETipoAsync(int usuarioId, TipoLancamento tipo, DateTime? de = null, DateTime? ate = null)
@@ -55,7 +55,53 @@ public class LancamentoRepository : ILancamentoRepository
         if (ate.HasValue)
             query = query.Where(l => l.Data <= ate.Value);
 
-        return await query.OrderByDescending(l => l.Data).ToListAsync();
+        return await query.OrderByDescending(l => l.Data).ThenByDescending(l => l.CriadoEm).ToListAsync();
+    }
+
+    public async Task<(List<Lancamento> Itens, int Total)> ObterPorUsuarioPaginadoAsync(
+        int usuarioId, int pagina, int tamanhoPagina, DateTime? de = null, DateTime? ate = null)
+    {
+        var query = _context.Lancamentos
+            .Include(l => l.Categoria)
+            .Where(l => l.UsuarioId == usuarioId);
+
+        if (de.HasValue)
+            query = query.Where(l => l.Data >= de.Value);
+        if (ate.HasValue)
+            query = query.Where(l => l.Data <= ate.Value);
+
+        var total = await query.CountAsync();
+        var itens = await query
+            .OrderByDescending(l => l.Data)
+            .ThenByDescending(l => l.CriadoEm)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .ToListAsync();
+
+        return (itens, total);
+    }
+
+    public async Task<(List<Lancamento> Itens, int Total)> ObterPorUsuarioETipoPaginadoAsync(
+        int usuarioId, TipoLancamento tipo, int pagina, int tamanhoPagina, DateTime? de = null, DateTime? ate = null)
+    {
+        var query = _context.Lancamentos
+            .Include(l => l.Categoria)
+            .Where(l => l.UsuarioId == usuarioId && l.Tipo == tipo);
+
+        if (de.HasValue)
+            query = query.Where(l => l.Data >= de.Value);
+        if (ate.HasValue)
+            query = query.Where(l => l.Data <= ate.Value);
+
+        var total = await query.CountAsync();
+        var itens = await query
+            .OrderByDescending(l => l.Data)
+            .ThenByDescending(l => l.CriadoEm)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .ToListAsync();
+
+        return (itens, total);
     }
 
     public async Task<decimal> ObterTotalPorPeriodoAsync(int usuarioId, TipoLancamento tipo, DateTime de, DateTime ate)

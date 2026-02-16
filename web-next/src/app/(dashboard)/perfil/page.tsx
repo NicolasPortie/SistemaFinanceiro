@@ -41,7 +41,7 @@ import {
   Tag,
   Save,
 } from "lucide-react";
-import { PageShell } from "@/components/shared/page-components";
+import { PageShell, PageHeader } from "@/components/shared/page-components";
 import {
   Tooltip,
   TooltipContent,
@@ -194,17 +194,14 @@ export default function PerfilPage() {
   return (
     <PageShell>
       {/* ── Page Header ── */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">Meu Perfil</h1>
-        <p className="text-sm text-muted-foreground mt-1">Gerencie suas informações, segurança e categorias</p>
-      </motion.div>
+      <PageHeader title="Meu Perfil" description="Gerencie suas informações, segurança e categorias" />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* User Info Card */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-premium overflow-hidden">
-          <div className="gradient-hero h-28 relative">
+          <div className="gradient-hero h-24 relative">
             <div className="absolute -bottom-10 left-6">
-              <Avatar className="h-20 w-20 border-4 border-card shadow-xl">
+              <Avatar className="h-20 w-20 border-4 border-card shadow-2xl ring-2 ring-white/10">
                 <AvatarFallback className="text-xl font-bold bg-white text-emerald-700 dark:bg-neutral-800 dark:text-emerald-400">
                   {getInitials(usuario.nome)}
                 </AvatarFallback>
@@ -228,15 +225,15 @@ export default function PerfilPage() {
 
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><User className="h-4 w-4" /></div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><User className="h-4 w-4" /></div>
                 <div><p className="text-[11px] text-muted-foreground/60 font-medium">Nome</p><p className="text-[13px] font-semibold">{usuario.nome}</p></div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Mail className="h-4 w-4" /></div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Mail className="h-4 w-4" /></div>
                 <div><p className="text-[11px] text-muted-foreground/60 font-medium">E-mail</p><p className="text-[13px] font-semibold">{usuario.email}</p></div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Calendar className="h-4 w-4" /></div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Calendar className="h-4 w-4" /></div>
                 <div><p className="text-[11px] text-muted-foreground/60 font-medium">Membro desde</p><p className="text-[13px] font-semibold">{formatDate(usuario.criadoEm)}</p></div>
               </div>
             </div>
@@ -336,7 +333,7 @@ export default function PerfilPage() {
             <Separator />
             <div className="flex flex-wrap gap-2">
               {categorias.map((cat) => (
-                <div key={cat.id} className="group flex items-center gap-1.5 rounded-xl bg-muted/40 border border-border/30 px-3.5 py-2.5 text-sm">
+                <div key={cat.id} className="group flex items-center gap-1.5 rounded-xl bg-muted/40 border border-border/30 px-3.5 py-2.5 text-sm transition-all duration-200 hover:bg-muted/60 hover:shadow-sm">
                   <Tag className="h-3 w-3 text-muted-foreground/60" />
                   <span className="font-semibold text-[13px]">{cat.nome}</span>
                   {cat.padrao ? (
@@ -374,7 +371,7 @@ export default function PerfilPage() {
       <Dialog open={editandoNome} onOpenChange={setEditandoNome}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Editar Nome</DialogTitle>
+            <DialogTitle className="text-lg font-bold tracking-tight">Editar Nome</DialogTitle>
             <DialogDescription>Altere seu nome de exibição</DialogDescription>
           </DialogHeader>
           <form onSubmit={nomeForm.handleSubmit(onSalvarNome)} className="space-y-4">
@@ -383,8 +380,8 @@ export default function PerfilPage() {
               <Input className="h-11 rounded-xl" {...nomeForm.register("nome")} />
               {nomeForm.formState.errors.nome && <p className="text-xs text-red-500">{nomeForm.formState.errors.nome.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={atualizarPerfilMutation.isPending}>
-              {atualizarPerfilMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4" />Salvar</>}
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={atualizarPerfilMutation.isPending}>
+              {atualizarPerfilMutation.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><Save className="h-4.5 w-4.5" />Salvar</>}
             </Button>
           </form>
         </DialogContent>
@@ -394,7 +391,7 @@ export default function PerfilPage() {
       <Dialog open={showSenha} onOpenChange={setShowSenha}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Alterar Senha</DialogTitle>
+            <DialogTitle className="text-lg font-bold tracking-tight">Alterar Senha</DialogTitle>
             <DialogDescription>Informe sua senha atual e a nova senha</DialogDescription>
           </DialogHeader>
           <form onSubmit={senhaForm.handleSubmit(onAlterarSenha)} className="space-y-4">
@@ -413,8 +410,8 @@ export default function PerfilPage() {
               <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("confirmarSenha")} />
               {senhaForm.formState.errors.confirmarSenha && <p className="text-xs text-red-500">{senhaForm.formState.errors.confirmarSenha.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={atualizarPerfilMutation.isPending}>
-              {atualizarPerfilMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Lock className="h-4 w-4" />Alterar senha</>}
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={atualizarPerfilMutation.isPending}>
+              {atualizarPerfilMutation.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><Lock className="h-4.5 w-4.5" />Alterar senha</>}
             </Button>
           </form>
         </DialogContent>
@@ -424,7 +421,7 @@ export default function PerfilPage() {
       <Dialog open={showNovaCategoria} onOpenChange={setShowNovaCategoria}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Nova Categoria</DialogTitle>
+            <DialogTitle className="text-lg font-bold tracking-tight">Nova Categoria</DialogTitle>
             <DialogDescription>Crie uma categoria personalizada</DialogDescription>
           </DialogHeader>
           <form onSubmit={categoriaForm.handleSubmit(onCriarCategoria)} className="space-y-4">
@@ -433,8 +430,8 @@ export default function PerfilPage() {
               <Input className="h-11 rounded-xl" placeholder="Ex: Pets, Investimentos..." {...categoriaForm.register("nome")} />
               {categoriaForm.formState.errors.nome && <p className="text-xs text-red-500">{categoriaForm.formState.errors.nome.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={criarCategoria.isPending}>
-              {criarCategoria.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Tag className="h-4 w-4" />Criar categoria</>}
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={criarCategoria.isPending}>
+              {criarCategoria.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><Tag className="h-4.5 w-4.5" />Criar categoria</>}
             </Button>
           </form>
         </DialogContent>
@@ -444,7 +441,7 @@ export default function PerfilPage() {
       <Dialog open={editandoCategoria !== null} onOpenChange={() => setEditandoCategoria(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Editar Categoria</DialogTitle>
+            <DialogTitle className="text-lg font-bold tracking-tight">Editar Categoria</DialogTitle>
             <DialogDescription>Altere o nome da categoria</DialogDescription>
           </DialogHeader>
           <form onSubmit={editCategoriaForm.handleSubmit(onEditarCategoria)} className="space-y-4">
@@ -453,7 +450,7 @@ export default function PerfilPage() {
               <Input className="h-11 rounded-xl" {...editCategoriaForm.register("nome")} />
               {editCategoriaForm.formState.errors.nome && <p className="text-xs text-red-500">{editCategoriaForm.formState.errors.nome.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-12 rounded-xl font-bold text-sm shadow-premium" disabled={atualizarCategoria.isPending}>
+            <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] shadow-premium btn-premium" disabled={atualizarCategoria.isPending}>
               {atualizarCategoria.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
             </Button>
           </form>

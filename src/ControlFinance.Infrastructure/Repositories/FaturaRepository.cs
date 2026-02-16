@@ -92,22 +92,41 @@ public class FaturaRepository : IFaturaRepository
 
     public async Task<Fatura?> ObterFaturaAtualAsync(int cartaoId)
     {
-        // Fatura atual = a mais próxima de vencer que ainda não foi paga
-        // (é onde caem as compras do mês corrente)
-        return await _context.Faturas
+        // Fatura atual = a do mês corrente (ou a mais próxima do mês corrente que não foi paga)
+        var hoje = DateTime.UtcNow;
+        var mesAtual = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var pendentes = await _context.Faturas
             .Include(f => f.Parcelas)
                 .ThenInclude(p => p.Lancamento)
                     .ThenInclude(l => l!.Categoria)
             .Include(f => f.CartaoCredito)
             .Where(f => f.CartaoCreditoId == cartaoId && f.Status != StatusFatura.Paga)
-            .OrderBy(f => f.MesReferencia)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+
+        if (!pendentes.Any())
+            return null;
+
+        // Prioriza a fatura do mês atual; senão, a mais próxima do mês corrente
+        return pendentes
+            .OrderBy(f => Math.Abs((f.MesReferencia - mesAtual).TotalDays))
+            .First();
     }
 
     public async Task AtualizarAsync(Fatura fatura)
     {
         _context.Faturas.Update(fatura);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task RemoverAsync(int faturaId)
+    {
+        var fatura = await _context.Faturas.FindAsync(faturaId);
+        if (fatura != null)
+        {
+            _context.Faturas.Remove(fatura);
+            await _context.SaveChangesAsync();
+        }
     }
 
     private static DateTime ObterPrimeiroDiaUtil(DateTime data)

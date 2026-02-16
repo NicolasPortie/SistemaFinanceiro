@@ -137,6 +137,7 @@ public class AdminService : IAdminService
             .Where(l => l.UsuarioId == usuarioId)
             .Include(l => l.Categoria)
             .OrderByDescending(l => l.Data)
+            .ThenByDescending(l => l.CriadoEm)
             .AsNoTracking()
             .ToListAsync();
 
@@ -345,6 +346,7 @@ public class AdminService : IAdminService
 
         return await query
             .OrderByDescending(l => l.Data)
+            .ThenByDescending(l => l.CriadoEm)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
             .Select(l => new AdminLancamentoDto

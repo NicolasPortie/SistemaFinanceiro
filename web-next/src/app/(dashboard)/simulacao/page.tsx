@@ -115,16 +115,16 @@ export default function SimulacaoPage() {
       />
 
       <Tabs defaultValue="simular" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 h-11">
-          <TabsTrigger value="simular" className="gap-2">
+        <TabsList className="grid w-full grid-cols-3 h-12 rounded-xl">
+          <TabsTrigger value="simular" className="gap-2 rounded-lg">
             <ShoppingCart className="h-4 w-4" />
             <span className="hidden sm:inline">Simular</span>
           </TabsTrigger>
-          <TabsTrigger value="perfil" className="gap-2">
+          <TabsTrigger value="perfil" className="gap-2 rounded-lg">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Perfil</span>
           </TabsTrigger>
-          <TabsTrigger value="historico" className="gap-2" onClick={() => carregarHistorico()}>
+          <TabsTrigger value="historico" className="gap-2 rounded-lg" onClick={() => carregarHistorico()}>
             <History className="h-4 w-4" />
             <span className="hidden sm:inline">Histórico</span>
           </TabsTrigger>
@@ -138,47 +138,48 @@ export default function SimulacaoPage() {
             className="card-premium p-6"
           >
             <form onSubmit={handleSimular} className="space-y-5">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
-                  <Label>Descrição</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Descrição</Label>
                   <Input
                     placeholder="Ex: iPhone 16 Pro Max"
                     value={descricao}
                     onChange={(e) => setDescricao(e.target.value)}
                     required
-                    className="h-11"
+                    className="h-11 rounded-xl"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Valor (R$)</Label>
-                  <Input
-                    placeholder="0,00"
-                    value={valor}
-                    onChange={(e) => setValor(e.target.value)}
-                    required
-                    className="h-11 tabular-nums"
-                  />
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <Input
+                      placeholder="0,00"
+                      value={valor}
+                      onChange={(e) => setValor(e.target.value)}
+                      required
+                      className="h-11 rounded-xl pl-9 tabular-nums text-lg font-semibold"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Forma de Pagamento</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Forma de Pagamento</Label>
                   <div className="grid grid-cols-3 gap-2">
                     {paymentMethods.map((pm) => (
-                      <Button
+                      <button
                         key={pm.value}
                         type="button"
-                        variant={formaPagamento === pm.value ? "default" : "outline"}
-                        size="sm"
-                        className="h-11 gap-1.5"
+                        className={`flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer ${formaPagamento === pm.value ? "bg-primary/10 text-primary border-2 border-primary/30 shadow-md shadow-primary/5" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40"}`}
                         onClick={() => {
                           setFormaPagamento(pm.value);
                           if (pm.value !== "credito") setParcelas(1);
                         }}
                       >
-                        <pm.icon className="h-4 w-4" />
-                        <span className="text-xs">{pm.label}</span>
-                      </Button>
+                        <pm.icon className="h-4.5 w-4.5" />
+                        {pm.label}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -193,27 +194,25 @@ export default function SimulacaoPage() {
                     className="grid gap-4 sm:grid-cols-2 overflow-hidden"
                   >
                     <div className="space-y-2">
-                      <Label>Parcelas</Label>
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parcelas</Label>
                       <div className="flex flex-wrap gap-1.5">
                         {parcelasOpcoes.map((p) => (
-                          <Button
+                          <button
                             key={p}
                             type="button"
-                            variant={parcelas === p ? "default" : "outline"}
-                            size="sm"
-                            className="h-9 min-w-11"
+                            className={`h-9 min-w-11 px-3 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer ${parcelas === p ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/40 text-muted-foreground hover:bg-muted border border-border/40"}`}
                             onClick={() => setParcelas(p)}
                           >
                             {p}x
-                          </Button>
+                          </button>
                         ))}
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Cartão</Label>
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cartão</Label>
                       <Select value={cartaoId} onValueChange={setCartaoId}>
-                        <SelectTrigger className="h-11">
+                        <SelectTrigger className="h-11 rounded-xl">
                           <SelectValue placeholder="Selecione o cartão" />
                         </SelectTrigger>
                         <SelectContent>
@@ -231,7 +230,7 @@ export default function SimulacaoPage() {
 
               <Button
                 type="submit"
-                className="w-full sm:w-auto h-11 gap-2 font-semibold shadow-premium"
+                className="w-full sm:w-auto h-12 gap-2.5 font-bold shadow-premium btn-premium rounded-xl"
                 disabled={simularMutation.isPending}
               >
                 {simularMutation.isPending ? (
@@ -272,7 +271,7 @@ export default function SimulacaoPage() {
                           Confiança: {resultado.confianca}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
+                      <p className="text-sm text-muted-foreground/70 leading-relaxed">
                         {resultado.recomendacao}
                       </p>
                     </div>
@@ -299,7 +298,7 @@ export default function SimulacaoPage() {
                 {/* Alternative Scenarios */}
                 {resultado.cenariosAlternativos && resultado.cenariosAlternativos.length > 0 && (
                   <div className="card-premium p-6">
-                    <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground mb-4">
+                    <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground/70 mb-4">
                       Cenários Alternativos
                     </h3>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -332,7 +331,7 @@ export default function SimulacaoPage() {
                   <>
                     {/* Area Chart */}
                     <div className="card-premium p-6">
-                      <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground mb-4">
+                      <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground/70 mb-4">
                         Projeção Visual
                       </h3>
                       <ProjectionChart data={resultado.meses} />
@@ -344,13 +343,13 @@ export default function SimulacaoPage() {
                         onClick={() => setShowMeses(!showMeses)}
                         className="flex w-full items-center justify-between"
                       >
-                        <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground">
+                        <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground/70">
                           Projeção Mensal ({resultado.meses.length} meses)
                         </h3>
                         {showMeses ? (
-                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                          <ChevronUp className="h-4 w-4 text-muted-foreground/70" />
                         ) : (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          <ChevronDown className="h-4 w-4 text-muted-foreground/70" />
                         )}
                       </button>
 
@@ -365,16 +364,16 @@ export default function SimulacaoPage() {
                             <table className="w-full text-sm">
                               <thead>
                                 <tr className="border-b border-border">
-                                  <th className="py-2 text-left font-medium text-muted-foreground">
+                                  <th className="py-2 text-left font-medium text-muted-foreground/70">
                                     Mês
                                   </th>
-                                  <th className="py-2 text-right font-medium text-muted-foreground">
+                                  <th className="py-2 text-right font-medium text-muted-foreground/70">
                                     Saldo Base
                                   </th>
-                                  <th className="py-2 text-right font-medium text-muted-foreground">
+                                  <th className="py-2 text-right font-medium text-muted-foreground/70">
                                     Impacto
                                   </th>
-                                  <th className="py-2 text-right font-medium text-muted-foreground">
+                                  <th className="py-2 text-right font-medium text-muted-foreground/70">
                                     Saldo Final
                                   </th>
                                 </tr>
@@ -475,7 +474,7 @@ export default function SimulacaoPage() {
                 transition={{ delay: 0.3 }}
                 className="card-premium p-6"
               >
-                <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground mb-4">
+                <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground/70 mb-4">
                   Composição dos Gastos
                 </h3>
                 <div className="space-y-4">
@@ -537,7 +536,7 @@ export default function SimulacaoPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h4 className="font-bold tracking-tight">{h.descricao}</h4>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground/70">
                         {formatCurrency(h.valor)} • {h.formaPagamento}
                         {h.numeroParcelas > 1 && ` • ${h.numeroParcelas}x`}
                       </p>

@@ -64,6 +64,14 @@ public class LancamentoService : ILancamentoService
         if (dataLanc.Kind == DateTimeKind.Unspecified)
             dataLanc = DateTime.SpecifyKind(dataLanc, DateTimeKind.Utc);
 
+        // Se só veio a data sem hora (meia-noite), usar hora atual para ordenação correta
+        if (dataLanc.TimeOfDay == TimeSpan.Zero)
+        {
+            var agora = DateTime.UtcNow;
+            dataLanc = new DateTime(dataLanc.Year, dataLanc.Month, dataLanc.Day,
+                agora.Hour, agora.Minute, agora.Second, DateTimeKind.Utc);
+        }
+
         var lancamento = new Lancamento
         {
             Valor = dto.Valor,
@@ -174,6 +182,15 @@ public class LancamentoService : ILancamentoService
         if (fatura == null) return;
 
         fatura.Total = fatura.Parcelas.Sum(p => p.Valor);
+
+        // Se a fatura ficou sem parcelas e não está paga, remover para não deixar fatura fantasma com R$0
+        if (fatura.Total == 0 && !fatura.Parcelas.Any() && fatura.Status != Domain.Enums.StatusFatura.Paga)
+        {
+            await _faturaRepo.RemoverAsync(faturaId);
+            _logger.LogInformation("Fatura {Id} ({Mes:MM/yyyy}) removida por estar vazia (total R$ 0,00)", fatura.Id, fatura.MesReferencia);
+            return;
+        }
+
         await _faturaRepo.AtualizarAsync(fatura);
     }
 

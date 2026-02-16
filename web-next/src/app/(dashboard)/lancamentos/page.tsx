@@ -48,6 +48,8 @@ import {
 } from "lucide-react";
 import {
   PageShell,
+  PageHeader,
+  StatCard,
   EmptyState,
   ErrorState,
   CardSkeleton,
@@ -257,29 +259,23 @@ export default function LancamentosPage() {
   return (
     <PageShell>
       {/* ── Page Header ── */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">Lançamentos</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie todas as suas receitas e despesas</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex items-center gap-2 mt-3 sm:mt-0">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={handleRefresh}>
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Atualizar dados</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-3 sm:px-5 rounded-xl shadow-premium font-semibold">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Novo Lançamento</span>
-            <span className="sm:hidden">Novo</span>
-          </Button>
-        </motion.div>
-      </div>
+      <PageHeader title="Lançamentos" description="Gerencie todas as suas receitas e despesas">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={handleRefresh}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Atualizar dados</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-3 sm:px-5 rounded-xl shadow-premium font-semibold">
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Novo Lançamento</span>
+          <span className="sm:hidden">Novo</span>
+        </Button>
+      </PageHeader>
 
       {/* ── Stats Overview ── */}
       {loadingResumo ? (
@@ -288,67 +284,36 @@ export default function LancamentosPage() {
         <ErrorState message={error?.message} onRetry={handleRefresh} />
       ) : resumo ? (
         <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="card-premium p-3 sm:p-5 group">
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Receitas</p>
-                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400 truncate">{formatCurrency(resumo.totalReceitas)}</p>
-              </div>
-              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110 shrink-0">
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-            </div>
-            <div className="mt-3 h-1 rounded-full bg-emerald-100 dark:bg-emerald-500/10 overflow-hidden">
-              <div className="h-full rounded-full bg-emerald-500 transition-all duration-1000" style={{ width: resumo.totalReceitas > 0 ? "100%" : "0%" }} />
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-3 sm:p-5 group">
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Despesas</p>
-                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight text-red-600 dark:text-red-400 truncate">{formatCurrency(resumo.totalGastos)}</p>
-              </div>
-              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 transition-transform duration-500 group-hover:scale-110 shrink-0">
-                <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-            </div>
-            <div className="mt-3 h-1 rounded-full bg-red-100 dark:bg-red-500/10 overflow-hidden">
-              <div className="h-full rounded-full bg-red-500 transition-all duration-1000" style={{ width: resumo.totalReceitas > 0 ? `${Math.min((resumo.totalGastos / resumo.totalReceitas) * 100, 100)}%` : "0%" }} />
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-3 sm:p-5 group">
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Saldo</p>
-                <p className={`text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight truncate ${resumo.saldo >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{formatCurrency(resumo.saldo)}</p>
-              </div>
-              <div className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl transition-transform duration-500 group-hover:scale-110 shrink-0 ${resumo.saldo >= 0 ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}`}>
-                <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <Badge variant={resumo.saldo >= 0 ? "default" : "destructive"} className="text-[10px] font-bold px-2 h-5">
-                {resumo.saldo >= 0 ? "Positivo" : "Negativo"}
-              </Badge>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-3 sm:p-5 group">
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Transações</p>
-                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight">{lancamentosData?.total ?? 0}</p>
-              </div>
-              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110 shrink-0">
-                <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-[11px] text-muted-foreground font-medium">Este mês</span>
-            </div>
-          </motion.div>
+          <StatCard
+            title="Receitas"
+            value={formatCurrency(resumo.totalReceitas)}
+            icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
+            trend="up"
+            delay={0}
+          />
+          <StatCard
+            title="Despesas"
+            value={formatCurrency(resumo.totalGastos)}
+            icon={<TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />}
+            trend="down"
+            delay={1}
+          />
+          <StatCard
+            title="Saldo"
+            value={formatCurrency(resumo.saldo)}
+            subtitle={resumo.saldo >= 0 ? "Positivo" : "Negativo"}
+            icon={<Wallet className="h-4 w-4 sm:h-5 sm:w-5" />}
+            trend={resumo.saldo >= 0 ? "up" : "down"}
+            delay={2}
+          />
+          <StatCard
+            title="Transações"
+            value={lancamentosData?.total ?? 0}
+            subtitle="Este mês"
+            icon={<Receipt className="h-4 w-4 sm:h-5 sm:w-5" />}
+            trend="neutral"
+            delay={3}
+          />
         </div>
       ) : null}
 
@@ -503,7 +468,7 @@ export default function LancamentosPage() {
                       </span>
 
                       {/* Actions */}
-                      <div className="flex items-center justify-end gap-0.5 w-24 opacity-0 group-hover:opacity-100 transition-opacity duration-200" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-0.5 w-24 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200" onClick={(e) => e.stopPropagation()}>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -617,18 +582,18 @@ export default function LancamentosPage() {
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader className="pb-4 sm:pb-6">
-            <SheetTitle className="text-lg sm:text-xl font-bold">Novo Lançamento</SheetTitle>
-            <SheetDescription>Registre uma nova receita ou despesa</SheetDescription>
+            <SheetTitle className="text-xl sm:text-2xl font-extrabold tracking-tight">Novo Lançamento</SheetTitle>
+            <SheetDescription className="text-muted-foreground/70">Registre uma nova receita ou despesa</SheetDescription>
           </SheetHeader>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 sm:space-y-6">
             {/* Type selector */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => { form.setValue("tipo", "receita"); form.setValue("cartaoId", ""); form.setValue("formaPagamento", ""); form.setValue("numeroParcelas", ""); }}
-                className={`flex items-center justify-center gap-2 h-14 rounded-xl text-sm font-semibold transition-all duration-300 ${tipoSelecionado === "receita"
-                  ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-[1.02]"
-                  : "bg-muted/50 text-muted-foreground hover:bg-muted border border-border/50"
+                className={`flex items-center justify-center gap-2.5 h-[3.75rem] rounded-2xl text-sm font-bold transition-all duration-300 cursor-pointer ${tipoSelecionado === "receita"
+                  ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25 scale-[1.02] ring-2 ring-emerald-400/20"
+                  : "bg-muted/40 text-muted-foreground hover:bg-muted/60 border border-border/40 hover:border-border/60"
                 }`}
               >
                 <ArrowUpCircle className="h-5 w-5" />
@@ -637,9 +602,9 @@ export default function LancamentosPage() {
               <button
                 type="button"
                 onClick={() => form.setValue("tipo", "despesa")}
-                className={`flex items-center justify-center gap-2 h-14 rounded-xl text-sm font-semibold transition-all duration-300 ${tipoSelecionado === "despesa"
-                  ? "bg-red-500 text-white shadow-lg shadow-red-500/30 scale-[1.02]"
-                  : "bg-muted/50 text-muted-foreground hover:bg-muted border border-border/50"
+                className={`flex items-center justify-center gap-2.5 h-[3.75rem] rounded-2xl text-sm font-bold transition-all duration-300 cursor-pointer ${tipoSelecionado === "despesa"
+                  ? "bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg shadow-red-500/25 scale-[1.02] ring-2 ring-red-400/20"
+                  : "bg-muted/40 text-muted-foreground hover:bg-muted/60 border border-border/40 hover:border-border/60"
                 }`}
               >
                 <ArrowDownCircle className="h-5 w-5" />
@@ -686,32 +651,38 @@ export default function LancamentosPage() {
 
             {/* Payment method (expenses only) */}
             {tipoSelecionado === "despesa" && (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Forma de Pagamento</Label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2.5">
                   <button
                     type="button"
                     onClick={() => { form.setValue("formaPagamento", "pix"); form.setValue("cartaoId", ""); form.setValue("numeroParcelas", ""); }}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-semibold transition-all ${formaPagamentoSelecionada === "pix" ? "bg-primary/10 text-primary border-2 border-primary/30" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40"}`}
+                    className={`flex flex-col items-center gap-2 py-3.5 px-2 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer ${formaPagamentoSelecionada === "pix" ? "bg-primary/10 text-primary border-2 border-primary/30 shadow-md shadow-primary/5 scale-[1.02]" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40 hover:border-border/60"}`}
                   >
-                    <Smartphone className="h-4.5 w-4.5" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/8">
+                      <Smartphone className="h-4.5 w-4.5" />
+                    </div>
                     PIX
                   </button>
                   <button
                     type="button"
                     onClick={() => { form.setValue("formaPagamento", "debito"); form.setValue("cartaoId", ""); form.setValue("numeroParcelas", ""); }}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-semibold transition-all ${formaPagamentoSelecionada === "debito" ? "bg-primary/10 text-primary border-2 border-primary/30" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40"}`}
+                    className={`flex flex-col items-center gap-2 py-3.5 px-2 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer ${formaPagamentoSelecionada === "debito" ? "bg-primary/10 text-primary border-2 border-primary/30 shadow-md shadow-primary/5 scale-[1.02]" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40 hover:border-border/60"}`}
                   >
-                    <Banknote className="h-4.5 w-4.5" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/8">
+                      <Banknote className="h-4.5 w-4.5" />
+                    </div>
                     Débito
                   </button>
                   {cartoes.length > 0 && (
                     <button
                       type="button"
                       onClick={() => form.setValue("formaPagamento", "credito")}
-                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-semibold transition-all ${formaPagamentoSelecionada === "credito" ? "bg-primary/10 text-primary border-2 border-primary/30" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40"}`}
+                      className={`flex flex-col items-center gap-2 py-3.5 px-2 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer ${formaPagamentoSelecionada === "credito" ? "bg-primary/10 text-primary border-2 border-primary/30 shadow-md shadow-primary/5 scale-[1.02]" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40 hover:border-border/60"}`}
                     >
-                      <CreditCard className="h-4.5 w-4.5" />
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/8">
+                        <CreditCard className="h-4.5 w-4.5" />
+                      </div>
                       Crédito
                     </button>
                   )}
@@ -721,7 +692,7 @@ export default function LancamentosPage() {
 
             {/* Card + Installments (credit only) */}
             {tipoSelecionado === "despesa" && formaPagamentoSelecionada === "credito" && cartoes.length > 0 && (
-              <div className="space-y-4 p-4 rounded-xl bg-muted/20 border border-border/30">
+              <div className="space-y-4 p-5 rounded-2xl bg-muted/15 border border-border/25 shadow-sm">
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cartão</Label>
                   <Select value={cartaoSelecionado} onValueChange={(v) => form.setValue("cartaoId", v)}>
@@ -755,12 +726,12 @@ export default function LancamentosPage() {
             <Separator />
 
             {/* Submit */}
-            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={criarLancamento.isPending}>
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2.5 font-bold text-[15px] shadow-premium btn-premium" disabled={criarLancamento.isPending}>
               {criarLancamento.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4.5 w-4.5 animate-spin" />
               ) : (
                 <>
-                  <Receipt className="h-4 w-4" />
+                  <Receipt className="h-4.5 w-4.5" />
                   Registrar Lançamento
                 </>
               )}

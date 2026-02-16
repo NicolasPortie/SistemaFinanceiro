@@ -130,7 +130,7 @@ export default function LoginPage() {
                   controle total.
                 </span>
               </h2>
-              <p className="mt-5 text-[14px] text-white/40 leading-relaxed max-w-[340px]">
+              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-[340px]">
                 Gestão inteligente com dashboards em tempo real, IA integrada e análises que impulsionam suas decisões financeiras.
               </p>
             </motion.div>
@@ -148,9 +148,9 @@ export default function LoginPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + i * 0.1 }}
-                  className="group flex items-center gap-3.5 py-3 px-3.5 -mx-3.5 rounded-xl hover:bg-white/[0.03] transition-all duration-300"
+                  className="group flex items-center gap-3.5 py-3 px-3.5 -mx-3.5 rounded-2xl hover:bg-white/[0.04] transition-all duration-300 hover:-translate-y-px"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] border border-white/[0.06] group-hover:bg-white/[0.08] group-hover:border-emerald-400/15 transition-all duration-300">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] border border-white/[0.06] group-hover:bg-white/[0.08] group-hover:border-emerald-400/15 group-hover:shadow-lg group-hover:shadow-emerald-500/5 transition-all duration-300">
                     <item.icon className="h-4 w-4 text-emerald-400/70 group-hover:text-emerald-300 transition-colors" />
                   </div>
                   <div className="min-w-0">
@@ -162,25 +162,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Stats bar + Footer */}
-          <div className="space-y-5">
-            <div className="flex items-center gap-8 py-4 border-t border-white/[0.06]">
-              {[
-                { value: "10K+", label: "Transações" },
-                { value: "R$2M+", label: "Gerenciados" },
-                { value: "99.9%", label: "Uptime" },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.8 + i * 0.1 }}
-                >
-                  <p className="text-[15px] font-bold tabular-nums text-white/80">{stat.value}</p>
-                  <p className="text-[10px] text-white/25 font-medium mt-0.5">{stat.label}</p>
-                </motion.div>
-              ))}
-            </div>
+          {/* Footer */}
+          <div className="pt-4 border-t border-white/[0.06]">
             <p className="text-[11px] text-white/20">© {new Date().getFullYear()} ControlFinance</p>
           </div>
         </div>
@@ -215,7 +198,7 @@ export default function LoginPage() {
                 <h2 className="text-xl font-bold text-white/90 tracking-tight">
                   Bem-vindo de volta
                 </h2>
-                <p className="text-[13px] text-white/40 mt-1.5 max-w-xs">
+                <p className="text-[13px] text-white/35 mt-1.5 max-w-xs">
                   Acesse sua conta e gerencie suas finanças
                 </p>
               </div>
@@ -376,7 +359,7 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xl shadow-emerald-600/15 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
+                  className="w-full h-[52px] text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group cursor-pointer"
                 >
                   {isSubmitting ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -407,7 +390,7 @@ export default function LoginPage() {
               <Link href="/registro">
                 <Button
                   variant="outline"
-                  className="w-full h-12 rounded-xl text-sm font-semibold border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 gap-2"
+                  className="w-full h-12 rounded-2xl text-sm font-semibold border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 gap-2 cursor-pointer"
                 >
                   <Wallet className="h-4 w-4" />
                   Criar conta com convite
@@ -427,7 +410,7 @@ export default function LoginPage() {
                 { icon: Zap, text: "Login rápido" },
                 { icon: Sparkles, text: "IA integrada" },
               ].map((item, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/30 font-medium">
+                <div key={i} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/40 font-medium">
                   <item.icon className="h-3 w-3" />
                   <span>{item.text}</span>
                 </div>
@@ -435,7 +418,7 @@ export default function LoginPage() {
             </motion.div>
 
             {/* Footer */}
-            <p className="mt-6 text-center text-[10px] text-muted-foreground/25">
+            <p className="mt-6 text-center text-[10px] text-muted-foreground/35">
               Ao entrar, você concorda com os termos de uso da plataforma.
             </p>
           </motion.div>

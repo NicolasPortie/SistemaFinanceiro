@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import {
   PageShell,
+  PageHeader,
+  StatCard,
   EmptyState,
   ErrorState,
   CardSkeleton,
@@ -140,18 +142,12 @@ export default function LimitesPage() {
   return (
     <PageShell>
       {/* ── Page Header ── */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">Limites por Categoria</h1>
-          <p className="text-sm text-muted-foreground mt-1">Defina limites de gasto para manter o controle financeiro</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex items-center gap-2 mt-3 sm:mt-0">
-          <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold" disabled={categoriasDisponiveis.length === 0}>
-            <Plus className="h-4 w-4" />
-            Definir Limite
-          </Button>
-        </motion.div>
-      </div>
+      <PageHeader title="Limites por Categoria" description="Defina limites de gasto para manter o controle financeiro">
+        <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold" disabled={categoriasDisponiveis.length === 0}>
+          <Plus className="h-4 w-4" />
+          Definir Limite
+        </Button>
+      </PageHeader>
 
       {/* ── Stats Overview ── */}
       {loading ? (
@@ -161,56 +157,34 @@ export default function LimitesPage() {
       ) : limites.length > 0 ? (
         <>
           <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-premium p-5 group">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Limites Ativos</p>
-                  <p className="text-2xl font-extrabold tabular-nums tracking-tight">{limites.length}</p>
-                </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
-                  <Gauge className="h-5 w-5" />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-5 group">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Dentro do Limite</p>
-                  <p className="text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">{okCount}</p>
-                </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110">
-                  <Shield className="h-5 w-5" />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-5 group">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Em Alerta</p>
-                  <p className={`text-2xl font-extrabold tabular-nums tracking-tight ${alertCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{alertCount}</p>
-                </div>
-                <div className={`flex h-11 w-11 items-center justify-center rounded-xl transition-transform duration-500 group-hover:scale-110 ${alertCount > 0 ? "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400" : "bg-muted/50 text-muted-foreground"}`}>
-                  <AlertTriangle className="h-5 w-5" />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5 group">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Uso Médio</p>
-                  <p className="text-2xl font-extrabold tabular-nums tracking-tight">{avgUse}%</p>
-                </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
-                  <BarChart3 className="h-5 w-5" />
-                </div>
-              </div>
-              <div className="mt-3 h-1 rounded-full bg-muted/40 overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-1000 ${avgUse > 80 ? "bg-red-500" : avgUse > 60 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.min(avgUse, 100)}%` }} />
-              </div>
-            </motion.div>
+            <StatCard
+              title="Limites Ativos"
+              value={limites.length}
+              icon={<Gauge className="h-5 w-5" />}
+              trend="neutral"
+              delay={0}
+            />
+            <StatCard
+              title="Dentro do Limite"
+              value={okCount}
+              icon={<Shield className="h-5 w-5" />}
+              trend="up"
+              delay={1}
+            />
+            <StatCard
+              title="Em Alerta"
+              value={alertCount}
+              icon={<AlertTriangle className="h-5 w-5" />}
+              trend={alertCount > 0 ? "down" : "neutral"}
+              delay={2}
+            />
+            <StatCard
+              title="Uso Médio"
+              value={`${avgUse}%`}
+              icon={<BarChart3 className="h-5 w-5" />}
+              trend="neutral"
+              delay={3}
+            />
           </div>
 
           {/* ── Limits Grid ── */}
@@ -223,12 +197,12 @@ export default function LimitesPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: i * 0.05 }}
-                  className="card-premium p-5 group transition-all hover:shadow-lg"
+                  className="card-premium p-5 group transition-all hover:shadow-lg hover:-translate-y-0.5 duration-300"
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${statusBgColor(l.status)} transition-transform duration-300 group-hover:scale-105`}>
+                      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${statusBgColor(l.status)} transition-transform duration-300 group-hover:scale-110`}>
                         {statusIcon(l.status)}
                       </div>
                       <div>
@@ -241,7 +215,7 @@ export default function LimitesPage() {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all" onClick={() => setDeleteId(l.id)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 sm:opacity-0 sm:group-hover:opacity-100 transition-all" onClick={() => setDeleteId(l.id)}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </TooltipTrigger>
@@ -316,7 +290,7 @@ export default function LimitesPage() {
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader className="pb-6">
-            <SheetTitle className="text-xl font-bold">Definir Limite</SheetTitle>
+            <SheetTitle className="text-xl sm:text-2xl font-extrabold tracking-tight">Definir Limite</SheetTitle>
             <SheetDescription>Configure um limite de gasto para uma categoria</SheetDescription>
           </SheetHeader>
           <form onSubmit={handleSalvar} className="space-y-6">
@@ -364,12 +338,12 @@ export default function LimitesPage() {
 
             <Separator />
 
-            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={definirLimite.isPending || !categoria}>
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={definirLimite.isPending || !categoria}>
               {definirLimite.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4.5 w-4.5 animate-spin" />
               ) : (
                 <>
-                  <Gauge className="h-4 w-4" />
+                  <Gauge className="h-4.5 w-4.5" />
                   Salvar Limite
                 </>
               )}

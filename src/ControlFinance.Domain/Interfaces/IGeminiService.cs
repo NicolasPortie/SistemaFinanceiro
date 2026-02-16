@@ -23,6 +23,7 @@ public class RespostaIA
     public DadosPagamentoFaturaIA? PagamentoFatura { get; set; }
     [JsonConverter(typeof(DadosCartaoIAConverter))]
     public DadosCartaoIA? Cartao { get; set; }
+    public DadosDivisaoGastoIA? DivisaoGasto { get; set; }
 }
 
 public class DadosPagamentoFaturaIA
@@ -88,6 +89,16 @@ public class DadosCartaoIA
     public string Nome { get; set; } = string.Empty;
     public decimal Limite { get; set; }
     public int DiaVencimento { get; set; } = 10;
+}
+
+public class DadosDivisaoGastoIA
+{
+    public decimal ValorTotal { get; set; }
+    public int NumeroPessoas { get; set; } = 2;
+    public string Descricao { get; set; } = string.Empty;
+    public string? Categoria { get; set; }
+    public string? FormaPagamento { get; set; }
+    public DateTime? Data { get; set; }
 }
 
 /// <summary>

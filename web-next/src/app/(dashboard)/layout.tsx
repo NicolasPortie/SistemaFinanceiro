@@ -11,18 +11,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="min-h-screen pt-14 lg:pt-0 relative overflow-hidden">
           {/* Animated floating orbs — subtle background decoration */}
           <div className="fixed inset-0 pointer-events-none lg:left-65 overflow-hidden">
-            <div className="orb orb-emerald -top-[20%] -right-[15%]" />
-            <div className="orb orb-blue -bottom-[20%] -left-[10%]" />
-            <div className="orb orb-violet top-[40%] right-[10%]" />
+            <div className="orb orb-emerald -top-[25%] -right-[15%]" />
+            <div className="orb orb-blue -bottom-[25%] -left-[10%]" />
+            <div className="orb orb-violet top-[40%] right-[8%]" />
           </div>
 
           {/* Subtle dot grid pattern */}
-          <div className="fixed inset-0 pointer-events-none lg:left-65 dot-pattern opacity-30 dark:opacity-20" />
+          <div className="fixed inset-0 pointer-events-none lg:left-65 dot-pattern opacity-20 dark:opacity-10" />
 
           {/* Noise texture */}
           <div className="fixed inset-0 pointer-events-none lg:left-65 noise-overlay" />
 
-          <div className="relative z-10 mx-auto max-w-[1800px] px-3 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8">{children}</div>
+          <div className="relative z-10 mx-auto max-w-[1800px] px-4 py-5 sm:px-6 sm:py-6 lg:px-10 lg:py-8">{children}</div>
         </div>
       </main>
     </AuthGuard>

@@ -262,7 +262,7 @@ export default function RegistroPage() {
                   financeira hoje.
                 </span>
               </h2>
-              <p className="mt-5 text-[14px] text-white/40 leading-relaxed max-w-[340px]">
+              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-[340px]">
                 Plataforma exclusiva com acesso por convite. Use o código recebido para criar sua conta.
               </p>
             </motion.div>
@@ -299,7 +299,7 @@ export default function RegistroPage() {
 
           {/* Footer */}
           <div className="flex items-center justify-between">
-            <p className="text-[11px] text-white/20">© {new Date().getFullYear()} ControlFinance</p>
+            <p className="text-[11px] text-white/25">© {new Date().getFullYear()} ControlFinance</p>
             <div className="flex items-center gap-1.5">
               <div className="w-1 h-1 rounded-full bg-emerald-400/40" />
               <div className="w-1 h-1 rounded-full bg-teal-400/40" />
@@ -337,7 +337,7 @@ export default function RegistroPage() {
                 <h2 className="text-xl font-bold text-white/90 tracking-tight">
                   Crie sua conta
                 </h2>
-                <p className="text-[13px] text-white/40 mt-1.5 max-w-xs">
+                <p className="text-[13px] text-white/35 mt-1.5 max-w-xs">
                   Acesso exclusivo por convite
                 </p>
               </div>
@@ -569,7 +569,7 @@ export default function RegistroPage() {
                     <Button
                       type="submit"
                       disabled={isSubmitting || !allPassed}
-                      className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xl shadow-emerald-600/15 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
+                      className="w-full h-[52px] text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group cursor-pointer"
                     >
                       {isSubmitting ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -593,7 +593,7 @@ export default function RegistroPage() {
                 <Link href="/login">
                   <Button
                     variant="outline"
-                    className="w-full h-12 rounded-xl text-sm font-semibold border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
+                    className="w-full h-12 rounded-2xl text-sm font-semibold border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 cursor-pointer"
                   >
                     Fazer login
                   </Button>
@@ -606,7 +606,7 @@ export default function RegistroPage() {
                     { icon: Zap, text: "Acesso rápido" },
                     { icon: Sparkles, text: "IA integrada" },
                   ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/30 font-medium">
+                    <div key={i} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/40 font-medium">
                       <item.icon className="h-3 w-3" />
                       <span>{item.text}</span>
                     </div>
@@ -689,7 +689,7 @@ export default function RegistroPage() {
                   <Button
                     type="submit"
                     disabled={verifying}
-                    className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xl shadow-emerald-600/15 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5"
+                    className="w-full h-[52px] text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 cursor-pointer"
                   >
                     {verifying ? (
                       <Loader2 className="h-5 w-5 animate-spin" />

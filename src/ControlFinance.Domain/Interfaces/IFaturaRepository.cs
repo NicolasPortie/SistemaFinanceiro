@@ -12,4 +12,5 @@ public interface IFaturaRepository
     Task<List<Fatura>> ObterPorCartaoAsync(int cartaoId);
     Task<Fatura?> ObterFaturaAtualAsync(int cartaoId);
     Task AtualizarAsync(Fatura fatura);
+    Task RemoverAsync(int faturaId);
 }

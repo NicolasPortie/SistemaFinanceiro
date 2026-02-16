@@ -29,6 +29,8 @@ import {
 } from "lucide-react";
 import {
   PageShell,
+  PageHeader,
+  StatCard,
   EmptyState,
   CardSkeleton,
 } from "@/components/shared/page-components";
@@ -180,71 +182,44 @@ export default function CartoesPage() {
   return (
     <PageShell>
       {/* ── Page Header ── */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">Cartões de Crédito</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie seus cartões e visualize faturas</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex items-center gap-2 mt-3 sm:mt-0">
-          <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
-            <Plus className="h-4 w-4" />
-            Novo Cartão
-          </Button>
-        </motion.div>
-      </div>
+      <PageHeader title="Cartões de Crédito" description="Gerencie seus cartões e visualize faturas">
+        <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
+          <Plus className="h-4 w-4" />
+          Novo Cartão
+        </Button>
+      </PageHeader>
 
       {/* ── Stat Cards ── */}
       {!isLoading && cartoes.length > 0 && (
         <div className="grid gap-2 sm:gap-4 grid-cols-2 xl:grid-cols-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-premium p-3 sm:p-5 group">
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Cartões</p>
-                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight">{cartoes.length}</p>
-              </div>
-              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110 shrink-0">
-                <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-            </div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-3 sm:p-5 group">
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Limite Total</p>
-                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight truncate">{formatCurrency(totalLimite)}</p>
-              </div>
-              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110 shrink-0">
-                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-            </div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-3 sm:p-5 group">
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Usado</p>
-                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight text-red-600 dark:text-red-400 truncate">{formatCurrency(totalUsado)}</p>
-              </div>
-              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 transition-transform duration-500 group-hover:scale-110 shrink-0">
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-            </div>
-            {totalLimite > 0 && (
-              <div className="mt-3 h-1 rounded-full bg-muted/40 overflow-hidden">
-                <div className="h-full rounded-full bg-red-500 transition-all duration-1000" style={{ width: `${Math.min((totalUsado / totalLimite) * 100, 100)}%` }} />
-              </div>
-            )}
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-3 sm:p-5 group">
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1.5 sm:space-y-2 min-w-0 flex-1">
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-muted-foreground/70">Disponível</p>
-                <p className="text-lg sm:text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400 truncate">{formatCurrency(totalDisponivel)}</p>
-              </div>
-              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110 shrink-0">
-                <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-            </div>
-          </motion.div>
+          <StatCard
+            title="Cartões"
+            value={cartoes.length}
+            icon={<CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />}
+            trend="neutral"
+            delay={0}
+          />
+          <StatCard
+            title="Limite Total"
+            value={formatCurrency(totalLimite)}
+            icon={<DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />}
+            trend="neutral"
+            delay={1}
+          />
+          <StatCard
+            title="Fatura Atual"
+            value={formatCurrency(totalUsado)}
+            icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
+            trend="down"
+            delay={2}
+          />
+          <StatCard
+            title="Disponível"
+            value={formatCurrency(totalDisponivel)}
+            icon={<Wallet className="h-4 w-4 sm:h-5 sm:w-5" />}
+            trend="up"
+            delay={3}
+          />
         </div>
       )}
 
@@ -263,7 +238,7 @@ export default function CartoesPage() {
                   className="group relative"
                 >
                   {/* Card visual */}
-                  <div className={`rounded-2xl bg-linear-to-br ${cardGradients[i % cardGradients.length]} p-6 text-white shadow-xl shadow-black/20 dark:shadow-black/40 relative overflow-hidden transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl noise-overlay`}>
+                  <div className={`rounded-2xl bg-linear-to-br ${cardGradients[i % cardGradients.length]} p-6 text-white shadow-xl shadow-black/20 dark:shadow-black/40 relative overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:scale-[1.01] noise-overlay`}>
                     {/* Background pattern */}
                     <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-white/4 -translate-y-1/2 translate-x-1/2" />
                     <div className="absolute bottom-0 left-0 w-28 h-28 rounded-full bg-white/4 translate-y-1/2 -translate-x-1/2" />
@@ -358,7 +333,7 @@ export default function CartoesPage() {
             icon={<CreditCard className="h-6 w-6" />}
             title="Nenhum cartão"
             description="Adicione um cartão de crédito para começar a rastrear suas faturas"
-            action={<Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="h-4 w-4" />Adicionar cartão</Button>}
+            action={<Button onClick={() => setShowForm(true)} className="gap-2 rounded-xl font-semibold shadow-premium btn-premium"><Plus className="h-4 w-4" />Adicionar cartão</Button>}
           />
         )}
 
@@ -366,7 +341,7 @@ export default function CartoesPage() {
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader className="pb-6">
-            <SheetTitle className="text-xl font-bold">Novo Cartão</SheetTitle>
+            <SheetTitle className="text-xl sm:text-2xl font-extrabold tracking-tight">Novo Cartão</SheetTitle>
             <SheetDescription>Adicione um cartão de crédito à sua conta</SheetDescription>
           </SheetHeader>
           <form onSubmit={form.handleSubmit(onSubmitCreate)} className="space-y-5">
@@ -397,8 +372,8 @@ export default function CartoesPage() {
                 <span><strong>Fechamento:</strong> 1º dia útil do mês (automático)</span>
               </p>
             </div>
-            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={criarCartao.isPending}>
-              {criarCartao.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CreditCard className="h-4 w-4" />Criar cartão</>}
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={criarCartao.isPending}>
+              {criarCartao.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><CreditCard className="h-4.5 w-4.5" />Criar cartão</>}
             </Button>
           </form>
         </SheetContent>
@@ -408,7 +383,7 @@ export default function CartoesPage() {
       <Dialog open={editingCard !== null} onOpenChange={() => setEditingCard(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Editar Cartão</DialogTitle>
+            <DialogTitle className="text-lg font-bold tracking-tight">Editar Cartão</DialogTitle>
             <DialogDescription>Altere os dados do cartão</DialogDescription>
           </DialogHeader>
           <form onSubmit={editFormState.handleSubmit(onSubmitEdit)} className="space-y-5">
@@ -439,8 +414,8 @@ export default function CartoesPage() {
                 <span><strong>Fechamento:</strong> 1º dia útil do mês (automático)</span>
               </p>
             </div>
-            <Button type="submit" className="w-full h-12 rounded-xl font-bold text-sm shadow-premium" disabled={atualizarCartao.isPending}>
-              {atualizarCartao.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar alterações"}
+            <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] shadow-premium btn-premium" disabled={atualizarCartao.isPending}>
+              {atualizarCartao.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : "Salvar alterações"}
             </Button>
           </form>
         </DialogContent>
@@ -468,7 +443,7 @@ export default function CartoesPage() {
       <Dialog open={ajusteLimiteCard !== null} onOpenChange={() => setAjusteLimiteCard(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Limite Extra</DialogTitle>
+            <DialogTitle className="text-lg font-bold tracking-tight">Limite Extra</DialogTitle>
             <DialogDescription>
               Adicione um valor ao limite e aplique um percentual extra.
             </DialogDescription>
@@ -517,8 +492,8 @@ export default function CartoesPage() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-12 rounded-xl font-bold text-sm gap-2 shadow-premium" disabled={adicionarLimiteExtra.isPending}>
-              {adicionarLimiteExtra.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><TrendingUp className="h-4 w-4" /> Aplicar Limite Extra</>}
+            <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] gap-2 shadow-premium btn-premium" disabled={adicionarLimiteExtra.isPending}>
+              {adicionarLimiteExtra.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><TrendingUp className="h-4.5 w-4.5" /> Aplicar Limite Extra</>}
             </Button>
           </form>
         </DialogContent>

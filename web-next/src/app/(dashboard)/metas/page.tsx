@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import {
   PageShell,
+  PageHeader,
+  StatCard,
   EmptyState,
   CardSkeleton,
 } from "@/components/shared/page-components";
@@ -196,82 +198,54 @@ export default function MetasPage() {
   return (
     <PageShell>
       {/* ── Page Header ── */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">Metas Financeiras</h1>
-          <p className="text-sm text-muted-foreground mt-1">Defina e acompanhe suas metas de economia e investimento</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex items-center gap-2 mt-3 sm:mt-0">
-          <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
-            <Plus className="h-4 w-4" />
-            Nova Meta
-          </Button>
-        </motion.div>
-      </div>
+      <PageHeader title="Metas Financeiras" description="Defina e acompanhe suas metas de economia e investimento">
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
+          <Plus className="h-4 w-4" />
+          Nova Meta
+        </Button>
+      </PageHeader>
 
       {/* ── Stats Overview ── */}
       {loading ? (
         <CardSkeleton count={4} />
       ) : (
         <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Ativas</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight">{ativas.length}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
-                <Target className="h-5 w-5" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Concluídas</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">{concluidas.length}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110">
-                <Trophy className="h-5 w-5" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Progresso Médio</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight">{avgProgress}%</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
-                <TrendingUp className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-3 h-1 rounded-full bg-muted/40 overflow-hidden">
-              <div className={`h-full rounded-full transition-all duration-1000 ${progressColor(avgProgress)}`} style={{ width: `${Math.min(avgProgress, 100)}%` }} />
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Total Guardado</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">{formatCurrency(totalAtual)}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 transition-transform duration-500 group-hover:scale-110">
-                <DollarSign className="h-5 w-5" />
-              </div>
-            </div>
-            <p className="mt-2 text-[11px] text-muted-foreground font-medium tabular-nums">de {formatCurrency(totalAlvo)} total</p>
-          </motion.div>
+          <StatCard
+            title="Ativas"
+            value={ativas.length}
+            icon={<Target className="h-5 w-5" />}
+            trend="neutral"
+            delay={0}
+          />
+          <StatCard
+            title="Concluídas"
+            value={concluidas.length}
+            icon={<Trophy className="h-5 w-5" />}
+            trend="up"
+            delay={1}
+          />
+          <StatCard
+            title="Progresso Médio"
+            value={`${avgProgress}%`}
+            icon={<TrendingUp className="h-5 w-5" />}
+            trend={avgProgress >= 50 ? "up" : avgProgress > 0 ? "neutral" : "down"}
+            delay={2}
+          />
+          <StatCard
+            title="Total Guardado"
+            value={formatCurrency(totalAtual)}
+            subtitle={`de ${formatCurrency(totalAlvo)} total`}
+            icon={<DollarSign className="h-5 w-5" />}
+            trend="up"
+            delay={3}
+          />
         </div>
       )}
 
       {/* ── Active Goals ── */}
       {ativas.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Metas Ativas</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">Metas Ativas</h3>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <AnimatePresence>
               {ativas.map((meta, i) => (
@@ -293,7 +267,7 @@ export default function MetasPage() {
       {/* ── Paused Goals ── */}
       {pausadas.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Pausadas</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">Pausadas</h3>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {pausadas.map((meta, i) => (
               <MetaCard
@@ -313,7 +287,7 @@ export default function MetasPage() {
       {/* ── Completed Goals ── */}
       {concluidas.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Concluídas</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">Concluídas</h3>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {concluidas.map((meta, i) => (
               <motion.div key={meta.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="card-premium p-5 group">
@@ -353,8 +327,8 @@ export default function MetasPage() {
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader className="pb-6">
-            <SheetTitle className="text-xl font-bold">Nova Meta</SheetTitle>
-            <SheetDescription>Defina uma meta financeira para acompanhar</SheetDescription>
+            <SheetTitle className="text-xl font-extrabold tracking-tight">Nova Meta</SheetTitle>
+            <SheetDescription className="text-muted-foreground/70">Defina uma meta financeira para acompanhar</SheetDescription>
           </SheetHeader>
           <form onSubmit={handleCriar} className="space-y-6">
             <div className="space-y-2">
@@ -371,7 +345,7 @@ export default function MetasPage() {
                     key={t}
                     type="button"
                     onClick={() => setTipo(t)}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-semibold transition-all ${tipo === t ? "bg-primary/10 text-primary border-2 border-primary/30" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40"}`}
+                    className={`flex flex-col items-center gap-2 py-3.5 px-2 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer ${tipo === t ? "bg-primary/10 text-primary border-2 border-primary/30 shadow-md shadow-primary/5 scale-[1.02]" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40 hover:border-border/60"}`}
                   >
                     {tiposIcon[t]}
                     {tiposLabel[t]}
@@ -389,7 +363,7 @@ export default function MetasPage() {
                     key={p}
                     type="button"
                     onClick={() => setPrioridade(p)}
-                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${prioridade === p ? `${prioridadeConfig[p].badge} border-2` : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40"}`}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer ${prioridade === p ? `${prioridadeConfig[p].badge} border-2 shadow-sm` : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40 hover:border-border/60"}`}
                   >
                     <Flag className={`h-3 w-3 ${prioridade === p ? prioridadeConfig[p].color : ""}`} />
                     {p === "baixa" ? "Baixa" : p === "media" ? "Média" : "Alta"}
@@ -442,7 +416,7 @@ export default function MetasPage() {
 
             <Separator />
 
-            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={criarMeta.isPending}>
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2.5 font-bold text-[15px] shadow-premium btn-premium" disabled={criarMeta.isPending}>
               {criarMeta.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Target className="h-4 w-4" />Criar Meta</>}
             </Button>
           </form>
@@ -530,7 +504,7 @@ function MetaCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="card-premium group transition-all hover:shadow-lg"
+      className="card-premium group transition-all hover:shadow-lg hover:-translate-y-0.5 duration-300"
     >
       {/* Header */}
       <div className="p-5 pb-0">
@@ -541,7 +515,7 @@ function MetaCard({
               {meta.prioridade}
             </Badge>
           </div>
-          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-0.5 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

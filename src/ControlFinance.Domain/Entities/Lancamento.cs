@@ -22,4 +22,5 @@ public class Lancamento
     public Usuario Usuario { get; set; } = null!;
     public Categoria Categoria { get; set; } = null!;
     public ICollection<Parcela> Parcelas { get; set; } = new List<Parcela>();
+    public ICollection<TagLancamento> Tags { get; set; } = new List<TagLancamento>();
 }

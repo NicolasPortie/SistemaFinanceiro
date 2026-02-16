@@ -163,10 +163,23 @@ public class FaturaRecalculoBackgroundService : BackgroundService
             .ToListAsync(ct);
 
         var recalculadas = 0;
+        var removidas = 0;
 
         foreach (var fatura in faturasAbertas)
         {
             var totalCorreto = fatura.Parcelas.Sum(p => p.Valor);
+
+            // Remover faturas vazias (sem parcelas e total zero) para não deixar fantasmas
+            if (totalCorreto == 0 && !fatura.Parcelas.Any())
+            {
+                _logger.LogInformation(
+                    "Fatura {Id} ({Mes:MM/yyyy}): removida por estar vazia (sem parcelas, total R$ 0,00)",
+                    fatura.Id, fatura.MesReferencia);
+                db.Faturas.Remove(fatura);
+                removidas++;
+                continue;
+            }
+
             if (Math.Abs(fatura.Total - totalCorreto) > 0.001m)
             {
                 _logger.LogInformation(
@@ -177,9 +190,11 @@ public class FaturaRecalculoBackgroundService : BackgroundService
             }
         }
 
-        if (recalculadas > 0)
+        if (recalculadas > 0 || removidas > 0)
         {
             await db.SaveChangesAsync(ct);
+            if (removidas > 0)
+                _logger.LogInformation("FaturaRecalculoBackgroundService: {Removidas} faturas vazias removidas.", removidas);
         }
 
         return recalculadas;

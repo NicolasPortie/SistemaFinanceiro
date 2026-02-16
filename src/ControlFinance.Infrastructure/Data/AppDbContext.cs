@@ -35,6 +35,9 @@ public class AppDbContext : DbContext
     public DbSet<AjusteLimiteCartao> AjustesLimitesCartao => Set<AjusteLimiteCartao>();
     public DbSet<CodigoConvite> CodigosConvite => Set<CodigoConvite>();
     public DbSet<RegistroPendente> RegistrosPendentes => Set<RegistroPendente>();
+    public DbSet<ConversaPendente> ConversasPendentes => Set<ConversaPendente>();
+    public DbSet<NotificacaoEnviada> NotificacoesEnviadas => Set<NotificacaoEnviada>();
+    public DbSet<TagLancamento> TagsLancamento => Set<TagLancamento>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -466,6 +469,75 @@ public class AppDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => e.CartaoId);
+        });
+
+        // === ConversaPendente ===
+        modelBuilder.Entity<ConversaPendente>(entity =>
+        {
+            entity.ToTable("conversas_pendentes");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ChatId).HasColumnName("chat_id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Tipo).HasColumnName("tipo").HasMaxLength(50);
+            entity.Property(e => e.DadosJson).HasColumnName("dados_json").HasColumnType("text");
+            entity.Property(e => e.Estado).HasColumnName("estado").HasMaxLength(100);
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em");
+            entity.Property(e => e.ExpiraEm).HasColumnName("expira_em");
+
+            entity.HasOne(e => e.Usuario)
+                  .WithMany()
+                  .HasForeignKey(e => e.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.ChatId).IsUnique();
+            entity.HasIndex(e => e.ExpiraEm);
+        });
+
+        // === NotificacaoEnviada ===
+        modelBuilder.Entity<NotificacaoEnviada>(entity =>
+        {
+            entity.ToTable("notificacoes_enviadas");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Chave).HasColumnName("chave").HasMaxLength(100);
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.DataReferencia).HasColumnName("data_referencia");
+            entity.Property(e => e.EnviadaEm).HasColumnName("enviada_em");
+
+            entity.HasOne(e => e.Usuario)
+                  .WithMany()
+                  .HasForeignKey(e => e.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.Chave, e.DataReferencia });
+            entity.HasIndex(e => new { e.Chave, e.UsuarioId, e.DataReferencia }).IsUnique();
+        });
+
+        // === TagLancamento ===
+        modelBuilder.Entity<TagLancamento>(entity =>
+        {
+            entity.ToTable("tags_lancamento");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Nome).HasColumnName("nome").HasMaxLength(50);
+            entity.Property(e => e.LancamentoId).HasColumnName("lancamento_id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+
+            entity.HasOne(e => e.Lancamento)
+                  .WithMany(l => l.Tags)
+                  .HasForeignKey(e => e.LancamentoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Usuario)
+                  .WithMany()
+                  .HasForeignKey(e => e.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.UsuarioId, e.Nome });
+            entity.HasIndex(e => e.LancamentoId);
         });
 
         // === RegistroPendente ===

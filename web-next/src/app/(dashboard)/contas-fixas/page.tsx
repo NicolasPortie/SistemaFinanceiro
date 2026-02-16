@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import {
   PageShell,
+  PageHeader,
+  StatCard,
   EmptyState,
   ErrorState,
   CardSkeleton,
@@ -173,28 +175,22 @@ export default function ContasFixasPage() {
   return (
     <PageShell>
       {/* ── Page Header ── */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">Contas Fixas</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie seus lembretes de pagamento e contas recorrentes</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex items-center gap-2 mt-3 sm:mt-0">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={() => refetch()}>
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Atualizar dados</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
-            <Plus className="h-4 w-4" />
-            Novo Lembrete
-          </Button>
-        </motion.div>
-      </div>
+      <PageHeader title="Contas Fixas" description="Gerencie seus lembretes de pagamento e contas recorrentes">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={() => refetch()}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Atualizar dados</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
+          <Plus className="h-4 w-4" />
+          Novo Lembrete
+        </Button>
+      </PageHeader>
 
       {/* ── Stats Overview ── */}
       {isLoading ? (
@@ -203,53 +199,34 @@ export default function ContasFixasPage() {
         <ErrorState message={error?.message} onRetry={() => refetch()} />
       ) : (
         <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Total Contas</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight">{stats.count}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
-                <FileText className="h-5 w-5" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Valor Total</p>
-                <p className="text-2xl font-extrabold tabular-nums tracking-tight text-primary">{formatCurrency(stats.total)}</p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-500 group-hover:scale-110">
-                <DollarSign className="h-5 w-5" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Vencidos</p>
-                <p className={`text-2xl font-extrabold tabular-nums tracking-tight ${stats.vencidos > 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>{stats.vencidos}</p>
-              </div>
-              <div className={`flex h-11 w-11 items-center justify-center rounded-xl transition-transform duration-500 group-hover:scale-110 ${stats.vencidos > 0 ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400" : "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"}`}>
-                <AlertCircle className="h-5 w-5" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5 group">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">Próximos</p>
-                <p className={`text-2xl font-extrabold tabular-nums tracking-tight ${stats.proximos > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{stats.proximos}</p>
-              </div>
-              <div className={`flex h-11 w-11 items-center justify-center rounded-xl transition-transform duration-500 group-hover:scale-110 ${stats.proximos > 0 ? "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400" : "bg-muted/50 text-muted-foreground"}`}>
-                <Clock className="h-5 w-5" />
-              </div>
-            </div>
-          </motion.div>
+          <StatCard
+            title="Total Contas"
+            value={stats.count}
+            icon={<FileText className="h-5 w-5" />}
+            trend="neutral"
+            delay={0}
+          />
+          <StatCard
+            title="Valor Total"
+            value={formatCurrency(stats.total)}
+            icon={<DollarSign className="h-5 w-5" />}
+            trend="neutral"
+            delay={0.05}
+          />
+          <StatCard
+            title="Vencidos"
+            value={stats.vencidos}
+            icon={<AlertCircle className="h-5 w-5" />}
+            trend={stats.vencidos > 0 ? "down" : "up"}
+            delay={0.1}
+          />
+          <StatCard
+            title="Próximos"
+            value={stats.proximos}
+            icon={<Clock className="h-5 w-5" />}
+            trend={stats.proximos > 0 ? "down" : "neutral"}
+            delay={0.15}
+          />
         </div>
       )}
 
@@ -285,12 +262,12 @@ export default function ContasFixasPage() {
                 <button
                   key={f.key}
                   onClick={() => setFiltroStatus(f.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${
                     filtroStatus === f.key
                       ? f.color
                         ? `${f.color} text-white shadow-sm`
                         : "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground hover:-translate-y-px"
                   }`}
                 >
                   {f.label}
@@ -299,7 +276,7 @@ export default function ContasFixasPage() {
             </div>
 
             {activeFilters > 0 && (
-              <button onClick={() => { setFiltroStatus("todos"); setBusca(""); }} className="ml-1 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+              <button onClick={() => { setFiltroStatus("todos"); setBusca(""); }} className="ml-1 flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200">
                 <X className="h-3 w-3" />
                 Limpar ({activeFilters})
               </button>
@@ -335,7 +312,7 @@ export default function ContasFixasPage() {
                     {/* Desktop row */}
                     <div className="hidden lg:grid lg:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center px-6 py-3.5 hover:bg-muted/20 transition-all duration-200">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${status.bg} ${status.color} transition-transform duration-300 group-hover:scale-105`}>
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${status.bg} ${status.color} transition-transform duration-300 group-hover:scale-110`}>
                           <StatusIcon className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
@@ -357,7 +334,7 @@ export default function ContasFixasPage() {
                         {status.label}
                       </Badge>
 
-                      <div className="flex items-center justify-end gap-0.5 w-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <div className="flex items-center justify-end gap-0.5 w-20 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -435,7 +412,7 @@ export default function ContasFixasPage() {
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader className="pb-6">
-            <SheetTitle className="text-xl font-bold">Novo Lembrete</SheetTitle>
+            <SheetTitle className="text-xl sm:text-2xl font-extrabold tracking-tight">Novo Lembrete</SheetTitle>
             <SheetDescription>Adicione um lembrete de pagamento ou conta fixa</SheetDescription>
           </SheetHeader>
           <form onSubmit={handleCriar} className="space-y-6">
@@ -484,12 +461,12 @@ export default function ContasFixasPage() {
 
             <Separator />
 
-            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold text-sm shadow-premium" disabled={criarLembrete.isPending}>
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={criarLembrete.isPending}>
               {criarLembrete.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4.5 w-4.5 animate-spin" />
               ) : (
                 <>
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2 className="h-4.5 w-4.5" />
                   Criar Lembrete
                 </>
               )}
@@ -502,7 +479,7 @@ export default function ContasFixasPage() {
       <Dialog open={editItem !== null} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Editar Lembrete</DialogTitle>
+            <DialogTitle className="text-lg font-bold tracking-tight">Editar Lembrete</DialogTitle>
             <DialogDescription>Altere os dados do lembrete</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAtualizar} className="space-y-5">
@@ -540,7 +517,7 @@ export default function ContasFixasPage() {
               </div>
             )}
 
-            <Button type="submit" className="w-full h-11 rounded-xl gap-2 font-bold shadow-premium" disabled={atualizarLembrete.isPending}>
+            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold shadow-premium btn-premium" disabled={atualizarLembrete.isPending}>
               {atualizarLembrete.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar alterações"}
             </Button>
           </form>

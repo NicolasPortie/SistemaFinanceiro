@@ -34,6 +34,9 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ICodigoConviteRepository, CodigoConviteRepository>();
         services.AddScoped<IRegistroPendenteRepository, RegistroPendenteRepository>();
+        services.AddScoped<IConversaPendenteRepository, ConversaPendenteRepository>();
+        services.AddScoped<INotificacaoEnviadaRepository, NotificacaoEnviadaRepository>();
+        services.AddScoped<ITagLancamentoRepository, TagLancamentoRepository>();
 
         // Codigo Verificacao
         services.AddScoped<ICodigoVerificacaoRepository, CodigoVerificacaoRepository>();

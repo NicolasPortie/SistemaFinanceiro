@@ -13,6 +13,11 @@ using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// === Priorizar variáveis de ambiente para segredos (12-Factor App) ===
+// Environment variables override appsettings via IConfiguration (automático no .NET).
+// Nomes com "__" mapeiam para ":" (ex: Telegram__BotToken → Telegram:BotToken).
+// Aqui apenas documentamos e validamos as variáveis obrigatórias.
+
 // === Validar segredos obrigatórios ===
 var jwtSecret = builder.Configuration["Jwt:Secret"];
 var jwtSecretBytes = string.IsNullOrWhiteSpace(jwtSecret) ? 0 : Encoding.UTF8.GetByteCount(jwtSecret);
