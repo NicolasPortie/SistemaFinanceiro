@@ -1,3 +1,4 @@
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Application.Services;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -115,7 +116,7 @@ public class BotNotificationService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var usuarioRepo = scope.ServiceProvider.GetRequiredService<IUsuarioRepository>();
-        var limiteService = scope.ServiceProvider.GetRequiredService<LimiteCategoriaService>();
+        var limiteService = scope.ServiceProvider.GetRequiredService<ILimiteCategoriaService>();
         var categoriaRepo = scope.ServiceProvider.GetRequiredService<ICategoriaRepository>();
 
         var usuarios = await usuarioRepo.ObterTodosComTelegramAsync();
@@ -157,7 +158,7 @@ public class BotNotificationService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var usuarioRepo = scope.ServiceProvider.GetRequiredService<IUsuarioRepository>();
-        var resumoService = scope.ServiceProvider.GetRequiredService<ResumoService>();
+        var resumoService = scope.ServiceProvider.GetRequiredService<IResumoService>();
 
         var usuarios = await usuarioRepo.ObterTodosComTelegramAsync();
 
@@ -217,7 +218,7 @@ public class BotNotificationService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var usuarioRepo = scope.ServiceProvider.GetRequiredService<IUsuarioRepository>();
-        var limiteService = scope.ServiceProvider.GetRequiredService<LimiteCategoriaService>();
+        var limiteService = scope.ServiceProvider.GetRequiredService<ILimiteCategoriaService>();
         var categoriaRepo = scope.ServiceProvider.GetRequiredService<ICategoriaRepository>();
 
         var usuarios = await usuarioRepo.ObterTodosComTelegramAsync();
