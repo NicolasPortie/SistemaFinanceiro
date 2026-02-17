@@ -144,7 +144,7 @@ public class MetaFinanceiraService : IMetaFinanceiraService
     public string FormatarMetasBot(List<MetaFinanceiraDto> metas)
     {
         if (!metas.Any())
-            return "🎯 Nenhuma meta definida.\n\nCrie com: \"meta de juntar 10 mil até dezembro\" ou /meta criar Viagem 5000 12/2026";
+            return "🎯 Nenhuma meta definida ainda.\n\nCrie com: \"meta de juntar 10 mil até dezembro\" ou /meta criar Viagem 5000 12/2026";
 
         var texto = "🎯 *Suas Metas*\n\n";
 
@@ -154,17 +154,9 @@ public class MetaFinanceiraService : IMetaFinanceiraService
             {
                 "Ativa" => "🔵",
                 "Pausada" => "⏸️",
-                "Concluida" => "✅",
+                "Concluida" => "🎉",
                 "Cancelada" => "❌",
                 _ => "🔵"
-            };
-
-            var desvioEmoji = m.Desvio switch
-            {
-                "adiantada" => "🚀",
-                "no_ritmo" => "✅",
-                "atrasada" => "⚠️",
-                _ => ""
             };
 
             var barra = GerarBarra(m.PercentualConcluido);
@@ -175,12 +167,33 @@ public class MetaFinanceiraService : IMetaFinanceiraService
 
             if (m.Status == "Ativa")
             {
+                var desvioMsg = m.Desvio switch
+                {
+                    "adiantada" => "🚀 Adiantado! Ótimo ritmo!",
+                    "no_ritmo" => "✅ No ritmo certo",
+                    "atrasada" => "⚠️ Atrasada — aumente os aportes",
+                    _ => ""
+                };
+                var falta = m.ValorAlvo - m.ValorAtual;
                 texto += $"   📅 Prazo: {m.Prazo:MM/yyyy} ({m.MesesRestantes} meses)\n";
-                texto += $"   💰 Precisa guardar: R$ {m.ValorMensalNecessario:N2}/mês {desvioEmoji}\n";
+                texto += $"   💰 Falta R$ {falta:N2} — guarde R$ {m.ValorMensalNecessario:N2}/mês\n";
+                if (!string.IsNullOrEmpty(desvioMsg))
+                    texto += $"   {desvioMsg}\n";
+            }
+            else if (m.Status == "Concluida")
+            {
+                texto += "   _Meta atingida! Parabéns! 🏆_\n";
             }
 
             texto += "\n";
         }
+
+        var ativas = metas.Count(m => m.Status == "Ativa");
+        var concluidas = metas.Count(m => m.Status == "Concluida");
+        if (concluidas > 0 && ativas > 0)
+            texto += $"✨ {concluidas} meta(s) concluída(s) e {ativas} em andamento. Continue!";
+        else if (ativas > 0)
+            texto += "_Use \"aportar [valor] na meta [nome]\" para registrar progresso._";
 
         return texto.TrimEnd();
     }

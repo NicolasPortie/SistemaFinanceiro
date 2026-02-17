@@ -64,9 +64,9 @@ public class ConsultaHandler : IConsultaHandler
                 .ToList();
 
             if (!recentes.Any())
-                return "📭 Nenhum lançamento registrado ainda.";
+                return "📭 Nenhum lançamento registrado ainda. Que tal começar? Ex: \"Gastei 30 no almoço\"";
 
-            var texto = "📋 *Extrato — Últimos lançamentos*\n\n";
+            var texto = "📋 *Seus últimos lançamentos*\n\n";
             var totalReceita = 0m;
             var totalDespesa = 0m;
 
@@ -82,10 +82,14 @@ public class ConsultaHandler : IConsultaHandler
                     totalDespesa += l.Valor;
             }
 
-            texto += $"\n📊 *Neste extrato:*\n";
-            texto += $"💰 Receitas: R$ {totalReceita:N2}\n";
-            texto += $"💸 Despesas: R$ {totalDespesa:N2}\n";
-            texto += $"📈 Saldo: R$ {(totalReceita - totalDespesa):N2}";
+            var saldoExtrato = totalReceita - totalDespesa;
+            var saldoEmoji = saldoExtrato >= 0 ? "✅" : "🔴";
+
+            texto += $"\n{saldoEmoji} *Resumo desses lançamentos:*\n";
+            texto += $"  💰 Entradas: R$ {totalReceita:N2}\n";
+            texto += $"  💸 Saídas: R$ {totalDespesa:N2}\n";
+            texto += $"  📊 Saldo: R$ {saldoExtrato:N2}";
+            texto += "\n\n_Use /resumo para ver o mês completo._";
 
             return texto;
         }
@@ -250,8 +254,8 @@ public class ConsultaHandler : IConsultaHandler
             .ToList();
 
         if (!salarios.Any())
-            return "💰 Nao encontrei receitas de salario nos ultimos 6 meses.\n" +
-                   "Registre com algo como: \"recebi 3500 de salario\".";
+            return "💰 Não encontrei receitas de salário nos últimos 6 meses.\n\n" +
+                   "Registre com algo como: \"recebi 3500 de salário\".";
 
         var porMes = salarios
             .GroupBy(l => new DateTime(l.Data.Year, l.Data.Month, 1, 0, 0, 0, DateTimeKind.Utc))
@@ -264,13 +268,18 @@ public class ConsultaHandler : IConsultaHandler
             .Where(x => x.Mes.Year == hoje.Year && x.Mes.Month == hoje.Month)
             .Sum(x => x.Total);
 
-        var texto = "💰 Estimativa de salario mensal\n\n" +
-                    $"Media (ultimos {porMes.Count} meses com salario): R$ {media:N2}\n" +
-                    $"Mes atual ({hoje:MM/yyyy}): R$ {totalAtual:N2}\n\n" +
-                    "Historico:";
+        var texto = "💰 *Sua receita de salário*\n\n";
+        texto += $"📊 Média mensal: *R$ {media:N2}*\n";
+        texto += $"📅 Este mês ({hoje:MM/yyyy}): *R$ {totalAtual:N2}*\n\n";
+        texto += "📋 *Histórico:*";
 
         foreach (var item in porMes)
-            texto += $"\n- {item.Mes:MM/yyyy}: R$ {item.Total:N2}";
+            texto += $"\n  • {item.Mes:MMM/yyyy}: R$ {item.Total:N2}";
+
+        if (totalAtual > 0 && totalAtual > media * 1.05m)
+            texto += "\n\n🎉 Este mês você recebeu acima da média!";
+        else if (totalAtual > 0 && totalAtual < media * 0.95m)
+            texto += "\n\n📉 Este mês ficou um pouco abaixo da média.";
 
         return texto;
     }
@@ -359,51 +368,70 @@ public class ConsultaHandler : IConsultaHandler
                 ? (diffGastos / resumoAnterior.TotalGastos * 100)
                 : 0;
 
-            var texto = $"📊 *Comparativo Mensal*\n\n";
-            texto += $"📅 {inicioMesAnterior:MM/yyyy} vs {inicioMesAtual:MM/yyyy}\n\n";
+            var texto = $"📊 *Comparando seus meses*\n";
+            texto += $"📅 {inicioMesAnterior:MMMM} vs {inicioMesAtual:MMMM}\n\n";
 
-            texto += $"💸 *Gastos:*\n";
-            texto += $"  Mês anterior: R$ {resumoAnterior.TotalGastos:N2}\n";
-            texto += $"  Mês atual: R$ {resumoAtual.TotalGastos:N2}\n";
-            texto += $"  {emojiGasto} Diferença: R$ {diffGastos:N2} ({percentualGasto:+0.0;-0.0;0}%)\n\n";
+            // Gastos
+            if (diffGastos > 0)
+                texto += $"💸 Você gastou *R$ {Math.Abs(diffGastos):N2} a mais* este mês ({percentualGasto:+0;-0}%)\n";
+            else if (diffGastos < 0)
+                texto += $"💸 Você gastou *R$ {Math.Abs(diffGastos):N2} a menos* este mês ({percentualGasto:+0;-0}%) ✅\n";
+            else
+                texto += "💸 Gastos iguais nos dois meses\n";
+            texto += $"  {inicioMesAnterior:MMM}: R$ {resumoAnterior.TotalGastos:N2} → {inicioMesAtual:MMM}: R$ {resumoAtual.TotalGastos:N2}\n\n";
 
-            texto += $"💰 *Receitas:*\n";
-            texto += $"  Mês anterior: R$ {resumoAnterior.TotalReceitas:N2}\n";
-            texto += $"  Mês atual: R$ {resumoAtual.TotalReceitas:N2}\n";
-            texto += $"  {emojiReceita} Diferença: R$ {diffReceitas:N2}\n\n";
+            // Receitas
+            if (diffReceitas > 0)
+                texto += $"💰 Receita *aumentou R$ {Math.Abs(diffReceitas):N2}*\n";
+            else if (diffReceitas < 0)
+                texto += $"💰 Receita *diminuiu R$ {Math.Abs(diffReceitas):N2}*\n";
+            else
+                texto += "💰 Receita igual nos dois meses\n";
+            texto += $"  {inicioMesAnterior:MMM}: R$ {resumoAnterior.TotalReceitas:N2} → {inicioMesAtual:MMM}: R$ {resumoAtual.TotalReceitas:N2}\n\n";
 
-            texto += $"📈 *Saldo:*\n";
-            texto += $"  Mês anterior: R$ {resumoAnterior.Saldo:N2}\n";
-            texto += $"  Mês atual: R$ {resumoAtual.Saldo:N2}\n\n";
+            // Saldo
+            var saldoEmoji = resumoAtual.Saldo >= 0 ? "✅" : "🔴";
+            texto += $"{saldoEmoji} *Resultado do mês:* R$ {resumoAtual.Saldo:N2}\n";
+            texto += $"  (Mês passado foi R$ {resumoAnterior.Saldo:N2})\n\n";
 
-            // Comparar categorias
+            // Categorias que mais mudaram
             if (resumoAtual.GastosPorCategoria.Any() && resumoAnterior.GastosPorCategoria.Any())
             {
-                texto += "🏷️ *Variação por categoria:*\n";
+                texto += "🏷️ *O que mais mudou:*\n";
 
                 var todasCategorias = resumoAtual.GastosPorCategoria
                     .Select(c => c.Categoria)
                     .Union(resumoAnterior.GastosPorCategoria.Select(c => c.Categoria))
-                    .Distinct()
-                    .Take(6);
+                    .Distinct();
 
-                foreach (var cat in todasCategorias)
+                var variações = todasCategorias.Select(cat =>
                 {
                     var atualCat = resumoAtual.GastosPorCategoria.FirstOrDefault(c => c.Categoria == cat)?.Total ?? 0;
                     var anteriorCat = resumoAnterior.GastosPorCategoria.FirstOrDefault(c => c.Categoria == cat)?.Total ?? 0;
-                    var diff = atualCat - anteriorCat;
-                    var emojiCat = diff > 0 ? "🔺" : diff < 0 ? "🔻" : "➡️";
-                    texto += $"  {emojiCat} {cat}: R$ {diff:+0.00;-0.00;0.00}\n";
+                    return new { Categoria = cat, Diff = atualCat - anteriorCat, Atual = atualCat };
+                })
+                .Where(v => v.Diff != 0)
+                .OrderByDescending(v => Math.Abs(v.Diff))
+                .Take(5)
+                .ToList();
+
+                foreach (var v in variações)
+                {
+                    var emojiV = v.Diff > 0 ? "🔺" : "🔻";
+                    var direcao = v.Diff > 0 ? "subiu" : "caiu";
+                    texto += $"  {emojiV} {v.Categoria}: {direcao} R$ {Math.Abs(v.Diff):N2}\n";
                 }
             }
 
-            // Mensagem de tendência
-            if (diffGastos < 0)
-                texto += "\n✅ *Parabéns!* Você está gastando menos que o mês passado! 🎉";
+            // Diagnóstico final
+            if (diffGastos < 0 && resumoAtual.Saldo >= 0)
+                texto += "\n🎉 *Parabéns!* Você está no caminho certo — gastou menos e está no positivo!";
+            else if (diffGastos < 0)
+                texto += "\n✅ Bom progresso! Seus gastos diminuíram. Continue assim!";
             else if (percentualGasto > 20)
-                texto += "\n⚠️ *Atenção!* Seus gastos estão significativamente maiores que o mês anterior.";
+                texto += "\n⚠️ Gastos cresceram bastante. Revise as categorias acima para entender onde cortou.";
             else if (diffGastos > 0)
-                texto += "\n💡 Gastos um pouco acima do mês anterior. Fique atento!";
+                texto += "\n💡 Gastos aumentaram um pouco. Fique atento nas próximas semanas.";
 
             return texto;
         }

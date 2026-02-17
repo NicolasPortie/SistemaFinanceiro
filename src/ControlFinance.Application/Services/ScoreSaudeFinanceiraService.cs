@@ -163,8 +163,17 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
             >= 80 => "Excelente",
             >= 60 => "Bom",
             >= 40 => "Regular",
-            >= 20 => "Ruim",
+            >= 20 => "Preocupante",
             _ => "Crítico"
+        };
+
+        var classificacaoEmoji = scoreTotal switch
+        {
+            >= 80 => "🏆",
+            >= 60 => "👍",
+            >= 40 => "⚠️",
+            >= 20 => "🔶",
+            _ => "🚨"
         };
 
         // Persistir no perfil comportamental
@@ -178,12 +187,88 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
         perfilComp.TendenciaCrescimentoGastos = tendencia * 100;
         await _perfilComportamentalRepo.CriarOuAtualizarAsync(perfilComp);
 
-        var resumo = $"📊 *Score de Saúde Financeira: {scoreTotal:N0}/100 ({classificacao})*\n\n";
-        foreach (var f in fatores.OrderByDescending(f => f.Valor))
+        // ── Gerar resumo legível em linguagem simples ──
+        var barraProgresso = GerarBarraProgresso(scoreTotal);
+        var resumo = $"{classificacaoEmoji} *Sua Saúde Financeira: {classificacao}*\n";
+        resumo += $"{barraProgresso} {scoreTotal:N0}/100\n\n";
+
+        // Separar pontos positivos e pontos de atenção
+        var pontosPositivos = new List<string>();
+        var pontosAtencao = new List<string>();
+
+        // 1. Comprometimento da renda — linguagem clara
+        if (comprometimento <= 0.5m)
+            pontosPositivos.Add($"Você gasta *{comprometimento * 100:N0}%* do que ganha — ótimo equilíbrio!");
+        else if (comprometimento <= 0.9m)
+            pontosAtencao.Add($"Você está gastando *{comprometimento * 100:N0}%* do que ganha. Tente reduzir para abaixo de 50%.");
+        else if (comprometimento <= 1.0m)
+            pontosAtencao.Add($"⚠️ Você gasta *quase tudo* que ganha ({comprometimento * 100:N0}%). Sobra muito pouco.");
+        else
+            pontosAtencao.Add($"🚨 Você está gastando *mais do que ganha* ({comprometimento * 100:N0}%)! Urgente revisar os gastos.");
+
+        // 2. Volatilidade — linguagem clara
+        if (volatilidade <= 0.1m)
+            pontosPositivos.Add("Seus gastos estão estáveis mês a mês — ótimo controle!");
+        else if (volatilidade <= 0.3m)
+            pontosAtencao.Add("Seus gastos variam bastante de um mês para outro. Tente manter mais constante.");
+        else
+            pontosAtencao.Add("Seus gastos oscilam muito — isso dificulta o planejamento.");
+
+        // 3. Uso de crédito
+        if (perfil.QuantidadeParcelasAbertas == 0)
+            pontosPositivos.Add("Nenhuma parcela aberta — livre de compromissos parcelados!");
+        else if (pontuacaoCredito > 0.6m)
+            pontosPositivos.Add($"Você tem {perfil.QuantidadeParcelasAbertas} parcela(s) aberta(s) (R$ {perfil.TotalParcelasAbertas:N2}), mas está dentro do saudável.");
+        else
+            pontosAtencao.Add($"Você tem *{perfil.QuantidadeParcelasAbertas} parcela(s)* aberta(s) totalizando *R$ {perfil.TotalParcelasAbertas:N2}*. Cuidado ao parcelar mais.");
+
+        // 4. Meses negativos
+        if (mesesNeg == 0)
+            pontosPositivos.Add("Nos últimos 6 meses, você *sempre* fechou no positivo! 🎉");
+        else if (mesesNeg == 1)
+            pontosAtencao.Add("Você fechou *1 mês* no vermelho nos últimos 6 meses. Fique atento.");
+        else
+            pontosAtencao.Add($"Você fechou *{mesesNeg} meses* no vermelho nos últimos 6 meses. Hora de ajustar.");
+
+        // 5. Reserva
+        if (ratioReserva >= 0.3m)
+            pontosPositivos.Add($"Você consegue guardar *{ratioReserva * 100:N0}%* da renda — excelente reserva!");
+        else if (ratioReserva > 0)
+            pontosAtencao.Add($"Sua margem livre é de apenas *{ratioReserva * 100:N0}%* da renda. Ideal é guardar pelo menos 15-30%.");
+        else
+            pontosAtencao.Add("Você *não está conseguindo guardar dinheiro*. Tente cortar gastos desnecessários.");
+
+        // 6. Tendência
+        if (tendencia <= 0)
+            pontosPositivos.Add("Seus gastos estão em queda ou estáveis — bom sinal! 📉");
+        else if (tendencia <= 0.1m)
+            pontosAtencao.Add($"Seus gastos estão subindo *{tendencia * 100:N1}% por mês*. Fique de olho.");
+        else
+            pontosAtencao.Add($"🚨 Seus gastos estão crescendo rápido (*{tendencia * 100:N1}% por mês*). Revise urgente!");
+
+        // Montar mensagem final
+        if (pontosPositivos.Any())
         {
-            var emoji = f.Impacto == "positivo" ? "🟢" : f.Impacto == "neutro" ? "🟡" : "🔴";
-            resumo += $"{emoji} {f.Nome}: {f.Valor:N1}/{f.Peso} — {f.Descricao}\n";
+            resumo += "✅ *O que está indo bem:*\n";
+            foreach (var p in pontosPositivos)
+                resumo += $"  • {p}\n";
         }
+
+        if (pontosAtencao.Any())
+        {
+            resumo += $"\n🔍 *Pontos de atenção:*\n";
+            foreach (var p in pontosAtencao)
+                resumo += $"  • {p}\n";
+        }
+
+        if (scoreTotal >= 80)
+            resumo += "\n💚 Parabéns! Suas finanças estão saudáveis. Continue assim!";
+        else if (scoreTotal >= 60)
+            resumo += "\n💛 Está no caminho certo! Com pequenos ajustes você chega no excelente.";
+        else if (scoreTotal >= 40)
+            resumo += "\n🧡 Atenção com os gastos. Revise os pontos acima para melhorar seu score.";
+        else
+            resumo += "\n❤️ Situação delicada. Foque em gastar menos do que ganha e quitar dívidas.";
 
         return new ScoreSaudeFinanceiraDto
         {
@@ -237,5 +322,19 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
         }
 
         return variacoes.Count > 0 ? variacoes.Average() : 0m;
+    }
+
+    /// <summary>
+    /// Gera uma barra visual de progresso para o score (ex: 🟩🟩🟩🟩🟩⬜⬜⬜⬜⬜)
+    /// </summary>
+    private static string GerarBarraProgresso(decimal score)
+    {
+        var totalBlocos = 10;
+        var preenchidos = (int)Math.Round(score / 100m * totalBlocos);
+        preenchidos = Math.Clamp(preenchidos, 0, totalBlocos);
+
+        var corBloco = score >= 60 ? "🟩" : score >= 40 ? "🟨" : "🟥";
+        return string.Concat(Enumerable.Repeat(corBloco, preenchidos))
+             + string.Concat(Enumerable.Repeat("⬜", totalBlocos - preenchidos));
     }
 }

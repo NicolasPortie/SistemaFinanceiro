@@ -114,7 +114,7 @@ public class LimiteCategoriaService : ILimiteCategoriaService
     public string FormatarLimitesBot(List<LimiteCategoriaDto> limites)
     {
         if (!limites.Any())
-            return "📋 Nenhum limite definido.\n\nDefina com: \"limitar Alimentação em 800\" ou /limite Alimentação 800";
+            return "📋 Nenhum limite definido ainda.\n\nDefina com: \"limitar Alimentação em 800\" ou /limite Alimentação 800";
 
         var texto = "📊 *Seus Limites Mensais*\n\n";
 
@@ -129,11 +129,28 @@ public class LimiteCategoriaService : ILimiteCategoriaService
             };
 
             var barra = GerarBarra(l.PercentualConsumido);
+            var restante = l.ValorLimite - l.GastoAtual;
+
+            var statusMsg = l.Status switch
+            {
+                "excedido" => $"Estourou R$ {Math.Abs(restante):N2}!",
+                "critico" => $"Quase no limite! Resta R$ {restante:N2}",
+                "atencao" => $"Fique de olho! Resta R$ {restante:N2}",
+                _ => $"Tranquilo. Resta R$ {restante:N2}"
+            };
 
             texto += $"{emoji} *{l.CategoriaNome}*\n";
             texto += $"   R$ {l.GastoAtual:N2} / R$ {l.ValorLimite:N2} ({l.PercentualConsumido:N0}%)\n";
-            texto += $"   {barra}\n\n";
+            texto += $"   {barra}\n";
+            texto += $"   _{statusMsg}_\n\n";
         }
+
+        var excedidos = limites.Count(l => l.Status == "excedido");
+        var ok = limites.Count(l => l.Status == "ok");
+        if (excedidos > 0)
+            texto += $"⚠️ {excedidos} limite(s) estourado(s). Revise seus gastos!";
+        else if (ok == limites.Count)
+            texto += "✅ Todos os limites estão sob controle!";
 
         return texto.TrimEnd();
     }

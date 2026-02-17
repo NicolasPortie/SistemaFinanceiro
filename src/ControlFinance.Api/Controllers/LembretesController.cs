@@ -48,6 +48,7 @@ public class LembretesController : BaseAuthController
             Categoria = l.Categoria?.Nome,
             FormaPagamento = l.FormaPagamento?.ToString(),
             l.LembreteTelegramAtivo,
+            DataFimRecorrencia = l.DataFimRecorrencia?.ToString("yyyy-MM-dd"),
             l.PeriodKeyAtual,
             l.DiasAntecedenciaLembrete,
             HorarioInicioLembrete = l.HorarioInicioLembrete.ToString(@"hh\:mm"),
@@ -83,6 +84,7 @@ public class LembretesController : BaseAuthController
             Categoria = lembrete.Categoria?.Nome,
             FormaPagamento = lembrete.FormaPagamento?.ToString(),
             lembrete.LembreteTelegramAtivo,
+            DataFimRecorrencia = lembrete.DataFimRecorrencia?.ToString("yyyy-MM-dd"),
             lembrete.PeriodKeyAtual,
             lembrete.DiasAntecedenciaLembrete,
             HorarioInicioLembrete = lembrete.HorarioInicioLembrete.ToString(@"hh\:mm"),
@@ -160,6 +162,7 @@ public class LembretesController : BaseAuthController
             CategoriaId = categoriaId,
             FormaPagamento = formaPagamento,
             LembreteTelegramAtivo = request.LembreteTelegramAtivo,
+            DataFimRecorrencia = ParseDataFimRecorrencia(request.DataFimRecorrencia),
             PeriodKeyAtual = request.RecorrenteMensal || !string.IsNullOrWhiteSpace(request.Frequencia)
                 ? $"{dataVenc:yyyy-MM}"
                 : null,
@@ -184,6 +187,7 @@ public class LembretesController : BaseAuthController
             Categoria = categoriaNome,
             FormaPagamento = criado.FormaPagamento?.ToString(),
             criado.LembreteTelegramAtivo,
+            DataFimRecorrencia = criado.DataFimRecorrencia?.ToString("yyyy-MM-dd"),
             criado.PeriodKeyAtual,
             criado.DiasAntecedenciaLembrete,
             HorarioInicioLembrete = criado.HorarioInicioLembrete.ToString(@"hh\:mm"),
@@ -263,6 +267,13 @@ public class LembretesController : BaseAuthController
         }
         if (request.LembreteTelegramAtivo.HasValue)
             lembrete.LembreteTelegramAtivo = request.LembreteTelegramAtivo.Value;
+        if (request.DataFimRecorrencia != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.DataFimRecorrencia))
+                lembrete.DataFimRecorrencia = null;
+            else
+                lembrete.DataFimRecorrencia = ParseDataFimRecorrencia(request.DataFimRecorrencia);
+        }
 
         var recorrente = lembrete.RecorrenteMensal || lembrete.Frequencia.HasValue;
         lembrete.PeriodKeyAtual = recorrente ? $"{lembrete.DataVencimento:yyyy-MM}" : null;
@@ -283,6 +294,7 @@ public class LembretesController : BaseAuthController
             Categoria = lembrete.Categoria?.Nome,
             FormaPagamento = lembrete.FormaPagamento?.ToString(),
             lembrete.LembreteTelegramAtivo,
+            DataFimRecorrencia = lembrete.DataFimRecorrencia?.ToString("yyyy-MM-dd"),
             lembrete.PeriodKeyAtual,
             lembrete.DiasAntecedenciaLembrete,
             HorarioInicioLembrete = lembrete.HorarioInicioLembrete.ToString(@"hh\:mm"),
@@ -309,5 +321,14 @@ public class LembretesController : BaseAuthController
             return NotFound(new { erro = "Lembrete não encontrado." });
 
         return Ok(new { mensagem = "Lembrete desativado com sucesso." });
+    }
+
+    private static DateTime? ParseDataFimRecorrencia(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        if (DateTime.TryParseExact(value, "yyyy-MM-dd",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var data))
+            return data;
+        return null;
     }
 }

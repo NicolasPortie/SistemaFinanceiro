@@ -58,30 +58,44 @@ public class FaturaService : IFaturaService
     public string FormatarFatura(FaturaResumoDto fatura)
     {
         var vencida = fatura.DataVencimento < DateTime.UtcNow && fatura.Status != "Paga";
-        var statusTexto = vencida ? "⚠️ VENCIDA" : fatura.Status;
+        var diasParaVencer = (fatura.DataVencimento - DateTime.UtcNow).Days;
+
+        string statusTexto;
+        if (vencida)
+            statusTexto = $"⚠️ *VENCIDA há {Math.Abs(diasParaVencer)} dia(s)!*";
+        else if (diasParaVencer <= 3)
+            statusTexto = $"🚨 Vence em *{diasParaVencer} dia(s)!*";
+        else if (diasParaVencer <= 7)
+            statusTexto = $"⏳ Vence em {diasParaVencer} dias";
+        else
+            statusTexto = fatura.Status;
+
         var texto = $"""
-            💳 *Fatura - {fatura.CartaoNome}*
-            📅 Referência: {fatura.MesReferencia}
-            📆 Vencimento: {fatura.DataVencimento:dd/MM/yyyy}
-            💰 Total: R$ {fatura.Total:N2}
-            📋 Status: {statusTexto}
+            💳 *Fatura — {fatura.CartaoNome}*
+            📅 Ref: {fatura.MesReferencia} | Vence: {fatura.DataVencimento:dd/MM/yyyy}
+            💰 *Total: R$ {fatura.Total:N2}*
+            {statusTexto}
             """;
 
         if (fatura.Parcelas.Any())
         {
-            // Resumo por categoria
             var porCategoria = fatura.Parcelas
                 .GroupBy(p => string.IsNullOrWhiteSpace(p.Categoria) ? "Outros" : p.Categoria)
                 .Select(g => new { Categoria = g.Key, Total = g.Sum(x => x.Valor) })
                 .OrderByDescending(x => x.Total)
                 .ToList();
 
-            texto += "\n\n🏷️ *Por Categoria:*";
+            texto += "\n\n🏷️ *Onde você gastou:*";
             foreach (var cat in porCategoria)
             {
                 texto += $"\n  • {cat.Categoria}: R$ {cat.Total:N2}";
             }
         }
+
+        if (fatura.Status != "Paga" && !vencida)
+            texto += "\n\n_Diga \"paguei a fatura\" quando quitar._";
+        else if (vencida)
+            texto += "\n\n_⚠️ Regularize o pagamento para evitar juros!_";
 
         return texto;
     }
@@ -89,18 +103,25 @@ public class FaturaService : IFaturaService
     public string FormatarFaturaDetalhada(FaturaResumoDto fatura)
     {
         var vencida = fatura.DataVencimento < DateTime.UtcNow && fatura.Status != "Paga";
-        var statusTexto = vencida ? "⚠️ VENCIDA" : fatura.Status;
+        var diasParaVencer = (fatura.DataVencimento - DateTime.UtcNow).Days;
+
+        string statusTexto;
+        if (vencida)
+            statusTexto = $"⚠️ *VENCIDA há {Math.Abs(diasParaVencer)} dia(s)!*";
+        else if (diasParaVencer <= 3)
+            statusTexto = $"🚨 Vence em *{diasParaVencer} dia(s)!*";
+        else
+            statusTexto = fatura.Status;
+
         var texto = $"""
-            💳 *Fatura Detalhada - {fatura.CartaoNome}*
-            📅 Referência: {fatura.MesReferencia}
-            📆 Vencimento: {fatura.DataVencimento:dd/MM/yyyy}
-            💰 Total: R$ {fatura.Total:N2}
-            📋 Status: {statusTexto}
+            💳 *Fatura Detalhada — {fatura.CartaoNome}*
+            📅 Ref: {fatura.MesReferencia} | Vence: {fatura.DataVencimento:dd/MM/yyyy}
+            💰 *Total: R$ {fatura.Total:N2}*
+            {statusTexto}
             """;
 
         if (fatura.Parcelas.Any())
         {
-            // Agrupar por categoria e listar cada item
             var porCategoria = fatura.Parcelas
                 .GroupBy(p => string.IsNullOrWhiteSpace(p.Categoria) ? "Outros" : p.Categoria)
                 .OrderByDescending(g => g.Sum(x => x.Valor))
@@ -116,10 +137,12 @@ public class FaturaService : IFaturaService
                     texto += $"\n  • {p.Descricao}{parcelaInfo} — R$ {p.Valor:N2}";
                 }
             }
+
+            texto += $"\n\n📊 *{fatura.Parcelas.Count} lançamento(s)* nesta fatura";
         }
         else
         {
-            texto += "\n\nSem lançamentos nesta fatura.";
+            texto += "\n\n✅ Nenhum lançamento nesta fatura.";
         }
 
         return texto;

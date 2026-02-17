@@ -399,7 +399,7 @@ public class BotNotificationService : BackgroundService
                         : 0;
                     if (crescimento > 10)
                     {
-                        alertas.Add($"📈 *Gastos crescendo:* Seus gastos aumentaram {crescimento:N0}% no último mês e continuam subindo este mês.");
+                        alertas.Add($"📈 Seus gastos vêm *aumentando* nos últimos meses (+{crescimento:N0}%). Pode ser hora de revisar onde está gastando mais.");
                     }
                 }
 
@@ -408,10 +408,11 @@ public class BotNotificationService : BackgroundService
                 if (perfil.GastoMensalMedio > 0)
                 {
                     var diasPassados = Math.Max(1, (hoje - inicioMes).Days);
-                    var gastoProjetado = gastosMesAtual / diasPassados * DateTime.DaysInMonth(hoje.Year, hoje.Month);
+                    var diasNoMes = DateTime.DaysInMonth(hoje.Year, hoje.Month);
+                    var gastoProjetado = gastosMesAtual / diasPassados * diasNoMes;
                     if (gastoProjetado > perfil.GastoMensalMedio * 1.3m)
                     {
-                        alertas.Add($"⚠️ *Mês fora do padrão:* Projeção de R$ {gastoProjetado:N2} vs média R$ {perfil.GastoMensalMedio:N2} (+{((gastoProjetado / perfil.GastoMensalMedio - 1) * 100):N0}%).");
+                        alertas.Add($"📊 Nesse ritmo, você vai gastar *R$ {gastoProjetado:N2}* este mês. Sua média é R$ {perfil.GastoMensalMedio:N2}. Tente desacelerar!");
                     }
                 }
 
@@ -421,7 +422,7 @@ public class BotNotificationService : BackgroundService
                     var score = await scoreService.ObterScoreAtualAsync(user.Id);
                     if (score > 0 && score < 40)
                     {
-                        alertas.Add($"🏥 *Score de saúde financeira: {score:N0}/100* — Considere revisar seus gastos e compromissos.");
+                        alertas.Add($"🏥 Sua saúde financeira está em *{score:N0}/100*. Use /score para ver dicas de como melhorar.");
                     }
                 }
                 catch { /* Score não disponível */ }
@@ -431,12 +432,18 @@ public class BotNotificationService : BackgroundService
                 {
                     var comprometimento = gastosMesAtual / perfil.ReceitaMensalMedia;
                     var diaDoMes = hoje.Day;
+                    var diasRestantes = DateTime.DaysInMonth(hoje.Year, hoje.Month) - diaDoMes;
                     var percentualMes = (decimal)diaDoMes / DateTime.DaysInMonth(hoje.Year, hoje.Month);
                     
                     // Se já gastou mais de 80% da receita e estamos antes do dia 20
-                    if (comprometimento > 0.8m && percentualMes < 0.65m)
+                    if (comprometimento > 1.0m)
                     {
-                        alertas.Add($"🔴 *Atenção:* Você já comprometeu {comprometimento:P0} da sua receita e ainda faltam {DateTime.DaysInMonth(hoje.Year, hoje.Month) - diaDoMes} dias no mês.");
+                        var excesso = gastosMesAtual - perfil.ReceitaMensalMedia;
+                        alertas.Add($"🔴 Você já gastou *R$ {gastosMesAtual:N2}* este mês, que é *R$ {excesso:N2} a mais* do que sua receita média. Tente segurar os gastos nos próximos {diasRestantes} dias.");
+                    }
+                    else if (comprometimento > 0.8m && percentualMes < 0.65m)
+                    {
+                        alertas.Add($"⚠️ Você já gastou *R$ {gastosMesAtual:N2}* (de uma receita média de R$ {perfil.ReceitaMensalMedia:N2}) e ainda faltam *{diasRestantes} dias*. Tente reduzir o ritmo.");
                     }
                 }
 
@@ -462,8 +469,7 @@ public class BotNotificationService : BackgroundService
 
                     foreach (var r in recorrentes)
                     {
-                        alertas.Add($"💡 *Gasto recorrente detectado:* \"{r.Desc}\" (média R$ {r.Valor:N2}/mês). " +
-                                    "Considere cadastrar como conta fixa: /conta\\_fixa");
+                        alertas.Add($"💡 Percebi que você paga \"{r.Desc}\" todo mês (média R$ {r.Valor:N2}). Que tal cadastrar como conta fixa? Use /conta\\_fixa");
                     }
                 }
                 catch { /* Falha ao detectar recorrentes */ }
@@ -471,9 +477,9 @@ public class BotNotificationService : BackgroundService
                 // Enviar alertas se houver
                 if (alertas.Any())
                 {
-                    var msg = "🤖 *Análise Proativa*\n\n" +
+                    var msg = "💡 *Dicas do seu assistente financeiro*\n\n" +
                               string.Join("\n\n", alertas) +
-                              "\n\n_Dica: Use /score para ver seu score completo._";
+                              "\n\n_Use /score para ver um diagnóstico completo._";
 
                     await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                 }

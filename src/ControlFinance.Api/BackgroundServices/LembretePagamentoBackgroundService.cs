@@ -131,6 +131,17 @@ public class LembretePagamentoBackgroundService : BackgroundService
         if (horaBrasilia < lembrete.HorarioInicioLembrete || horaBrasilia > lembrete.HorarioFimLembrete)
             return;
 
+        // Verificar se ultrapassou a data fim de recorrência
+        if (lembrete.DataFimRecorrencia.HasValue && agoraUtc.Date > lembrete.DataFimRecorrencia.Value.Date)
+        {
+            lembrete.Ativo = false;
+            lembrete.AtualizadoEm = agoraUtc;
+            await lembreteRepo.AtualizarAsync(lembrete);
+            _logger.LogInformation("Lembrete {Id} desativado: ultrapassou DataFimRecorrencia ({Data:dd/MM/yyyy})",
+                lembrete.Id, lembrete.DataFimRecorrencia.Value);
+            return;
+        }
+
         // Calcular period_key do ciclo atual (baseado no vencimento em Brasília)
         var vencimentoBrasilia = TimeZoneInfo.ConvertTimeFromUtc(lembrete.DataVencimento, BrasiliaTimeZone).Date;
         var periodKey = lembrete.PeriodKeyAtual ?? $"{vencimentoBrasilia:yyyy-MM}";

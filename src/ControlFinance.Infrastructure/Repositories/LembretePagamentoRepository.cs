@@ -25,12 +25,14 @@ public class LembretePagamentoRepository : ILembretePagamentoRepository
     {
         return await _context.Set<LembretePagamento>()
             .Include(l => l.Usuario)
+            .Include(l => l.Categoria)
             .FirstOrDefaultAsync(l => l.Id == id);
     }
 
     public async Task<List<LembretePagamento>> ObterPorUsuarioAsync(int usuarioId, bool apenasAtivos = true)
     {
         var query = _context.Set<LembretePagamento>()
+            .Include(l => l.Categoria)
             .Where(l => l.UsuarioId == usuarioId);
 
         if (apenasAtivos)
@@ -78,6 +80,7 @@ public class LembretePagamentoRepository : ILembretePagamentoRepository
     {
         return await _context.Set<LembretePagamento>()
             .Include(l => l.Usuario)
+            .Include(l => l.Categoria)
             .Include(l => l.PagamentosCiclo)
             .Where(l => l.Ativo && l.LembreteTelegramAtivo)
             .OrderBy(l => l.DataVencimento)

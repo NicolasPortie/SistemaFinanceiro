@@ -104,6 +104,9 @@ public class CriarLembreteRequest
 
     /// <summary>Deseja lembrete automático no Telegram?</summary>
     public bool LembreteTelegramAtivo { get; set; } = true;
+
+    /// <summary>Data limite opcional: até quando pagar esta conta fixa (yyyy-MM-dd)</summary>
+    public string? DataFimRecorrencia { get; set; }
 }
 
 public class AtualizarLembreteRequest
@@ -133,4 +136,7 @@ public class AtualizarLembreteRequest
     public string? FormaPagamento { get; set; }
 
     public bool? LembreteTelegramAtivo { get; set; }
+
+    /// <summary>Data limite opcional: até quando pagar esta conta fixa (yyyy-MM-dd). Envie string vazia para remover.</summary>
+    public string? DataFimRecorrencia { get; set; }
 }

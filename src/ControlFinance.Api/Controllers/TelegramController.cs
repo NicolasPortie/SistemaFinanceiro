@@ -133,6 +133,9 @@ public class TelegramController : ControllerBase
 
         try
         {
+            // Mostrar "digitando..." imediatamente — feedback sutil e profissional
+            await EnviarTypingAsync(chatId);
+
             switch (message.Type)
             {
                 case MessageType.Text when !string.IsNullOrWhiteSpace(message.Text):
@@ -188,6 +191,9 @@ public class TelegramController : ControllerBase
                 await _botClient.EditMessageReplyMarkup(chatId, callback.Message.MessageId);
             }
             catch { /* mensagem pode ser antiga demais para editar */ }
+
+            // Mostrar "digitando..." para callbacks também
+            await EnviarTypingAsync(chatId);
 
             // Processar callback como se fosse mensagem de texto
             _logger.LogInformation("Callback de {Nome} ({ChatId}): {Data}", nomeUsuario, chatId, callback.Data);
@@ -246,6 +252,21 @@ public class TelegramController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Envia o indicador "digitando..." do Telegram — sutil, não gera notificação,
+    /// desaparece automaticamente quando a resposta é enviada.
+    /// Dura ~5 segundos no Telegram, mas cancela ao enviar a mensagem real.
+    /// </summary>
+    private async Task EnviarTypingAsync(long chatId)
+    {
+        try
+        {
+            if (_botClient != null)
+                await _botClient.SendChatAction(chatId, ChatAction.Typing);
+        }
+        catch { /* Não crítico — falha silenciosa */ }
+    }
+
     private static string EscaparMarkdownBasico(string texto)
     {
         if (string.IsNullOrEmpty(texto))
@@ -273,6 +294,9 @@ public class TelegramController : ControllerBase
 
         try
         {
+            // Mostrar "digitando..." — áudio demora mais para processar
+            await EnviarTypingAsync(chatId);
+
             var file = await _botClient.GetFile(message.Voice.FileId);
             if (file.FilePath == null)
                 return "❌ Não consegui acessar o áudio.";
@@ -309,6 +333,8 @@ public class TelegramController : ControllerBase
 
         try
         {
+            await EnviarTypingAsync(chatId);
+
             var file = await _botClient.GetFile(message.Audio.FileId);
             if (file.FilePath == null)
                 return "❌ Não consegui acessar o arquivo de áudio.";
@@ -352,6 +378,8 @@ public class TelegramController : ControllerBase
 
         try
         {
+            await EnviarTypingAsync(chatId);
+
             var file = await _botClient.GetFile(message.VideoNote.FileId);
             if (file.FilePath == null)
                 return "❌ Não consegui acessar o vídeo circular.";
@@ -388,6 +416,8 @@ public class TelegramController : ControllerBase
 
         try
         {
+            await EnviarTypingAsync(chatId);
+
             // Pegar a maior resolução
             var photo = message.Photo.Last();
             var file = await _botClient.GetFile(photo.FileId);

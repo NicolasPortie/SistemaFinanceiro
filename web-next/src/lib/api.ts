@@ -278,6 +278,7 @@ export interface LembretePagamento {
   diasAntecedenciaLembrete: number;
   horarioInicioLembrete: string;
   horarioFimLembrete: string;
+  dataFimRecorrencia: string | null;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -293,6 +294,7 @@ export interface CriarLembreteRequest {
   categoria?: string;
   formaPagamento?: string;
   lembreteTelegramAtivo?: boolean;
+  dataFimRecorrencia?: string;
 }
 
 export interface AtualizarLembreteRequest {
@@ -306,6 +308,7 @@ export interface AtualizarLembreteRequest {
   categoria?: string;
   formaPagamento?: string;
   lembreteTelegramAtivo?: boolean;
+  dataFimRecorrencia?: string;
 }
 
 // ── Decisão de Gasto ───────────────────────────────────────

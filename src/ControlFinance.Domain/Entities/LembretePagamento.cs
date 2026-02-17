@@ -18,6 +18,9 @@ public class LembretePagamento
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
     public DateTime? UltimoEnvioEm { get; set; }
 
+    // Campo opcional: até quando pagar esta conta fixa
+    public DateTime? DataFimRecorrencia { get; set; }
+
     // Campos obrigatórios de Conta Fixa
     public int? CategoriaId { get; set; }
     public FormaPagamento? FormaPagamento { get; set; }

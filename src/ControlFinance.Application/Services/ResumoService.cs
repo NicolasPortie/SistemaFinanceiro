@@ -84,23 +84,40 @@ public class ResumoService : IResumoService
 
     public string FormatarResumo(ResumoFinanceiroDto resumo)
     {
+        var saldoEmoji = resumo.Saldo >= 0 ? "✅" : "🔴";
+        var saldoLabel = resumo.Saldo > 0 ? "Superávit" : resumo.Saldo < 0 ? "Déficit" : "Equilibrado";
+
         var texto = $"""
             📊 *Resumo Financeiro*
             📅 {resumo.De:dd/MM} a {resumo.Ate:dd/MM/yyyy}
 
-            💸 Total Gastos: R$ {resumo.TotalGastos:N2}
-            💰 Total Receitas: R$ {resumo.TotalReceitas:N2}
-            📈 Saldo: R$ {resumo.Saldo:N2}
+            💰 Receitas: R$ {resumo.TotalReceitas:N2}
+            💸 Gastos: R$ {resumo.TotalGastos:N2}
+            {saldoEmoji} *Resultado: R$ {resumo.Saldo:N2}* ({saldoLabel})
             """;
+
+        // Mostrar comprometimento se tiver receita
+        if (resumo.TotalReceitas > 0)
+        {
+            var pct = resumo.TotalGastos / resumo.TotalReceitas * 100;
+            var pctEmoji = pct <= 70 ? "🟢" : pct <= 90 ? "🟡" : "🔴";
+            texto += $"\n{pctEmoji} Você gastou *{pct:N0}%* da receita";
+        }
 
         if (resumo.GastosPorCategoria.Any())
         {
-            texto += "\n\n🏷️ *Gastos por Categoria:*";
+            texto += "\n\n🏷️ *Onde você mais gastou:*";
             foreach (var cat in resumo.GastosPorCategoria.Take(8))
             {
                 texto += $"\n  • {cat.Categoria}: R$ {cat.Total:N2} ({cat.Percentual}%)";
             }
         }
+
+        // Diagnóstico amigável
+        if (resumo.Saldo > 0)
+            texto += "\n\n💚 Ótimo! Você está gastando menos do que ganha. Continue assim!";
+        else if (resumo.Saldo < 0)
+            texto += $"\n\n⚠️ Atenção: seus gastos superaram a receita em *R$ {Math.Abs(resumo.Saldo):N2}*. Revise os maiores gastos acima.";
 
         return texto;
     }

@@ -125,6 +125,7 @@ export default function ContasFixasPage() {
   const [categoria, setCategoria] = useState("");
   const [formaPagamento, setFormaPagamento] = useState("");
   const [lembreteTelegramAtivo, setLembreteTelegramAtivo] = useState(true);
+  const [dataFimRecorrencia, setDataFimRecorrencia] = useState("");
 
   const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -138,6 +139,7 @@ export default function ContasFixasPage() {
     setCategoria("");
     setFormaPagamento("");
     setLembreteTelegramAtivo(true);
+    setDataFimRecorrencia("");
     setShowForm(false);
     setEditItem(null);
   };
@@ -150,9 +152,12 @@ export default function ContasFixasPage() {
     setDiaRecorrente(lembrete.diaRecorrente?.toString() ?? "");
     setFrequencia(lembrete.frequencia ?? (lembrete.recorrenteMensal ? "Mensal" : "Unico"));
     setDiaSemana(lembrete.diaSemanaRecorrente?.toString() ?? "");
-    setCategoria(lembrete.categoria ?? "");
+    // Match categoria by categoriaId for reliable pre-fill
+    const matchedCat = categorias.find(c => c.id === lembrete.categoriaId);
+    setCategoria(matchedCat?.nome ?? lembrete.categoria ?? "");
     setFormaPagamento((lembrete.formaPagamento ?? "").toLowerCase());
     setLembreteTelegramAtivo(lembrete.lembreteTelegramAtivo ?? true);
+    setDataFimRecorrencia(lembrete.dataFimRecorrencia ?? "");
   };
 
   const handleCriar = async (e: React.FormEvent) => {
@@ -193,6 +198,7 @@ export default function ContasFixasPage() {
         categoria: categoria.trim(),
         formaPagamento,
         lembreteTelegramAtivo,
+        dataFimRecorrencia: isRecorrente && dataFimRecorrencia ? dataFimRecorrencia : undefined,
       },
       { onSuccess: resetForm }
     );
@@ -225,6 +231,7 @@ export default function ContasFixasPage() {
           categoria: categoria.trim(),
           formaPagamento,
           lembreteTelegramAtivo,
+          dataFimRecorrencia: isRecorrente && dataFimRecorrencia ? dataFimRecorrencia : (isRecorrente ? undefined : ""),
         },
       },
       { onSuccess: resetForm }
@@ -346,13 +353,12 @@ export default function ContasFixasPage() {
                 <button
                   key={f.key}
                   onClick={() => setFiltroStatus(f.key)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${
-                    filtroStatus === f.key
-                      ? f.color
-                        ? `${f.color} text-white shadow-sm`
-                        : "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground hover:-translate-y-px"
-                  }`}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${filtroStatus === f.key
+                    ? f.color
+                      ? `${f.color} text-white shadow-sm`
+                      : "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground hover:-translate-y-px"
+                    }`}
                 >
                   {f.label}
                 </button>
@@ -404,10 +410,10 @@ export default function ContasFixasPage() {
                           {(l.frequencia || l.recorrenteMensal) && (
                             <p className="text-[11px] text-muted-foreground/60 font-medium flex items-center gap-1">
                               <Repeat className="h-3 w-3" />
-                              {l.frequencia === "Semanal" ? `Semanal · ${DIAS_SEMANA[l.diaSemanaRecorrente ?? 0]?.slice(0,3)}`
-                                : l.frequencia === "Quinzenal" ? `Quinzenal · ${DIAS_SEMANA[l.diaSemanaRecorrente ?? 0]?.slice(0,3)}`
-                                : l.frequencia === "Anual" ? "Anual"
-                                : l.diaRecorrente ? `Dia ${l.diaRecorrente}` : "Mensal"}
+                              {l.frequencia === "Semanal" ? `Semanal · ${DIAS_SEMANA[l.diaSemanaRecorrente ?? 0]?.slice(0, 3)}`
+                                : l.frequencia === "Quinzenal" ? `Quinzenal · ${DIAS_SEMANA[l.diaSemanaRecorrente ?? 0]?.slice(0, 3)}`
+                                  : l.frequencia === "Anual" ? "Anual"
+                                    : l.diaRecorrente ? `Dia ${l.diaRecorrente}` : "Mensal"}
                             </p>
                           )}
                         </div>
@@ -700,6 +706,23 @@ export default function ContasFixasPage() {
                 </AnimatePresence>
               </div>
 
+              {/* Optional end date for recurring bills */}
+              {frequencia !== "Unico" && (
+                <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Até quando pagar? <span className="text-muted-foreground/40">(opcional)</span></Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                      <Input type="date" value={dataFimRecorrencia} onChange={(e) => setDataFimRecorrencia(e.target.value)} className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
+                      <CalendarClock className="h-3 w-3" />
+                      {dataFimRecorrencia ? `Lembretes serão enviados até ${new Date(dataFimRecorrencia + "T12:00:00").toLocaleDateString("pt-BR")}` : "Se não informar, o lembrete continuará indefinidamente"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Submit */}
               <div className="pt-2 sm:pt-3 pb-safe">
                 <Button
@@ -889,6 +912,21 @@ export default function ContasFixasPage() {
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                   <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-9" />
                 </div>
+              </div>
+            )}
+
+            {/* Optional end date for recurring bills */}
+            {frequencia !== "Unico" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Até quando pagar? <span className="text-muted-foreground/40">(opcional)</span></Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <Input type="date" value={dataFimRecorrencia} onChange={(e) => setDataFimRecorrencia(e.target.value)} className="h-11 rounded-xl pl-9" />
+                </div>
+                <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
+                  <CalendarClock className="h-3 w-3" />
+                  {dataFimRecorrencia ? `Até ${new Date(dataFimRecorrencia + "T12:00:00").toLocaleDateString("pt-BR")}` : "Sem data limite"}
+                </p>
               </div>
             )}
 
