@@ -12,6 +12,9 @@ public class CriarCartaoRequest
     [Range(0.01, 1_000_000, ErrorMessage = "Limite deve ser entre R$ 0,01 e R$ 1.000.000.")]
     public decimal Limite { get; set; }
 
+    [Range(1, 31, ErrorMessage = "Dia de fechamento deve ser entre 1 e 31.")]
+    public int DiaFechamento { get; set; } = 1;
+
     [Range(1, 31, ErrorMessage = "Dia de vencimento deve ser entre 1 e 31.")]
     public int DiaVencimento { get; set; }
 }
@@ -23,6 +26,9 @@ public class AtualizarCartaoRequest
 
     [Range(0.01, 1_000_000, ErrorMessage = "Limite deve ser entre R$ 0,01 e R$ 1.000.000.")]
     public decimal? Limite { get; set; }
+
+    [Range(1, 31, ErrorMessage = "Dia de fechamento deve ser entre 1 e 31.")]
+    public int? DiaFechamento { get; set; }
 
     [Range(1, 31, ErrorMessage = "Dia de vencimento deve ser entre 1 e 31.")]
     public int? DiaVencimento { get; set; }

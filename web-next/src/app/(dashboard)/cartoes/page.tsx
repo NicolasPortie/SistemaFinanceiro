@@ -93,7 +93,7 @@ export default function CartoesPage() {
 
   const form = useForm<CartaoData>({
     resolver: zodResolver(cartaoSchema),
-    defaultValues: { nome: "", limite: "", diaVencimento: "" },
+    defaultValues: { nome: "", limite: "", diaFechamento: "", diaVencimento: "" },
   });
 
   const editFormState = useForm<CartaoData>({
@@ -114,6 +114,7 @@ export default function CartoesPage() {
       {
         nome: data.nome,
         limite: parseFloat(data.limite.replace(",", ".")),
+        diaFechamento: parseInt(data.diaFechamento),
         diaVencimento: parseInt(data.diaVencimento),
       },
       {
@@ -133,6 +134,7 @@ export default function CartoesPage() {
         data: {
           nome: data.nome,
           limite: parseFloat(data.limite.replace(",", ".")),
+          diaFechamento: parseInt(data.diaFechamento),
           diaVencimento: parseInt(data.diaVencimento),
         },
       },
@@ -149,6 +151,7 @@ export default function CartoesPage() {
     editFormState.reset({
       nome: cartao.nome,
       limite: cartao.limite.toFixed(2).replace(".", ","),
+      diaFechamento: cartao.diaFechamento.toString(),
       diaVencimento: cartao.diaVencimento.toString(),
     });
     setEditingCard(cartao);
@@ -378,13 +381,23 @@ export default function CartoesPage() {
 
                 <div className="border-t border-border/20" />
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia de vencimento</Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                    <Input placeholder="Ex: 10" className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" {...form.register("diaVencimento")} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia de fechamento</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                      <Input placeholder="Ex: 15" className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" {...form.register("diaFechamento")} />
+                    </div>
+                    {form.formState.errors.diaFechamento && <p className="text-xs text-red-500 font-medium">{form.formState.errors.diaFechamento.message}</p>}
                   </div>
-                  {form.formState.errors.diaVencimento && <p className="text-xs text-red-500 font-medium">{form.formState.errors.diaVencimento.message}</p>}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia de vencimento</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                      <Input placeholder="Ex: 25" className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" {...form.register("diaVencimento")} />
+                    </div>
+                    {form.formState.errors.diaVencimento && <p className="text-xs text-red-500 font-medium">{form.formState.errors.diaVencimento.message}</p>}
+                  </div>
                 </div>
               </div>
 
@@ -392,7 +405,7 @@ export default function CartoesPage() {
               <div className="rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
                 <p className="text-xs text-muted-foreground flex items-center gap-2">
                   <Calendar className="h-3.5 w-3.5 shrink-0" />
-                  <span><strong>Fechamento:</strong> 1º dia útil do mês (automático)</span>
+                  <span><strong>Fechamento:</strong> dia em que a fatura fecha. Compras após essa data entram na fatura seguinte.</span>
                 </p>
               </div>
 
@@ -432,18 +445,28 @@ export default function CartoesPage() {
               </div>
               {editFormState.formState.errors.limite && <p className="text-xs text-red-500">{editFormState.formState.errors.limite.message}</p>}
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de vencimento</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input className="h-11 rounded-xl pl-9" {...editFormState.register("diaVencimento")} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de fechamento</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <Input className="h-11 rounded-xl pl-9" {...editFormState.register("diaFechamento")} />
+                </div>
+                {editFormState.formState.errors.diaFechamento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaFechamento.message}</p>}
               </div>
-              {editFormState.formState.errors.diaVencimento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaVencimento.message}</p>}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de vencimento</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <Input className="h-11 rounded-xl pl-9" {...editFormState.register("diaVencimento")} />
+                </div>
+                {editFormState.formState.errors.diaVencimento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaVencimento.message}</p>}
+              </div>
             </div>
             <div className="rounded-xl bg-muted/40 p-4 border border-border/30">
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
-                <span><strong>Fechamento:</strong> 1º dia útil do mês (automático)</span>
+                <span><strong>Fechamento:</strong> dia em que a fatura fecha. Compras após essa data entram na fatura seguinte.</span>
               </p>
             </div>
             <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] shadow-premium btn-premium" disabled={atualizarCartao.isPending}>

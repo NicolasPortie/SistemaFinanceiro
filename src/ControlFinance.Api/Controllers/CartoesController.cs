@@ -45,6 +45,7 @@ public class CartoesController : BaseAuthController
                 c.Limite,
                 LimiteUsado = limiteUsado,
                 LimiteDisponivel = c.Limite - limiteUsado,
+                c.DiaFechamento,
                 c.DiaVencimento,
                 c.Ativo
             });
@@ -60,11 +61,12 @@ public class CartoesController : BaseAuthController
         {
             Nome = request.Nome,
             Limite = request.Limite,
+            DiaFechamento = request.DiaFechamento,
             DiaVencimento = request.DiaVencimento,
             UsuarioId = UsuarioId
         });
 
-        return Ok(new { cartao.Id, cartao.Nome, cartao.Limite, cartao.DiaVencimento });
+        return Ok(new { cartao.Id, cartao.Nome, cartao.Limite, cartao.DiaFechamento, cartao.DiaVencimento });
     }
 
     [HttpGet("{cartaoId}/fatura")]
@@ -95,11 +97,13 @@ public class CartoesController : BaseAuthController
             cartao.Nome = request.Nome;
         if (request.Limite.HasValue && request.Limite.Value > 0)
             cartao.Limite = request.Limite.Value;
+        if (request.DiaFechamento.HasValue && request.DiaFechamento.Value >= 1 && request.DiaFechamento.Value <= 31)
+            cartao.DiaFechamento = request.DiaFechamento.Value;
         if (request.DiaVencimento.HasValue && request.DiaVencimento.Value >= 1 && request.DiaVencimento.Value <= 31)
             cartao.DiaVencimento = request.DiaVencimento.Value;
 
         await _cartaoRepo.AtualizarAsync(cartao);
-        return Ok(new { cartao.Id, cartao.Nome, cartao.Limite, cartao.DiaVencimento, cartao.Ativo });
+        return Ok(new { cartao.Id, cartao.Nome, cartao.Limite, cartao.DiaFechamento, cartao.DiaVencimento, cartao.Ativo });
     }
 
     [HttpDelete("{id}")]
@@ -120,17 +124,26 @@ public class CartoesController : BaseAuthController
         if (cartao == null || cartao.UsuarioId != UsuarioId)
             return NotFound(new { erro = "Cartão não encontrado." });
 
-        // Verificar se o usuário tem saldo suficiente para transferir ao cartão
-        var resumo = await _resumoService.GerarResumoMensalAsync(UsuarioId);
-        var saldoDisponivel = resumo.Saldo;
+        // ── Modelo "Limite Garantido" (estilo Nubank) ──
+        // 1. Calcular saldo ACUMULADO (todas receitas - todos gastos de sempre)
+        var saldoAcumulado = await _resumoService.GerarSaldoAcumuladoAsync(UsuarioId);
+
+        // 2. Subtrair dinheiro já comprometido em ajustes anteriores
+        var totalComprometido = await _cartaoRepo.ObterTotalComprometidoAsync(UsuarioId);
+
+        // 3. Saldo disponível real = acumulado - comprometido
+        var saldoDisponivel = saldoAcumulado - totalComprometido;
 
         if (request.ValorAdicional > saldoDisponivel)
         {
             return BadRequest(new
             {
                 erro = "Saldo insuficiente.",
-                mensagem = $"Você precisa ter o valor em saldo antes de transferir para o limite do cartão. " +
-                           $"Saldo atual: R$ {saldoDisponivel:N2}. Valor solicitado: R$ {request.ValorAdicional:N2}.",
+                mensagem = $"Seu saldo disponível é R$ {saldoDisponivel:N2}. " +
+                           $"Saldo acumulado: R$ {saldoAcumulado:N2}, " +
+                           $"já comprometido em limites: R$ {totalComprometido:N2}.",
+                saldoAcumulado,
+                totalComprometido,
                 saldoDisponivel,
                 valorSolicitado = request.ValorAdicional
             });
@@ -156,10 +169,11 @@ public class CartoesController : BaseAuthController
 
         return Ok(new
         {
-            mensagem = "Limite extra aplicado com sucesso. Valor transferido do seu saldo para o limite do cartão.",
+            mensagem = "Limite extra aplicado! Valor comprometido do seu saldo como garantia.",
             novoLimite = cartao.Limite,
-            saldoAnterior = saldoDisponivel,
-            saldoRestante = saldoDisponivel - request.ValorAdicional,
+            saldoAcumulado,
+            saldoComprometidoTotal = totalComprometido + request.ValorAdicional,
+            saldoDisponivelRestante = saldoDisponivel - request.ValorAdicional,
             detalhes = new
             {
                 ValorBase = request.ValorAdicional,

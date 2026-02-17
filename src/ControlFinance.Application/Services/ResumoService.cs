@@ -69,6 +69,19 @@ public class ResumoService : IResumoService
         return await GerarResumoAsync(usuarioId, inicioMes, fimMes);
     }
 
+    public async Task<decimal> GerarSaldoAcumuladoAsync(int usuarioId)
+    {
+        // Saldo ALL-TIME: todas as receitas - todos os gastos desde o início.
+        // Representa o dinheiro real disponível (posição de caixa acumulada).
+        var inicio = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fim = DateTime.UtcNow.AddDays(1);
+
+        var totalReceitas = await _lancamentoRepo.ObterTotalPorPeriodoAsync(usuarioId, TipoLancamento.Receita, inicio, fim);
+        var totalGastos = await _lancamentoRepo.ObterTotalPorPeriodoAsync(usuarioId, TipoLancamento.Gasto, inicio, fim);
+
+        return totalReceitas - totalGastos;
+    }
+
     public string FormatarResumo(ResumoFinanceiroDto resumo)
     {
         var texto = $"""

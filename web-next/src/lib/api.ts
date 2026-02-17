@@ -60,6 +60,7 @@ export interface Cartao {
   limite: number;
   limiteUsado: number;
   limiteDisponivel: number;
+  diaFechamento: number;
   diaVencimento: number;
   ativo: boolean;
 }
@@ -218,6 +219,7 @@ export interface CriarLancamentoRequest {
 export interface AtualizarCartaoRequest {
   nome?: string;
   limite?: number;
+  diaFechamento?: number;
   diaVencimento?: number;
 }
 
@@ -505,7 +507,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       }
     }
 
-    throw new Error(errorData?.erro || errorData?.message || `Erro ${res.status}`);
+    throw new Error(errorData?.mensagem || errorData?.erro || errorData?.message || `Erro ${res.status}`);
   }
 
   const text = await res.text();
@@ -606,7 +608,7 @@ export const api = {
 
   cartoes: {
     listar: () => request<Cartao[]>("/cartoes"),
-    criar: (data: { nome: string; limite: number; diaVencimento: number }) =>
+    criar: (data: { nome: string; limite: number; diaFechamento: number; diaVencimento: number }) =>
       request("/cartoes", { method: "POST", body: data }),
     atualizar: (id: number, data: AtualizarCartaoRequest) =>
       request(`/cartoes/${id}`, { method: "PUT", body: data }),

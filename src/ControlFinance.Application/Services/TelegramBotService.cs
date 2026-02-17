@@ -743,7 +743,6 @@ public class TelegramBotService
             }
 
             // 2. Achar a fatura (Prioridade: Fechada não paga > Atual aberta)
-            // Lógica: Se estamos pagando, provavelmente é a que venceu agora ou vai vencer
             var hoje = DateTime.UtcNow;
             var faturas = await _faturaRepo.ObterPorCartaoAsync(cartao.Id);
             
@@ -754,7 +753,6 @@ public class TelegramBotService
                 .FirstOrDefault();
 
             // Se não tem fechada, pode ser antecipação da atual (Aberta)
-            // (Só pega aberta se o mês de referencia for igual ou anterior ao atual, para evitar pagar fatura futura sem querer)
             if (faturaPagar == null)
             {
                 faturaPagar = faturas.FirstOrDefault(f => f.Status == StatusFatura.Aberta);
@@ -763,38 +761,36 @@ public class TelegramBotService
             if (faturaPagar == null)
                 return $"✅ Não encontrei faturas pendentes para o cartão *{cartao.Nome}*.";
 
-            // 3. Registrar o pagamento (Ação Dupla)
-            
-            // A - Saída financeira (Lançamento)
-            var valorPago = dados.Valor ?? faturaPagar.Total;
-            if (valorPago <= 0) valorPago = faturaPagar.Total; // Fallback
+            // 3. Pagar a fatura (Regime de Competência — modelo Mobills/Organizze)
+            //
+            // IMPORTANTE: NÃO criar novo Lançamento de gasto aqui!
+            // O gasto já foi registrado no momento da COMPRA (quando o usuário disse
+            // "gastei 500 no cartão"). Criar outro lançamento aqui causaria duplicação.
+            //
+            // No regime de competência:
+            //   - Compra: registra o gasto (saldo diminui)
+            //   - Pagamento da fatura: apenas "baixa" a dívida do cartão (muda status)
+            //
+            // Isso é equivalente a uma TRANSFERÊNCIA (conta → cartão), não um novo gasto.
+            var valorFatura = faturaPagar.Total;
 
-            var lancamentoPagamento = new RegistrarLancamentoDto
+            if (dados.Valor.HasValue && dados.Valor.Value > 0 && dados.Valor.Value < valorFatura * 0.95m)
             {
-                 Valor = valorPago,
-                 Descricao = $"Pagamento Fatura {cartao.Nome} ({faturaPagar.MesReferencia:MM/yyyy})",
-                 Categoria = "Pagamento de fatura", 
-                 Tipo = TipoLancamento.Gasto,
-                 FormaPagamento = FormaPagamento.PIX, // Assume Pix/Conta por padrão ao pagar fatura
-                 Data = dados.Data ?? hoje,
-                 Origem = OrigemDado.Texto
-            };
-
-            // Criar lançamento (só para constar no extrato e baixar saldo)
-            await _lancamentoService.RegistrarAsync(usuario.Id, lancamentoPagamento);
-
-            // B - Baixar a Fatura (Sistêmico)
-            // Se valor pago for total ou maior (com margem de erro pequena), quita a fatura
-            if (valorPago >= faturaPagar.Total * 0.95m)
-            {
-                 await _faturaService.PagarFaturaAsync(faturaPagar.Id);
-                 await _perfilService.InvalidarAsync(usuario.Id);
-                 return $"✅ *Fatura Paga com Sucesso!*\n\n💳 Cartão: {cartao.Nome}\n📅 Mês: {faturaPagar.MesReferencia:MM/yyyy}\n💸 Valor Pago: R$ {valorPago:N2}\n\nO limite do seu cartão foi restaurado!";
+                // Pagamento parcial — apenas informar, não marca como paga
+                return $"⚠️ Você informou R$ {dados.Valor.Value:N2}, mas a fatura do *{cartao.Nome}* é R$ {valorFatura:N2}.\n\n" +
+                       $"Para pagar a fatura completa, diga: \"Paguei a fatura do {cartao.Nome}\".";
             }
-            else
-            {
-                 return $"⚠️ Registrei o pagamento parcial de R$ {valorPago:N2} na fatura do {cartao.Nome}, mas ela ainda consta em aberto no sistema (valor total era R$ {faturaPagar.Total:N2}).";
-            }
+
+            // Quitar a fatura (marca como Paga + parcelas como pagas)
+            await _faturaService.PagarFaturaAsync(faturaPagar.Id);
+            await _perfilService.InvalidarAsync(usuario.Id);
+
+            return $"✅ *Fatura Paga com Sucesso!*\n\n" +
+                   $"💳 Cartão: {cartao.Nome}\n" +
+                   $"📅 Mês: {faturaPagar.MesReferencia:MM/yyyy}\n" +
+                   $"💸 Valor: R$ {valorFatura:N2}\n\n" +
+                   $"O limite do seu cartão foi restaurado!\n" +
+                   $"ℹ️ _O gasto já foi contabilizado quando você fez a compra (regime de competência)._";
         }
         catch (Exception ex)
         {

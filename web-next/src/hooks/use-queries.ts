@@ -273,7 +273,7 @@ export function useRemoverMeta() {
 export function useCriarCartao() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { nome: string; limite: number; diaVencimento: number }) =>
+    mutationFn: (data: { nome: string; limite: number; diaFechamento: number; diaVencimento: number }) =>
       api.cartoes.criar(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cartoes });

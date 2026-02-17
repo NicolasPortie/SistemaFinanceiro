@@ -1,5 +1,6 @@
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
+using ControlFinance.Domain.Helpers;
 using ControlFinance.Domain.Interfaces;
 using ControlFinance.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -56,12 +57,15 @@ public class FaturaRepository : IFaturaRepository
         var cartao = await _context.CartoesCredito.FindAsync(cartaoId);
         if (cartao == null) return null;
 
-        // Fechamento = primeiro dia útil do mês de referência
-        var dataFechamento = ObterPrimeiroDiaUtil(inicioMes);
+        // Fechamento = DiaFechamento configurado no cartão, no mês de referência
+        var diaFech = Math.Min(cartao.DiaFechamento, DateTime.DaysInMonth(inicioMes.Year, inicioMes.Month));
+        var dataFechamento = new DateTime(inicioMes.Year, inicioMes.Month, diaFech, 0, 0, 0, DateTimeKind.Utc);
 
-        // Vencimento = dia configurado no cartão, no mês de referência
+        // Vencimento = DiaVencimento configurado no cartão, no mês de referência
+        // Se cair em fim de semana, avança para o próximo dia útil
         var diaVenc = Math.Min(cartao.DiaVencimento, DateTime.DaysInMonth(inicioMes.Year, inicioMes.Month));
         var dataVencimento = new DateTime(inicioMes.Year, inicioMes.Month, diaVenc, 0, 0, 0, DateTimeKind.Utc);
+        dataVencimento = FaturaCicloHelper.AjustarParaDiaUtil(dataVencimento);
 
         fatura = new Fatura
         {
@@ -92,7 +96,6 @@ public class FaturaRepository : IFaturaRepository
 
     public async Task<Fatura?> ObterFaturaAtualAsync(int cartaoId)
     {
-        // Fatura atual = a do mês corrente (ou a mais próxima do mês corrente que não foi paga)
         var hoje = DateTime.UtcNow;
         var mesAtual = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -107,7 +110,6 @@ public class FaturaRepository : IFaturaRepository
         if (!pendentes.Any())
             return null;
 
-        // Prioriza a fatura do mês atual; senão, a mais próxima do mês corrente
         return pendentes
             .OrderBy(f => Math.Abs((f.MesReferencia - mesAtual).TotalDays))
             .First();
@@ -127,15 +129,5 @@ public class FaturaRepository : IFaturaRepository
             _context.Faturas.Remove(fatura);
             await _context.SaveChangesAsync();
         }
-    }
-
-    private static DateTime ObterPrimeiroDiaUtil(DateTime data)
-    {
-        var primeiroDia = new DateTime(data.Year, data.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        while (primeiroDia.DayOfWeek == DayOfWeek.Saturday || primeiroDia.DayOfWeek == DayOfWeek.Sunday)
-        {
-            primeiroDia = primeiroDia.AddDays(1);
-        }
-        return primeiroDia;
     }
 }

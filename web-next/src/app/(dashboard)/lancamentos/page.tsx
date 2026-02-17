@@ -300,11 +300,11 @@ export default function LancamentosPage() {
             delay={1}
           />
           <StatCard
-            title="Saldo"
+            title="Resultado do Mês"
             value={formatCurrency(resumo.saldo)}
-            subtitle={resumo.saldo >= 0 ? "Positivo" : "Negativo"}
+            subtitle={resumo.saldo > 0 ? "Superávit" : resumo.saldo < 0 ? "Déficit" : "Equilibrado"}
             icon={<Wallet className="h-4 w-4 sm:h-5 sm:w-5" />}
-            trend={resumo.saldo >= 0 ? "up" : "down"}
+            trend={resumo.saldo > 0 ? "up" : resumo.saldo < 0 ? "down" : "neutral"}
             delay={2}
           />
           <StatCard
@@ -761,7 +761,7 @@ export default function LancamentosPage() {
                   className={`w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] transition-all duration-300 cursor-pointer ${tipoSelecionado === "receita"
                     ? "bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 text-white"
                     : "bg-linear-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 shadow-lg shadow-red-500/20 hover:shadow-red-500/30 text-white"
-                  } active:scale-[0.98]`}
+                    } active:scale-[0.98]`}
                   disabled={criarLancamento.isPending}
                 >
                   {criarLancamento.isPending ? (

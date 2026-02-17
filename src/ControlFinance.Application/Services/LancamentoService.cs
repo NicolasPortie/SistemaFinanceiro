@@ -3,6 +3,7 @@ using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
+using ControlFinance.Domain.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace ControlFinance.Application.Services;
@@ -114,23 +115,34 @@ public class LancamentoService : ILancamentoService
             return;
         }
 
+        // Buscar cartão para saber o DiaFechamento
+        var cartao = await _cartaoRepo.ObterPorIdAsync(cartaoId.Value);
+        if (cartao == null)
+        {
+            _logger.LogWarning("Cartão {Id} não encontrado para gerar parcelas", cartaoId.Value);
+            return;
+        }
+
         var valorParcela = Math.Round(lancamento.Valor / lancamento.NumeroParcelas, 2);
         var resto = lancamento.Valor - (valorParcela * lancamento.NumeroParcelas);
         var parcelas = new List<Parcela>();
 
-        for (int i = 1; i <= lancamento.NumeroParcelas; i++)
+        // Determinar em qual mês a PRIMEIRA parcela entra (baseado no dia de fechamento)
+        var mesPrimeiraParcela = FaturaCicloHelper.DeterminarMesFatura(lancamento.Data, cartao.DiaFechamento);
+
+        for (int i = 0; i < lancamento.NumeroParcelas; i++)
         {
-            // Cada parcela cai no mês seguinte
-            var mesParcela = lancamento.Data.AddMonths(i);
+            // Cada parcela subsequente vai para o mês seguinte
+            var mesParcela = mesPrimeiraParcela.AddMonths(i);
             var fatura = await _faturaRepo.ObterOuCriarFaturaAsync(cartaoId.Value, mesParcela);
 
             var valor = valorParcela;
-            if (i == lancamento.NumeroParcelas)
+            if (i == lancamento.NumeroParcelas - 1)
                 valor += resto; // Ajuste de centavos na última parcela
 
             parcelas.Add(new Parcela
             {
-                NumeroParcela = i,
+                NumeroParcela = i + 1,
                 TotalParcelas = lancamento.NumeroParcelas,
                 Valor = valor,
                 DataVencimento = fatura?.DataVencimento ?? mesParcela,
@@ -156,7 +168,16 @@ public class LancamentoService : ILancamentoService
             return;
         }
 
-        var mesFatura = lancamento.Data.AddMonths(1);
+        // Buscar cartão para saber o DiaFechamento
+        var cartao = await _cartaoRepo.ObterPorIdAsync(cartaoId.Value);
+        if (cartao == null)
+        {
+            _logger.LogWarning("Cartão {Id} não encontrado para gerar parcela única", cartaoId.Value);
+            return;
+        }
+
+        // Determinar em qual fatura a compra entra (baseado no dia de fechamento)
+        var mesFatura = FaturaCicloHelper.DeterminarMesFatura(lancamento.Data, cartao.DiaFechamento);
         var fatura = await _faturaRepo.ObterOuCriarFaturaAsync(cartaoId.Value, mesFatura);
 
         if (fatura == null) return;

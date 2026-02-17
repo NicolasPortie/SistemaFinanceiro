@@ -56,4 +56,13 @@ public class CartaoCreditoRepository : ICartaoCreditoRepository
         _context.AjustesLimitesCartao.Add(ajuste);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<decimal> ObterTotalComprometidoAsync(int usuarioId)
+    {
+        // Soma o ValorBase de todos os ajustes de limite dos cartões ativos do usuário.
+        // Representa o total de dinheiro "travado" como garantia de limite extra.
+        return await _context.AjustesLimitesCartao
+            .Where(a => a.Cartao.UsuarioId == usuarioId && a.Cartao.Ativo)
+            .SumAsync(a => a.ValorBase);
+    }
 }

@@ -26,6 +26,8 @@ import {
   PiggyBank,
   Activity,
   Tag,
+  Scale,
+  Percent,
 } from "lucide-react";
 import {
   PageShell,
@@ -120,9 +122,10 @@ export default function DashboardPage() {
   };
 
   const health = resumo ? getFinancialHealth(resumo.totalReceitas, resumo.totalGastos) : null;
-  const taxaEconomia = resumo && resumo.totalReceitas > 0
-    ? Math.round(((resumo.totalReceitas - resumo.totalGastos) / resumo.totalReceitas) * 100)
-    : 0;
+  const saldo = resumo ? resumo.saldo : 0;
+  const comprometimentoReceita = resumo && resumo.totalReceitas > 0
+    ? Math.round((resumo.totalGastos / resumo.totalReceitas) * 100)
+    : null; // null = sem receita
   const metasAtivas = metas.filter((m) => m.status === "ativa");
   const limitesAlerta = limites.filter((l) => l.status !== "ok");
 
@@ -132,7 +135,9 @@ export default function DashboardPage() {
       <HeroSection
         usuario={usuario}
         healthLabel={health?.label ?? null}
-        taxaEconomia={taxaEconomia}
+        saldo={saldo}
+        totalReceitas={resumo?.totalReceitas ?? 0}
+        totalGastos={resumo?.totalGastos ?? 0}
         loading={loading}
         onRefresh={handleRefresh}
       />
@@ -185,18 +190,41 @@ export default function DashboardPage() {
               delay={1}
             />
             <StatCard
-              title="Saldo"
+              title="Resultado do Mês"
               value={formatCurrency(resumo.saldo)}
-              icon={<Wallet className="h-5 w-5" />}
-              trend={resumo.saldo >= 0 ? "up" : "down"}
+              subtitle={
+                resumo.saldo > 0 ? "Superávit" :
+                  resumo.saldo < 0 ? "Déficit" :
+                    "Equilibrado"
+              }
+              icon={<Scale className="h-5 w-5" />}
+              trend={resumo.saldo > 0 ? "up" : resumo.saldo < 0 ? "down" : "neutral"}
               delay={2}
             />
             <StatCard
-              title="Economia"
-              value={`${taxaEconomia}%`}
-              subtitle={health?.label}
-              icon={<PiggyBank className="h-5 w-5" />}
-              trend={taxaEconomia > 0 ? "up" : taxaEconomia < 0 ? "down" : "neutral"}
+              title="Comprometimento"
+              value={
+                comprometimentoReceita !== null
+                  ? `${comprometimentoReceita}%`
+                  : "—"
+              }
+              subtitle={
+                comprometimentoReceita === null
+                  ? "Sem receita no período"
+                  : comprometimentoReceita <= 70
+                    ? "Dentro do ideal"
+                    : comprometimentoReceita <= 100
+                      ? "Atenção"
+                      : "Acima da receita"
+              }
+              icon={<Percent className="h-5 w-5" />}
+              trend={
+                comprometimentoReceita === null
+                  ? "neutral"
+                  : comprometimentoReceita <= 70
+                    ? "up"
+                    : "down"
+              }
               delay={3}
             />
           </div>

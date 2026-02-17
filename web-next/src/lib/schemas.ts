@@ -72,6 +72,13 @@ export const cartaoSchema = z.object({
       const num = parseFloat(v.replace(",", "."));
       return !isNaN(num) && num > 0;
     }, "Valor deve ser maior que zero"),
+  diaFechamento: z
+    .string()
+    .min(1, "Dia é obrigatório")
+    .refine((v) => {
+      const num = parseInt(v);
+      return !isNaN(num) && num >= 1 && num <= 31;
+    }, "Dia deve ser entre 1 e 31"),
   diaVencimento: z
     .string()
     .min(1, "Dia é obrigatório")

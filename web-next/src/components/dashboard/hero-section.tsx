@@ -16,12 +16,20 @@ import type { Usuario } from "@/lib/api";
 interface HeroSectionProps {
   usuario: Usuario | null;
   healthLabel: string | null;
-  taxaEconomia: number;
+  saldo: number;
+  totalReceitas: number;
+  totalGastos: number;
   loading: boolean;
   onRefresh: () => void;
 }
 
-export function HeroSection({ usuario, healthLabel, taxaEconomia, loading, onRefresh }: HeroSectionProps) {
+export function HeroSection({ usuario, healthLabel, saldo, totalReceitas, totalGastos, loading, onRefresh }: HeroSectionProps) {
+  const comprometimento = totalReceitas > 0 ? Math.round((totalGastos / totalReceitas) * 100) : null;
+  const resultadoLabel = saldo > 0 ? "Superávit" : saldo < 0 ? "Déficit" : "Equilibrado";
+  const absValue = Math.abs(saldo);
+  const formatBRL = (v: number) =>
+    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -12 }}
@@ -58,13 +66,22 @@ export function HeroSection({ usuario, healthLabel, taxaEconomia, loading, onRef
           <p className="text-white/45 text-sm max-w-md leading-relaxed">
             {healthLabel
               ? <>
-                  Saúde financeira:{" "}
-                  <span className="text-white/90 font-semibold">{healthLabel}</span>
-                  {" · "}Economia de{" "}
-                  <span className="text-white/95 font-bold">{taxaEconomia}%</span>
-                  {" "}este mês
-                </>
-              : "Aqui está o resumo das suas finanças"}
+                Saúde financeira:{" "}
+                <span className="text-white/90 font-semibold">{healthLabel}</span>
+                {" · "}
+                <span className="text-white/95 font-bold">{resultadoLabel}</span>
+                {saldo !== 0 && (
+                  <> de <span className="text-white/95 font-bold">{formatBRL(absValue)}</span></>
+                )}
+                {comprometimento !== null && (
+                  <> {" · "}Você gastou{" "}
+                    <span className="text-white/95 font-bold">{comprometimento}%</span>
+                    {" "}da receita
+                  </>
+                )}
+              </>
+              : "Aqui está o resumo das suas finanças"
+            }
           </p>
         </div>
 
