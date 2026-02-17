@@ -30,6 +30,7 @@ import {
   Calendar,
   History,
   Zap,
+  DollarSign,
 } from "lucide-react";
 import { PageShell, PageHeader, StatCard, EmptyState } from "@/components/shared/page-components";
 import { ProjectionChart } from "@/components/charts";
