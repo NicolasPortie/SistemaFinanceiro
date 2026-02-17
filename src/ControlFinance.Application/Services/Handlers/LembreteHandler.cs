@@ -1,6 +1,7 @@
 using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
+using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -13,13 +14,23 @@ namespace ControlFinance.Application.Services.Handlers;
 public class LembreteHandler : ILembreteHandler
 {
     private readonly ILembretePagamentoRepository _lembreteRepo;
+    private readonly ICategoriaRepository _categoriaRepo;
+    private readonly IPagamentoCicloRepository _cicloRepo;
     private readonly ILogger<LembreteHandler> _logger;
+    private static readonly TimeZoneInfo BrasiliaTimeZone =
+        TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows()
+            ? "E. South America Standard Time"
+            : "America/Sao_Paulo");
 
     public LembreteHandler(
         ILembretePagamentoRepository lembreteRepo,
+        ICategoriaRepository categoriaRepo,
+        IPagamentoCicloRepository cicloRepo,
         ILogger<LembreteHandler> logger)
     {
         _lembreteRepo = lembreteRepo;
+        _categoriaRepo = categoriaRepo;
+        _cicloRepo = cicloRepo;
         _logger = logger;
     }
 
@@ -41,7 +52,7 @@ public class LembreteHandler : ILembreteHandler
                    "Exemplo: /lembrete criar Internet;15/03/2026;99,90;mensal\n" +
                    "Ou: /lembrete remover 12";
 
-        if (acao is "remover" or "excluir" or "desativar" or "concluir" or "pago")
+        if (acao is "remover" or "excluir" or "desativar")
         {
             if (!int.TryParse(resto, out var id))
                 return "Informe o ID. Exemplo: /lembrete remover 12";
@@ -50,6 +61,36 @@ public class LembreteHandler : ILembreteHandler
             return removido
                 ? $"✅ Lembrete {id} desativado."
                 : $"❌ Lembrete {id} nao encontrado.";
+        }
+
+        if (acao is "pago" or "concluir")
+        {
+            if (!int.TryParse(resto, out var id))
+                return "Informe o ID. Exemplo: /lembrete pago 12";
+
+            return await MarcarPagoCicloAtualAsync(usuario.Id, id);
+        }
+
+        if (acao is "pausar" or "pause")
+        {
+            if (!int.TryParse(resto, out var id))
+                return "Informe o ID. Exemplo: /lembrete pausar 12";
+
+            var pausado = await _lembreteRepo.PausarAsync(usuario.Id, id);
+            return pausado
+                ? $"⏸️ Lembrete {id} pausado. Lembretes Telegram não serão enviados."
+                : $"❌ Lembrete {id} não encontrado.";
+        }
+
+        if (acao is "reativar" or "ativar" or "resume")
+        {
+            if (!int.TryParse(resto, out var id))
+                return "Informe o ID. Exemplo: /lembrete reativar 12";
+
+            var reativado = await _lembreteRepo.ReativarAsync(usuario.Id, id);
+            return reativado
+                ? $"▶️ Lembrete {id} reativado. Lembretes Telegram voltarão a ser enviados."
+                : $"❌ Lembrete {id} não encontrado.";
         }
 
         if (acao is "criar" or "novo" or "adicionar" or "add")
@@ -61,12 +102,18 @@ public class LembreteHandler : ILembreteHandler
     public async Task<string> ProcessarComandoContaFixaAsync(Usuario usuario, string? parametros)
     {
         if (string.IsNullOrWhiteSpace(parametros))
-            return "Use /conta_fixa descricao;valor;dia\n" +
-                   "Exemplo: /conta_fixa Aluguel;1500;5";
+            return "📋 *Cadastro de Conta Fixa*\n\n" +
+                   "Formato: /conta_fixa descricao;valor;dia;categoria;forma_pagamento;lembrete_telegram\n\n" +
+                   "Campos obrigatórios: descricao, valor, dia, categoria, forma_pagamento, lembrete_telegram\n" +
+                   "Forma de pagamento: pix/debito/credito/dinheiro/outro\n\n" +
+                   "Exemplos:\n" +
+                   "  /conta_fixa Aluguel;1500;5;Moradia;pix;sim\n" +
+                   "  /conta_fixa Internet;99,90;15;Serviços;debito;sim\n" +
+                   "  /conta_fixa Spotify;19,90;10;Assinaturas;credito;nao";
 
         var partes = parametros.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (partes.Length < 3)
-            return "Formato invalido. Use /conta_fixa descricao;valor;dia";
+        if (partes.Length < 6)
+            return "Formato invalido. Use: /conta_fixa descricao;valor;dia;categoria;forma_pagamento;lembrete_telegram";
 
         var descricao = partes[0];
         if (string.IsNullOrWhiteSpace(descricao))
@@ -78,7 +125,54 @@ public class LembreteHandler : ILembreteHandler
         if (!int.TryParse(partes[2], out var dia) || dia < 1 || dia > 28)
             return "Dia invalido. Use um dia entre 1 e 28.";
 
-        var proximoVencimento = BotParseHelper.CalcularProximoVencimentoMensal(dia, DateTime.UtcNow);
+        // Categoria (obrigatória, posição 3)
+        int? categoriaId = null;
+        string? categoriaNome = null;
+        if (!string.IsNullOrWhiteSpace(partes[3]))
+        {
+            categoriaNome = partes[3].Trim();
+            var catRepo = _categoriaRepo;
+            if (catRepo != null)
+            {
+                var cat = await catRepo.ObterPorNomeAsync(usuario.Id, categoriaNome);
+                categoriaId = cat?.Id;
+            }
+        }
+        if (categoriaId == null)
+            return "Categoria obrigatória e deve existir. Exemplo: Moradia";
+
+        // Forma de pagamento (obrigatória, posição 4)
+        FormaPagamento? formaPagamento = null;
+        if (!string.IsNullOrWhiteSpace(partes[4]))
+        {
+            formaPagamento = partes[4].Trim().ToLower() switch
+            {
+                "pix" => FormaPagamento.PIX,
+                "debito" or "débito" => FormaPagamento.Debito,
+                "credito" or "crédito" => FormaPagamento.Credito,
+                "dinheiro" => FormaPagamento.Dinheiro,
+                "outro" => FormaPagamento.Outro,
+                _ => null
+            };
+        }
+        if (formaPagamento == null)
+            return "Forma de pagamento inválida. Use: pix, debito, credito, dinheiro ou outro.";
+
+        // Lembrete Telegram (obrigatório, posição 5)
+        var tokenLembrete = partes[5].Trim().ToLowerInvariant();
+        var lembreteTelegram = tokenLembrete switch
+        {
+            "sim" or "s" or "true" or "1" => true,
+            "nao" or "não" or "n" or "false" or "0" => false,
+            _ => (bool?)null
+        };
+        if (lembreteTelegram == null)
+            return "Campo lembrete_telegram inválido. Use: sim ou nao.";
+
+        var agora = DateTime.UtcNow;
+        var proximoVencimento = BotParseHelper.CalcularProximoVencimentoMensal(dia, agora);
+        var periodKey = $"{TimeZoneInfo.ConvertTimeFromUtc(proximoVencimento, BrasiliaTimeZone):yyyy-MM}";
+
         var lembrete = new LembretePagamento
         {
             UsuarioId = usuario.Id,
@@ -87,17 +181,32 @@ public class LembreteHandler : ILembreteHandler
             DataVencimento = proximoVencimento,
             RecorrenteMensal = true,
             DiaRecorrente = dia,
+            Frequencia = FrequenciaLembrete.Mensal,
             Ativo = true,
-            CriadoEm = DateTime.UtcNow,
-            AtualizadoEm = DateTime.UtcNow
+            CategoriaId = categoriaId,
+            FormaPagamento = formaPagamento,
+            LembreteTelegramAtivo = lembreteTelegram.Value,
+            PeriodKeyAtual = periodKey,
+            CriadoEm = agora,
+            AtualizadoEm = agora
         };
 
         await _lembreteRepo.CriarAsync(lembrete);
+
+        var fpTexto = formaPagamento?.ToString() ?? "Não informada";
+        var catTexto = categoriaNome ?? "Não informada";
+        var telegramTexto = lembreteTelegram.Value ? "Ativo ✅" : "Desativado ❌";
+
         return $"✅ Conta fixa cadastrada!\n\n" +
-               $"ID: {lembrete.Id}\n" +
-               $"Descricao: {lembrete.Descricao}\n" +
-               $"Valor: R$ {lembrete.Valor:N2}\n" +
-               $"Todo dia {dia} (proximo: {lembrete.DataVencimento:dd/MM/yyyy})";
+               $"🆔 ID: {lembrete.Id}\n" +
+               $"📝 {lembrete.Descricao}\n" +
+               $"💰 R$ {lembrete.Valor:N2}\n" +
+               $"📅 Dia {dia} de cada mês\n" +
+               $"📂 Categoria: {catTexto}\n" +
+               $"💳 Forma: {fpTexto}\n" +
+               $"🔔 Lembrete Telegram: {telegramTexto}\n" +
+               $"📆 Próximo: {lembrete.DataVencimento:dd/MM/yyyy}\n" +
+               $"🔑 Ciclo: {periodKey}";
     }
 
     public async Task<string> ListarLembretesFormatadoAsync(Usuario usuario)
@@ -105,21 +214,64 @@ public class LembreteHandler : ILembreteHandler
         var lembretes = await _lembreteRepo.ObterPorUsuarioAsync(usuario.Id, apenasAtivos: true);
         if (!lembretes.Any())
             return "🔔 Nenhum lembrete ativo.\n\n" +
-                   "Use /lembrete criar descricao;dd/MM/yyyy;valor;mensal";
+                   "Use /lembrete criar descricao;dd/MM/yyyy;valor;mensal\n" +
+                   "Ou /conta_fixa para cadastrar conta fixa";
 
-        var texto = "🔔 Seus lembretes ativos:\n";
+        var texto = "🔔 *Seus lembretes ativos:*\n";
         foreach (var lembrete in lembretes)
         {
-            var valorTexto = lembrete.Valor.HasValue ? $" - R$ {lembrete.Valor.Value:N2}" : string.Empty;
+            var valorTexto = lembrete.Valor.HasValue ? $" — R$ {lembrete.Valor.Value:N2}" : string.Empty;
             var recorrenciaTexto = lembrete.RecorrenteMensal
-                ? $" - mensal dia {lembrete.DiaRecorrente ?? lembrete.DataVencimento.Day}"
-                : string.Empty;
+                ? $" 🔄 dia {lembrete.DiaRecorrente ?? lembrete.DataVencimento.Day}"
+                : "";
+            var catTexto = lembrete.Categoria != null ? $" 📂{lembrete.Categoria.Nome}" : "";
+            var telegramIcon = lembrete.LembreteTelegramAtivo ? "🔔" : "🔇";
+            var periodKey = !string.IsNullOrEmpty(lembrete.PeriodKeyAtual) ? $" [{lembrete.PeriodKeyAtual}]" : "";
 
-            texto += $"\n#{lembrete.Id} - {lembrete.Descricao} - {lembrete.DataVencimento:dd/MM/yyyy}{valorTexto}{recorrenciaTexto}";
+            texto += $"\n{telegramIcon} #{lembrete.Id} — {lembrete.Descricao} — {lembrete.DataVencimento:dd/MM/yyyy}{valorTexto}{recorrenciaTexto}{catTexto}{periodKey}";
         }
 
-        texto += "\n\nPara remover: /lembrete remover ID";
+        texto += "\n\nComandos: pago, pausar, reativar, remover\n";
+        texto += "Exemplo: /lembrete pago 12";
         return texto;
+    }
+
+    /// <summary>
+    /// Marca o ciclo atual de uma conta fixa como pago via PagamentoCiclo.
+    /// Idempotente — não permite pagar o mesmo ciclo duas vezes.
+    /// </summary>
+    private async Task<string> MarcarPagoCicloAtualAsync(int usuarioId, int lembreteId)
+    {
+        var lembretes = await _lembreteRepo.ObterPorUsuarioAsync(usuarioId, apenasAtivos: true);
+        var lembrete = lembretes.FirstOrDefault(l => l.Id == lembreteId);
+        if (lembrete == null)
+            return $"❌ Lembrete {lembreteId} não encontrado.";
+
+        var agoraBrasilia = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BrasiliaTimeZone);
+        var periodKey = lembrete.PeriodKeyAtual ?? $"{agoraBrasilia:yyyy-MM}";
+
+        // Verificar idempotência
+        var jaPagou = await _cicloRepo.JaPagouCicloAsync(lembreteId, periodKey);
+        if (jaPagou)
+            return $"✅ Ciclo {periodKey} do lembrete \"{lembrete.Descricao}\" já está marcado como pago.";
+
+        var ciclo = new PagamentoCiclo
+        {
+            LembretePagamentoId = lembreteId,
+            PeriodKey = periodKey,
+            Pago = true,
+            DataPagamento = DateTime.UtcNow,
+            ValorPago = lembrete.Valor
+        };
+
+        await _cicloRepo.CriarAsync(ciclo);
+
+        _logger.LogInformation("Pagamento ciclo {PeriodKey} marcado para lembrete {Id}", periodKey, lembreteId);
+
+        return $"✅ Conta \"{lembrete.Descricao}\" marcada como paga!\n" +
+               $"📆 Ciclo: {periodKey}\n" +
+               (lembrete.Valor.HasValue ? $"💰 Valor: R$ {lembrete.Valor.Value:N2}\n" : "") +
+               "Lembretes deste ciclo não serão mais enviados.";
     }
 
     #region Private

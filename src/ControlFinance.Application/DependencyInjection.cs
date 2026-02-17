@@ -23,6 +23,13 @@ public static class DependencyInjection
         services.AddScoped<IAnomaliaGastoService, AnomaliaGastoService>();
         services.AddScoped<IReceitaRecorrenteService, ReceitaRecorrenteService>();
 
+        // Serviços de inteligência (§4-§10)
+        services.AddScoped<IScoreSaudeFinanceiraService, ScoreSaudeFinanceiraService>();
+        services.AddScoped<IPerfilComportamentalService, PerfilComportamentalService>();
+        services.AddScoped<IVerificacaoDuplicidadeService, VerificacaoDuplicidadeService>();
+        services.AddScoped<IEventoSazonalService, EventoSazonalService>();
+        services.AddScoped<IImpactoMetaService, ImpactoMetaService>();
+
         // Handlers do Bot (decomposição do TelegramBotService)
         services.AddScoped<IConsultaHandler, ConsultaHandler>();
         services.AddScoped<ILembreteHandler, LembreteHandler>();

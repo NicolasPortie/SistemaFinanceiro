@@ -4,12 +4,17 @@ using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace ControlFinance.Application.Services;
 
 /// <summary>
-/// Motor de decisão: resposta rápida vs simulação completa.
-/// Calcula saldo livre real do mês, considerando compromissos e metas.
+/// Motor de decisão em 4 camadas:
+///   1. Matemática — saldo livre, receita, compromissos
+///   2. Histórica — padrões de gastos vs média dos últimos 3 meses
+///   3. Tendência — crescimento/declínio de gastos
+///   4. Comportamental — score de saúde + perfil + impulsividade
+/// Logs todas as decisões para observabilidade.
 /// </summary>
 public class DecisaoGastoService : IDecisaoGastoService
 {
@@ -20,6 +25,10 @@ public class DecisaoGastoService : IDecisaoGastoService
     private readonly IMetaFinanceiraRepository _metaRepo;
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly IParcelaRepository _parcelaRepo;
+    private readonly IScoreSaudeFinanceiraService _scoreService;
+    private readonly IPerfilComportamentalService _perfilComportamentalService;
+    private readonly IImpactoMetaService _impactoMetaService;
+    private readonly ILogDecisaoRepository _logDecisaoRepo;
     private readonly ILogger<DecisaoGastoService> _logger;
 
     // Thresholds configuráveis
@@ -34,6 +43,10 @@ public class DecisaoGastoService : IDecisaoGastoService
         IMetaFinanceiraRepository metaRepo,
         ICategoriaRepository categoriaRepo,
         IParcelaRepository parcelaRepo,
+        IScoreSaudeFinanceiraService scoreService,
+        IPerfilComportamentalService perfilComportamentalService,
+        IImpactoMetaService impactoMetaService,
+        ILogDecisaoRepository logDecisaoRepo,
         ILogger<DecisaoGastoService> logger)
     {
         _perfilService = perfilService;
@@ -43,6 +56,10 @@ public class DecisaoGastoService : IDecisaoGastoService
         _metaRepo = metaRepo;
         _categoriaRepo = categoriaRepo;
         _parcelaRepo = parcelaRepo;
+        _scoreService = scoreService;
+        _perfilComportamentalService = perfilComportamentalService;
+        _impactoMetaService = impactoMetaService;
+        _logDecisaoRepo = logDecisaoRepo;
         _logger = logger;
     }
 
@@ -135,6 +152,94 @@ public class DecisaoGastoService : IDecisaoGastoService
             podeGastar = true;
         }
 
+        // === Decisão em Camadas ===
+        var camadas = new List<DecisaoCamadaDto>();
+
+        // Camada 1: Matemática (já calculada acima)
+        camadas.Add(new DecisaoCamadaDto
+        {
+            Camada = "matematica",
+            Parecer = parecer,
+            Justificativa = $"Saldo livre R$ {saldoLivre:N2}, gasto consome {Math.Round(percentualSaldoLivre * 100, 1)}%"
+        });
+
+        // Camada 2: Histórica — comparar com média dos 3 meses anteriores
+        var mediaHistorica = await CalcularMediaGastosMesesAnterioresAsync(usuarioId, 3);
+        var variacaoVsMedia = mediaHistorica > 0 ? (gastosMes + valor - mediaHistorica) / mediaHistorica * 100 : 0;
+        var parecerHistorico = variacaoVsMedia switch
+        {
+            > 30 => "segurar",
+            > 15 => "cautela",
+            _ => "pode"
+        };
+        camadas.Add(new DecisaoCamadaDto
+        {
+            Camada = "historico",
+            Parecer = parecerHistorico,
+            Justificativa = mediaHistorica > 0
+                ? $"Gastos mês (+ compra) ficariam {variacaoVsMedia:N1}% vs média histórica R$ {mediaHistorica:N2}"
+                : "Sem histórico suficiente para comparação"
+        });
+
+        // Camada 3: Tendência — crescimento dos gastos nos últimos meses
+        var tendencia = await CalcularTendenciaGastosAsync(usuarioId);
+        var parecerTendencia = tendencia switch
+        {
+            > 20 => "segurar",
+            > 10 => "cautela",
+            _ => "pode"
+        };
+        camadas.Add(new DecisaoCamadaDto
+        {
+            Camada = "tendencia",
+            Parecer = parecerTendencia,
+            Justificativa = $"Tendência de crescimento dos gastos: {tendencia:N1}% últimos 3 meses"
+        });
+
+        // Camada 4: Comportamental — score + perfil
+        var score = await _scoreService.ObterScoreAtualAsync(usuarioId);
+        var parecerComportamental = score switch
+        {
+            >= 70 => "pode",
+            >= 40 => "cautela",
+            _ => "segurar"
+        };
+        camadas.Add(new DecisaoCamadaDto
+        {
+            Camada = "comportamental",
+            Parecer = parecerComportamental,
+            Justificativa = $"Score de saúde financeira: {score:N0}/100"
+        });
+
+        // Consolidar parecer final (prioridade: segurar > cautela > pode)
+        var pareceres = camadas.Select(c => c.Parecer).ToList();
+        if (pareceres.Count(p => p == "segurar") >= 2)
+        {
+            parecer = "segurar";
+            podeGastar = false;
+        }
+        else if (pareceres.Count(p => p == "segurar") >= 1 || pareceres.Count(p => p == "cautela") >= 2)
+        {
+            parecer = "cautela";
+            podeGastar = true;
+        }
+        // else mantém parecer da camada matemática
+
+        // Impacto em metas
+        List<ImpactoMetaDto>? impactoMetas = null;
+        try
+        {
+            impactoMetas = await _impactoMetaService.CalcularImpactoAsync(usuarioId, valor);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao calcular impacto metas");
+        }
+
+        // Registrar consulta no perfil comportamental
+        try { await _perfilComportamentalService.RegistrarConsultaDecisaoAsync(usuarioId); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Erro ao registrar consulta decisão"); }
+
         var resultado = new DecisaoGastoResultDto
         {
             PodeGastar = podeGastar,
@@ -146,14 +251,37 @@ public class DecisaoGastoService : IDecisaoGastoService
             ValorCompra = valor,
             PercentualSaldoLivre = Math.Round(percentualSaldoLivre * 100, 1),
             ReservaMetas = reservaMetas,
-            AlertaLimite = alertaLimite
+            AlertaLimite = alertaLimite,
+            Camadas = camadas,
+            ImpactoAcumuladoMes = gastosMes + valor,
+            VariacaoVsMediaHistorica = Math.Round(variacaoVsMedia, 1),
+            ScoreSaudeFinanceira = score,
+            ImpactoMetas = impactoMetas
         };
 
         resultado.ResumoTexto = FormatarRespostaRapida(resultado, descricao);
 
+        // Log da decisão para observabilidade
+        try
+        {
+            await _logDecisaoRepo.RegistrarAsync(new LogDecisao
+            {
+                UsuarioId = usuarioId,
+                Tipo = "gasto_rapido",
+                Valor = valor,
+                Resultado = parecer,
+                JustificativaResumida = $"Camadas: {string.Join(", ", camadas.Select(c => $"{c.Camada}={c.Parecer}"))}",
+                EntradasJson = JsonSerializer.Serialize(new { valor, descricao, categoriaNome, saldoLivre, score })
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao registrar log decisão");
+        }
+
         _logger.LogInformation(
-            "Decisão gasto rápida: R$ {Valor} → {Parecer} (saldo livre R$ {Saldo}, {Dias} dias restantes)",
-            valor, parecer, saldoLivre, diasRestantes);
+            "Decisão gasto rápida: R$ {Valor} → {Parecer} [4 camadas] (saldo livre R$ {Saldo}, score {Score})",
+            valor, parecer, saldoLivre, score);
 
         return resultado;
     }
@@ -347,12 +475,22 @@ public class DecisaoGastoService : IDecisaoGastoService
     private static string FormatarRespostaRapida(DecisaoGastoResultDto resultado, string? descricao)
     {
         var desc = !string.IsNullOrWhiteSpace(descricao) ? descricao : "esse gasto";
+        var scoreTxt = resultado.ScoreSaudeFinanceira > 0
+            ? $"\n🏥 Score saúde: {resultado.ScoreSaudeFinanceira:N0}/100"
+            : "";
+        var variacaoTxt = resultado.VariacaoVsMediaHistorica != 0
+            ? $"\n📈 Variação vs média: {(resultado.VariacaoVsMediaHistorica > 0 ? "+" : "")}{resultado.VariacaoVsMediaHistorica:N1}%"
+            : "";
+        var metasTxt = resultado.ImpactoMetas?.Any(m => m.MesesAtraso > 0) == true
+            ? $"\n🎯 Impacto metas: {string.Join("; ", resultado.ImpactoMetas.Where(m => m.MesesAtraso > 0).Select(m => m.Descricao))}"
+            : "";
 
         return resultado.Parecer switch
         {
             "pode" => $"✅ *Pode sim!* {desc} de R$ {resultado.ValorCompra:N2} tem baixo impacto.\n\n" +
                        $"📊 Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}\n" +
                        $"💰 Sobram R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias" +
+                       scoreTxt + variacaoTxt + metasTxt +
                        (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : ""),
 
             "cautela" => $"⚠️ *Pode, mas com cautela.* {desc} de R$ {resultado.ValorCompra:N2} consome {resultado.PercentualSaldoLivre:N0}% do que resta.\n\n" +
@@ -360,6 +498,7 @@ public class DecisaoGastoService : IDecisaoGastoService
                           $"💰 Sobram R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias\n" +
                           $"📅 Isso daria ~R$ {(resultado.SaldoLivreMes - resultado.ValorCompra) / Math.Max(1, resultado.DiasRestantesMes):N2}/dia restante" +
                           (resultado.ReservaMetas > 0 ? $"\n🎯 Lembre: R$ {resultado.ReservaMetas:N2} reservados p/ metas" : "") +
+                          scoreTxt + variacaoTxt + metasTxt +
                           (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : ""),
 
             _ => $"🔴 *Melhor segurar.* " +
@@ -367,7 +506,65 @@ public class DecisaoGastoService : IDecisaoGastoService
                      ? $"Seu saldo livre este mês já está negativo (R$ {resultado.SaldoLivreMes:N2})."
                      : $"Só restam R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias — esse gasto de R$ {resultado.ValorCompra:N2} consumiria {resultado.PercentualSaldoLivre:N0}%.") +
                  $"\n\n📊 Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}" +
+                 scoreTxt + variacaoTxt + metasTxt +
                  (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : "")
         };
+    }
+
+    // ===================== Métodos Camada Histórica/Tendência =====================
+
+    /// <summary>
+    /// Calcula a média de gastos dos últimos N meses (excluindo o mês atual).
+    /// </summary>
+    private async Task<decimal> CalcularMediaGastosMesesAnterioresAsync(int usuarioId, int meses)
+    {
+        var hoje = DateTime.UtcNow;
+        var inicioMesAtual = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        decimal totalGastos = 0;
+        int mesesComDados = 0;
+
+        for (int i = 1; i <= meses; i++)
+        {
+            var inicioMes = inicioMesAtual.AddMonths(-i);
+            var fimMes = inicioMes.AddMonths(1);
+
+            var gastos = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
+                usuarioId, TipoLancamento.Gasto, inicioMes, fimMes);
+
+            if (gastos > 0)
+            {
+                totalGastos += gastos;
+                mesesComDados++;
+            }
+        }
+
+        return mesesComDados > 0 ? totalGastos / mesesComDados : 0;
+    }
+
+    /// <summary>
+    /// Calcula tendência de crescimento dos gastos nos últimos 3 meses (%).
+    /// Valor positivo = gastos crescendo, negativo = diminuindo.
+    /// </summary>
+    private async Task<decimal> CalcularTendenciaGastosAsync(int usuarioId)
+    {
+        var hoje = DateTime.UtcNow;
+        var inicioMesAtual = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var gastosMes = new List<decimal>();
+        for (int i = 1; i <= 3; i++)
+        {
+            var inicio = inicioMesAtual.AddMonths(-i);
+            var fim = inicio.AddMonths(1);
+            var g = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
+                usuarioId, TipoLancamento.Gasto, inicio, fim);
+            gastosMes.Add(g);
+        }
+
+        // gastosMes[0] = mês passado, gastosMes[2] = 3 meses atrás
+        if (gastosMes[2] <= 0) return 0;
+
+        var variacao = (gastosMes[0] - gastosMes[2]) / gastosMes[2] * 100;
+        return Math.Round(variacao, 1);
     }
 }

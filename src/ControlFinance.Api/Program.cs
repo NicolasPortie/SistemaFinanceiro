@@ -204,6 +204,35 @@ var app = builder.Build();
         app.Logger.LogError(ex, "Erro ao aplicar migrations. A aplicação continuará, mas pode haver problemas.");
     }
 
+    // === Seed de usuário dev (somente em Development) ===
+    if (app.Environment.IsDevelopment())
+    {
+        var devEmail = "dev@controlfinance.com";
+        var existingUser = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == devEmail);
+        if (existingUser == null)
+        {
+            app.Logger.LogInformation("🌱 Criando usuário de desenvolvimento...");
+            var devUser = new ControlFinance.Domain.Entities.Usuario
+            {
+                Email = devEmail,
+                Nome = "Dev Admin",
+                SenhaHash = BCrypt.Net.BCrypt.HashPassword("Dev@1234", 12),
+                EmailConfirmado = true,
+                Ativo = true,
+                Role = ControlFinance.Domain.Enums.RoleUsuario.Admin,
+                CriadoEm = DateTime.UtcNow,
+            };
+            db.Usuarios.Add(devUser);
+            await db.SaveChangesAsync();
+
+            // Criar categorias padrão para o usuário dev
+            var categoriaRepo = scope.ServiceProvider.GetRequiredService<ControlFinance.Domain.Interfaces.ICategoriaRepository>();
+            await categoriaRepo.CriarCategoriasIniciais(devUser.Id);
+
+            app.Logger.LogInformation("✅ Usuário dev criado: {Email} / Dev@1234 (Admin)", devEmail);
+        }
+    }
+
     // Migrar dados sensíveis para criptografia (executar uma vez via: dotnet run -- --encrypt-data)
     if (args.Contains("--encrypt-data"))
     {

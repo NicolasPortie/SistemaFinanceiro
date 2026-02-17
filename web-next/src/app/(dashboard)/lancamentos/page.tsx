@@ -56,6 +56,7 @@ import {
 } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -580,163 +581,201 @@ export default function LancamentosPage() {
 
       {/* ── New Transaction Sheet (Side Panel) ── */}
       <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader className="pb-4 sm:pb-6">
-            <SheetTitle className="text-xl sm:text-2xl font-extrabold tracking-tight">Novo Lançamento</SheetTitle>
-            <SheetDescription className="text-muted-foreground/70">Registre uma nova receita ou despesa</SheetDescription>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          {/* Gradient accent line at top */}
+          <div className={`h-1 w-full shrink-0 ${tipoSelecionado === "receita" ? "bg-linear-to-r from-emerald-400 via-emerald-500 to-teal-500" : "bg-linear-to-r from-red-400 via-red-500 to-rose-500"} transition-all duration-500`} />
+
+          {/* Header */}
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl transition-all duration-500 ${tipoSelecionado === "receita" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
+                <Receipt className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Novo Lançamento</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Registre uma nova movimentação financeira</SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 sm:space-y-6">
-            {/* Type selector */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => { form.setValue("tipo", "receita"); form.setValue("cartaoId", ""); form.setValue("formaPagamento", ""); form.setValue("numeroParcelas", ""); }}
-                className={`flex items-center justify-center gap-2.5 h-[3.75rem] rounded-2xl text-sm font-bold transition-all duration-300 cursor-pointer ${tipoSelecionado === "receita"
-                  ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25 scale-[1.02] ring-2 ring-emerald-400/20"
-                  : "bg-muted/40 text-muted-foreground hover:bg-muted/60 border border-border/40 hover:border-border/60"
-                }`}
-              >
-                <ArrowUpCircle className="h-5 w-5" />
-                Receita
-              </button>
-              <button
-                type="button"
-                onClick={() => form.setValue("tipo", "despesa")}
-                className={`flex items-center justify-center gap-2.5 h-[3.75rem] rounded-2xl text-sm font-bold transition-all duration-300 cursor-pointer ${tipoSelecionado === "despesa"
-                  ? "bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg shadow-red-500/25 scale-[1.02] ring-2 ring-red-400/20"
-                  : "bg-muted/40 text-muted-foreground hover:bg-muted/60 border border-border/40 hover:border-border/60"
-                }`}
-              >
-                <ArrowDownCircle className="h-5 w-5" />
-                Despesa
-              </button>
-            </div>
 
-            <Separator />
+          {/* Scrollable form body */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
 
-            {/* Description */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Descrição</Label>
-              <Input placeholder="Ex: Supermercado, Salário..." className="h-11 rounded-xl" {...form.register("descricao")} />
-              {form.formState.errors.descricao && <p className="text-xs text-red-500 font-medium">{form.formState.errors.descricao.message}</p>}
-            </div>
-
-            {/* Amount */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input placeholder="0,00" className="h-11 rounded-xl pl-9 text-lg tabular-nums font-semibold" {...form.register("valor")} />
+              {/* ── Type selector — animated toggle ── */}
+              <div className="relative flex p-1 rounded-xl bg-muted/40">
+                {/* Sliding indicator */}
+                <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg transition-all duration-300 ease-out ${tipoSelecionado === "receita" ? "left-1 bg-emerald-500 shadow-lg shadow-emerald-500/25" : "left-[calc(50%+3px)] bg-red-500 shadow-lg shadow-red-500/25"}`} />
+                <button
+                  type="button"
+                  onClick={() => { form.setValue("tipo", "receita"); form.setValue("cartaoId", ""); form.setValue("formaPagamento", ""); form.setValue("numeroParcelas", ""); }}
+                  className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-300 cursor-pointer ${tipoSelecionado === "receita" ? "text-white" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <ArrowUpCircle className="h-4 w-4" />
+                  Receita
+                </button>
+                <button
+                  type="button"
+                  onClick={() => form.setValue("tipo", "despesa")}
+                  className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-300 cursor-pointer ${tipoSelecionado === "despesa" ? "text-white" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <ArrowDownCircle className="h-4 w-4" />
+                  Despesa
+                </button>
               </div>
-              {form.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{form.formState.errors.valor.message}</p>}
-            </div>
 
-            {/* Category */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</Label>
-              <Select value={categoriaSelecionada} onValueChange={(v) => form.setValue("categoria", v)}>
-                <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
-                <SelectContent>
-                  {categorias.map((c) => (
-                    <SelectItem key={c.id} value={c.nome}>
-                      <span className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${getCategoryColor(c.nome)}`} />
-                        {c.nome}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Payment method (expenses only) */}
-            {tipoSelecionado === "despesa" && (
-              <div className="space-y-2.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Forma de Pagamento</Label>
-                <div className="grid grid-cols-3 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => { form.setValue("formaPagamento", "pix"); form.setValue("cartaoId", ""); form.setValue("numeroParcelas", ""); }}
-                    className={`flex flex-col items-center gap-2 py-3.5 px-2 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer ${formaPagamentoSelecionada === "pix" ? "bg-primary/10 text-primary border-2 border-primary/30 shadow-md shadow-primary/5 scale-[1.02]" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40 hover:border-border/60"}`}
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/8">
-                      <Smartphone className="h-4.5 w-4.5" />
-                    </div>
-                    PIX
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { form.setValue("formaPagamento", "debito"); form.setValue("cartaoId", ""); form.setValue("numeroParcelas", ""); }}
-                    className={`flex flex-col items-center gap-2 py-3.5 px-2 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer ${formaPagamentoSelecionada === "debito" ? "bg-primary/10 text-primary border-2 border-primary/30 shadow-md shadow-primary/5 scale-[1.02]" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40 hover:border-border/60"}`}
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/8">
-                      <Banknote className="h-4.5 w-4.5" />
-                    </div>
-                    Débito
-                  </button>
-                  {cartoes.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => form.setValue("formaPagamento", "credito")}
-                      className={`flex flex-col items-center gap-2 py-3.5 px-2 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer ${formaPagamentoSelecionada === "credito" ? "bg-primary/10 text-primary border-2 border-primary/30 shadow-md shadow-primary/5 scale-[1.02]" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40 hover:border-border/60"}`}
-                    >
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/8">
-                        <CreditCard className="h-4.5 w-4.5" />
-                      </div>
-                      Crédito
-                    </button>
-                  )}
+              {/* ── Main fields section ── */}
+              <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Descrição</Label>
+                  <Input placeholder="Ex: Supermercado, Salário..." className="h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" {...form.register("descricao")} />
+                  {form.formState.errors.descricao && <p className="text-xs text-red-500 font-medium">{form.formState.errors.descricao.message}</p>}
                 </div>
-              </div>
-            )}
 
-            {/* Card + Installments (credit only) */}
-            {tipoSelecionado === "despesa" && formaPagamentoSelecionada === "credito" && cartoes.length > 0 && (
-              <div className="space-y-4 p-5 rounded-2xl bg-muted/15 border border-border/25 shadow-sm">
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cartão</Label>
-                  <Select value={cartaoSelecionado} onValueChange={(v) => form.setValue("cartaoId", v)}>
-                    <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione o cartão" /></SelectTrigger>
-                    <SelectContent>{cartoes.map((c) => (<SelectItem key={c.id} value={c.id.toString()}>{c.nome}</SelectItem>))}</SelectContent>
-                  </Select>
+                {/* Amount with currency mask */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor</Label>
+                  <div className="relative">
+                    <div className={`absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold transition-colors duration-300 ${tipoSelecionado === "receita" ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
+                      R$
+                    </div>
+                    <CurrencyInput
+                      value={form.watch("valor")}
+                      onValueChange={(v) => form.setValue("valor", v, { shouldValidate: form.formState.isSubmitted })}
+                      placeholder="0,00"
+                      className="h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all"
+                    />
+                  </div>
+                  {form.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{form.formState.errors.valor.message}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parcelas</Label>
-                  <Select value={form.watch("numeroParcelas") ?? ""} onValueChange={(v) => form.setValue("numeroParcelas", v)}>
-                    <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="À vista (1x)" /></SelectTrigger>
+
+                {/* Divider */}
+                <div className="border-t border-border/20" />
+
+                {/* Category */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Categoria</Label>
+                  <Select value={categoriaSelecionada} onValueChange={(v) => form.setValue("categoria", v)}>
+                    <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30"><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                        <SelectItem key={n} value={n.toString()}>{n}x{n === 1 ? " (à vista)" : ""}</SelectItem>
+                      {categorias.map((c) => (
+                        <SelectItem key={c.id} value={c.nome}>
+                          <span className="flex items-center gap-2.5">
+                            <div className={`h-2 w-2 rounded-full ${getCategoryColor(c.nome)}`} />
+                            {c.nome}
+                          </span>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Date */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Data <span className="normal-case text-muted-foreground/60">(opcional)</span></Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                    <Input type="date" className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" {...form.register("data")} />
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Date */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data (opcional)</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input type="date" className="h-11 rounded-xl pl-9" {...form.register("data")} />
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Submit */}
-            <Button type="submit" className="w-full h-13 rounded-2xl gap-2.5 font-bold text-[15px] shadow-premium btn-premium" disabled={criarLancamento.isPending}>
-              {criarLancamento.isPending ? (
-                <Loader2 className="h-4.5 w-4.5 animate-spin" />
-              ) : (
-                <>
-                  <Receipt className="h-4.5 w-4.5" />
-                  Registrar Lançamento
-                </>
+              {/* ── Payment method (expenses only) ── */}
+              {tipoSelecionado === "despesa" && (
+                <div className="space-y-3">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Forma de Pagamento</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { form.setValue("formaPagamento", "pix"); form.setValue("cartaoId", ""); form.setValue("numeroParcelas", ""); }}
+                      className={`group relative flex flex-col items-center gap-1.5 sm:gap-2.5 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer border ${formaPagamentoSelecionada === "pix" ? "bg-primary/5 text-primary border-primary/20 shadow-sm shadow-primary/5" : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40 hover:border-border/50 hover:text-foreground"}`}
+                    >
+                      <div className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg sm:rounded-xl transition-all ${formaPagamentoSelecionada === "pix" ? "bg-primary/10" : "bg-muted/40 group-hover:bg-muted/60"}`}>
+                        <Smartphone className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </div>
+                      PIX
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { form.setValue("formaPagamento", "debito"); form.setValue("cartaoId", ""); form.setValue("numeroParcelas", ""); }}
+                      className={`group relative flex flex-col items-center gap-1.5 sm:gap-2.5 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer border ${formaPagamentoSelecionada === "debito" ? "bg-primary/5 text-primary border-primary/20 shadow-sm shadow-primary/5" : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40 hover:border-border/50 hover:text-foreground"}`}
+                    >
+                      <div className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg sm:rounded-xl transition-all ${formaPagamentoSelecionada === "debito" ? "bg-primary/10" : "bg-muted/40 group-hover:bg-muted/60"}`}>
+                        <Banknote className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </div>
+                      Débito
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => form.setValue("formaPagamento", "credito")}
+                      className={`group relative flex flex-col items-center gap-1.5 sm:gap-2.5 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer border ${formaPagamentoSelecionada === "credito" ? "bg-primary/5 text-primary border-primary/20 shadow-sm shadow-primary/5" : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40 hover:border-border/50 hover:text-foreground"}`}
+                    >
+                      <div className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg sm:rounded-xl transition-all ${formaPagamentoSelecionada === "credito" ? "bg-primary/10" : "bg-muted/40 group-hover:bg-muted/60"}`}>
+                        <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </div>
+                      Crédito
+                    </button>
+                  </div>
+                </div>
               )}
-            </Button>
-          </form>
+
+              {/* ── Card + Installments (credit only) ── */}
+              {tipoSelecionado === "despesa" && formaPagamentoSelecionada === "credito" && cartoes.length === 0 && (
+                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+                  <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">Nenhum cartão cadastrado.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Cadastre um cartão na página <span className="font-semibold">Cartões</span> para usar crédito.</p>
+                </div>
+              )}
+              {tipoSelecionado === "despesa" && formaPagamentoSelecionada === "credito" && cartoes.length > 0 && (
+                <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-5">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-muted-foreground/50" />
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dados do Cartão</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-foreground/70">Cartão</Label>
+                    <Select value={cartaoSelecionado} onValueChange={(v) => form.setValue("cartaoId", v)}>
+                      <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background"><SelectValue placeholder="Selecione o cartão" /></SelectTrigger>
+                      <SelectContent>{cartoes.map((c) => (<SelectItem key={c.id} value={c.id.toString()}>{c.nome}</SelectItem>))}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-foreground/70">Parcelas</Label>
+                    <Select value={form.watch("numeroParcelas") ?? ""} onValueChange={(v) => form.setValue("numeroParcelas", v)}>
+                      <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background"><SelectValue placeholder="À vista (1x)" /></SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                          <SelectItem key={n} value={n.toString()}>{n}x{n === 1 ? " (à vista)" : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Submit button ── */}
+              <div className="pt-2 sm:pt-3 pb-safe">
+                <Button
+                  type="submit"
+                  className={`w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] transition-all duration-300 cursor-pointer ${tipoSelecionado === "receita"
+                    ? "bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 text-white"
+                    : "bg-linear-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 shadow-lg shadow-red-500/20 hover:shadow-red-500/30 text-white"
+                  } active:scale-[0.98]`}
+                  disabled={criarLancamento.isPending}
+                >
+                  {criarLancamento.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Receipt className="h-5 w-5" />
+                      Registrar Lançamento
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
         </SheetContent>
       </Sheet>
 

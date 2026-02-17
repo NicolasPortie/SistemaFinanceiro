@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import {
   useLembretes,
   useCriarLembrete,
   useAtualizarLembrete,
   useDesativarLembrete,
+  useCategorias,
 } from "@/hooks/use-queries";
 import { formatCurrency, formatShortDate } from "@/lib/format";
+import type { FrequenciaLembrete } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarClock,
@@ -40,7 +43,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -82,6 +84,18 @@ const isProximo = (dataVenc: string) => {
   return diff >= 0 && diff <= 3 * 24 * 60 * 60 * 1000;
 };
 
+/** Calcula a próxima ocorrência de um dia do mês (ex: dia 10 → próximo dia 10) */
+function getNextOccurrenceDate(day: number): string {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  const thisMonth = new Date(y, m, day);
+  if (thisMonth >= new Date(today.toISOString().split("T")[0])) {
+    return thisMonth.toISOString().split("T")[0];
+  }
+  return new Date(y, m + 1, day).toISOString().split("T")[0];
+}
+
 function getStatusInfo(dataVenc: string) {
   if (isVencido(dataVenc)) return { label: "Vencido", color: "text-red-600 dark:text-red-400", bg: "bg-red-100 dark:bg-red-500/15", icon: AlertCircle, badgeClass: "border-red-300 text-red-700 dark:border-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10" };
   if (isProximo(dataVenc)) return { label: "Próximo", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-100 dark:bg-amber-500/15", icon: AlertTriangle, badgeClass: "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10" };
@@ -90,6 +104,7 @@ function getStatusInfo(dataVenc: string) {
 
 export default function ContasFixasPage() {
   const { data: lembretes = [], isLoading, isError, error, refetch } = useLembretes();
+  const { data: categorias = [] } = useCategorias();
   const criarLembrete = useCriarLembrete();
   const atualizarLembrete = useAtualizarLembrete();
   const desativarLembrete = useDesativarLembrete();
@@ -104,15 +119,25 @@ export default function ContasFixasPage() {
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [dataVencimento, setDataVencimento] = useState("");
-  const [recorrente, setRecorrente] = useState(false);
   const [diaRecorrente, setDiaRecorrente] = useState("");
+  const [frequencia, setFrequencia] = useState<FrequenciaLembrete | "Unico">("Unico");
+  const [diaSemana, setDiaSemana] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [formaPagamento, setFormaPagamento] = useState("");
+  const [lembreteTelegramAtivo, setLembreteTelegramAtivo] = useState(true);
+
+  const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
   const resetForm = () => {
     setDescricao("");
     setValor("");
     setDataVencimento("");
-    setRecorrente(false);
     setDiaRecorrente("");
+    setFrequencia("Unico");
+    setDiaSemana("");
+    setCategoria("");
+    setFormaPagamento("");
+    setLembreteTelegramAtivo(true);
     setShowForm(false);
     setEditItem(null);
   };
@@ -122,17 +147,53 @@ export default function ContasFixasPage() {
     setDescricao(lembrete.descricao);
     setValor(lembrete.valor?.toString() ?? "");
     setDataVencimento(lembrete.dataVencimento);
-    setRecorrente(lembrete.recorrenteMensal);
     setDiaRecorrente(lembrete.diaRecorrente?.toString() ?? "");
+    setFrequencia(lembrete.frequencia ?? (lembrete.recorrenteMensal ? "Mensal" : "Unico"));
+    setDiaSemana(lembrete.diaSemanaRecorrente?.toString() ?? "");
+    setCategoria(lembrete.categoria ?? "");
+    setFormaPagamento((lembrete.formaPagamento ?? "").toLowerCase());
+    setLembreteTelegramAtivo(lembrete.lembreteTelegramAtivo ?? true);
   };
 
   const handleCriar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!descricao.trim()) { toast.error("Informe a descrição"); return; }
-    if (!dataVencimento) { toast.error("Informe a data de vencimento"); return; }
+
+    const isRecorrente = frequencia !== "Unico";
+    let vencimento = dataVencimento;
+
+    if (frequencia === "Mensal") {
+      const dia = parseInt(diaRecorrente);
+      if (!diaRecorrente || dia < 1 || dia > 31) { toast.error("Informe o dia de vencimento (1-31)"); return; }
+      vencimento = getNextOccurrenceDate(dia);
+    } else if (frequencia === "Semanal" || frequencia === "Quinzenal") {
+      if (!dataVencimento) { toast.error("Informe a data do primeiro pagamento"); return; }
+    } else if (frequencia === "Anual") {
+      if (!dataVencimento) { toast.error("Informe a data do pagamento anual"); return; }
+    } else {
+      if (!dataVencimento) { toast.error("Informe a data do pagamento"); return; }
+    }
+
+    if (!valor.trim()) { toast.error("Informe o valor da conta fixa"); return; }
+    if (!categoria.trim()) { toast.error("Selecione uma categoria"); return; }
+    if (!formaPagamento.trim()) { toast.error("Selecione a forma de pagamento"); return; }
+
     const valorNum = valor ? parseFloat(valor.replace(",", ".")) : undefined;
+    if (!valorNum || valorNum <= 0) { toast.error("Informe um valor válido"); return; }
+
     criarLembrete.mutate(
-      { descricao: descricao.trim(), valor: valorNum, dataVencimento, recorrenteMensal: recorrente, diaRecorrente: recorrente && diaRecorrente ? parseInt(diaRecorrente) : undefined },
+      {
+        descricao: descricao.trim(),
+        valor: valorNum,
+        dataVencimento: vencimento,
+        recorrenteMensal: isRecorrente,
+        diaRecorrente: frequencia === "Mensal" && diaRecorrente ? parseInt(diaRecorrente) : undefined,
+        frequencia: isRecorrente ? frequencia as FrequenciaLembrete : undefined,
+        diaSemanaRecorrente: (frequencia === "Semanal" || frequencia === "Quinzenal") && diaSemana ? parseInt(diaSemana) : undefined,
+        categoria: categoria.trim(),
+        formaPagamento,
+        lembreteTelegramAtivo,
+      },
       { onSuccess: resetForm }
     );
   };
@@ -140,9 +201,32 @@ export default function ContasFixasPage() {
   const handleAtualizar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editItem) return;
+    const isRecorrente = frequencia !== "Unico";
     const valorNum = valor ? parseFloat(valor.replace(",", ".")) : undefined;
+    if (!valorNum || valorNum <= 0) { toast.error("Informe um valor válido"); return; }
+    if (!categoria.trim()) { toast.error("Selecione uma categoria"); return; }
+    if (!formaPagamento.trim()) { toast.error("Selecione a forma de pagamento"); return; }
+
+    let vencimento = dataVencimento || undefined;
+    if (frequencia === "Mensal" && diaRecorrente) {
+      vencimento = getNextOccurrenceDate(parseInt(diaRecorrente));
+    }
     atualizarLembrete.mutate(
-      { id: editItem.id, data: { descricao: descricao.trim() || undefined, valor: valorNum, dataVencimento: dataVencimento || undefined, recorrenteMensal: recorrente, diaRecorrente: recorrente && diaRecorrente ? parseInt(diaRecorrente) : undefined } },
+      {
+        id: editItem.id,
+        data: {
+          descricao: descricao.trim() || undefined,
+          valor: valorNum,
+          dataVencimento: vencimento,
+          recorrenteMensal: isRecorrente,
+          diaRecorrente: frequencia === "Mensal" && diaRecorrente ? parseInt(diaRecorrente) : undefined,
+          frequencia: isRecorrente ? frequencia as FrequenciaLembrete : undefined,
+          diaSemanaRecorrente: (frequencia === "Semanal" || frequencia === "Quinzenal") && diaSemana ? parseInt(diaSemana) : undefined,
+          categoria: categoria.trim(),
+          formaPagamento,
+          lembreteTelegramAtivo,
+        },
+      },
       { onSuccess: resetForm }
     );
   };
@@ -317,10 +401,13 @@ export default function ContasFixasPage() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-[13px] font-semibold truncate">{l.descricao}</p>
-                          {l.recorrenteMensal && (
+                          {(l.frequencia || l.recorrenteMensal) && (
                             <p className="text-[11px] text-muted-foreground/60 font-medium flex items-center gap-1">
                               <Repeat className="h-3 w-3" />
-                              {l.diaRecorrente ? `Dia ${l.diaRecorrente}` : "Mensal"}
+                              {l.frequencia === "Semanal" ? `Semanal · ${DIAS_SEMANA[l.diaSemanaRecorrente ?? 0]?.slice(0,3)}`
+                                : l.frequencia === "Quinzenal" ? `Quinzenal · ${DIAS_SEMANA[l.diaSemanaRecorrente ?? 0]?.slice(0,3)}`
+                                : l.frequencia === "Anual" ? "Anual"
+                                : l.diaRecorrente ? `Dia ${l.diaRecorrente}` : "Mensal"}
                             </p>
                           )}
                         </div>
@@ -365,11 +452,11 @@ export default function ContasFixasPage() {
                         <p className="text-[13px] font-semibold truncate">{l.descricao}</p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[11px] text-muted-foreground/60 font-medium">{formatShortDate(l.dataVencimento)}</span>
-                          {l.recorrenteMensal && (
+                          {(l.frequencia || l.recorrenteMensal) && (
                             <>
                               <span className="text-[11px] text-muted-foreground/40">·</span>
                               <span className="text-[11px] text-muted-foreground/60 font-medium flex items-center gap-0.5">
-                                <Repeat className="h-2.5 w-2.5" />Mensal
+                                <Repeat className="h-2.5 w-2.5" />{l.frequencia ?? "Mensal"}
                               </span>
                             </>
                           )}
@@ -410,68 +497,228 @@ export default function ContasFixasPage() {
 
       {/* ── New Bill Sheet (Side Panel) ── */}
       <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader className="pb-6">
-            <SheetTitle className="text-xl sm:text-2xl font-extrabold tracking-tight">Novo Lembrete</SheetTitle>
-            <SheetDescription>Adicione um lembrete de pagamento ou conta fixa</SheetDescription>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          {/* Accent line */}
+          <div className="h-1 w-full shrink-0 bg-linear-to-r from-blue-400 via-indigo-500 to-violet-500" />
+
+          {/* Header */}
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-blue-500/10 text-blue-500 transition-all duration-500">
+                <CalendarClock className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Nova Conta Fixa</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Configure sua conta fixa ou pagamento recorrente</SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
-          <form onSubmit={handleCriar} className="space-y-6">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Descrição</Label>
-              <Input placeholder="Ex: Aluguel, Internet, Energia..." value={descricao} onChange={(e) => setDescricao(e.target.value)} className="h-11 rounded-xl" required />
-            </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input placeholder="0,00 (opcional)" value={valor} onChange={(e) => setValor(e.target.value)} className="h-11 rounded-xl pl-9 text-lg tabular-nums font-semibold" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data de Vencimento</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-9" required />
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/30">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Repeat className="h-4.5 w-4.5" />
+          {/* Scrollable form body */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <form onSubmit={handleCriar} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+              {/* Main fields */}
+              <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Descrição</Label>
+                  <Input placeholder="Ex: Aluguel, Internet, Energia..." value={descricao} onChange={(e) => setDescricao(e.target.value)} className="h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" required />
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">Recorrente mensal</p>
-                  <p className="text-[11px] text-muted-foreground/60">Repetir pagamento todo mês</p>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
+                  <div className="relative">
+                    <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-blue-500/10 text-blue-500">R$</div>
+                    <Input placeholder="0,00" value={valor} onChange={(e) => setValor(e.target.value)} className="h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Categoria</Label>
+                    <select
+                      value={categoria}
+                      onChange={(e) => setCategoria(e.target.value)}
+                      className="h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      {categorias.map((cat) => (
+                        <option key={cat.id} value={cat.nome}>{cat.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Forma de pagamento</Label>
+                    <select
+                      value={formaPagamento}
+                      onChange={(e) => setFormaPagamento(e.target.value)}
+                      className="h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="pix">PIX</option>
+                      <option value="debito">Débito</option>
+                      <option value="credito">Crédito</option>
+                      <option value="dinheiro">Dinheiro</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Lembrete automático no Telegram</Label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLembreteTelegramAtivo(true)}
+                      className={cn(
+                        "h-10 px-3 rounded-xl border text-sm font-medium",
+                        lembreteTelegramAtivo ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
+                      )}
+                    >
+                      Sim
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLembreteTelegramAtivo(false)}
+                      className={cn(
+                        "h-10 px-3 rounded-xl border text-sm font-medium",
+                        !lembreteTelegramAtivo ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
+                      )}
+                    >
+                      Não
+                    </button>
+                  </div>
                 </div>
               </div>
-              <Switch checked={recorrente} onCheckedChange={setRecorrente} />
-            </div>
 
-            {recorrente && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de vencimento (1-31)</Label>
-                <Input type="number" min={1} max={31} placeholder="Dia" value={diaRecorrente} onChange={(e) => setDiaRecorrente(e.target.value)} className="h-11 rounded-xl" />
-              </motion.div>
-            )}
+              {/* Frequency selector */}
+              <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Frequência</Label>
+                <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                  {([
+                    { key: "Unico" as const, label: "Único", icon: CalendarClock },
+                    { key: "Semanal" as const, label: "Semanal", icon: Repeat },
+                    { key: "Quinzenal" as const, label: "Quinzenal", icon: Repeat },
+                    { key: "Mensal" as const, label: "Mensal", icon: Repeat },
+                    { key: "Anual" as const, label: "Anual", icon: Calendar },
+                  ] as const).map(({ key, label, icon: Icon }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setFrequencia(key)}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 sm:gap-2 p-2.5 sm:p-3 rounded-xl border-2 transition-all duration-200 cursor-pointer",
+                        frequencia === key
+                          ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-sm shadow-blue-500/10"
+                          : "border-border/40 hover:border-border/60 text-muted-foreground hover:bg-muted/30"
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="text-[10px] sm:text-xs font-semibold leading-tight">{label}</span>
+                    </button>
+                  ))}
+                </div>
 
-            <Separator />
+                <div className="border-t border-border/20" />
 
-            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={criarLembrete.isPending}>
-              {criarLembrete.isPending ? (
-                <Loader2 className="h-4.5 w-4.5 animate-spin" />
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4.5 w-4.5" />
-                  Criar Lembrete
-                </>
-              )}
-            </Button>
-          </form>
+                <AnimatePresence mode="wait">
+                  {frequencia === "Unico" && (
+                    <motion.div key="unico" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="space-y-1.5">
+                      <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Data do Pagamento</Label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                        <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {frequencia === "Mensal" && (
+                    <motion.div key="mensal" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="space-y-2">
+                      <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia do vencimento no mês</Label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                        <Input type="number" min={1} max={31} placeholder="Ex: 10" value={diaRecorrente} onChange={(e) => setDiaRecorrente(e.target.value)} className="h-11 rounded-xl pl-10 border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
+                        <Repeat className="h-3 w-3" />
+                        {diaRecorrente ? `Pagamento todo dia ${diaRecorrente} de cada mês` : "Informe o dia para repetir todo mês"}
+                      </p>
+                    </motion.div>
+                  )}
+
+                  {(frequencia === "Semanal" || frequencia === "Quinzenal") && (
+                    <motion.div key="semanal" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia da semana</Label>
+                        <div className="grid grid-cols-7 gap-1">
+                          {DIAS_SEMANA.map((dia, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setDiaSemana(String(idx))}
+                              className={cn(
+                                "p-1.5 sm:p-2 rounded-lg text-[10px] sm:text-xs font-medium transition-all cursor-pointer border",
+                                diaSemana === String(idx)
+                                  ? "border-blue-500 bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                                  : "border-transparent hover:bg-muted/40 text-muted-foreground"
+                              )}
+                            >
+                              {dia.slice(0, 3)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Data do primeiro pagamento</Label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                          <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
+                        <Repeat className="h-3 w-3" />
+                        {frequencia === "Semanal" ? "Repete toda semana" : "Repete a cada 15 dias"}
+                        {diaSemana ? ` (${DIAS_SEMANA[parseInt(diaSemana)]})` : ""}
+                      </p>
+                    </motion.div>
+                  )}
+
+                  {frequencia === "Anual" && (
+                    <motion.div key="anual" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="space-y-2">
+                      <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Data do pagamento anual</Label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                        <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
+                        <Repeat className="h-3 w-3" />
+                        Repete uma vez por ano na mesma data
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Submit */}
+              <div className="pt-2 sm:pt-3 pb-safe">
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-linear-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
+                  disabled={criarLembrete.isPending}
+                >
+                  {criarLembrete.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-5 w-5" />
+                      Criar Conta Fixa
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -479,8 +726,8 @@ export default function ContasFixasPage() {
       <Dialog open={editItem !== null} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Editar Lembrete</DialogTitle>
-            <DialogDescription>Altere os dados do lembrete</DialogDescription>
+            <DialogTitle className="text-lg font-bold tracking-tight">Editar Conta Fixa</DialogTitle>
+            <DialogDescription>Altere os dados da conta fixa</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAtualizar} className="space-y-5">
             <div className="space-y-2">
@@ -494,26 +741,154 @@ export default function ContasFixasPage() {
                 <Input placeholder="0,00" value={valor} onChange={(e) => setValor(e.target.value)} className="h-11 rounded-xl pl-9 tabular-nums" />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data de Vencimento</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-9" />
-              </div>
-            </div>
 
-            <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/20 border border-border/30">
-              <div className="flex items-center gap-2">
-                <Repeat className="h-4 w-4 text-muted-foreground" />
-                <Label className="cursor-pointer text-sm font-medium">Recorrente mensal</Label>
-              </div>
-              <Switch checked={recorrente} onCheckedChange={setRecorrente} />
-            </div>
-
-            {recorrente && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de vencimento (1-31)</Label>
-                <Input type="number" min={1} max={31} value={diaRecorrente} onChange={(e) => setDiaRecorrente(e.target.value)} className="h-11 rounded-xl" />
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</Label>
+                <select
+                  value={categoria}
+                  onChange={(e) => setCategoria(e.target.value)}
+                  className="h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm"
+                  required
+                >
+                  <option value="">Selecione</option>
+                  {categorias.map((cat) => (
+                    <option key={cat.id} value={cat.nome}>{cat.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Forma de pagamento</Label>
+                <select
+                  value={formaPagamento}
+                  onChange={(e) => setFormaPagamento(e.target.value)}
+                  className="h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm"
+                  required
+                >
+                  <option value="">Selecione</option>
+                  <option value="pix">PIX</option>
+                  <option value="debito">Débito</option>
+                  <option value="credito">Crédito</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lembrete automático no Telegram</Label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLembreteTelegramAtivo(true)}
+                  className={cn(
+                    "h-10 px-3 rounded-xl border text-sm font-medium",
+                    lembreteTelegramAtivo ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
+                  )}
+                >
+                  Sim
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLembreteTelegramAtivo(false)}
+                  className={cn(
+                    "h-10 px-3 rounded-xl border text-sm font-medium",
+                    !lembreteTelegramAtivo ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
+                  )}
+                >
+                  Não
+                </button>
+              </div>
+            </div>
+
+            {/* Frequency selector */}
+            <div className="space-y-3">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Frequência</Label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {([
+                  { key: "Unico" as const, label: "Único" },
+                  { key: "Semanal" as const, label: "Semanal" },
+                  { key: "Quinzenal" as const, label: "Quinz." },
+                  { key: "Mensal" as const, label: "Mensal" },
+                  { key: "Anual" as const, label: "Anual" },
+                ] as const).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setFrequencia(key)}
+                    className={cn(
+                      "p-2 rounded-lg border-2 text-[11px] font-semibold transition-all duration-200 cursor-pointer",
+                      frequencia === key
+                        ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                        : "border-border/40 hover:border-border/60 text-muted-foreground"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {frequencia === "Unico" && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do Pagamento</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-9" />
+                </div>
+              </div>
+            )}
+
+            {frequencia === "Mensal" && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia do vencimento no mês</Label>
+                <Input type="number" min={1} max={31} placeholder="Ex: 10" value={diaRecorrente} onChange={(e) => setDiaRecorrente(e.target.value)} className="h-11 rounded-xl" />
+                <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
+                  <Repeat className="h-3 w-3" />
+                  {diaRecorrente ? `Todo dia ${diaRecorrente} de cada mês` : "Informe o dia"}
+                </p>
+              </div>
+            )}
+
+            {(frequencia === "Semanal" || frequencia === "Quinzenal") && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia da semana</Label>
+                  <div className="grid grid-cols-7 gap-1">
+                    {DIAS_SEMANA.map((dia, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setDiaSemana(String(idx))}
+                        className={cn(
+                          "p-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer border",
+                          diaSemana === String(idx)
+                            ? "border-blue-500 bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                            : "border-transparent hover:bg-muted/40 text-muted-foreground"
+                        )}
+                      >
+                        {dia.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do primeiro pagamento</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-9" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {frequencia === "Anual" && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do pagamento anual</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-9" />
+                </div>
               </div>
             )}
 

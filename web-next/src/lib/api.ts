@@ -256,6 +256,8 @@ export interface AtualizarPerfilRequest {
 
 // ── Lembretes / Contas Fixas ───────────────────────────────
 
+export type FrequenciaLembrete = 'Semanal' | 'Quinzenal' | 'Mensal' | 'Anual';
+
 export interface LembretePagamento {
   id: number;
   descricao: string;
@@ -263,7 +265,17 @@ export interface LembretePagamento {
   dataVencimento: string;
   recorrenteMensal: boolean;
   diaRecorrente: number | null;
+  frequencia: FrequenciaLembrete | null;
+  diaSemanaRecorrente: number | null;
   ativo: boolean;
+  categoriaId: number | null;
+  categoria: string | null;
+  formaPagamento: string | null;
+  lembreteTelegramAtivo: boolean;
+  periodKeyAtual: string | null;
+  diasAntecedenciaLembrete: number;
+  horarioInicioLembrete: string;
+  horarioFimLembrete: string;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -274,6 +286,11 @@ export interface CriarLembreteRequest {
   dataVencimento: string;
   recorrenteMensal: boolean;
   diaRecorrente?: number;
+  frequencia?: FrequenciaLembrete;
+  diaSemanaRecorrente?: number;
+  categoria?: string;
+  formaPagamento?: string;
+  lembreteTelegramAtivo?: boolean;
 }
 
 export interface AtualizarLembreteRequest {
@@ -282,6 +299,11 @@ export interface AtualizarLembreteRequest {
   dataVencimento?: string;
   recorrenteMensal?: boolean;
   diaRecorrente?: number;
+  frequencia?: FrequenciaLembrete;
+  diaSemanaRecorrente?: number;
+  categoria?: string;
+  formaPagamento?: string;
+  lembreteTelegramAtivo?: boolean;
 }
 
 // ── Decisão de Gasto ───────────────────────────────────────

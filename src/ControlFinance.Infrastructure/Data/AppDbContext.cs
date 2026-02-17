@@ -38,6 +38,11 @@ public class AppDbContext : DbContext
     public DbSet<ConversaPendente> ConversasPendentes => Set<ConversaPendente>();
     public DbSet<NotificacaoEnviada> NotificacoesEnviadas => Set<NotificacaoEnviada>();
     public DbSet<TagLancamento> TagsLancamento => Set<TagLancamento>();
+    public DbSet<PerfilComportamental> PerfisComportamentais => Set<PerfilComportamental>();
+    public DbSet<EventoSazonal> EventosSazonais => Set<EventoSazonal>();
+    public DbSet<PagamentoCiclo> PagamentosCiclo => Set<PagamentoCiclo>();
+    public DbSet<LogLembreteTelegram> LogsLembreteTelegram => Set<LogLembreteTelegram>();
+    public DbSet<LogDecisao> LogsDecisao => Set<LogDecisao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -408,18 +413,170 @@ public class AppDbContext : DbContext
             entity.Property(e => e.DataVencimento).HasColumnName("data_vencimento");
             entity.Property(e => e.RecorrenteMensal).HasColumnName("recorrente_mensal");
             entity.Property(e => e.DiaRecorrente).HasColumnName("dia_recorrente");
+            entity.Property(e => e.Frequencia).HasColumnName("frequencia").HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.DiaSemanaRecorrente).HasColumnName("dia_semana_recorrente");
             entity.Property(e => e.Ativo).HasColumnName("ativo");
             entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
             entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em");
             entity.Property(e => e.UltimoEnvioEm).HasColumnName("ultimo_envio_em");
+
+            // Novos campos de Conta Fixa
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
+            entity.Property(e => e.FormaPagamento).HasColumnName("forma_pagamento");
+            entity.Property(e => e.LembreteTelegramAtivo).HasColumnName("lembrete_telegram_ativo").HasDefaultValue(true);
+            entity.Property(e => e.PeriodKeyAtual).HasColumnName("period_key_atual").HasMaxLength(10);
+            entity.Property(e => e.DiasAntecedenciaLembrete).HasColumnName("dias_antecedencia_lembrete").HasDefaultValue(3);
+            entity.Property(e => e.HorarioInicioLembrete).HasColumnName("horario_inicio_lembrete");
+            entity.Property(e => e.HorarioFimLembrete).HasColumnName("horario_fim_lembrete");
 
             entity.HasOne(e => e.Usuario)
                   .WithMany(u => u.LembretesPagamento)
                   .HasForeignKey(e => e.UsuarioId)
                   .OnDelete(DeleteBehavior.Cascade);
 
+            entity.HasOne(e => e.Categoria)
+                  .WithMany()
+                  .HasForeignKey(e => e.CategoriaId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasIndex(e => new { e.UsuarioId, e.Ativo });
             entity.HasIndex(e => e.DataVencimento);
+        });
+
+        // === PagamentoCiclo ===
+        modelBuilder.Entity<PagamentoCiclo>(entity =>
+        {
+            entity.ToTable("pagamentos_ciclo");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.LembretePagamentoId).HasColumnName("lembrete_pagamento_id");
+            entity.Property(e => e.PeriodKey).HasColumnName("period_key").HasMaxLength(10);
+            entity.Property(e => e.Pago).HasColumnName("pago");
+            entity.Property(e => e.DataPagamento).HasColumnName("data_pagamento");
+            entity.Property(e => e.ValorPago).HasColumnName("valor_pago").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+
+            entity.HasOne(e => e.LembretePagamento)
+                  .WithMany(l => l.PagamentosCiclo)
+                  .HasForeignKey(e => e.LembretePagamentoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Unique constraint: no máximo 1 por (conta_fixa_id, period_key)
+            entity.HasIndex(e => new { e.LembretePagamentoId, e.PeriodKey }).IsUnique();
+        });
+
+        // === LogLembreteTelegram ===
+        modelBuilder.Entity<LogLembreteTelegram>(entity =>
+        {
+            entity.ToTable("logs_lembrete_telegram");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.LembretePagamentoId).HasColumnName("lembrete_pagamento_id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+            entity.Property(e => e.MensagemTelegramId).HasColumnName("mensagem_telegram_id");
+            entity.Property(e => e.TipoLembrete).HasColumnName("tipo_lembrete").HasMaxLength(20);
+            entity.Property(e => e.Erro).HasColumnName("erro").HasMaxLength(500);
+            entity.Property(e => e.EnviadoEm).HasColumnName("enviado_em");
+
+            entity.HasOne(e => e.LembretePagamento)
+                  .WithMany(l => l.LogsLembrete)
+                  .HasForeignKey(e => e.LembretePagamentoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Usuario)
+                  .WithMany()
+                  .HasForeignKey(e => e.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.EnviadoEm);
+        });
+
+        // === LogDecisao ===
+        modelBuilder.Entity<LogDecisao>(entity =>
+        {
+            entity.ToTable("logs_decisao");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Tipo).HasColumnName("tipo").HasMaxLength(50);
+            entity.Property(e => e.Valor).HasColumnName("valor").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Descricao).HasColumnName("descricao").HasMaxLength(500);
+            entity.Property(e => e.Resultado).HasColumnName("resultado").HasMaxLength(50);
+            entity.Property(e => e.JustificativaResumida).HasColumnName("justificativa_resumida").HasMaxLength(1000);
+            entity.Property(e => e.EntradasJson).HasColumnName("entradas_json").HasColumnType("text");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+
+            entity.HasOne(e => e.Usuario)
+                  .WithMany()
+                  .HasForeignKey(e => e.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.UsuarioId);
+            entity.HasIndex(e => e.CriadoEm);
+        });
+
+        // === PerfilComportamental ===
+        modelBuilder.Entity<PerfilComportamental>(entity =>
+        {
+            entity.ToTable("perfis_comportamentais");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.NivelImpulsividade).HasColumnName("nivel_impulsividade");
+            entity.Property(e => e.FrequenciaDuvidaGasto).HasColumnName("frequencia_duvida_gasto");
+            entity.Property(e => e.ToleranciaRisco).HasColumnName("tolerancia_risco");
+            entity.Property(e => e.TendenciaCrescimentoGastos).HasColumnName("tendencia_crescimento_gastos").HasColumnType("decimal(18,4)");
+            entity.Property(e => e.ScoreEstabilidade).HasColumnName("score_estabilidade").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.PadraoMensalDetectado).HasColumnName("padrao_mensal_detectado").HasColumnType("text");
+            entity.Property(e => e.ScoreSaudeFinanceira).HasColumnName("score_saude_financeira").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.ScoreSaudeDetalhes).HasColumnName("score_saude_detalhes").HasColumnType("text");
+            entity.Property(e => e.ScoreSaudeAtualizadoEm).HasColumnName("score_saude_atualizado_em");
+            entity.Property(e => e.TotalConsultasDecisao).HasColumnName("total_consultas_decisao");
+            entity.Property(e => e.ComprasNaoPlanejadas30d).HasColumnName("compras_nao_planejadas_30d");
+            entity.Property(e => e.MesesComSaldoNegativo).HasColumnName("meses_com_saldo_negativo");
+            entity.Property(e => e.ComprometimentoRendaPercentual).HasColumnName("comprometimento_renda_percentual").HasColumnType("decimal(18,4)");
+            entity.Property(e => e.CategoriaMaisFrequente).HasColumnName("categoria_mais_frequente").HasMaxLength(100);
+            entity.Property(e => e.FormaPagamentoPreferida).HasColumnName("forma_pagamento_preferida").HasMaxLength(20);
+            entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+
+            entity.HasOne(e => e.Usuario)
+                  .WithOne(u => u.PerfilComportamental)
+                  .HasForeignKey<PerfilComportamental>(e => e.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.UsuarioId).IsUnique();
+        });
+
+        // === EventoSazonal ===
+        modelBuilder.Entity<EventoSazonal>(entity =>
+        {
+            entity.ToTable("eventos_sazonais");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Descricao).HasColumnName("descricao").HasMaxLength(200);
+            entity.Property(e => e.MesOcorrencia).HasColumnName("mes_ocorrencia");
+            entity.Property(e => e.ValorMedio).HasColumnName("valor_medio").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.RecorrenteAnual).HasColumnName("recorrente_anual");
+            entity.Property(e => e.EhReceita).HasColumnName("eh_receita");
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
+            entity.Property(e => e.DetectadoAutomaticamente).HasColumnName("detectado_automaticamente");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em");
+
+            entity.HasOne(e => e.Usuario)
+                  .WithMany(u => u.EventosSazonais)
+                  .HasForeignKey(e => e.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Categoria)
+                  .WithMany()
+                  .HasForeignKey(e => e.CategoriaId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => new { e.UsuarioId, e.MesOcorrencia });
         });
 
         // === RefreshToken ===

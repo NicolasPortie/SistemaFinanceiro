@@ -130,7 +130,7 @@ export default function LoginPage() {
                   controle total.
                 </span>
               </h2>
-              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-[340px]">
+              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-85">
                 Gestão inteligente com dashboards em tempo real, IA integrada e análises que impulsionam suas decisões financeiras.
               </p>
             </motion.div>
@@ -148,9 +148,9 @@ export default function LoginPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + i * 0.1 }}
-                  className="group flex items-center gap-3.5 py-3 px-3.5 -mx-3.5 rounded-2xl hover:bg-white/[0.04] transition-all duration-300 hover:-translate-y-px"
+                  className="group flex items-center gap-3.5 py-3 px-3.5 -mx-3.5 rounded-2xl hover:bg-white/4 transition-all duration-300 hover:-translate-y-px"
                 >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] border border-white/[0.06] group-hover:bg-white/[0.08] group-hover:border-emerald-400/15 group-hover:shadow-lg group-hover:shadow-emerald-500/5 transition-all duration-300">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 border border-white/6 group-hover:bg-white/8 group-hover:border-emerald-400/15 group-hover:shadow-lg group-hover:shadow-emerald-500/5 transition-all duration-300">
                     <item.icon className="h-4 w-4 text-emerald-400/70 group-hover:text-emerald-300 transition-colors" />
                   </div>
                   <div className="min-w-0">
@@ -163,7 +163,7 @@ export default function LoginPage() {
           </div>
 
           {/* Footer */}
-          <div className="pt-4 border-t border-white/[0.06]">
+          <div className="pt-4 border-t border-white/6">
             <p className="text-[11px] text-white/20">© {new Date().getFullYear()} ControlFinance</p>
           </div>
         </div>
@@ -174,8 +174,8 @@ export default function LoginPage() {
          ════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col relative overflow-hidden">
         {/* Subtle background blobs */}
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-emerald-500/[0.03] dark:bg-emerald-500/[0.05] blur-[100px] pointer-events-none" />
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-teal-500/[0.03] dark:bg-teal-500/[0.05] blur-[100px] pointer-events-none" />
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-emerald-500/3 dark:bg-emerald-500/5 blur-[100px] pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-teal-500/3 dark:bg-teal-500/5 blur-[100px] pointer-events-none" />
 
         {/* ── Mobile Hero Header ── */}
         <div className="lg:hidden relative overflow-hidden">
@@ -214,7 +214,7 @@ export default function LoginPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="w-full max-w-[420px]"
+            className="w-full max-w-105"
           >
             {/* Desktop header */}
             <div className="hidden lg:block mb-10">
@@ -268,7 +268,7 @@ export default function LoginPage() {
                   }`}
                 >
                   <Mail
-                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-[18px] w-[18px] transition-all duration-300 ${
+                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
                       focusedField === "email" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
                     }`}
                   />
@@ -276,7 +276,7 @@ export default function LoginPage() {
                     id="email"
                     type="email"
                     placeholder="nome@exemplo.com"
-                    className="pl-12 h-[52px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
+                    className="pl-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
                     autoComplete="email"
                     {...register("email")}
                     onFocus={() => setFocusedField("email")}
@@ -318,7 +318,7 @@ export default function LoginPage() {
                   }`}
                 >
                   <Lock
-                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-[18px] w-[18px] transition-all duration-300 ${
+                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
                       focusedField === "senha" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
                     }`}
                   />
@@ -326,7 +326,7 @@ export default function LoginPage() {
                     id="senha"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="pl-12 pr-12 h-[52px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
+                    className="pl-12 pr-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
                     autoComplete="current-password"
                     {...register("senha")}
                     onFocus={() => setFocusedField("senha")}
@@ -359,7 +359,7 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full h-[52px] text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group cursor-pointer"
+                  className="w-full h-13 text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group cursor-pointer"
                 >
                   {isSubmitting ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -390,7 +390,7 @@ export default function LoginPage() {
               <Link href="/registro">
                 <Button
                   variant="outline"
-                  className="w-full h-12 rounded-2xl text-sm font-semibold border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 gap-2 cursor-pointer"
+                  className="w-full h-12 rounded-2xl text-sm font-semibold border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/3 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 gap-2 cursor-pointer"
                 >
                   <Wallet className="h-4 w-4" />
                   Criar conta com convite

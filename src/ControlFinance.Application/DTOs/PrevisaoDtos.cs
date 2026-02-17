@@ -42,6 +42,14 @@ public class SimulacaoResultadoDto
     public List<SimulacaoMesDto> Meses { get; set; } = new();
     public List<CenarioAlternativoDto>? CenariosAlternativos { get; set; }
     public string ResumoTexto { get; set; } = string.Empty; // Para bot
+
+    // Campos avançados
+    public string ClassificacaoRisco { get; set; } = string.Empty; // "Seguro","Moderado","Arriscado","Crítico"
+    public decimal ProbabilidadeMesNegativo { get; set; } // 0-100%
+    public decimal ImpactoReservaMinima { get; set; }
+    public List<ImpactoMetaDto>? ImpactoMetas { get; set; }
+    public decimal ScoreSaudeFinanceira { get; set; }
+    public List<EventoSazonalDto>? EventosSazonaisConsiderados { get; set; }
 }
 
 public class SimulacaoMesDto

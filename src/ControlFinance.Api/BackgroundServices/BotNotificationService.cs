@@ -19,11 +19,12 @@ public class BotNotificationService : BackgroundService
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<BotNotificationService> _logger;
 
-    // HorÃ¡rios das notificaÃ§Ãµes (BrasÃ­lia - UTC-3)
+    // Horários das notificações (Brasília - UTC-3)
     private static readonly TimeSpan HoraResumoMatinal = new(8, 0, 0);    // 08h Todo dia
     private static readonly TimeSpan HoraCheckLimites = new(9, 0, 0);     // 09h Todo dia
+    private static readonly TimeSpan HoraAnaliseProativa = new(14, 0, 0); // 14h Todo dia
     private static readonly TimeSpan HoraIncentivoSexta = new(18, 0, 0);  // 18h Sexta
-    private static readonly TimeSpan HoraFechamentoMes = new(19, 0, 0);   // 19h Ãšltimo dia
+    private static readonly TimeSpan HoraFechamentoMes = new(19, 0, 0);   // 19h Último dia
     private static readonly TimeSpan HoraResumoSemanal = new(20, 0, 0);   // 20h Domingo
 
     public BotNotificationService(
@@ -71,10 +72,16 @@ public class BotNotificationService : BackgroundService
                     await ExecutarNotificacaoAsync("FechamentoMes", EnviarFechamentoMes, stoppingToken);
                 }
 
-                // 4. Check DiÃ¡rio de Limites (09h)
+                // 4. Check Diário de Limites (09h)
                 if (EstaNoHorario(agoraBrasilia, HoraCheckLimites))
                 {
                     await ExecutarNotificacaoAsync("CheckLimites", VerificarLimitesDiarios, stoppingToken);
+                }
+
+                // 5. Análise Proativa Inteligente (14h) — gastos crescentes, padrões, score
+                if (EstaNoHorario(agoraBrasilia, HoraAnaliseProativa))
+                {
+                    await ExecutarNotificacaoAsync("AnaliseProativa", EnviarAlertasProativosAsync, stoppingToken);
                 }
 
                 // Limpar notificaÃ§Ãµes antigas periodicamente (1x por dia Ã s 03h)
@@ -136,6 +143,10 @@ public class BotNotificationService : BackgroundService
             using var scope = _serviceProvider.CreateScope();
             var notificacaoRepo = scope.ServiceProvider.GetRequiredService<INotificacaoEnviadaRepository>();
             await notificacaoRepo.LimparAntigasAsync(60);
+
+            // Limpar logs de decisão antigos (retenção 30 dias)
+            var logDecisaoRepo = scope.ServiceProvider.GetRequiredService<ILogDecisaoRepository>();
+            await logDecisaoRepo.LimparAntigosAsync(30);
         }
         catch (Exception ex)
         {
@@ -345,7 +356,139 @@ public class BotNotificationService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao verificar limites diÃ¡rios para {Usuario}", user.Nome);
+                _logger.LogError(ex, "Erro ao verificar limites diários para {Usuario}", user.Nome);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Inteligência Proativa (§10):
+    ///   - Alerta de aumento progressivo de gastos
+    ///   - Detecção de mês fora do padrão
+    ///   - Score de saúde financeira baixo
+    ///   - Comprometimento de renda alto
+    ///   - Sugestão de converter recorrente em conta fixa
+    /// </summary>
+    private async Task EnviarAlertasProativosAsync(CancellationToken ct)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var usuarioRepo = scope.ServiceProvider.GetRequiredService<IUsuarioRepository>();
+        var lancamentoRepo = scope.ServiceProvider.GetRequiredService<ILancamentoRepository>();
+        var scoreService = scope.ServiceProvider.GetRequiredService<IScoreSaudeFinanceiraService>();
+        var perfilService = scope.ServiceProvider.GetRequiredService<IPerfilFinanceiroService>();
+        var lembreteRepo = scope.ServiceProvider.GetRequiredService<ILembretePagamentoRepository>();
+
+        var usuarios = await usuarioRepo.ObterTodosComTelegramAsync();
+        var hoje = DateTime.UtcNow;
+        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        foreach (var user in usuarios)
+        {
+            if (ct.IsCancellationRequested) break;
+
+            try
+            {
+                var alertas = new List<string>();
+
+                // 1. Verificar crescimento progressivo de gastos
+                var gastosMesAtual = await lancamentoRepo.ObterTotalPorPeriodoAsync(
+                    user.Id, TipoLancamento.Gasto, inicioMes, hoje);
+                var gastosMesAnterior = await lancamentoRepo.ObterTotalPorPeriodoAsync(
+                    user.Id, TipoLancamento.Gasto, inicioMes.AddMonths(-1), inicioMes);
+                var gastos2MesesAtras = await lancamentoRepo.ObterTotalPorPeriodoAsync(
+                    user.Id, TipoLancamento.Gasto, inicioMes.AddMonths(-2), inicioMes.AddMonths(-1));
+
+                // Crescimento contínuo por 2 meses
+                if (gastosMesAnterior > gastos2MesesAtras * 1.1m && gastosMesAtual > gastosMesAnterior * 0.8m)
+                {
+                    var crescimento = gastos2MesesAtras > 0
+                        ? (gastosMesAnterior - gastos2MesesAtras) / gastos2MesesAtras * 100
+                        : 0;
+                    if (crescimento > 10)
+                    {
+                        alertas.Add($"📈 *Gastos crescendo:* Seus gastos aumentaram {crescimento:N0}% no último mês e continuam subindo este mês.");
+                    }
+                }
+
+                // 2. Mês fora do padrão (gastos > 130% da média)
+                var perfil = await perfilService.ObterOuCalcularAsync(user.Id);
+                if (perfil.GastoMensalMedio > 0)
+                {
+                    var diasPassados = Math.Max(1, (hoje - inicioMes).Days);
+                    var gastoProjetado = gastosMesAtual / diasPassados * DateTime.DaysInMonth(hoje.Year, hoje.Month);
+                    if (gastoProjetado > perfil.GastoMensalMedio * 1.3m)
+                    {
+                        alertas.Add($"⚠️ *Mês fora do padrão:* Projeção de R$ {gastoProjetado:N2} vs média R$ {perfil.GastoMensalMedio:N2} (+{((gastoProjetado / perfil.GastoMensalMedio - 1) * 100):N0}%).");
+                    }
+                }
+
+                // 3. Score de saúde financeira baixo
+                try
+                {
+                    var score = await scoreService.ObterScoreAtualAsync(user.Id);
+                    if (score > 0 && score < 40)
+                    {
+                        alertas.Add($"🏥 *Score de saúde financeira: {score:N0}/100* — Considere revisar seus gastos e compromissos.");
+                    }
+                }
+                catch { /* Score não disponível */ }
+
+                // 4. Comprometimento de renda alto
+                if (perfil.ReceitaMensalMedia > 0)
+                {
+                    var comprometimento = gastosMesAtual / perfil.ReceitaMensalMedia;
+                    var diaDoMes = hoje.Day;
+                    var percentualMes = (decimal)diaDoMes / DateTime.DaysInMonth(hoje.Year, hoje.Month);
+                    
+                    // Se já gastou mais de 80% da receita e estamos antes do dia 20
+                    if (comprometimento > 0.8m && percentualMes < 0.65m)
+                    {
+                        alertas.Add($"🔴 *Atenção:* Você já comprometeu {comprometimento:P0} da sua receita e ainda faltam {DateTime.DaysInMonth(hoje.Year, hoje.Month) - diaDoMes} dias no mês.");
+                    }
+                }
+
+                // 5. Sugerir converter gasto recorrente em conta fixa
+                try
+                {
+                    var lembretes = await lembreteRepo.ObterPorUsuarioAsync(user.Id, apenasAtivos: true);
+                    var descContasFixas = lembretes.Select(l => l.Descricao.ToLowerInvariant()).ToHashSet();
+                    
+                    // Buscar lançamentos dos últimos 3 meses
+                    var lancamentos3m = await lancamentoRepo.ObterPorUsuarioAsync(user.Id, inicioMes.AddMonths(-3));
+                    var gastos3m = lancamentos3m.Where(l => l.Tipo == TipoLancamento.Gasto).ToList();
+                    
+                    // Agrupar por descrição normalizada e verificar se aparece em 3 meses distintos
+                    var recorrentes = gastos3m
+                        .GroupBy(l => l.Descricao?.Trim().ToLowerInvariant() ?? "")
+                        .Where(g => !string.IsNullOrEmpty(g.Key))
+                        .Where(g => g.Select(l => $"{l.Data:yyyy-MM}").Distinct().Count() >= 3)
+                        .Where(g => !descContasFixas.Any(cf => g.Key.Contains(cf) || cf.Contains(g.Key)))
+                        .Select(g => new { Desc = g.First().Descricao, Valor = g.Average(l => l.Valor) })
+                        .Take(2)
+                        .ToList();
+
+                    foreach (var r in recorrentes)
+                    {
+                        alertas.Add($"💡 *Gasto recorrente detectado:* \"{r.Desc}\" (média R$ {r.Valor:N2}/mês). " +
+                                    "Considere cadastrar como conta fixa: /conta\\_fixa");
+                    }
+                }
+                catch { /* Falha ao detectar recorrentes */ }
+
+                // Enviar alertas se houver
+                if (alertas.Any())
+                {
+                    var msg = "🤖 *Análise Proativa*\n\n" +
+                              string.Join("\n\n", alertas) +
+                              "\n\n_Dica: Use /score para ver seu score completo._";
+
+                    await _botClient.SendMessage(user.TelegramChatId!, msg,
+                        parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao enviar alertas proativos para {Usuario}", user.Nome);
             }
         }
     }

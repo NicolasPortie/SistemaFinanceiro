@@ -234,15 +234,15 @@
 /* ─── Utility Classes ────────────────────────────────────── */
 @layer utilities {
   .glass {
-    @apply bg-white/75 dark:bg-white/[0.06] backdrop-blur-2xl backdrop-saturate-150;
+    @apply bg-white/75 dark:bg-white/6 backdrop-blur-2xl backdrop-saturate-150;
   }
 
   .glass-card {
-    @apply bg-white/55 dark:bg-white/[0.06] backdrop-blur-xl backdrop-saturate-150 border border-white/35 dark:border-white/[0.08] shadow-xl shadow-black/[.02] dark:shadow-black/[.12];
+    @apply bg-white/55 dark:bg-white/6 backdrop-blur-xl backdrop-saturate-150 border border-white/35 dark:border-white/8 shadow-xl shadow-black/2 dark:shadow-black/12;
   }
 
   .glass-premium {
-    @apply bg-white/65 dark:bg-white/[0.04] backdrop-blur-2xl backdrop-saturate-150;
+    @apply bg-white/65 dark:bg-white/4 backdrop-blur-2xl backdrop-saturate-150;
     border: 1px solid oklch(1 0 0 / 0.2);
   }
 

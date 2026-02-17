@@ -325,101 +325,132 @@ export default function MetasPage() {
 
       {/* ── New Goal Sheet ── */}
       <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader className="pb-6">
-            <SheetTitle className="text-xl font-extrabold tracking-tight">Nova Meta</SheetTitle>
-            <SheetDescription className="text-muted-foreground/70">Defina uma meta financeira para acompanhar</SheetDescription>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          {/* Accent line */}
+          <div className="h-1 w-full shrink-0 bg-linear-to-r from-emerald-400 via-teal-500 to-cyan-500" />
+
+          {/* Header */}
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-500 transition-all duration-500">
+                <Target className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Nova Meta</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Defina uma meta financeira para acompanhar</SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
-          <form onSubmit={handleCriar} className="space-y-6">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome da Meta</Label>
-              <Input placeholder="Ex: Reserva de emergência" value={nome} onChange={(e) => setNome(e.target.value)} required className="h-11 rounded-xl" />
-            </div>
 
-            {/* Type selector */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["juntar_valor", "reduzir_gasto", "reserva_mensal"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTipo(t)}
-                    className={`flex flex-col items-center gap-2 py-3.5 px-2 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer ${tipo === t ? "bg-primary/10 text-primary border-2 border-primary/30 shadow-md shadow-primary/5 scale-[1.02]" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40 hover:border-border/60"}`}
-                  >
-                    {tiposIcon[t]}
-                    {tiposLabel[t]}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Scrollable form body */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <form onSubmit={handleCriar} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+              {/* Main fields */}
+              <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Nome da Meta</Label>
+                  <Input placeholder="Ex: Reserva de emergência" value={nome} onChange={(e) => setNome(e.target.value)} required className="h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                </div>
 
-            {/* Priority */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prioridade</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["baixa", "media", "alta"] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPrioridade(p)}
-                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer ${prioridade === p ? `${prioridadeConfig[p].badge} border-2 shadow-sm` : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40 hover:border-border/60"}`}
-                  >
-                    <Flag className={`h-3 w-3 ${prioridade === p ? prioridadeConfig[p].color : ""}`} />
-                    {p === "baixa" ? "Baixa" : p === "media" ? "Média" : "Alta"}
-                  </button>
-                ))}
-              </div>
-            </div>
+                <div className="border-t border-border/20" />
 
-            <Separator />
+                {/* Type selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tipo</Label>
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                    {(["juntar_valor", "reduzir_gasto", "reserva_mensal"] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTipo(t)}
+                        className={`group relative flex flex-col items-center gap-1.5 sm:gap-2.5 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer border ${tipo === t ? "bg-primary/5 text-primary border-primary/20 shadow-sm shadow-primary/5" : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40 hover:border-border/50 hover:text-foreground"}`}
+                      >
+                        <div className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg sm:rounded-xl transition-all ${tipo === t ? "bg-primary/10" : "bg-muted/40 group-hover:bg-muted/60"}`}>
+                          {tiposIcon[t]}
+                        </div>
+                        {tiposLabel[t]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {/* Values */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Alvo (R$)</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input placeholder="0,00" value={valorAlvo} onChange={(e) => setValorAlvo(e.target.value)} required className="h-11 rounded-xl pl-9 tabular-nums font-semibold" />
+                <div className="border-t border-border/20" />
+
+                {/* Priority */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Prioridade</Label>
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                    {(["baixa", "media", "alta"] as const).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPrioridade(p)}
+                        className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer border ${prioridade === p ? `${prioridadeConfig[p].badge} border-2 shadow-sm` : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40 hover:border-border/50 hover:text-foreground"}`}
+                      >
+                        <Flag className={`h-3 w-3 ${prioridade === p ? prioridadeConfig[p].color : ""}`} />
+                        {p === "baixa" ? "Baixa" : p === "media" ? "Média" : "Alta"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Já guardado (R$)</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input placeholder="0,00" value={valorAtual} onChange={(e) => setValorAtual(e.target.value)} className="h-11 rounded-xl pl-9 tabular-nums font-semibold" />
+
+              {/* Values section */}
+              <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor Alvo (R$)</Label>
+                    <div className="relative">
+                      <div className="absolute left-0 top-0 bottom-0 w-9 sm:w-10 flex items-center justify-center rounded-l-xl text-xs font-bold bg-emerald-500/10 text-emerald-500">R$</div>
+                      <Input placeholder="0,00" value={valorAlvo} onChange={(e) => setValorAlvo(e.target.value)} required className="h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Já guardado (R$)</Label>
+                    <div className="relative">
+                      <div className="absolute left-0 top-0 bottom-0 w-9 sm:w-10 flex items-center justify-center rounded-l-xl text-xs font-bold bg-blue-500/10 text-blue-500">R$</div>
+                      <Input placeholder="0,00" value={valorAtual} onChange={(e) => setValorAtual(e.target.value)} className="h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                    </div>
+                  </div>
                 </div>
+
+                <div className="border-t border-border/20" />
+
+                {/* Deadline */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Prazo</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                    <Input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} required className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                  </div>
+                </div>
+
+                {/* Category (for "reduzir_gasto") */}
+                <AnimatePresence>
+                  {tipo === "reduzir_gasto" && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-1.5 overflow-hidden">
+                      <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Categoria</Label>
+                      <Select value={categoria} onValueChange={setCategoria}>
+                        <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30"><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
+                        <SelectContent>{categorias.map((c) => (<SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>))}</SelectContent>
+                      </Select>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            </div>
 
-            {/* Deadline */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prazo</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} required className="h-11 rounded-xl pl-9" />
+              {/* Submit */}
+              <div className="pt-2 sm:pt-3 pb-safe">
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
+                  disabled={criarMeta.isPending}
+                >
+                  {criarMeta.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Target className="h-5 w-5" />Criar Meta</>}
+                </Button>
               </div>
-            </div>
-
-            {/* Category (for "reduzir_gasto") */}
-            <AnimatePresence>
-              {tipo === "reduzir_gasto" && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-2 overflow-hidden">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</Label>
-                  <Select value={categoria} onValueChange={setCategoria}>
-                    <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
-                    <SelectContent>{categorias.map((c) => (<SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>))}</SelectContent>
-                  </Select>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <Separator />
-
-            <Button type="submit" className="w-full h-13 rounded-2xl gap-2.5 font-bold text-[15px] shadow-premium btn-premium" disabled={criarMeta.isPending}>
-              {criarMeta.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Target className="h-4 w-4" />Criar Meta</>}
-            </Button>
-          </form>
+            </form>
+          </div>
         </SheetContent>
       </Sheet>
 

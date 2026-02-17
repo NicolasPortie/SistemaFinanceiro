@@ -8,8 +8,9 @@ using Microsoft.Extensions.Logging;
 namespace ControlFinance.Application.Services;
 
 /// <summary>
-/// Motor de simulação de compra. Calcula impacto financeiro futuro
-/// baseado no perfil e compromissos do usuário.
+/// Motor de simulação de compra com camadas: sazonalidade, metas, score, stress.
+/// Classificação de risco em 4 níveis: Seguro, Moderado, Arriscado, Crítico.
+/// Calcula probabilidade de mês negativo e impacto em reserva mínima.
 /// </summary>
 public class PrevisaoCompraService : IPrevisaoCompraService
 {
@@ -19,6 +20,9 @@ public class PrevisaoCompraService : IPrevisaoCompraService
     private readonly IParcelaRepository _parcelaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
     private readonly ILancamentoRepository _lancamentoRepo;
+    private readonly IEventoSazonalService _eventoSazonalService;
+    private readonly IScoreSaudeFinanceiraService _scoreService;
+    private readonly IImpactoMetaService _impactoMetaService;
     private readonly ILogger<PrevisaoCompraService> _logger;
 
     private const int HorizontePrevisaoMeses = 12;
@@ -30,6 +34,9 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         IParcelaRepository parcelaRepo,
         ICartaoCreditoRepository cartaoRepo,
         ILancamentoRepository lancamentoRepo,
+        IEventoSazonalService eventoSazonalService,
+        IScoreSaudeFinanceiraService scoreService,
+        IImpactoMetaService impactoMetaService,
         ILogger<PrevisaoCompraService> logger)
     {
         _perfilService = perfilService;
@@ -38,6 +45,9 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         _parcelaRepo = parcelaRepo;
         _cartaoRepo = cartaoRepo;
         _lancamentoRepo = lancamentoRepo;
+        _eventoSazonalService = eventoSazonalService;
+        _scoreService = scoreService;
+        _impactoMetaService = impactoMetaService;
         _logger = logger;
     }
 
@@ -109,6 +119,48 @@ public class PrevisaoCompraService : IPrevisaoCompraService
                 usuarioId, perfil, request.Valor, request.CartaoCreditoId, dataPrevista);
         }
 
+        // === Camadas avançadas ===
+
+        // 4-level risk classification
+        var classificacaoRisco = ClassificarRisco4Niveis(menorSaldo, perfil.ReceitaMensalMedia,
+            perfil.VolatilidadeGastos, perfil.Confianca);
+
+        // Probabilidade de mês negativo
+        var mesesNegativos = mesesProjetados.Count(m => m.SaldoComCompra < 0);
+        var probabilidadeMesNegativo = Math.Round((decimal)mesesNegativos / mesesProjetados.Count * 100, 1);
+
+        // Impacto na reserva mínima (20% da receita média)
+        var reservaMinima = perfil.ReceitaMensalMedia * 0.20m;
+        var impactoReservaMinima = Math.Round(menorSaldo - reservaMinima, 2);
+
+        // Score de saúde financeira
+        decimal scoreSaude = 0;
+        try { scoreSaude = await _scoreService.ObterScoreAtualAsync(usuarioId); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Erro ao obter score saúde na simulação"); }
+
+        // Impacto em metas
+        List<ImpactoMetaDto>? impactoMetas = null;
+        try { impactoMetas = await _impactoMetaService.CalcularImpactoAsync(usuarioId, request.Valor); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Erro ao calcular impacto metas na simulação"); }
+
+        // Eventos sazonais considerados no horizonte
+        List<EventoSazonalDto>? eventosSazonais = null;
+        try
+        {
+            var todos = await _eventoSazonalService.ListarAsync(usuarioId);
+            eventosSazonais = todos.Where(e =>
+            {
+                // Filtrar eventos nos meses do horizonte de simulação
+                for (int i = 0; i < HorizontePrevisaoMeses; i++)
+                {
+                    var mes = dataPrevista.AddMonths(i);
+                    if (mes.Month == e.MesOcorrencia) return true;
+                }
+                return false;
+            }).ToList();
+        }
+        catch (Exception ex) { _logger.LogWarning(ex, "Erro ao listar eventos sazonais"); }
+
         var resultado = new SimulacaoResultadoDto
         {
             SimulacaoId = simulacao.Id,
@@ -124,12 +176,20 @@ public class PrevisaoCompraService : IPrevisaoCompraService
             FolgaMensalMedia = Math.Round(folgaMedia, 2),
             Meses = mesesProjetados,
             CenariosAlternativos = cenarios,
+            // Campos avançados
+            ClassificacaoRisco = classificacaoRisco,
+            ProbabilidadeMesNegativo = probabilidadeMesNegativo,
+            ImpactoReservaMinima = impactoReservaMinima,
+            ScoreSaudeFinanceira = scoreSaude,
+            ImpactoMetas = impactoMetas,
+            EventosSazonaisConsiderados = eventosSazonais,
             ResumoTexto = FormatarResumoBot(request, risco, perfil.Confianca, recomendacao,
-                menorSaldo, piorMes.Mes, folgaMedia, perfil, cenarios)
+                menorSaldo, piorMes.Mes, folgaMedia, perfil, cenarios,
+                classificacaoRisco, probabilidadeMesNegativo, scoreSaude, impactoMetas, eventosSazonais)
         };
 
-        _logger.LogInformation("Simulação {Id}: {Desc} R$ {Valor} → Risco {Risco}",
-            simulacao.Id, request.Descricao, request.Valor, risco);
+        _logger.LogInformation("Simulação {Id}: {Desc} R$ {Valor} → Risco {Risco} ({ClassRisco}), Score {Score}",
+            simulacao.Id, request.Descricao, request.Valor, risco, classificacaoRisco, scoreSaude);
 
         return resultado;
     }
@@ -217,6 +277,21 @@ public class PrevisaoCompraService : IPrevisaoCompraService
 
             // Gasto previsto = média de gastos (fixos + variáveis)
             var gastoPrevisto = perfil.GastoMensalMedio;
+
+            // === Camada de Sazonalidade ===
+            // Buscar impacto sazonal do mês (despesas extras - receitas extras)
+            decimal impactoSazonal = 0;
+            try
+            {
+                impactoSazonal = await _eventoSazonalService.ObterImpactoSazonalMesAsync(usuarioId, mes.Month);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Erro ao obter impacto sazonal mês {Mes}", mes.Month);
+            }
+
+            // Ajustar gasto previsto com sazonalidade
+            gastoPrevisto += impactoSazonal;
 
             // Compromissos já existentes (parcelas futuras)
             compromissosPorMes.TryGetValue(mesStr, out var compromissos);
@@ -417,8 +492,45 @@ public class PrevisaoCompraService : IPrevisaoCompraService
             "pix" => FormaPagamento.PIX,
             "debito" or "débito" => FormaPagamento.Debito,
             "credito" or "crédito" => FormaPagamento.Credito,
+            "dinheiro" => FormaPagamento.Dinheiro,
             _ => FormaPagamento.PIX
         };
+    }
+
+    /// <summary>
+    /// Classificação em 4 níveis: Seguro, Moderado, Arriscado, Crítico.
+    /// Considera volatilidade, confiança e reserva mínima.
+    /// </summary>
+    private static string ClassificarRisco4Niveis(
+        decimal menorSaldo, decimal receitaMedia, decimal volatilidade, NivelConfianca confianca)
+    {
+        if (receitaMedia <= 0) return "Crítico";
+
+        var percentual = menorSaldo / receitaMedia;
+
+        // Ajustar thresholds pela volatilidade
+        var fatorVol = 1m;
+        if (receitaMedia > 0 && volatilidade > 0)
+        {
+            var ratioVol = Math.Min(volatilidade / receitaMedia, 2.0m);
+            fatorVol = 1 + (ratioVol * 0.5m);
+        }
+
+        var thresholdSeguro = 0.25m * fatorVol;
+        var thresholdModerado = 0.10m * fatorVol;
+        var thresholdArriscado = 0.0m;
+
+        // Confiança baixa = thresholds mais conservadores
+        if (confianca == NivelConfianca.Baixa)
+        {
+            thresholdSeguro *= 1.3m;
+            thresholdModerado *= 1.3m;
+        }
+
+        if (percentual >= thresholdSeguro) return "Seguro";
+        if (percentual >= thresholdModerado) return "Moderado";
+        if (percentual >= thresholdArriscado) return "Arriscado";
+        return "Crítico";
     }
 
     private static string FormatarRecomendacao(RecomendacaoCompra rec)
@@ -437,13 +549,17 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         SimularCompraRequestDto request, NivelRisco risco, NivelConfianca confianca,
         RecomendacaoCompra recomendacao, decimal menorSaldo, string piorMes,
         decimal folgaMedia, PerfilFinanceiro perfil,
-        List<CenarioAlternativoDto>? cenarios)
+        List<CenarioAlternativoDto>? cenarios,
+        string classificacaoRisco, decimal probabilidadeMesNegativo,
+        decimal scoreSaude, List<ImpactoMetaDto>? impactoMetas,
+        List<EventoSazonalDto>? eventosSazonais)
     {
-        var riscoEmoji = risco switch
+        var riscoEmoji = classificacaoRisco switch
         {
-            NivelRisco.Baixo => "🟢 Baixo",
-            NivelRisco.Medio => "🟡 Médio",
-            NivelRisco.Alto => "🔴 Alto",
+            "Seguro" => "🟢 Seguro",
+            "Moderado" => "🟡 Moderado",
+            "Arriscado" => "🟠 Arriscado",
+            "Crítico" => "🔴 Crítico",
             _ => "❓"
         };
 
@@ -464,9 +580,39 @@ public class PrevisaoCompraService : IPrevisaoCompraService
                    $"💵 R$ {request.Valor:N2}{parcelaInfo}\n\n" +
                    $"📉 Pior mês projetado: *{piorMes}* (saldo de R$ {menorSaldo:N2})\n" +
                    $"📈 Folga média mensal: R$ {folgaMedia:N2}\n" +
-                   $"⚡ Risco: *{riscoEmoji}*\n" +
-                   $"🎯 Confiança: {confiancaEmoji}\n\n" +
-                   $"💡 *{FormatarRecomendacao(recomendacao)}*";
+                   $"⚡ Classificação: *{riscoEmoji}*\n" +
+                   $"🎯 Confiança: {confiancaEmoji}\n";
+
+        // Score de saúde
+        if (scoreSaude > 0)
+            texto += $"🏥 Score saúde financeira: {scoreSaude:N0}/100\n";
+
+        // Probabilidade de mês negativo
+        if (probabilidadeMesNegativo > 0)
+            texto += $"📉 Probabilidade mês negativo: {probabilidadeMesNegativo:N1}%\n";
+
+        texto += $"\n💡 *{FormatarRecomendacao(recomendacao)}*";
+
+        // Eventos sazonais no horizonte
+        if (eventosSazonais?.Any() == true)
+        {
+            texto += "\n\n📅 *Eventos sazonais no período:*\n";
+            foreach (var e in eventosSazonais.Take(5))
+            {
+                var tipo = e.EhReceita ? "📈" : "📉";
+                texto += $"  {tipo} {e.Descricao} — {NomeMes(e.MesOcorrencia)} — R$ {e.ValorMedio:N2}\n";
+            }
+        }
+
+        // Impacto em metas
+        if (impactoMetas?.Any(m => m.MesesAtraso > 0) == true)
+        {
+            texto += "\n🎯 *Impacto nas metas:*\n";
+            foreach (var m in impactoMetas.Where(m => m.MesesAtraso > 0))
+            {
+                texto += $"  {m.Descricao}\n";
+            }
+        }
 
         if (confianca == NivelConfianca.Baixa)
         {
@@ -486,4 +632,12 @@ public class PrevisaoCompraService : IPrevisaoCompraService
 
         return texto;
     }
+
+    private static string NomeMes(int mes) => mes switch
+    {
+        1 => "Jan", 2 => "Fev", 3 => "Mar", 4 => "Abr",
+        5 => "Mai", 6 => "Jun", 7 => "Jul", 8 => "Ago",
+        9 => "Set", 10 => "Out", 11 => "Nov", 12 => "Dez",
+        _ => mes.ToString()
+    };
 }

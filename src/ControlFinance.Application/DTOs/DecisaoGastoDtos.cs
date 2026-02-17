@@ -16,6 +16,17 @@ public class DecisaoGastoResultDto
     public decimal ReservaMetas { get; set; } // Quanto de meta compromete
     public string? AlertaLimite { get; set; } // Alerta se categoria tem limite
     public string ResumoTexto { get; set; } = string.Empty; // Para bot
+
+    // Decisão em camadas
+    public List<DecisaoCamadaDto>? Camadas { get; set; }
+
+    // Impacto acumulado
+    public decimal ImpactoAcumuladoMes { get; set; }
+    public decimal VariacaoVsMediaHistorica { get; set; }
+    public decimal ScoreSaudeFinanceira { get; set; }
+
+    // Impacto em metas
+    public List<ImpactoMetaDto>? ImpactoMetas { get; set; }
 }
 
 // ====== Limites por Categoria ======

@@ -1,6 +1,7 @@
 using System.Globalization;
 using ControlFinance.Application.DTOs;
 using ControlFinance.Domain.Entities;
+using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +14,16 @@ namespace ControlFinance.Api.Controllers;
 public class LembretesController : BaseAuthController
 {
     private readonly ILembretePagamentoRepository _repo;
+    private readonly ICategoriaRepository _categoriaRepo;
+    private static readonly TimeZoneInfo BrasiliaTimeZone =
+        TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows()
+            ? "E. South America Standard Time"
+            : "America/Sao_Paulo");
 
-    public LembretesController(ILembretePagamentoRepository repo)
+    public LembretesController(ILembretePagamentoRepository repo, ICategoriaRepository categoriaRepo)
     {
         _repo = repo;
+        _categoriaRepo = categoriaRepo;
     }
 
     /// <summary>
@@ -34,7 +41,17 @@ public class LembretesController : BaseAuthController
             DataVencimento = l.DataVencimento.ToString("yyyy-MM-dd"),
             l.RecorrenteMensal,
             l.DiaRecorrente,
+            Frequencia = l.Frequencia?.ToString(),
+            l.DiaSemanaRecorrente,
             l.Ativo,
+            l.CategoriaId,
+            Categoria = l.Categoria?.Nome,
+            FormaPagamento = l.FormaPagamento?.ToString(),
+            l.LembreteTelegramAtivo,
+            l.PeriodKeyAtual,
+            l.DiasAntecedenciaLembrete,
+            HorarioInicioLembrete = l.HorarioInicioLembrete.ToString(@"hh\:mm"),
+            HorarioFimLembrete = l.HorarioFimLembrete.ToString(@"hh\:mm"),
             CriadoEm = l.CriadoEm.ToString("o"),
             AtualizadoEm = l.AtualizadoEm.ToString("o"),
         });
@@ -59,7 +76,17 @@ public class LembretesController : BaseAuthController
             DataVencimento = lembrete.DataVencimento.ToString("yyyy-MM-dd"),
             lembrete.RecorrenteMensal,
             lembrete.DiaRecorrente,
+            Frequencia = lembrete.Frequencia?.ToString(),
+            lembrete.DiaSemanaRecorrente,
             lembrete.Ativo,
+            lembrete.CategoriaId,
+            Categoria = lembrete.Categoria?.Nome,
+            FormaPagamento = lembrete.FormaPagamento?.ToString(),
+            lembrete.LembreteTelegramAtivo,
+            lembrete.PeriodKeyAtual,
+            lembrete.DiasAntecedenciaLembrete,
+            HorarioInicioLembrete = lembrete.HorarioInicioLembrete.ToString(@"hh\:mm"),
+            HorarioFimLembrete = lembrete.HorarioFimLembrete.ToString(@"hh\:mm"),
             CriadoEm = lembrete.CriadoEm.ToString("o"),
             AtualizadoEm = lembrete.AtualizadoEm.ToString("o"),
         });
@@ -78,14 +105,64 @@ public class LembretesController : BaseAuthController
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out var dataVenc))
             return BadRequest(new { erro = "Data de vencimento inválida. Use o formato yyyy-MM-dd." });
 
+        var isContaFixa = request.RecorrenteMensal || !string.IsNullOrWhiteSpace(request.Frequencia);
+        if (isContaFixa)
+        {
+            if (!request.Valor.HasValue || request.Valor.Value <= 0)
+                return BadRequest(new { erro = "Valor é obrigatório para conta fixa." });
+            if (string.IsNullOrWhiteSpace(request.Categoria))
+                return BadRequest(new { erro = "Categoria é obrigatória para conta fixa." });
+            if (string.IsNullOrWhiteSpace(request.FormaPagamento))
+                return BadRequest(new { erro = "Forma de pagamento é obrigatória para conta fixa." });
+        }
+
+        int? categoriaId = null;
+        string? categoriaNome = null;
+        if (!string.IsNullOrWhiteSpace(request.Categoria))
+        {
+            var categoria = await _categoriaRepo.ObterPorNomeAsync(UsuarioId, request.Categoria.Trim());
+            if (categoria == null)
+                return BadRequest(new { erro = $"Categoria '{request.Categoria}' não encontrada." });
+
+            categoriaId = categoria.Id;
+            categoriaNome = categoria.Nome;
+        }
+
+        FormaPagamento? formaPagamento = null;
+        if (!string.IsNullOrWhiteSpace(request.FormaPagamento))
+        {
+            formaPagamento = request.FormaPagamento.Trim().ToLowerInvariant() switch
+            {
+                "pix" => FormaPagamento.PIX,
+                "debito" or "débito" => FormaPagamento.Debito,
+                "credito" or "crédito" => FormaPagamento.Credito,
+                "dinheiro" => FormaPagamento.Dinheiro,
+                "outro" => FormaPagamento.Outro,
+                _ => null
+            };
+
+            if (formaPagamento == null)
+                return BadRequest(new { erro = "Forma de pagamento inválida. Use: pix, debito, credito, dinheiro, outro." });
+        }
+
+        var vencimentoUtc = ConverterDataBrasiliaParaUtc(dataVenc);
+
         var lembrete = new LembretePagamento
         {
             UsuarioId = UsuarioId,
             Descricao = request.Descricao.Trim(),
             Valor = request.Valor,
-            DataVencimento = DateTime.SpecifyKind(dataVenc, DateTimeKind.Utc),
+            DataVencimento = vencimentoUtc,
             RecorrenteMensal = request.RecorrenteMensal,
             DiaRecorrente = request.RecorrenteMensal ? request.DiaRecorrente : null,
+            Frequencia = Enum.TryParse<FrequenciaLembrete>(request.Frequencia, true, out var freq) ? freq : null,
+            DiaSemanaRecorrente = request.DiaSemanaRecorrente,
+            CategoriaId = categoriaId,
+            FormaPagamento = formaPagamento,
+            LembreteTelegramAtivo = request.LembreteTelegramAtivo,
+            PeriodKeyAtual = request.RecorrenteMensal || !string.IsNullOrWhiteSpace(request.Frequencia)
+                ? $"{dataVenc:yyyy-MM}"
+                : null,
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
             AtualizadoEm = DateTime.UtcNow,
@@ -100,7 +177,17 @@ public class LembretesController : BaseAuthController
             DataVencimento = criado.DataVencimento.ToString("yyyy-MM-dd"),
             criado.RecorrenteMensal,
             criado.DiaRecorrente,
+            Frequencia = criado.Frequencia?.ToString(),
+            criado.DiaSemanaRecorrente,
             criado.Ativo,
+            criado.CategoriaId,
+            Categoria = categoriaNome,
+            FormaPagamento = criado.FormaPagamento?.ToString(),
+            criado.LembreteTelegramAtivo,
+            criado.PeriodKeyAtual,
+            criado.DiasAntecedenciaLembrete,
+            HorarioInicioLembrete = criado.HorarioInicioLembrete.ToString(@"hh\:mm"),
+            HorarioFimLembrete = criado.HorarioFimLembrete.ToString(@"hh\:mm"),
             CriadoEm = criado.CriadoEm.ToString("o"),
             AtualizadoEm = criado.AtualizadoEm.ToString("o"),
         });
@@ -125,13 +212,60 @@ public class LembretesController : BaseAuthController
             if (!DateTime.TryParseExact(request.DataVencimento, "yyyy-MM-dd",
                     CultureInfo.InvariantCulture, DateTimeStyles.None, out var dataVencAtualizar))
                 return BadRequest(new { erro = "Data de vencimento inválida. Use o formato yyyy-MM-dd." });
-            lembrete.DataVencimento = DateTime.SpecifyKind(dataVencAtualizar, DateTimeKind.Utc);
+            lembrete.DataVencimento = ConverterDataBrasiliaParaUtc(dataVencAtualizar);
         }
         if (request.RecorrenteMensal.HasValue)
         {
             lembrete.RecorrenteMensal = request.RecorrenteMensal.Value;
             lembrete.DiaRecorrente = request.RecorrenteMensal.Value ? request.DiaRecorrente : null;
         }
+        if (request.Frequencia != null)
+            lembrete.Frequencia = Enum.TryParse<FrequenciaLembrete>(request.Frequencia, true, out var freqAtualizar) ? freqAtualizar : null;
+        if (request.DiaSemanaRecorrente.HasValue)
+            lembrete.DiaSemanaRecorrente = request.DiaSemanaRecorrente;
+        if (request.Categoria != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Categoria))
+            {
+                lembrete.CategoriaId = null;
+            }
+            else
+            {
+                var categoria = await _categoriaRepo.ObterPorNomeAsync(UsuarioId, request.Categoria.Trim());
+                if (categoria == null)
+                    return BadRequest(new { erro = $"Categoria '{request.Categoria}' não encontrada." });
+                lembrete.CategoriaId = categoria.Id;
+            }
+        }
+        if (request.FormaPagamento != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.FormaPagamento))
+            {
+                lembrete.FormaPagamento = null;
+            }
+            else
+            {
+                var forma = request.FormaPagamento.Trim().ToLowerInvariant() switch
+                {
+                    "pix" => FormaPagamento.PIX,
+                    "debito" or "débito" => FormaPagamento.Debito,
+                    "credito" or "crédito" => FormaPagamento.Credito,
+                    "dinheiro" => FormaPagamento.Dinheiro,
+                    "outro" => FormaPagamento.Outro,
+                    _ => (FormaPagamento?)null
+                };
+
+                if (forma == null)
+                    return BadRequest(new { erro = "Forma de pagamento inválida. Use: pix, debito, credito, dinheiro, outro." });
+
+                lembrete.FormaPagamento = forma;
+            }
+        }
+        if (request.LembreteTelegramAtivo.HasValue)
+            lembrete.LembreteTelegramAtivo = request.LembreteTelegramAtivo.Value;
+
+        var recorrente = lembrete.RecorrenteMensal || lembrete.Frequencia.HasValue;
+        lembrete.PeriodKeyAtual = recorrente ? $"{lembrete.DataVencimento:yyyy-MM}" : null;
 
         await _repo.AtualizarAsync(lembrete);
         return Ok(new
@@ -142,10 +276,26 @@ public class LembretesController : BaseAuthController
             DataVencimento = lembrete.DataVencimento.ToString("yyyy-MM-dd"),
             lembrete.RecorrenteMensal,
             lembrete.DiaRecorrente,
+            Frequencia = lembrete.Frequencia?.ToString(),
+            lembrete.DiaSemanaRecorrente,
             lembrete.Ativo,
+            lembrete.CategoriaId,
+            Categoria = lembrete.Categoria?.Nome,
+            FormaPagamento = lembrete.FormaPagamento?.ToString(),
+            lembrete.LembreteTelegramAtivo,
+            lembrete.PeriodKeyAtual,
+            lembrete.DiasAntecedenciaLembrete,
+            HorarioInicioLembrete = lembrete.HorarioInicioLembrete.ToString(@"hh\:mm"),
+            HorarioFimLembrete = lembrete.HorarioFimLembrete.ToString(@"hh\:mm"),
             CriadoEm = lembrete.CriadoEm.ToString("o"),
             AtualizadoEm = lembrete.AtualizadoEm.ToString("o"),
         });
+    }
+
+    private static DateTime ConverterDataBrasiliaParaUtc(DateTime dataLocal)
+    {
+        var local = new DateTime(dataLocal.Year, dataLocal.Month, dataLocal.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(local, BrasiliaTimeZone);
     }
 
     /// <summary>

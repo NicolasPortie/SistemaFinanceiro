@@ -5,6 +5,8 @@ const apiProxyTarget = (
   (process.env.NODE_ENV === "production" ? "http://api:5000" : "http://localhost:5000")
 ).replace(/\/+$/, "");
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   async headers() {
@@ -25,9 +27,9 @@ const nextConfig: NextConfig = {
               "frame-ancestors 'none'",
               "form-action 'self'",
               "img-src 'self' data: blob:",
-              "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://static.cloudflareinsights.com`,
               "style-src 'self' 'unsafe-inline'",
-              "connect-src 'self' https://cloudflareinsights.com",
+              `connect-src 'self'${isDev ? " ws://localhost:* http://localhost:*" : ""} https://cloudflareinsights.com`,
             ].join("; ") + ";",
           },
         ],

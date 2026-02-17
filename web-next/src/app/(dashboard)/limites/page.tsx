@@ -13,7 +13,6 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  DollarSign,
   Shield,
   BarChart3,
 } from "lucide-react";
@@ -288,67 +287,92 @@ export default function LimitesPage() {
 
       {/* ── New Limit Sheet ── */}
       <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader className="pb-6">
-            <SheetTitle className="text-xl sm:text-2xl font-extrabold tracking-tight">Definir Limite</SheetTitle>
-            <SheetDescription>Configure um limite de gasto para uma categoria</SheetDescription>
-          </SheetHeader>
-          <form onSubmit={handleSalvar} className="space-y-6">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</Label>
-              <Select value={categoria} onValueChange={setCategoria}>
-                <SelectTrigger className="h-11 rounded-xl">
-                  <SelectValue placeholder="Selecione a categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoriasDisponiveis.map((c) => (
-                    <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {categoriasDisponiveis.length === 0 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Todas as categorias já possuem limites definidos.</p>
-              )}
-            </div>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          {/* Accent line */}
+          <div className="h-1 w-full shrink-0 bg-linear-to-r from-amber-400 via-orange-500 to-red-500" />
 
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Limite (R$)</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input placeholder="0,00" value={valor} onChange={(e) => setValor(e.target.value)} className="h-11 rounded-xl pl-9 text-lg tabular-nums font-semibold" required />
+          {/* Header */}
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-500 transition-all duration-500">
+                <Gauge className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Definir Limite</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Configure um limite de gasto para uma categoria</SheetDescription>
               </div>
             </div>
+          </SheetHeader>
 
-            {/* Preview */}
-            {categoria && valor && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl bg-muted/20 border border-border/30 space-y-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Preview</p>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-500/15">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-sm">{categoria}</p>
-                    <p className="text-xs text-muted-foreground">Limite: {formatCurrency(parseFloat(valor.replace(",", ".")) || 0)}</p>
-                  </div>
-                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 border-0">0%</Badge>
+          {/* Scrollable form body */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <form onSubmit={handleSalvar} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+              {/* Main fields */}
+              <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Categoria</Label>
+                  <Select value={categoria} onValueChange={setCategoria}>
+                    <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30">
+                      <SelectValue placeholder="Selecione a categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoriasDisponiveis.map((c) => (
+                        <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {categoriasDisponiveis.length === 0 && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Todas as categorias já possuem limites definidos.</p>
+                  )}
                 </div>
-              </motion.div>
-            )}
 
-            <Separator />
+                <div className="border-t border-border/20" />
 
-            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={definirLimite.isPending || !categoria}>
-              {definirLimite.isPending ? (
-                <Loader2 className="h-4.5 w-4.5 animate-spin" />
-              ) : (
-                <>
-                  <Gauge className="h-4.5 w-4.5" />
-                  Salvar Limite
-                </>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor Limite (R$)</Label>
+                  <div className="relative">
+                    <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-amber-500/10 text-amber-500">R$</div>
+                    <Input placeholder="0,00" value={valor} onChange={(e) => setValor(e.target.value)} className="h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" required />
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview */}
+              {categoria && valor && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Preview</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-500/15">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-sm">{categoria}</p>
+                      <p className="text-xs text-muted-foreground">Limite: {formatCurrency(parseFloat(valor.replace(",", ".")) || 0)}</p>
+                    </div>
+                    <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 border-0">0%</Badge>
+                  </div>
+                </motion.div>
               )}
-            </Button>
-          </form>
+
+              {/* Submit */}
+              <div className="pt-2 sm:pt-3 pb-safe">
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
+                  disabled={definirLimite.isPending || !categoria}
+                >
+                  {definirLimite.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Gauge className="h-5 w-5" />
+                      Salvar Limite
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
         </SheetContent>
       </Sheet>
 

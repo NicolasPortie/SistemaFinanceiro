@@ -32,9 +32,11 @@ public class Usuario
     public ICollection<Categoria> Categorias { get; set; } = new List<Categoria>();
     public ICollection<CodigoVerificacao> CodigosVerificacao { get; set; } = new List<CodigoVerificacao>();
     public PerfilFinanceiro? PerfilFinanceiro { get; set; }
+    public PerfilComportamental? PerfilComportamental { get; set; }
     public ICollection<AnaliseMensal> AnalisesMensais { get; set; } = new List<AnaliseMensal>();
     public ICollection<SimulacaoCompra> SimulacoesCompra { get; set; } = new List<SimulacaoCompra>();
     public ICollection<LimiteCategoria> LimitesCategoria { get; set; } = new List<LimiteCategoria>();
     public ICollection<MetaFinanceira> MetasFinanceiras { get; set; } = new List<MetaFinanceira>();
     public ICollection<LembretePagamento> LembretesPagamento { get; set; } = new List<LembretePagamento>();
+    public ICollection<EventoSazonal> EventosSazonais { get; set; } = new List<EventoSazonal>();
 }

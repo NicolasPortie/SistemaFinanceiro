@@ -80,6 +80,24 @@ public class CriarLembreteRequest
 
     [Range(1, 31, ErrorMessage = "Dia recorrente deve ser entre 1 e 31.")]
     public int? DiaRecorrente { get; set; }
+
+    /// <summary>Frequência: semanal, quinzenal, mensal, anual (opcional, sobrepõe RecorrenteMensal)</summary>
+    public string? Frequencia { get; set; }
+
+    /// <summary>Dia da semana (0=Domingo ... 6=Sábado) — usado para semanal/quinzenal</summary>
+    [Range(0, 6, ErrorMessage = "Dia da semana deve ser entre 0 (Domingo) e 6 (Sábado).")]
+    public int? DiaSemanaRecorrente { get; set; }
+
+    /// <summary>Categoria da conta fixa</summary>
+    [StringLength(100)]
+    public string? Categoria { get; set; }
+
+    /// <summary>Forma de pagamento: pix, debito, credito, dinheiro, outro</summary>
+    [StringLength(20)]
+    public string? FormaPagamento { get; set; }
+
+    /// <summary>Deseja lembrete automático no Telegram?</summary>
+    public bool LembreteTelegramAtivo { get; set; } = true;
 }
 
 public class AtualizarLembreteRequest
@@ -96,4 +114,17 @@ public class AtualizarLembreteRequest
 
     [Range(1, 31, ErrorMessage = "Dia recorrente deve ser entre 1 e 31.")]
     public int? DiaRecorrente { get; set; }
+
+    public string? Frequencia { get; set; }
+
+    [Range(0, 6, ErrorMessage = "Dia da semana deve ser entre 0 (Domingo) e 6 (Sábado).")]
+    public int? DiaSemanaRecorrente { get; set; }
+
+    [StringLength(100)]
+    public string? Categoria { get; set; }
+
+    [StringLength(20)]
+    public string? FormaPagamento { get; set; }
+
+    public bool? LembreteTelegramAtivo { get; set; }
 }

@@ -339,43 +339,75 @@ export default function CartoesPage() {
 
       {/* Create Sheet */}
       <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader className="pb-6">
-            <SheetTitle className="text-xl sm:text-2xl font-extrabold tracking-tight">Novo Cartão</SheetTitle>
-            <SheetDescription>Adicione um cartão de crédito à sua conta</SheetDescription>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          {/* Accent line */}
+          <div className="h-1 w-full shrink-0 bg-linear-to-r from-violet-400 via-purple-500 to-indigo-500" />
+
+          {/* Header */}
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-violet-500/10 text-violet-500 transition-all duration-500">
+                <CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Novo Cartão</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Adicione um cartão de crédito à sua conta</SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
-          <form onSubmit={form.handleSubmit(onSubmitCreate)} className="space-y-5">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome do cartão</Label>
-              <Input placeholder="Ex: Nubank, Inter..." className="h-11 rounded-xl" {...form.register("nome")} />
-              {form.formState.errors.nome && <p className="text-xs text-red-500">{form.formState.errors.nome.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Limite (R$)</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input placeholder="0,00" className="h-11 rounded-xl pl-9 tabular-nums font-semibold" {...form.register("limite")} />
+
+          {/* Scrollable form body */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <form onSubmit={form.handleSubmit(onSubmitCreate)} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+              {/* Main fields */}
+              <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Nome do cartão</Label>
+                  <Input placeholder="Ex: Nubank, Inter..." className="h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" {...form.register("nome")} />
+                  {form.formState.errors.nome && <p className="text-xs text-red-500 font-medium">{form.formState.errors.nome.message}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Limite (R$)</Label>
+                  <div className="relative">
+                    <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-violet-500/10 text-violet-500">R$</div>
+                    <Input placeholder="0,00" className="h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" {...form.register("limite")} />
+                  </div>
+                  {form.formState.errors.limite && <p className="text-xs text-red-500 font-medium">{form.formState.errors.limite.message}</p>}
+                </div>
+
+                <div className="border-t border-border/20" />
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia de vencimento</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                    <Input placeholder="Ex: 10" className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" {...form.register("diaVencimento")} />
+                  </div>
+                  {form.formState.errors.diaVencimento && <p className="text-xs text-red-500 font-medium">{form.formState.errors.diaVencimento.message}</p>}
+                </div>
               </div>
-              {form.formState.errors.limite && <p className="text-xs text-red-500">{form.formState.errors.limite.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de vencimento</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input placeholder="Ex: 10" className="h-11 rounded-xl pl-9" {...form.register("diaVencimento")} />
+
+              {/* Info card */}
+              <div className="rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  <span><strong>Fechamento:</strong> 1º dia útil do mês (automático)</span>
+                </p>
               </div>
-              {form.formState.errors.diaVencimento && <p className="text-xs text-red-500">{form.formState.errors.diaVencimento.message}</p>}
-            </div>
-            <div className="rounded-xl bg-muted/40 p-4 border border-border/30">
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                <span><strong>Fechamento:</strong> 1º dia útil do mês (automático)</span>
-              </p>
-            </div>
-            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={criarCartao.isPending}>
-              {criarCartao.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><CreditCard className="h-4.5 w-4.5" />Criar cartão</>}
-            </Button>
-          </form>
+
+              {/* Submit */}
+              <div className="pt-2 sm:pt-3 pb-safe">
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-linear-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
+                  disabled={criarCartao.isPending}
+                >
+                  {criarCartao.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CreditCard className="h-5 w-5" />Criar Cartão</>}
+                </Button>
+              </div>
+            </form>
+          </div>
         </SheetContent>
       </Sheet>
 

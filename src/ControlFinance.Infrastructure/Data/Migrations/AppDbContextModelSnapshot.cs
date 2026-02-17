@@ -340,6 +340,66 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.ToTable("conversas_pendentes", (string)null);
                 });
 
+            modelBuilder.Entity("ControlFinance.Domain.Entities.EventoSazonal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<int?>("CategoriaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("categoria_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("descricao");
+
+                    b.Property<bool>("DetectadoAutomaticamente")
+                        .HasColumnType("boolean")
+                        .HasColumnName("detectado_automaticamente");
+
+                    b.Property<bool>("EhReceita")
+                        .HasColumnType("boolean")
+                        .HasColumnName("eh_receita");
+
+                    b.Property<int>("MesOcorrencia")
+                        .HasColumnType("integer")
+                        .HasColumnName("mes_ocorrencia");
+
+                    b.Property<bool>("RecorrenteAnual")
+                        .HasColumnType("boolean")
+                        .HasColumnName("recorrente_anual");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<decimal>("ValorMedio")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("valor_medio");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
+
+                    b.HasIndex("UsuarioId", "MesOcorrencia");
+
+                    b.ToTable("eventos_sazonais", (string)null);
+                });
+
             modelBuilder.Entity("ControlFinance.Domain.Entities.Fatura", b =>
                 {
                     b.Property<int>("Id")
@@ -458,6 +518,10 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("atualizado_em");
 
+                    b.Property<int?>("CategoriaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("categoria_id");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
@@ -476,6 +540,44 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("dia_recorrente");
 
+                    b.Property<int?>("DiaSemanaRecorrente")
+                        .HasColumnType("integer")
+                        .HasColumnName("dia_semana_recorrente");
+
+                    b.Property<int>("DiasAntecedenciaLembrete")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(3)
+                        .HasColumnName("dias_antecedencia_lembrete");
+
+                    b.Property<int?>("FormaPagamento")
+                        .HasColumnType("integer")
+                        .HasColumnName("forma_pagamento");
+
+                    b.Property<string>("Frequencia")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("frequencia");
+
+                    b.Property<TimeSpan>("HorarioFimLembrete")
+                        .HasColumnType("interval")
+                        .HasColumnName("horario_fim_lembrete");
+
+                    b.Property<TimeSpan>("HorarioInicioLembrete")
+                        .HasColumnType("interval")
+                        .HasColumnName("horario_inicio_lembrete");
+
+                    b.Property<bool>("LembreteTelegramAtivo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("lembrete_telegram_ativo");
+
+                    b.Property<string>("PeriodKeyAtual")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("period_key_atual");
+
                     b.Property<bool>("RecorrenteMensal")
                         .HasColumnType("boolean")
                         .HasColumnName("recorrente_mensal");
@@ -493,6 +595,8 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                         .HasColumnName("valor");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
 
                     b.HasIndex("DataVencimento");
 
@@ -542,6 +646,114 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("limites_categoria", (string)null);
+                });
+
+            modelBuilder.Entity("ControlFinance.Domain.Entities.LogDecisao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descricao");
+
+                    b.Property<string>("EntradasJson")
+                        .HasColumnType("text")
+                        .HasColumnName("entradas_json");
+
+                    b.Property<string>("JustificativaResumida")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("justificativa_resumida");
+
+                    b.Property<string>("Resultado")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("resultado");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tipo");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CriadoEm");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("logs_decisao", (string)null);
+                });
+
+            modelBuilder.Entity("ControlFinance.Domain.Entities.LogLembreteTelegram", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("EnviadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enviado_em");
+
+                    b.Property<string>("Erro")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("erro");
+
+                    b.Property<int>("LembretePagamentoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("lembrete_pagamento_id");
+
+                    b.Property<long?>("MensagemTelegramId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("mensagem_telegram_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TipoLembrete")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo_lembrete");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnviadoEm");
+
+                    b.HasIndex("LembretePagamentoId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("logs_lembrete_telegram", (string)null);
                 });
 
             modelBuilder.Entity("ControlFinance.Domain.Entities.MetaFinanceira", b =>
@@ -647,6 +859,49 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.ToTable("notificacoes_enviadas", (string)null);
                 });
 
+            modelBuilder.Entity("ControlFinance.Domain.Entities.PagamentoCiclo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateTime?>("DataPagamento")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_pagamento");
+
+                    b.Property<int>("LembretePagamentoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("lembrete_pagamento_id");
+
+                    b.Property<bool>("Pago")
+                        .HasColumnType("boolean")
+                        .HasColumnName("pago");
+
+                    b.Property<string>("PeriodKey")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("period_key");
+
+                    b.Property<decimal?>("ValorPago")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("valor_pago");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LembretePagamentoId", "PeriodKey")
+                        .IsUnique();
+
+                    b.ToTable("pagamentos_ciclo", (string)null);
+                });
+
             modelBuilder.Entity("ControlFinance.Domain.Entities.Parcela", b =>
                 {
                     b.Property<int>("Id")
@@ -691,6 +946,97 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.HasIndex("LancamentoId");
 
                     b.ToTable("parcelas", (string)null);
+                });
+
+            modelBuilder.Entity("ControlFinance.Domain.Entities.PerfilComportamental", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<string>("CategoriaMaisFrequente")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("categoria_mais_frequente");
+
+                    b.Property<int>("ComprasNaoPlanejadas30d")
+                        .HasColumnType("integer")
+                        .HasColumnName("compras_nao_planejadas_30d");
+
+                    b.Property<decimal>("ComprometimentoRendaPercentual")
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("comprometimento_renda_percentual");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("FormaPagamentoPreferida")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("forma_pagamento_preferida");
+
+                    b.Property<int>("FrequenciaDuvidaGasto")
+                        .HasColumnType("integer")
+                        .HasColumnName("frequencia_duvida_gasto");
+
+                    b.Property<int>("MesesComSaldoNegativo")
+                        .HasColumnType("integer")
+                        .HasColumnName("meses_com_saldo_negativo");
+
+                    b.Property<int>("NivelImpulsividade")
+                        .HasColumnType("integer")
+                        .HasColumnName("nivel_impulsividade");
+
+                    b.Property<string>("PadraoMensalDetectado")
+                        .HasColumnType("text")
+                        .HasColumnName("padrao_mensal_detectado");
+
+                    b.Property<decimal>("ScoreEstabilidade")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("score_estabilidade");
+
+                    b.Property<DateTime>("ScoreSaudeAtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("score_saude_atualizado_em");
+
+                    b.Property<string>("ScoreSaudeDetalhes")
+                        .HasColumnType("text")
+                        .HasColumnName("score_saude_detalhes");
+
+                    b.Property<decimal>("ScoreSaudeFinanceira")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("score_saude_financeira");
+
+                    b.Property<decimal>("TendenciaCrescimentoGastos")
+                        .HasColumnType("decimal(18,4)")
+                        .HasColumnName("tendencia_crescimento_gastos");
+
+                    b.Property<int>("ToleranciaRisco")
+                        .HasColumnType("integer")
+                        .HasColumnName("tolerancia_risco");
+
+                    b.Property<int>("TotalConsultasDecisao")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_consultas_decisao");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId")
+                        .IsUnique();
+
+                    b.ToTable("perfis_comportamentais", (string)null);
                 });
 
             modelBuilder.Entity("ControlFinance.Domain.Entities.PerfilFinanceiro", b =>
@@ -1209,6 +1555,24 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("ControlFinance.Domain.Entities.EventoSazonal", b =>
+                {
+                    b.HasOne("ControlFinance.Domain.Entities.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ControlFinance.Domain.Entities.Usuario", "Usuario")
+                        .WithMany("EventosSazonais")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("ControlFinance.Domain.Entities.Fatura", b =>
                 {
                     b.HasOne("ControlFinance.Domain.Entities.CartaoCredito", "CartaoCredito")
@@ -1241,11 +1605,18 @@ namespace ControlFinance.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("ControlFinance.Domain.Entities.LembretePagamento", b =>
                 {
+                    b.HasOne("ControlFinance.Domain.Entities.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ControlFinance.Domain.Entities.Usuario", "Usuario")
                         .WithMany("LembretesPagamento")
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Categoria");
 
                     b.Navigation("Usuario");
                 });
@@ -1265,6 +1636,36 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Categoria");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ControlFinance.Domain.Entities.LogDecisao", b =>
+                {
+                    b.HasOne("ControlFinance.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ControlFinance.Domain.Entities.LogLembreteTelegram", b =>
+                {
+                    b.HasOne("ControlFinance.Domain.Entities.LembretePagamento", "LembretePagamento")
+                        .WithMany("LogsLembrete")
+                        .HasForeignKey("LembretePagamentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControlFinance.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LembretePagamento");
 
                     b.Navigation("Usuario");
                 });
@@ -1297,6 +1698,17 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("ControlFinance.Domain.Entities.PagamentoCiclo", b =>
+                {
+                    b.HasOne("ControlFinance.Domain.Entities.LembretePagamento", "LembretePagamento")
+                        .WithMany("PagamentosCiclo")
+                        .HasForeignKey("LembretePagamentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LembretePagamento");
+                });
+
             modelBuilder.Entity("ControlFinance.Domain.Entities.Parcela", b =>
                 {
                     b.HasOne("ControlFinance.Domain.Entities.Fatura", "Fatura")
@@ -1313,6 +1725,17 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.Navigation("Fatura");
 
                     b.Navigation("Lancamento");
+                });
+
+            modelBuilder.Entity("ControlFinance.Domain.Entities.PerfilComportamental", b =>
+                {
+                    b.HasOne("ControlFinance.Domain.Entities.Usuario", "Usuario")
+                        .WithOne("PerfilComportamental")
+                        .HasForeignKey("ControlFinance.Domain.Entities.PerfilComportamental", "UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("ControlFinance.Domain.Entities.PerfilFinanceiro", b =>
@@ -1409,6 +1832,13 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.Navigation("Tags");
                 });
 
+            modelBuilder.Entity("ControlFinance.Domain.Entities.LembretePagamento", b =>
+                {
+                    b.Navigation("LogsLembrete");
+
+                    b.Navigation("PagamentosCiclo");
+                });
+
             modelBuilder.Entity("ControlFinance.Domain.Entities.SimulacaoCompra", b =>
                 {
                     b.Navigation("Meses");
@@ -1424,6 +1854,8 @@ namespace ControlFinance.Infrastructure.Data.Migrations
 
                     b.Navigation("CodigosVerificacao");
 
+                    b.Navigation("EventosSazonais");
+
                     b.Navigation("Lancamentos");
 
                     b.Navigation("LembretesPagamento");
@@ -1431,6 +1863,8 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.Navigation("LimitesCategoria");
 
                     b.Navigation("MetasFinanceiras");
+
+                    b.Navigation("PerfilComportamental");
 
                     b.Navigation("PerfilFinanceiro");
 

@@ -37,6 +37,11 @@ public static class DependencyInjection
         services.AddScoped<IConversaPendenteRepository, ConversaPendenteRepository>();
         services.AddScoped<INotificacaoEnviadaRepository, NotificacaoEnviadaRepository>();
         services.AddScoped<ITagLancamentoRepository, TagLancamentoRepository>();
+        services.AddScoped<IPerfilComportamentalRepository, PerfilComportamentalRepository>();
+        services.AddScoped<IEventoSazonalRepository, EventoSazonalRepository>();
+        services.AddScoped<IPagamentoCicloRepository, PagamentoCicloRepository>();
+        services.AddScoped<ILogLembreteTelegramRepository, LogLembreteTelegramRepository>();
+        services.AddScoped<ILogDecisaoRepository, LogDecisaoRepository>();
 
         // Codigo Verificacao
         services.AddScoped<ICodigoVerificacaoRepository, CodigoVerificacaoRepository>();

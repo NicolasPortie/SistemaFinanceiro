@@ -73,5 +73,41 @@ public class LembretePagamentoRepository : ILembretePagamentoRepository
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<List<LembretePagamento>> ObterAtivosComLembreteTelegramAsync()
+    {
+        return await _context.Set<LembretePagamento>()
+            .Include(l => l.Usuario)
+            .Include(l => l.PagamentosCiclo)
+            .Where(l => l.Ativo && l.LembreteTelegramAtivo)
+            .OrderBy(l => l.DataVencimento)
+            .ToListAsync();
+    }
+
+    public async Task<bool> PausarAsync(int usuarioId, int lembreteId)
+    {
+        var lembrete = await _context.Set<LembretePagamento>()
+            .FirstOrDefaultAsync(l => l.Id == lembreteId && l.UsuarioId == usuarioId && l.Ativo);
+
+        if (lembrete == null) return false;
+
+        lembrete.Ativo = false;
+        lembrete.AtualizadoEm = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> ReativarAsync(int usuarioId, int lembreteId)
+    {
+        var lembrete = await _context.Set<LembretePagamento>()
+            .FirstOrDefaultAsync(l => l.Id == lembreteId && l.UsuarioId == usuarioId && !l.Ativo);
+
+        if (lembrete == null) return false;
+
+        lembrete.Ativo = true;
+        lembrete.AtualizadoEm = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return true;
+    }
 }
 

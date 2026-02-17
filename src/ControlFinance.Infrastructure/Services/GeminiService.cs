@@ -114,6 +114,28 @@ public class GeminiService : IGeminiService
               NAO some os numeros! "75 e 90" NAO e 165. E 75.90 (setenta e cinco reais e noventa centavos).
             - "ontem" = dia anterior a {{dataHoje}}, "anteontem" = 2 dias antes de {{dataHoje}}.
 
+            IMPORTANTE — LINGUAGEM INFORMAL / GIRIAS BRASILEIRAS:
+            O usuario pode usar girias, abreviacoes e linguagem coloquial. Interprete corretamente:
+            - "torrei", "meti", "deixei", "larguei", "soltei" = gastei.
+            - "grana", "bufunfa", "din", "tutu", "pila" = dinheiro.
+            - "conto" = reais (ex: "200 conto" = R$ 200).
+            - "pau" = mil reais (ex: "2 pau" = R$ 2000). CUIDADO: "15 pau" = R$ 15000, "meio pau" = R$ 500.
+            - "manga" = mil reais (ex: "3 manga" = R$ 3000).  
+            - "faixa", "uns", "mais ou menos" = valor aproximado, use o numero mais proximo.
+            - "boto fe", "bora", "manda", "pode cravar", "fechou" = confirmacao/sim.
+            - "na mao" = dinheiro vivo / nao_informado.
+            - "no debito", "passei debito" = debito.
+            - "no credito", "passei credito", "no cartao" = credito.
+            - "no pix", "fiz pix", "pixei", "mandei pix" = pix.
+            - "fiz um pix de 50 pro fulano" = registrar gasto 50 via pix.
+            - "rango", "boia", "comida", "janta", "almoco", "cafe" -> Alimentacao.
+            - "role", "saidinha", "balada", "bar", "boteco", "happy hour" -> Lazer.
+            - "remedio", "consulta", "medico", "dentista", "exame" -> Saude.
+            - "onibus", "metro", "trem", "uber", "99", "cabify", "mobilidade" -> Transporte.
+            - "mensalidade", "curso", "facul", "escola", "livro" -> Educacao.
+            - O usuario pode abreviar: "alim" = Alimentacao, "transp" = Transporte.
+            - Erros de digitacao comuns: "gastie" = gastei, "recbi" = recebi, "pagei" = paguei.
+
             REGRAS:
             1. Analise a mensagem e determine a intencao do usuario.
             2. Responda APENAS com JSON valido (sem markdown), no formato:
@@ -129,44 +151,124 @@ public class GeminiService : IGeminiService
                 "aporteMeta": null,
                 "pagamentoFatura": null,
                 "cartao": null,
-                "divisaoGasto": null
+                "divisaoGasto": null,
+                "verificacaoDuplicidade": null
             }
 
-            INTENCOES POSSIVEIS:
-            - "saudacao" -> oi, ola, bom dia etc.
-            - "ajuda" -> como funciona.
+            INTENCOES POSSIVEIS (com exemplos de frases que o usuario pode usar):
+
+            - "saudacao" -> cumprimentos e saudacoes.
+              Ex: "oi", "ola", "e ai", "fala", "bom dia", "boa tarde", "boa noite", "salve", "eae", "opa", "beleza", "tudo bem?", "como vai?", "fala ai", "iae", "yo", "hey".
+
+            - "ajuda" -> como funciona, o que voce faz, etc.
+              Ex: "como funciona?", "me ajuda", "o que voce faz?", "ajuda", "help", "como uso isso?", "quais funcoes tem?", "o que da pra fazer?", "como te usar?", "tutorial", "instrucoes", "nao sei usar".
+
             - "registrar" -> quando relata gasto/receita ja feito. Preencher "lancamento".
-            - "avaliar_gasto" -> quando pergunta se pode gastar. Preencher "avaliacaoGasto".
-            - "prever_compra" -> simulacao de compra grande/parcelada. Preencher "simulacao".
-            - "configurar_limite" -> definir limite por categoria. Preencher "limite".
-            - "consultar_limites" -> ver limites.
+              Ex: "gastei 50 no mercado", "paguei 30 de uber", "almocei por 25", "comprei roupa de 200", "recebi 3000 de salario", "ganhei 500 de freelance", "entrou 2000 na conta", "torrei 80 no bar", "deixei 150 no posto", "meti 60 no ifood", "lanchei 15 reais", "estacionamento 12 reais", "farmacia 45", "luz 180", "agua 90", "internet 120", "netflix 40", "spotify 20", "jantei fora 95", "abasteci 200", "padaria 8 reais", "cinema 35", "uber 22", "99 18 reais", "barbearia 50", "academia 100", "cabeleireiro 80", "paguei conta de luz", "botei gasolina", "fiz mercado", "fiz compras", "saiu 500 do cartao", "debito 45 no mercado", "no pix 30 pro joao", "transferi 100", "mandei pix de 50", "credito 3x de 200".
+
+            - "avaliar_gasto" -> quando PERGUNTA se pode/deve gastar (decisao). Preencher "avaliacaoGasto".
+              Ex: "posso gastar 50?", "da pra gastar 80 no ifood?", "cabe 200 no orcamento?", "tenho margem pra gastar 100?", "consigo gastar 60 hoje?", "rola gastar 40 no lanche?", "sera que posso torrar 150?", "to podendo gastar?", "da pra eu comprar isso de 90?", "posso pedir delivery de 45?", "eh seguro gastar 200 agora?", "meu orcamento aguenta 300?", "posso me dar esse luxo de 80?", "vale a pena gastar 60?", "sobra pra gastar 50?", "teria como gastar 70?", "tem espaco pra 100?", "da pra encaixar 55?", "compensaria gastar 200?".
+
+            - "prever_compra" -> simulacao de compra grande/parcelada FUTURA que ainda NAO fez. Preencher "simulacao".
+              Ex: "se eu comprar uma TV de 3000 em 10x?", "quanto ficaria um celular de 4000 em 12x?", "simular compra de notebook", "quero simular parcelamento", "e se eu parcelar 2000 em 6x?", "to pensando em comprar um sofa de 5000", "vale a pena parcelar?", "como ficaria uma geladeira de 3500?", "quanto comprometeria se eu comprar 2000?", "cabe uma TV de 4000 no orcamento?", "analisar compra de 6000 em 12x", "to de olho num note de 5000", "tava vendo um celular de 3000", "queria ver como fica 1500 em 5x", "da pra parcelar 8000 em 10x?", "simula pra mim 4000 em 8 parcelas".
+
+            - "configurar_limite" -> definir/alterar limite por categoria. Preencher "limite".
+              Ex: "limitar alimentacao em 800", "colocar limite de 500 pra transporte", "definir teto de 1000 pra lazer", "quero gastar no maximo 600 em comida", "estabelecer limite de 400 pro delivery", "setar 300 pra entretenimento", "botar limite de 200 no uber", "maximo 150 por mes em assinaturas", "nao quero gastar mais de 800 em mercado", "teto de 500 em roupas", "limitar delivery em 250", "colocar 1000 de limite na alimentacao".
+
+            - "consultar_limites" -> ver limites configurados.
+              Ex: "meus limites", "quais limites tenho?", "mostra os limites", "ver limites", "limites atuais", "como tao meus limites?", "to estourando algum limite?", "como estao os limites?", "quero ver meus limites", "lista meus limites".
+
             - "criar_meta" -> criar meta financeira. Preencher "meta".
+              Ex: "quero juntar 5000 pra viagem", "criar meta de 10 mil ate dezembro", "guardar 3000 pra emergencia", "meta de reserva de 20 mil", "quero economizar 1000 por mes", "criar meta viagem europa", "reserva de emergencia de 15 mil", "juntar grana pra carro", "quero ter 50 mil ate 2027", "guardar pra dar entrada no ape", "poupar 500 por mes pra ferias", "objetivo de juntar 8 mil", "quero montar reserva", "meta pra trocar de celular".
+
             - "aportar_meta" -> adicionar valor ou depositar em uma meta existente. Preencher "aporteMeta".
+              Ex: "depositar 200 na meta viagem", "colocar 500 na reserva", "guardar 300 na meta do carro", "aportar 1000 na emergencia", "botar 150 na meta", "adicionar 200 na poupanca", "jogar 500 na meta ferias", "separei 400 pra meta", "meter 250 na reserva", "coloca 100 na meta viagem", "contribuir 300 pra meta".
+
             - "sacar_meta" -> retirar valor de uma meta. Preencher "aporteMeta" com valor NEGATIVO.
-            - "consultar_metas" -> ver metas.
-            - "ver_resumo" -> resumo financeiro.
-            - "ver_fatura" -> ver fatura atual/corrente do cartao (a que esta acumulando agora).
-            - "ver_fatura_detalhada" -> fatura atual com todos os itens parcela por parcela.
-            - "listar_faturas" -> listar TODAS as faturas pendentes de todos os cartoes.
-            - "detalhar_categoria" -> detalhar gastos de uma categoria especifica. Colocar o nome da categoria no campo "resposta".
-            - "ver_categorias" -> ver categorias.
-            - "cadastrar_cartao" -> cadastrar cartao de credito. Preencher "cartao" com nome, limite e diaVencimento quando possivel.
-            - "editar_cartao" -> editar/alterar/corrigir dados de um cartao ja cadastrado (nome, limite ou vencimento). Preencher "cartao" com os dados novos e colocar o nome atual do cartao no campo "resposta".
-            - "excluir_cartao" -> excluir/remover/desativar um cartao cadastrado. Colocar o nome do cartao no campo "resposta".
-            - "excluir_lancamento" -> apagar/remover/excluir um lancamento ja registrado. Colocar descricao ou detalhes no campo "resposta".
-            - "criar_categoria" -> criar/adicionar uma nova categoria personalizada. Colocar o nome da categoria no campo "resposta". Ex: "criar categoria Roupas", "adicionar categoria Pets", "nova categoria Educação".
-            - "categorizar_ultimo" -> alterar a categoria do último lançamento registrado (ex: "esse último gasto foi Lazer"). Preencher "resposta" com o nome da NOVA categoria.
-            - "pagar_fatura" -> registrar pagamento de fatura de cartao de credito. Preencher "pagamentoFatura".
-            - "dividir_gasto" -> dividir/rachar conta ou gasto com outras pessoas. Preencher "divisaoGasto" com valorTotal, numeroPessoas, descricao, categoria e formaPagamento (quando informados).
-            - "ver_recorrentes" -> ver receitas recorrentes detectadas (salario, freelance, etc.).
+              Ex: "tirar 500 da meta", "resgatar 1000 da reserva", "retirar 200 da meta viagem", "sacar da meta emergencia", "peguei 300 da reserva", "precisei tirar da meta", "usar 500 da meta do carro", "descontar 200 da meta".
+
+            - "consultar_metas" -> ver progresso das metas.
+              Ex: "minhas metas", "como estao minhas metas?", "ver metas", "progresso das metas", "quanto falta pra meta?", "como ta a meta da viagem?", "quero ver minhas metas", "metas atuais", "quanto ja juntei?", "tou perto da meta?", "como anda a reserva?", "mostra minhas metas".
+
+            - "ver_resumo" -> resumo financeiro do mes.
+              Ex: "como estou esse mes?", "meu resumo", "resumo do mes", "como tao minhas financas?", "como ta minha grana?", "quanto gastei esse mes?", "quanto sobra esse mes?", "balanco do mes", "visao geral", "overview financeiro", "como anda meu dinheiro?", "to no vermelho?", "to positivo esse mes?", "situacao financeira", "como estou financeiramente?", "da um resumo ai", "status financeiro", "me da um panorama".
+
+            - "ver_extrato" -> ver ultimos lancamentos.
+              Ex: "meu extrato", "ultimos gastos", "ultimos lancamentos", "o que lancei?", "historico", "movimentacoes recentes", "o que gastei?", "mostra meus gastos", "lista de gastos", "ultimas movimentacoes", "o que registrei?", "meus lancamentos", "ver extrato", "extrato recente", "o que saiu da conta?", "gastos recentes".
+
+            - "ver_fatura" -> ver fatura atual/corrente do cartao.
+              Ex: "minha fatura", "fatura do nubank", "fatura atual", "fatura do cartao", "quanto ta a fatura?", "quanto devo no cartao?", "mostra a fatura", "fatura do mes", "quanto ja gastei no cartao?", "fatura corrente", "ver fatura", "como ta a fatura?", "total da fatura".
+
+            - "ver_fatura_detalhada" -> fatura atual com todos os itens.
+              Ex: "fatura detalhada", "detalhar fatura", "detalhe da fatura", "fatura completa", "fatura item por item", "fatura com parcelas", "ver detalhes da fatura", "quero ver cada item da fatura", "discriminar a fatura", "parcelas da fatura".
+
+            - "listar_faturas" -> listar TODAS as faturas pendentes.
+              Ex: "todas as faturas", "listar faturas", "minhas faturas", "faturas pendentes", "quais faturas tenho?", "faturas abertas", "quanto devo em faturas?", "total das faturas", "quanto devo nos cartoes?", "ver todas faturas", "lista de faturas".
+
+            - "detalhar_categoria" -> detalhar gastos de uma categoria. Colocar nome da categoria no campo "resposta".
+              Ex: "detalha alimentacao", "gastos de transporte", "me mostra os gastos de lazer", "quanto gastei em comida?", "detalhes de saude", "gastos com educacao", "o que gastei em entretenimento?", "detalhar mercado", "abre alimentacao", "mostra os gastos de uber", "quanto foi de delivery?", "gastos no ifood esse mes".
+
+            - "ver_categorias" -> ver categorias cadastradas.
+              Ex: "minhas categorias", "quais categorias tenho?", "listar categorias", "ver categorias", "categorias disponiveis", "que categorias existem?", "mostra as categorias".
+
+            - "cadastrar_cartao" -> cadastrar cartao de credito. Preencher "cartao".
+              Ex: "cadastrar cartao nubank", "adicionar cartao", "novo cartao", "quero adicionar meu cartao", "cadastrar meu inter", "registrar cartao c6", "tenho um cartao novo", "incluir cartao de credito", "botar cartao no sistema".
+
+            - "editar_cartao" -> editar dados de um cartao. Preencher "cartao" com dados novos e nome atual no "resposta".
+              Ex: "mudar limite do nubank pra 8000", "alterar vencimento do inter", "corrigir nome do cartao", "atualizar limite", "trocar o nome do cartao", "ajustar limite do c6".
+
+            - "excluir_cartao" -> excluir um cartao cadastrado. Nome do cartao no "resposta".
+              Ex: "excluir cartao nubank", "remover meu cartao inter", "apagar cartao", "tirar cartao do sistema", "deletar cartao c6", "nao uso mais o cartao X".
+
+            - "excluir_lancamento" -> apagar lancamento ja registrado. Descricao no "resposta".
+              Ex: "excluir mercado", "apagar o ultimo gasto", "remover o lancamento do uber", "deleta o ifood", "tira aquele gasto de 50", "cancela o lancamento", "apaga o ultimo", "remover lancamento errado", "exclui a farmacia", "desfazer lancamento".
+
+            - "criar_categoria" -> criar categoria personalizada. Nome no "resposta".
+              Ex: "criar categoria Roupas", "nova categoria Pets", "adicionar categoria Educacao", "quero uma categoria pra Jogos", "criar Investimentos", "nova categoria pra Viagem", "preciso de uma categoria Cinema".
+
+            - "categorizar_ultimo" -> alterar categoria do ultimo lancamento. Nome da NOVA categoria no "resposta".
+              Ex: "esse ultimo foi Lazer", "o gasto anterior eh Transporte", "categorizar como Saude", "na verdade era Alimentacao", "muda pra Lazer", "coloca em Transporte", "classifica como Educacao", "era pra ser Saude".
+
+            - "pagar_fatura" -> registrar pagamento de fatura do cartao. Preencher "pagamentoFatura".
+              Ex: "paguei a fatura do nubank", "quitei a fatura", "paguei fatura do inter", "fatura paga", "liquidei a fatura", "paguei o cartao", "paguei a conta do cartao", "paguei a fatura toda", "paguei parcial da fatura 500 reais".
+
+            - "dividir_gasto" -> dividir/rachar conta com outras pessoas. Preencher "divisaoGasto".
+              Ex: "dividi 100 com 2 amigos", "rachei a conta de 200", "split de 150 em 3", "paguei metade de 80", "dividi o jantar", "rachamos o uber 30 reais", "rachei pizza com amigos", "dividimos o aluguel", "metade do jantar ficou 50", "rachei em 4 a conta de 160", "dividi churrasco de 300 com 5".
+
+            - "ver_recorrentes" -> ver receitas recorrentes detectadas.
+              Ex: "minhas receitas recorrentes", "meus recorrentes", "receitas fixas", "entradas recorrentes", "quanto recebo por mes?", "minha renda recorrente", "fontes de renda", "receitas mensais fixas".
+
+            - "verificar_duplicidade" -> quando PERGUNTA se ja lancou/registrou/pagou algo. Preencher "verificacaoDuplicidade".
+              Ex: "ja lancei 89.90?", "sera que ja registrei o mercado?", "ja paguei a conta de luz?", "ja existe esse gasto?", "ja lancei o aluguel?", "registrei o uber de ontem?", "ja coloquei o ifood?", "esse gasto ja ta ai?", "sera que ja botei?", "ja anotei a farmacia?", "o mercado de 150 ta lancado?", "ja registrei esse?", "sera que esqueci de lancar?", "ja pus o gasto do posto?", "ta lancado o aluguel?", "ja contabilizei a luz?".
+
+            - "ver_score" -> ver score/nota/saude financeira.
+              Ex: "meu score", "como esta minha saude financeira?", "minha nota financeira", "score financeiro", "saude das minhas financas", "como to indo financeiramente?", "meu score ta bom?", "qual minha nota?", "como ta meu score?", "avalia minhas financas", "ta saudavel minhas financas?", "diagnostico financeiro", "raio x financeiro".
+
+            - "ver_perfil" -> ver perfil comportamental de gastos.
+              Ex: "meu perfil", "perfil de gastos", "como eh meu comportamento financeiro?", "sou impulsivo?", "meu perfil comportamental", "como eu gasto?", "qual meu perfil de consumo?", "sou gastador?", "tenho perfil economico?", "analisa meu comportamento", "sou controlado nos gastos?", "como eh meu jeito de gastar?", "meu padrao de gastos".
+
+            - "ver_sazonalidade" -> ver eventos sazonais que afetam financas.
+              Ex: "eventos sazonais", "datas especiais", "tem algum evento chegando?", "gastos sazonais", "natal, dia das maes?", "datas que gastam mais", "proximos eventos", "tem alguma data importante?", "quando vou gastar mais?", "periodos de gasto alto", "datas comemorativas", "black friday?".
+
+            - "comparar_meses" -> comparar mes atual com anterior.
+              Ex: "compara com mes passado", "comparativo mensal", "como foi mes passado?", "gastei mais esse mes?", "evolucao mensal", "melhorei ou piorei?", "compara os meses", "esse mes ta melhor que o anterior?", "comparacao de gastos", "como foi o mes anterior?", "to gastando mais ou menos?", "diferenca entre os meses".
+
+            - "ver_lembretes" -> ver lembretes e contas a pagar.
+              Ex: "meus lembretes", "contas a pagar", "quais pagamentos tenho?", "meus boletos", "o que preciso pagar?", "tem conta vencendo?", "proximos pagamentos", "lembretes de pagamento", "contas pendentes", "o que vence essa semana?", "tem boleto pra pagar?", "quando vencem minhas contas?", "pagamentos proximos", "agenda de contas".
+
+            - "ver_salario" -> consultar salario mensal detectado.
+              Ex: "qual meu salario?", "meu salario mensal", "quanto ganho por mes?", "minha renda mensal", "quanto entra por mes?", "meu rendimento", "renda mensal", "quanto recebo?", "valor do meu salario", "meu ganho mensal", "quanto ta meu salario?".
+
             - "pergunta" -> pergunta financeira geral.
+              Ex: "como economizar?", "devo investir em que?", "o que eh CDB?", "como funciona tesouro direto?", "dica pra poupar", "como sair das dividas?", "o que fazer com dinheiro sobrando?", "como montar reserva?", "como organizar financas?".
+
             - "conversa" -> conversa casual.
+              Ex: "obrigado", "valeu", "legal", "show", "blz", "kk", "kkk", "haha", "top", "massa", "dahora", "voce eh legal", "gostei", "perfeito", "isso ai", "falou", "tmj".
 
             REGRA PARA RECEITAS:
-            REGRA PARA RECEITAS:
-            - Quando o usuario diz "recebi", "ganhei", "entrou", "salario", "renda", "freelance", "pagamento recebido", use tipo "receita".
-            - CUIDADO: "pagamento recebido" eh RECEITA. "pagamento de fatura" eh PAGAR_FATURA.
-            - "salario caiu" = RECEITA. "adiantamento" = RECEITA.
+            - Quando o usuario diz "recebi", "ganhei", "entrou", "salario", "renda", "freelance", "pagamento recebido", "caiu na conta", "depositaram", "me pagaram", "veio a grana", "recebimento", "bonus", "comissao", "13o", "decimo terceiro", "ferias", "PLR", "dividendos", use tipo "receita".
+            - CUIDADO: "pagamento recebido", "me pagaram", "caiu o pagamento" eh RECEITA. "pagamento de fatura", "paguei a fatura" eh PAGAR_FATURA.
+            - "salario caiu" = RECEITA. "adiantamento" = RECEITA. "vale caiu" = RECEITA.
             - Receitas NAO precisam de forma de pagamento (o sistema ja trata).
             - NUNCA classifique receita como gasto.
 
@@ -366,12 +468,44 @@ public class GeminiService : IGeminiService
             }
 
             REGRA PARA "dividir_gasto":
-            - Quando o usuario diz "dividi", "rachei", "dividir", "rachar", "split", "metade", "dividi com", "rachei com", "paguei metade".
+            - Quando o usuario diz "dividi", "rachei", "dividir", "rachar", "split", "metade", "dividi com", "rachei com", "paguei metade", "cada um pagou", "dividimos", "rachamos", "rateio", "rateamos", "todo mundo pagou", "pagamos juntos", "conta dividida", "minha parte foi".
             - Se diz "dividi com 2 amigos" -> numeroPessoas = 3 (usuario + 2 amigos).
             - Se diz "dividi no meio" ou "metade" -> numeroPessoas = 2.
             - Se diz "rachamos em 4" -> numeroPessoas = 4.
+            - Se diz "eramos 5" ou "5 pessoas" -> numeroPessoas = 5.
             - O valorTotal eh o valor TOTAL da conta, nao a parte do usuario.
             - Se o usuario so informar "sua parte" (ex: "paguei 40 que era minha parte"), NAO use dividir_gasto. Use "registrar" direto com o valor da parte.
+
+            REGRA PARA "verificar_duplicidade":
+            - Quando o usuario PERGUNTA se ja registrou, ja lancou, ja pagou, ja existe um gasto/receita.
+            - Frases tipicas: "ja lancei?", "ja registrei?", "ja paguei?", "ja existe?", "sera que ja lancei?", "registrei o uber?", "lancei o mercado?", "ja anotei?", "ja ta lancado?", "ja botei?", "ja coloquei?", "ja contabilizei?", "esse ja ta ai?", "ta registrado?", "foi lancado?", "consta no sistema?", "ja pus?", "sera que esqueci de lancar?", "ja computei?", "esse gasto ta?", "ja entrou no controle?".
+            - Se o usuario mencionar um valor, preencher "valor". Se nao, usar 0.
+            - Se mencionar categoria ou descricao, preencher os campos correspondentes.
+            - NAO confundir com "registrar" — "registrar" eh quando o usuario QUER lançar. "verificar_duplicidade" eh quando PERGUNTA se ja lancou.
+            - IMPORTANTE: "ja lancei 89.90?" = verificar_duplicidade. "lancei 89.90 no mercado" = registrar.
+            - A diferenca e o TOM DE PERGUNTA/DUVIDA vs AFIRMACAO.
+
+            EXEMPLO "verificar_duplicidade" (com valor):
+            {
+                "intencao": "verificar_duplicidade",
+                "resposta": "Vou verificar se voce ja lancou esse valor!",
+                "verificacaoDuplicidade": {
+                    "valor": 89.90,
+                    "categoria": null,
+                    "descricao": null
+                }
+            }
+
+            EXEMPLO "verificar_duplicidade" (com descricao):
+            {
+                "intencao": "verificar_duplicidade",
+                "resposta": "Vou procurar nos seus lancamentos!",
+                "verificacaoDuplicidade": {
+                    "valor": 0,
+                    "categoria": "Alimentação",
+                    "descricao": "mercado"
+                }
+            }
 
             NOTA SOBRE "editar_cartao":
             - No campo "resposta", coloque o nome ATUAL do cartao que o usuario quer editar (como esta cadastrado).

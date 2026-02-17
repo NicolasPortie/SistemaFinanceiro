@@ -42,6 +42,10 @@ public class TelegramBotService
     private readonly IAnomaliaGastoService _anomaliaService;
     private readonly IConversaPendenteRepository _conversaRepo;
     private readonly IReceitaRecorrenteService _receitaRecorrenteService;
+    private readonly IScoreSaudeFinanceiraService _scoreService;
+    private readonly IPerfilComportamentalService _perfilComportamentalService;
+    private readonly IVerificacaoDuplicidadeService _duplicidadeService;
+    private readonly IEventoSazonalService _eventoSazonalService;
     private readonly ILogger<TelegramBotService> _logger;
 
     // Cache de desvinculações pendentes de confirmação
@@ -98,6 +102,10 @@ public class TelegramBotService
         IAnomaliaGastoService anomaliaService,
         IConversaPendenteRepository conversaRepo,
         IReceitaRecorrenteService receitaRecorrenteService,
+        IScoreSaudeFinanceiraService scoreService,
+        IPerfilComportamentalService perfilComportamentalService,
+        IVerificacaoDuplicidadeService duplicidadeService,
+        IEventoSazonalService eventoSazonalService,
         IConfiguration configuration,
         ILogger<TelegramBotService> logger)
     {
@@ -126,6 +134,10 @@ public class TelegramBotService
         _anomaliaService = anomaliaService;
         _conversaRepo = conversaRepo;
         _receitaRecorrenteService = receitaRecorrenteService;
+        _scoreService = scoreService;
+        _perfilComportamentalService = perfilComportamentalService;
+        _duplicidadeService = duplicidadeService;
+        _eventoSazonalService = eventoSazonalService;
         _sistemaWebUrl = configuration["Cors:AllowedOrigins:1"] ?? "https://finance.nicolasportie.com";
         _logger = logger;
     }
@@ -616,6 +628,12 @@ public class TelegramBotService
             return await _lancamentoHandler.ProcessarDivisaoGastoAsync(usuario, resposta.DivisaoGasto, origem);
         }
 
+        // Se a IA identificou verificação de duplicidade ("já lancei?", "já registrei?")
+        if (resposta.Intencao == "verificar_duplicidade" && resposta.VerificacaoDuplicidade != null)
+        {
+            return await ProcessarVerificacaoDuplicidadeIAAsync(usuario, resposta.VerificacaoDuplicidade);
+        }
+
         // Cadastro/edição/exclusão de cartão: orientação para Web
         if (resposta.Intencao is "cadastrar_cartao" or "editar_cartao" or "excluir_cartao")
             return MensagemGestaoNoWeb(
@@ -664,6 +682,12 @@ public class TelegramBotService
             "comparar_meses" => await _consultaHandler.GerarComparativoMensalAsync(usuario),
             "consultar_tag" => await _consultaHandler.ConsultarPorTagAsync(usuario, resposta.Resposta ?? ""),
             "ver_recorrentes" => await GerarRelatorioRecorrentesAsync(usuario),
+            "ver_score" => await ProcessarComandoScoreAsync(usuario),
+            "ver_perfil" => await ProcessarComandoPerfilAsync(usuario),
+            "ver_sazonalidade" => await ProcessarComandoSazonalidadeAsync(usuario, null),
+            "ver_extrato" => await _consultaHandler.GerarExtratoFormatadoAsync(usuario),
+            "ver_lembretes" => await _lembreteHandler.ProcessarComandoLembreteAsync(usuario, null),
+            "ver_salario" => await _consultaHandler.ConsultarSalarioMensalAsync(usuario),
             "cadastrar_cartao" => MensagemGestaoNoWeb(
                 usuario.TelegramChatId,
                 "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
@@ -1146,39 +1170,43 @@ public class TelegramBotService
         return comando switch
         {
             "/start" => $"👋 Oi, {usuario.Nome}! Eu sou o ControlFinance!\n\nFala comigo naturalmente:\n💸 \"paguei 45 no mercado\"\n💰 \"recebi 5000 de salário\"\n❓ \"posso gastar 50 num lanche?\"\n🔍 \"se eu comprar uma TV de 3000 em 10x?\"\n📊 \"limitar alimentação em 800\"\n🎯 \"quero juntar 10 mil até dezembro\"\n\nPode mandar texto, áudio ou foto de cupom! 🚀",
-            "/ajuda" or "/help" => "📖 *Comandos disponíveis:*\n\n" +
+            "/ajuda" or "/help" => "📖 *O que posso fazer por você:*\n\n" +
                 "💸 *Lançamentos*\n" +
-                "• \"gastei 50 no mercado\" — registra gasto\n" +
-                "• \"recebi 3000 de salário\" — registra receita\n" +
-                "• \"ifood 89,90 no crédito 3x\" — parcelado\n" +
-                "• \"excluir mercado\" — exclui lançamento\n" +
-                "• \"dividi 100 com 2 amigos\" — divide gasto\n" +
-                "• /extrato — últimos lançamentos\n\n" +
+                "• \"gastei 50 no mercado\"\n" +
+                "• \"recebi 3000 de salário\"\n" +
+                "• \"ifood 89,90 no crédito 3x\"\n" +
+                "• \"excluir mercado\"\n" +
+                "• \"dividi 100 com 2 amigos\"\n" +
+                "• \"meu extrato\" — últimos lançamentos\n\n" +
                 "💳 *Cartões e Faturas*\n" +
-                "• /fatura — fatura do mês\n" +
-                "• /faturas — todas as faturas\n" +
-                "• /fatura\\_detalhada — com detalhes\n\n" +
+                "• \"minha fatura\" ou \"fatura do Nubank\"\n" +
+                "• \"todas as faturas\"\n" +
+                "• \"fatura detalhada\"\n" +
+                "• \"paguei a fatura do Nubank\"\n\n" +
                 "📊 *Análises*\n" +
-                "• /resumo — resumo do mês\n" +
-                "• /detalhar Alimentação — gastos da categoria\n" +
-                "• /comparar — comparativo mensal\n" +
-                "• /recorrentes — receitas recorrentes\n" +
-                "• \"posso gastar 80 no iFood?\" — decisão\n" +
-                "• \"se eu comprar TV de 3000 em 12x?\" — simulação\n\n" +
-                "🔧 *Configurações*\n" +
-                "• /categorias — listar categorias\n" +
-                "• \"criar categoria Roupas\" — nova categoria\n" +
-                "• /limite Alimentação 800 — definir limite\n" +
-                "• /limites — ver limites\n" +
-                "• /meta juntar 5000 viagem até junho\n" +
-                "• /metas — ver metas\n" +
-                "• /conta\\_fixa Aluguel;1500;5\n" +
-                "• /lembrete — lembretes de pagamento\n" +
-                "• /salario\\_mensal — consultar salário\n\n" +
-                "⚙️ *Sistema*\n" +
-                "• /versao — versão do sistema\n" +
-                "• /desvincular — desvincular Telegram\n\n" +
-                "💡 Também aceito áudio e foto de cupom!",
+                "• \"como estou esse mês?\" — resumo\n" +
+                "• \"detalha alimentação\" — por categoria\n" +
+                "• \"compara com mês passado\"\n" +
+                "• \"minhas receitas recorrentes\"\n" +
+                "• \"posso gastar 80 no iFood?\"\n" +
+                "• \"se eu comprar TV de 3000 em 12x?\"\n\n" +
+                "🎯 *Metas e Limites*\n" +
+                "• \"limitar alimentação em 800\"\n" +
+                "• \"meus limites\"\n" +
+                "• \"quero juntar 5000 pra viagem até junho\"\n" +
+                "• \"minhas metas\"\n" +
+                "• \"depositar 200 na meta viagem\"\n\n" +
+                "📅 *Lembretes e Contas*\n" +
+                "• \"meus lembretes\" — contas a pagar\n" +
+                "• \"qual meu salário?\"\n" +
+                "• \"minhas categorias\"\n" +
+                "• \"criar categoria Roupas\"\n\n" +
+                "🧠 *Inteligência Financeira*\n" +
+                "• \"meu score financeiro\"\n" +
+                "• \"meu perfil de gastos\"\n" +
+                "• \"já lancei 89.90?\" — duplicidade\n" +
+                "• \"eventos sazonais\"\n\n" +
+                "💡 Fale naturalmente! Aceito texto, áudio e foto de cupom.",
             "/simular" => await _previsaoHandler.ProcessarComandoSimularAsync(usuario, partes.Length > 1 ? partes[1] : null)
                          ?? await ProcessarComIAAsync(usuario, mensagem),
             "/posso" => await _previsaoHandler.ProcessarComandoPossoAsync(usuario, partes.Length > 1 ? partes[1] : null)
@@ -1207,6 +1235,9 @@ public class TelegramBotService
                 ? await ProcessarComIAAsync(usuario, $"dividi {partes[1]}")
                 : "📋 Use: /dividir VALOR PESSOAS DESCRIÇÃO\nExemplo: /dividir 120 3 jantar no restaurante",
             "/recorrentes" => await GerarRelatorioRecorrentesAsync(usuario),
+            "/score" => await ProcessarComandoScoreAsync(usuario),
+            "/perfil" or "/perfil_comportamental" => await ProcessarComandoPerfilAsync(usuario),
+            "/sazonalidade" or "/eventos_sazonais" => await ProcessarComandoSazonalidadeAsync(usuario, partes.Length > 1 ? partes[1] : null),
             "/cartao" => MensagemGestaoNoWeb(
                 usuario.TelegramChatId,
                 "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
@@ -2245,6 +2276,165 @@ public class TelegramBotService
         {
             _logger.LogError(ex, "Erro ao gerar relatório de receitas recorrentes");
             return "❌ Erro ao analisar receitas recorrentes.";
+        }
+    }
+
+    /// <summary>Comando /score — Score de Saúde Financeira</summary>
+    private async Task<string> ProcessarComandoScoreAsync(Usuario usuario)
+    {
+        try
+        {
+            var scoreDto = await _scoreService.CalcularAsync(usuario.Id);
+            return scoreDto.ResumoTexto;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao calcular score para {Usuario}", usuario.Nome);
+            return "❌ Erro ao calcular score de saúde financeira.";
+        }
+    }
+
+    /// <summary>Comando /perfil — Perfil Comportamental</summary>
+    private async Task<string> ProcessarComandoPerfilAsync(Usuario usuario)
+    {
+        try
+        {
+            var perfil = await _perfilComportamentalService.ObterOuCalcularAsync(usuario.Id);
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("🧠 *Perfil Comportamental*\n");
+            sb.AppendLine($"🎯 Impulsividade: *{perfil.NivelImpulsividade}*");
+            sb.AppendLine($"📊 Frequência de dúvida de gasto: *{perfil.FrequenciaDuvidaGasto}* (30d)");
+            sb.AppendLine($"⚖️ Tolerância a risco: *{perfil.ToleranciaRisco}*");
+            sb.AppendLine($"📈 Tendência de gastos: *{perfil.TendenciaCrescimentoGastos:N1}%*");
+            sb.AppendLine($"🔄 Estabilidade: *{perfil.ScoreEstabilidade:N0}/100*");
+            if (!string.IsNullOrEmpty(perfil.CategoriaMaisFrequente))
+                sb.AppendLine($"🏷️ Categoria mais frequente: *{perfil.CategoriaMaisFrequente}*");
+            if (!string.IsNullOrEmpty(perfil.FormaPagamentoPreferida))
+                sb.AppendLine($"💳 Forma de pagamento preferida: *{perfil.FormaPagamentoPreferida}*");
+            if (perfil.ComprometimentoRendaPercentual > 0)
+                sb.AppendLine($"📉 Comprometimento da renda: *{perfil.ComprometimentoRendaPercentual:N0}%*");
+            if (perfil.ScoreSaudeFinanceira > 0)
+                sb.AppendLine($"\n💚 Score de saúde financeira: *{perfil.ScoreSaudeFinanceira:N0}/100*");
+
+            sb.AppendLine("\n_Use /score para ver os fatores detalhados._");
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao obter perfil comportamental para {Usuario}", usuario.Nome);
+            return "❌ Erro ao obter perfil comportamental.";
+        }
+    }
+
+    /// <summary>Verificação de duplicidade via linguagem natural (IA)</summary>
+    private async Task<string> ProcessarVerificacaoDuplicidadeIAAsync(Usuario usuario, DadosVerificacaoDuplicidadeIA dados)
+    {
+        try
+        {
+            var valor = dados.Valor > 0 ? dados.Valor : 0m;
+            var categoria = !string.IsNullOrWhiteSpace(dados.Categoria) ? dados.Categoria : null;
+
+            // Se a IA não extraiu valor nem categoria/descrição, retorna orientação
+            if (valor == 0 && categoria == null && string.IsNullOrWhiteSpace(dados.Descricao))
+            {
+                return "🔍 Não consegui identificar o que verificar.\n\n" +
+                       "Me diga, por exemplo:\n" +
+                       "• \"já lancei 89.90?\"\n" +
+                       "• \"já registrei o mercado?\"\n" +
+                       "• \"será que já paguei a conta de luz?\"";
+            }
+
+            var resultado = await _duplicidadeService.VerificarAsync(usuario.Id, valor, categoria);
+            return resultado.ResumoTexto;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao verificar duplicidade via IA para {Usuario}", usuario.Nome);
+            return "❌ Erro ao verificar lançamentos.";
+        }
+    }
+
+    /// <summary>Comando /sazonalidade — Eventos Sazonais</summary>
+    private async Task<string> ProcessarComandoSazonalidadeAsync(Usuario usuario, string? parametros)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(parametros) || parametros.Trim().ToLower() is "listar" or "lista")
+            {
+                var eventos = await _eventoSazonalService.ListarAsync(usuario.Id);
+                if (!eventos.Any())
+                    return "📅 *Eventos Sazonais*\n\nNenhum evento cadastrado.\n\n" +
+                           "Use `/sazonalidade detectar` para detecção automática\n" +
+                           "Ou `/sazonalidade criar Descricao;Mes;Valor;sim/nao(anual);sim/nao(receita)`";
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("📅 *Eventos Sazonais*\n");
+                foreach (var e in eventos)
+                {
+                    var tipo = e.EhReceita ? "💰" : "💸";
+                    var auto = e.DetectadoAutomaticamente ? " 🤖" : "";
+                    sb.AppendLine($"{tipo} #{e.Id} — *{e.Descricao}* — Mês {e.MesOcorrencia} — R$ {e.ValorMedio:N2}{auto}");
+                }
+                sb.AppendLine("\nComandos: detectar, criar, remover ID");
+                return sb.ToString();
+            }
+
+            var acao = parametros.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            var cmd = acao[0].ToLower();
+            var resto = acao.Length > 1 ? acao[1].Trim() : "";
+
+            if (cmd is "detectar" or "auto")
+            {
+                var detectados = await _eventoSazonalService.DetectarAutomaticamenteAsync(usuario.Id);
+                if (!detectados.Any())
+                    return "📅 Nenhum novo evento sazonal detectado automaticamente.\nPreciso de pelo menos 2 anos de dados.";
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"📅 *{detectados.Count} evento(s) sazonal(is) detectado(s):*\n");
+                foreach (var e in detectados)
+                {
+                    var tipo = e.EhReceita ? "💰" : "💸";
+                    sb.AppendLine($"{tipo} *{e.Descricao}* — Mês {e.MesOcorrencia} — R$ {e.ValorMedio:N2}");
+                }
+                return sb.ToString();
+            }
+
+            if (cmd is "criar" or "novo" or "add")
+            {
+                var parts = resto.Split(';', StringSplitOptions.TrimEntries);
+                if (parts.Length < 3)
+                    return "Use: /sazonalidade criar Descricao;Mes(1-12);Valor;anual(sim/nao);receita(sim/nao)";
+
+                if (!int.TryParse(parts[1], out var mes) || mes < 1 || mes > 12)
+                    return "❌ Mês inválido (use 1–12).";
+                if (!BotParseHelper.TryParseValor(parts[2], out var valor))
+                    return "❌ Valor inválido.";
+
+                var dto = new CriarEventoSazonalDto
+                {
+                    Descricao = parts[0],
+                    MesOcorrencia = mes,
+                    ValorMedio = valor,
+                    RecorrenteAnual = parts.Length > 3 && parts[3].ToLower() is "sim" or "s" or "true",
+                    EhReceita = parts.Length > 4 && parts[4].ToLower() is "sim" or "s" or "true"
+                };
+
+                var criado = await _eventoSazonalService.CriarAsync(usuario.Id, dto);
+                return $"✅ Evento sazonal criado: *{criado.Descricao}* — Mês {criado.MesOcorrencia} — R$ {criado.ValorMedio:N2}";
+            }
+
+            if (cmd is "remover" or "excluir" or "deletar" && int.TryParse(resto, out var id))
+            {
+                var ok = await _eventoSazonalService.RemoverAsync(usuario.Id, id);
+                return ok ? $"✅ Evento #{id} removido." : $"❌ Evento #{id} não encontrado.";
+            }
+
+            return "📅 Comandos: listar, detectar, criar, remover ID";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar sazonalidade para {Usuario}", usuario.Nome);
+            return "❌ Erro ao processar eventos sazonais.";
         }
     }
 }

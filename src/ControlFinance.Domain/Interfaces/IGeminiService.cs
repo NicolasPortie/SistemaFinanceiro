@@ -24,6 +24,7 @@ public class RespostaIA
     [JsonConverter(typeof(DadosCartaoIAConverter))]
     public DadosCartaoIA? Cartao { get; set; }
     public DadosDivisaoGastoIA? DivisaoGasto { get; set; }
+    public DadosVerificacaoDuplicidadeIA? VerificacaoDuplicidade { get; set; }
 }
 
 public class DadosPagamentoFaturaIA
@@ -99,6 +100,13 @@ public class DadosDivisaoGastoIA
     public string? Categoria { get; set; }
     public string? FormaPagamento { get; set; }
     public DateTime? Data { get; set; }
+}
+
+public class DadosVerificacaoDuplicidadeIA
+{
+    public decimal Valor { get; set; }
+    public string? Categoria { get; set; }
+    public string? Descricao { get; set; }
 }
 
 /// <summary>
