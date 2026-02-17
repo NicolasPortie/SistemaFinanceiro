@@ -15,11 +15,13 @@ public class CartoesController : BaseAuthController
 {
     private readonly ICartaoCreditoRepository _cartaoRepo;
     private readonly IFaturaService _faturaService;
+    private readonly IResumoService _resumoService;
 
-    public CartoesController(ICartaoCreditoRepository cartaoRepo, IFaturaService faturaService)
+    public CartoesController(ICartaoCreditoRepository cartaoRepo, IFaturaService faturaService, IResumoService resumoService)
     {
         _cartaoRepo = cartaoRepo;
         _faturaService = faturaService;
+        _resumoService = resumoService;
     }
 
     [HttpGet]
@@ -118,6 +120,22 @@ public class CartoesController : BaseAuthController
         if (cartao == null || cartao.UsuarioId != UsuarioId)
             return NotFound(new { erro = "Cartão não encontrado." });
 
+        // Verificar se o usuário tem saldo suficiente para transferir ao cartão
+        var resumo = await _resumoService.GerarResumoMensalAsync(UsuarioId);
+        var saldoDisponivel = resumo.Saldo;
+
+        if (request.ValorAdicional > saldoDisponivel)
+        {
+            return BadRequest(new
+            {
+                erro = "Saldo insuficiente.",
+                mensagem = $"Você precisa ter o valor em saldo antes de transferir para o limite do cartão. " +
+                           $"Saldo atual: R$ {saldoDisponivel:N2}. Valor solicitado: R$ {request.ValorAdicional:N2}.",
+                saldoDisponivel,
+                valorSolicitado = request.ValorAdicional
+            });
+        }
+
         var valorAcrescimo = request.ValorAdicional * (request.PercentualExtra / 100m);
         var novoLimiteTotal = cartao.Limite + request.ValorAdicional + valorAcrescimo;
 
@@ -138,8 +156,10 @@ public class CartoesController : BaseAuthController
 
         return Ok(new
         {
-            mensagem = "Limite extra aplicado com sucesso.",
+            mensagem = "Limite extra aplicado com sucesso. Valor transferido do seu saldo para o limite do cartão.",
             novoLimite = cartao.Limite,
+            saldoAnterior = saldoDisponivel,
+            saldoRestante = saldoDisponivel - request.ValorAdicional,
             detalhes = new
             {
                 ValorBase = request.ValorAdicional,

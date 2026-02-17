@@ -10,8 +10,8 @@ using Telegram.Bot;
 namespace ControlFinance.Api.BackgroundServices;
 
 /// <summary>
-/// ServiÃ§o centralizado para todas as notificaÃ§Ãµes proativas do bot.
-/// Usa idempotÃªncia em banco de dados (NotificacaoEnviada) para sobreviver a restarts.
+/// Serviço centralizado para todas as notificações proativas do bot.
+/// Usa idempotência em banco de dados (NotificacaoEnviada) para sobreviver a restarts.
 /// </summary>
 public class BotNotificationService : BackgroundService
 {
@@ -48,7 +48,7 @@ public class BotNotificationService : BackgroundService
                 var agoraUtc = DateTime.UtcNow;
                 var agoraBrasilia = agoraUtc.AddHours(-3);
 
-                // 0. Resumo Matinal (08h Todo dia) â€” NOVA funcionalidade
+                // 0. Resumo Matinal (08h Todo dia) — NOVA funcionalidade
                 if (EstaNoHorario(agoraBrasilia, HoraResumoMatinal))
                 {
                     await ExecutarNotificacaoAsync("ResumoMatinal", EnviarResumoMatinalAsync, stoppingToken);
@@ -66,7 +66,7 @@ public class BotNotificationService : BackgroundService
                     await ExecutarNotificacaoAsync("ResumoSemanal", EnviarResumoSemanal, stoppingToken);
                 }
 
-                // 3. Fechamento de MÃªs (Ãšltimo dia 19h)
+                // 3. Fechamento de Mês (Último dia 19h)
                 if (EhUltimoDiaMes(agoraBrasilia) && EstaNoHorario(agoraBrasilia, HoraFechamentoMes))
                 {
                     await ExecutarNotificacaoAsync("FechamentoMes", EnviarFechamentoMes, stoppingToken);
@@ -84,7 +84,7 @@ public class BotNotificationService : BackgroundService
                     await ExecutarNotificacaoAsync("AnaliseProativa", EnviarAlertasProativosAsync, stoppingToken);
                 }
 
-                // Limpar notificaÃ§Ãµes antigas periodicamente (1x por dia Ã s 03h)
+                // Limpar notificações antigas periodicamente (1x por dia às 03h)
                 if (agoraBrasilia.Hour == 3 && agoraBrasilia.Minute < 10)
                 {
                     await LimparNotificacoesAntigasAsync();
@@ -101,7 +101,7 @@ public class BotNotificationService : BackgroundService
     }
 
     /// <summary>
-    /// Verifica se o horÃ¡rio atual estÃ¡ dentro da janela de execuÃ§Ã£o (59 min).
+    /// Verifica se o horário atual está dentro da janela de execução (59 min).
     /// </summary>
     private static bool EstaNoHorario(DateTime agora, TimeSpan horaAlvo)
     {
@@ -109,8 +109,8 @@ public class BotNotificationService : BackgroundService
     }
 
     /// <summary>
-    /// Executa uma notificaÃ§Ã£o com idempotÃªncia baseada em banco de dados.
-    /// Sobrevive a restarts do serviÃ§o (ao contrÃ¡rio do Dictionary em memÃ³ria anterior).
+    /// Executa uma notificação com idempotência baseada em banco de dados.
+    /// Sobrevive a restarts do serviço (ao contrário do Dictionary em memória anterior).
     /// </summary>
     private async Task ExecutarNotificacaoAsync(string chave, Func<CancellationToken, Task> tarefa, CancellationToken ct)
     {
@@ -119,7 +119,7 @@ public class BotNotificationService : BackgroundService
 
         var hoje = DateTime.UtcNow.AddHours(-3).Date;
 
-        // Chave global (sem usuarioId) para notificaÃ§Ãµes batch
+        // Chave global (sem usuarioId) para notificações batch
         if (await notificacaoRepo.JaEnviouHojeAsync(chave, hoje))
             return;
 
@@ -134,7 +134,7 @@ public class BotNotificationService : BackgroundService
     }
 
     /// <summary>
-    /// Limpa registros de notificaÃ§Ãµes com mais de 60 dias.
+    /// Limpa registros de notificações com mais de 60 dias.
     /// </summary>
     private async Task LimparNotificacoesAntigasAsync()
     {
@@ -150,15 +150,15 @@ public class BotNotificationService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Erro ao limpar notificaÃ§Ãµes antigas");
+            _logger.LogWarning(ex, "Erro ao limpar notificações antigas");
         }
     }
 
-    // --- Tarefas EspecÃ­ficas ---
+    // --- Tarefas Específicas ---
 
     /// <summary>
-    /// Resumo matinal (08h) â€” NOVA funcionalidade.
-    /// Envia saudaÃ§Ã£o + snapshot financeiro do mÃªs para cada usuÃ¡rio.
+    /// Resumo matinal (08h) — NOVA funcionalidade.
+    /// Envia saudação + snapshot financeiro do mês para cada usuário.
     /// </summary>
     private async Task EnviarResumoMatinalAsync(CancellationToken ct)
     {
@@ -206,8 +206,7 @@ public class BotNotificationService : BackgroundService
 
                 msg += "\nBom dia e boas finanÃ§as! ðŸ’™";
 
-                await _botClient.SendMessage(user.TelegramChatId!, msg,
-                    parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+                await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
             }
             catch (Exception ex)
             {
@@ -240,16 +239,14 @@ public class BotNotificationService : BackgroundService
                     var msg = $"ðŸŽ‰ *Sextou, {user.Nome}!* ðŸ»\n\n" +
                               $"VocÃª ainda tem *R$ {disponivel:N2}* livres no seu orÃ§amento de Lazer.\n" +
                               "Aproveite o fim de semana sem culpa! ðŸ˜‰";
-                    await _botClient.SendMessage(user.TelegramChatId!, msg,
-                        parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+                    await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                 }
                 else if (disponivel > 0)
                 {
                     var msg = $"ðŸ‘€ *Sextou, {user.Nome}!* ðŸ»\n\n" +
                               $"Fica ligado: sÃ³ restam *R$ {disponivel:N2}* pra Lazer esse mÃªs.\n" +
                               "Curta com moderaÃ§Ã£o! ðŸ˜…";
-                    await _botClient.SendMessage(user.TelegramChatId!, msg,
-                        parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+                    await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                 }
             }
             catch (Exception ex)
@@ -278,8 +275,7 @@ public class BotNotificationService : BackgroundService
                           $"Maior categoria: {categoriaMaiorGasto}\n\n" +
                           "Prepare-se para a prÃ³xima semana! ðŸ’ª";
                 
-                await _botClient.SendMessage(user.TelegramChatId!, msg,
-                    parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+                await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
             }
             catch (Exception ex)
             {
@@ -305,8 +301,7 @@ public class BotNotificationService : BackgroundService
                           "NÃ£o esqueÃ§a de checar se todas as contas foram pagas.\n" +
                           "AmanhÃ£ comeÃ§a um novo ciclo! ðŸš€";
 
-                await _botClient.SendMessage(user.TelegramChatId!, msg,
-                    parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+                await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
             }
             catch (Exception ex)
             {
@@ -342,15 +337,13 @@ public class BotNotificationService : BackgroundService
                         var msg = $"âš ï¸ *Alerta de Limite: {cat.Nome}*\n" +
                                   $"VocÃª jÃ¡ usou {percentualUsado:P0} do seu orÃ§amento.\n" +
                                   $"Resta: R$ {disponivel:N2}";
-                        await _botClient.SendMessage(user.TelegramChatId!, msg,
-                            parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+                        await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                     }
                     else if (percentualUsado >= 1.0m)
                     {
                         var msg = $"ðŸš¨ *Limite Estourado: {cat.Nome}*\n" +
                                   $"VocÃª ultrapassou seu orÃ§amento em R$ {Math.Abs(disponivel):N2}!";
-                        await _botClient.SendMessage(user.TelegramChatId!, msg,
-                            parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+                        await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                     }
                 }
             }
@@ -482,8 +475,7 @@ public class BotNotificationService : BackgroundService
                               string.Join("\n\n", alertas) +
                               "\n\n_Dica: Use /score para ver seu score completo._";
 
-                    await _botClient.SendMessage(user.TelegramChatId!, msg,
-                        parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+                    await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                 }
             }
             catch (Exception ex)
@@ -491,5 +483,71 @@ public class BotNotificationService : BackgroundService
                 _logger.LogError(ex, "Erro ao enviar alertas proativos para {Usuario}", user.Nome);
             }
         }
+    }
+
+    private async Task EnviarMensagemAsync(long chatId, string mensagem, CancellationToken ct)
+    {
+        var mensagemCorrigida = CorrigirTextoCorrompido(mensagem);
+        await _botClient.SendMessage(chatId, mensagemCorrigida,
+            parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+    }
+
+    private static string CorrigirTextoCorrompido(string texto)
+    {
+        if (string.IsNullOrEmpty(texto))
+            return texto;
+
+        var resultado = texto;
+
+        var substituicoes = new Dictionary<string, string>
+        {
+            ["â˜€ï¸"] = "☀️",
+            ["ðŸ“Š"] = "📊",
+            ["ðŸ’°"] = "💰",
+            ["ðŸ’¸"] = "💸",
+            ["ðŸ“ˆ"] = "📈",
+            ["ðŸ””"] = "🔔",
+            ["ðŸ’™"] = "💙",
+            ["ðŸŽ‰"] = "🎉",
+            ["ðŸ‘€"] = "👀",
+            ["ðŸ˜‰"] = "😉",
+            ["ðŸ˜…"] = "😅",
+            ["ðŸ“…"] = "🗓",
+            ["ðŸ—“ï¸"] = "🗓️",
+            ["ðŸ"] = "🏁",
+            ["ðŸš€"] = "🚀",
+            ["âš ï¸"] = "⚠️",
+            ["ðŸš¨"] = "🚨",            ["ðŸ»"] = "🍻",
+            ["ðŸ'ª"] = "💪",            ["â€”"] = "—",
+            ["â€¢"] = "•",
+            ["Ã¡"] = "á",
+            ["Ã¢"] = "â",
+            ["Ã£"] = "ã",
+            ["Ã©"] = "é",
+            ["Ãª"] = "ê",
+            ["Ã­"] = "í",
+            ["Ã³"] = "ó",
+            ["Ã´"] = "ô",
+            ["Ãµ"] = "õ",
+            ["Ãº"] = "ú",
+            ["Ã§"] = "ç",
+            ["Ã€"] = "À",
+            ["Ã"] = "Á",
+            ["Ã‚"] = "Â",
+            ["Ãƒ"] = "Ã",
+            ["Ã‰"] = "É",
+            ["ÃŠ"] = "Ê",
+            ["Ã“"] = "Ó",
+            ["Ã”"] = "Ô",
+            ["Ãš"] = "Ú",
+            ["Ã‡"] = "Ç"
+        };
+
+        foreach (var item in substituicoes)
+        {
+            resultado = resultado.Replace(item.Key, item.Value, StringComparison.Ordinal);
+        }
+
+        return resultado;
     }
 }
