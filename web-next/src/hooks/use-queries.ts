@@ -329,6 +329,21 @@ export function useAdicionarLimiteExtra() {
   });
 }
 
+export function useResgatarLimiteExtra() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { valorResgate: number; percentualBonus: number } }) =>
+      api.cartoes.resgatarLimiteExtra(id, data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.cartoes });
+      toast.success(data?.mensagem || "Limite resgatado com sucesso!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao resgatar limite");
+    },
+  });
+}
+
 export function useFaturas(cartaoId: number) {
   return useQuery({
     queryKey: queryKeys.fatura(cartaoId),

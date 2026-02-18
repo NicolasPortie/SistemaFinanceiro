@@ -621,6 +621,9 @@ export const api = {
       request(`/cartoes/${id}/limite-extra`, { method: "POST", body: data }),
     faturas: (cartaoId: number) =>
       request<FaturaResumo[]>(`/cartoes/${cartaoId}/fatura`),
+
+    resgatarLimiteExtra: (id: number, data: { valorResgate: number; percentualBonus: number }) =>
+      request<{ mensagem: string; novoLimite: number; valorResgatado: number; novoSaldoDisponivel: number }>(`/cartoes/${id}/resgatar-limite`, { method: "POST", body: data }),
   },
 
   previsao: {
