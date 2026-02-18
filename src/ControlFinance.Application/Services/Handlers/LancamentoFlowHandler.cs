@@ -106,15 +106,10 @@ public class LancamentoFlowHandler : ILancamentoHandler
         if (ehReceita)
         {
             dados.FormaPagamento = "pix";
+            dados.NumeroParcelas = 1;
             pendente.Dados = dados;
-            pendente.Estado = EstadoPendente.AguardandoConfirmacao;
             _pendentes[chatId] = pendente;
-
-            var preview = MontarPreviewLancamento(pendente.Dados);
-            BotTecladoHelper.DefinirTeclado(chatId,
-                new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
-            );
-            return preview + "\n\nEscolha abaixo 👇";
+            return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
         }
 
         var formaPag = dados.FormaPagamento?.ToLower();
@@ -425,13 +420,9 @@ public class LancamentoFlowHandler : ILancamentoHandler
         if (ehReceita)
         {
             pendente.Dados.FormaPagamento = "pix";
-            pendente.Estado = EstadoPendente.AguardandoConfirmacao;
+            pendente.Dados.NumeroParcelas = 1;
             _pendentes[chatId] = pendente;
-            var preview = MontarPreviewLancamento(pendente.Dados);
-            BotTecladoHelper.DefinirTeclado(chatId,
-                new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
-            );
-            return preview + "\n\nEscolha abaixo 👇";
+            return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
         }
 
         var formaPag = pendente.Dados.FormaPagamento?.ToLower();
@@ -1085,7 +1076,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
         );
         var nomeCartaoPreview2 = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
-        return MontarPreviewLancamento(pendente.Dados, nomeCartaoPreview2);
+        return MontarPreviewLancamento(pendente.Dados, nomeCartaoPreview2) + "\n\nEscolha abaixo 👇";
     }
 
     #endregion
