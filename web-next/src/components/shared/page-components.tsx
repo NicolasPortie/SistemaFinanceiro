@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { RefreshCw, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LottieAnimation } from "@/components/shared/lottie-animation";
 import { emptyBox, errorWarning, processing } from "@/assets/lottie";
 
@@ -36,7 +36,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
       <div className="space-y-1">
-        <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">{title}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl bg-linear-to-r from-foreground to-foreground/70 bg-clip-text">{title}</h1>
         {description && (
           <p className="text-sm text-muted-foreground/60 mt-1">{description}</p>
         )}
@@ -80,7 +80,7 @@ export function StatCard({
       glow: "shadow-colored-emerald",
       accent: "from-emerald-500/5 via-emerald-500/2 to-transparent",
       border: "group-hover:border-emerald-500/18",
-      ring: "bg-gradient-to-r from-emerald-500 to-emerald-400",
+      ring: "bg-linear-to-r from-emerald-500 to-emerald-400",
     },
     down: {
       icon: "bg-red-100 text-red-600 dark:bg-red-500/12 dark:text-red-400 shadow-lg shadow-red-500/8",
@@ -88,7 +88,7 @@ export function StatCard({
       glow: "shadow-colored-red",
       accent: "from-red-500/5 via-red-500/2 to-transparent",
       border: "group-hover:border-red-500/18",
-      ring: "bg-gradient-to-r from-red-500 to-red-400",
+      ring: "bg-linear-to-r from-red-500 to-red-400",
     },
     neutral: {
       icon: "bg-primary/8 text-primary shadow-lg shadow-primary/8",
@@ -96,7 +96,7 @@ export function StatCard({
       glow: "shadow-colored-blue",
       accent: "from-primary/5 via-primary/2 to-transparent",
       border: "group-hover:border-primary/18",
-      ring: "bg-gradient-to-r from-primary to-primary/80",
+      ring: "bg-linear-to-r from-primary to-primary/80",
     },
   };
 
@@ -120,7 +120,7 @@ export function StatCard({
       {/* Background accent gradient */}
       <div
         className={cn(
-          "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-2xl",
+          "absolute inset-0 bg-linear-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-2xl",
           gradient || `${colors.accent}`
         )}
       />
@@ -136,14 +136,16 @@ export function StatCard({
           <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-muted-foreground/55 truncate flex items-center gap-1">
             {title}
             {tooltip && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-3 w-3 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-help shrink-0" />
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-[220px] text-xs leading-relaxed font-normal normal-case tracking-normal">
-                  {tooltip}
-                </TooltipContent>
-              </Tooltip>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3 w-3 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-help shrink-0" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-55 text-xs leading-relaxed font-normal normal-case tracking-normal">
+                    {tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </p>
           <p
@@ -171,7 +173,7 @@ export function StatCard({
 
       {/* Bottom accent line */}
       <div className={cn(
-        "absolute bottom-0 left-4 right-4 h-[2px] w-0 group-hover:w-[calc(100%-2rem)] transition-all duration-700 ease-out rounded-full",
+        "absolute bottom-0 left-4 right-4 h-0.5 w-0 group-hover:w-[calc(100%-2rem)] transition-all duration-700 ease-out rounded-full",
         colors.ring
       )} />
     </motion.div>
@@ -235,12 +237,12 @@ export function EmptyState({
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/40 bg-gradient-to-b from-muted/20 via-muted/5 to-transparent px-8 py-24 text-center"
+      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/40 bg-linear-to-b from-muted/20 via-muted/5 to-transparent px-8 py-24 text-center"
     >
       {lottie ? (
         <LottieAnimation animationData={lottie} size="sm" className="mb-6 relative z-10" />
       ) : icon ? (
-        <div className="flex h-18 w-18 items-center justify-center rounded-2xl bg-gradient-to-br from-muted/50 to-muted/30 text-muted-foreground/50 mb-6 shadow-sm relative z-10 border border-border/20">
+        <div className="flex h-18 w-18 items-center justify-center rounded-2xl bg-linear-to-br from-muted/50 to-muted/30 text-muted-foreground/50 mb-6 shadow-sm relative z-10 border border-border/20">
           {icon}
         </div>
       ) : (
@@ -269,7 +271,7 @@ export function ErrorState({
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-red-200 dark:border-red-900/40 bg-gradient-to-b from-red-50/30 to-transparent dark:from-red-950/15 dark:to-transparent px-6 py-20 text-center"
+      className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-red-200 dark:border-red-900/40 bg-linear-to-b from-red-50/30 to-transparent dark:from-red-950/15 dark:to-transparent px-6 py-20 text-center"
     >
       <LottieAnimation
         animationData={errorWarning}
@@ -314,7 +316,7 @@ export function CardSkeleton({ count = 3 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="relative h-[110px] sm:h-[120px] overflow-hidden rounded-2xl border border-border/20 bg-card/40"
+          className="relative h-27.5 sm:h-30 overflow-hidden rounded-2xl border border-border/20 bg-card/40"
           style={{ animationDelay: `${i * 100}ms` }}
         >
           <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
@@ -326,7 +328,7 @@ export function CardSkeleton({ count = 3 }: { count?: number }) {
               <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-muted/30" />
             </div>
           </div>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 dark:via-white/[0.02] to-transparent animate-shimmer" />
+          <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/8 dark:via-white/2 to-transparent animate-shimmer" />
         </div>
       ))}
     </div>
@@ -339,7 +341,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <div className="space-y-2.5">
       <div className="relative h-10 overflow-hidden rounded-xl bg-muted/25">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 dark:via-white/[0.03] to-transparent animate-shimmer" />
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/15 dark:via-white/3 to-transparent animate-shimmer" />
       </div>
       {Array.from({ length: rows }).map((_, i) => (
         <div
@@ -347,7 +349,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
           className="relative h-14 overflow-hidden rounded-xl border border-border/20 bg-muted/15"
           style={{ animationDelay: `${i * 80}ms` }}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 dark:via-white/[0.03] to-transparent animate-shimmer" />
+          <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/15 dark:via-white/3 to-transparent animate-shimmer" />
         </div>
       ))}
     </div>

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getGreeting, getFirstName } from "@/lib/format";
 import type { Usuario } from "@/lib/api";
 
@@ -40,16 +40,16 @@ export function HeroSection({ usuario, healthLabel, saldo, totalReceitas, totalG
       className="relative overflow-hidden rounded-3xl p-6 sm:p-8 lg:p-10 text-white"
     >
       <div className="absolute inset-0 gradient-hero dark:gradient-hero-dark" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/15 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/5 to-transparent" />
+      <div className="absolute inset-0 bg-linear-to-t from-black/15 to-transparent" />
+      <div className="absolute inset-0 bg-linear-to-r from-black/5 to-transparent" />
 
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/[0.025] animate-float" />
-        <div className="absolute right-32 top-10 h-20 w-20 rounded-full bg-white/[0.02]" style={{ animationDelay: "2s" }} />
-        <div className="absolute -left-10 -bottom-10 h-52 w-52 rounded-full bg-white/[0.025] animate-float" style={{ animationDelay: "4s" }} />
-        <div className="absolute left-1/3 bottom-6 h-10 w-10 rounded-full bg-white/[0.015]" />
-        <div className="absolute top-0 right-1/4 w-px h-full bg-gradient-to-b from-transparent via-white/6 to-transparent" />
-        <div className="absolute bottom-0 left-1/3 w-32 h-px bg-gradient-to-r from-transparent via-white/6 to-transparent" />
+        <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/2.5 animate-float" />
+        <div className="absolute right-32 top-10 h-20 w-20 rounded-full bg-white/2" style={{ animationDelay: "2s" }} />
+        <div className="absolute -left-10 -bottom-10 h-52 w-52 rounded-full bg-white/2.5 animate-float" style={{ animationDelay: "4s" }} />
+        <div className="absolute left-1/3 bottom-6 h-10 w-10 rounded-full bg-white/1.5" />
+        <div className="absolute top-0 right-1/4 w-px h-full bg-linear-to-b from-transparent via-white/6 to-transparent" />
+        <div className="absolute bottom-0 left-1/3 w-32 h-px bg-linear-to-r from-transparent via-white/6 to-transparent" />
       </div>
 
       <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
@@ -69,17 +69,19 @@ export function HeroSection({ usuario, healthLabel, saldo, totalReceitas, totalG
             {healthLabel
               ? <>
                 Saúde financeira:{" "}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-white/90 font-semibold cursor-help border-b border-dashed border-white/30">
-                      {healthLabel}
-                      <Info className="inline h-3 w-3 ml-1 opacity-50" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-[260px] text-xs leading-relaxed">
-                    Baseado na % da renda que você consegue poupar: Excelente (≥30%), Boa (≥15%), Regular (≥5%), Apertada (&lt;5%), Crítica (gastando mais do que ganha).
-                  </TooltipContent>
-                </Tooltip>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-white/90 font-semibold cursor-help border-b border-dashed border-white/30">
+                        {healthLabel}
+                        <Info className="inline h-3 w-3 ml-1 opacity-50" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-65 text-xs leading-relaxed">
+                      Baseado na % da renda que você consegue poupar: Excelente (≥30%), Boa (≥15%), Regular (≥5%), Apertada (&lt;5%), Crítica (gastando mais do que ganha).
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 {" · "}
                 <span className="text-white/95 font-bold">{resultadoLabel}</span>
                 {saldo !== 0 && (

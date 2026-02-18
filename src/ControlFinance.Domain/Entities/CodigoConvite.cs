@@ -38,6 +38,11 @@ public class CodigoConvite
     /// </summary>
     public int UsosRealizados { get; set; }
 
+    /// <summary>
+    /// Duração do acesso ao sistema em dias após ativação. Null = acesso permanente.
+    /// </summary>
+    public int? DuracaoAcessoDias { get; set; }
+
     // Navegação
     public Usuario? UsadoPorUsuario { get; set; }
     public Usuario? CriadoPorUsuario { get; set; }

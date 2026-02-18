@@ -291,7 +291,8 @@ public class AdminService : IAdminService
             Permanente = !c.ExpiraEm.HasValue,
             UsoMaximo = c.UsoMaximo,
             UsosRealizados = c.UsosRealizados,
-            Ilimitado = !c.UsoMaximo.HasValue || c.UsoMaximo == 0
+            Ilimitado = !c.UsoMaximo.HasValue || c.UsoMaximo == 0,
+            DuracaoAcessoDias = c.DuracaoAcessoDias
         }).ToList();
     }
 
@@ -299,9 +300,6 @@ public class AdminService : IAdminService
     {
         var agora = DateTime.UtcNow;
         var resultado = new List<AdminCodigoConviteDto>();
-
-        // Normalizar: UsoMaximo 0 = ilimitado (null)
-        int? usoMaximo = dto.UsoMaximo is null or 0 ? null : dto.UsoMaximo;
 
         for (int i = 0; i < dto.Quantidade; i++)
         {
@@ -314,15 +312,16 @@ public class AdminService : IAdminService
                 CriadoEm = agora,
                 ExpiraEm = dto.HorasValidade > 0 ? agora.AddHours(dto.HorasValidade) : null,
                 CriadoPorUsuarioId = adminUsuarioId,
-                UsoMaximo = usoMaximo ?? 1,
-                UsosRealizados = 0
+                UsoMaximo = 1,
+                UsosRealizados = 0,
+                DuracaoAcessoDias = dto.DiasAcesso > 0 ? dto.DiasAcesso : null
             };
 
             await _codigoConviteRepo.CriarAsync(codigoConvite);
 
             _logger.LogInformation(
-                "Código de convite gerado pelo admin {AdminId}: {Codigo} (max usos: {MaxUsos}, permanente: {Permanente})",
-                adminUsuarioId, codigo, usoMaximo?.ToString() ?? "ilimitado", dto.HorasValidade == 0);
+                "Código de convite gerado pelo admin {AdminId}: {Codigo} (acesso: {DiasAcesso} dias, permanente: {Permanente})",
+                adminUsuarioId, codigo, dto.DiasAcesso > 0 ? dto.DiasAcesso.ToString() : "permanente", dto.HorasValidade == 0);
 
             resultado.Add(new AdminCodigoConviteDto
             {
@@ -335,9 +334,10 @@ public class AdminService : IAdminService
                 CriadoPorNome = "Você",
                 Expirado = false,
                 Permanente = !codigoConvite.ExpiraEm.HasValue,
-                UsoMaximo = codigoConvite.UsoMaximo,
+                UsoMaximo = 1,
                 UsosRealizados = 0,
-                Ilimitado = usoMaximo == null
+                Ilimitado = false,
+                DuracaoAcessoDias = codigoConvite.DuracaoAcessoDias
             });
         }
 

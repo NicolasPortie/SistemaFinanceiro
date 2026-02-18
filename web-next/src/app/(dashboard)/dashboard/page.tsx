@@ -255,7 +255,7 @@ export default function DashboardPage() {
             >
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
                 <div className="section-header">
-                  <div className="section-header-icon bg-gradient-to-br from-primary/10 to-primary/20 text-primary">
+                  <div className="section-header-icon bg-linear-to-br from-primary/10 to-primary/20 text-primary">
                     <Activity className="h-4.5 w-4.5" />
                   </div>
                   <div>
@@ -300,7 +300,7 @@ export default function DashboardPage() {
               className="card-premium p-4 sm:p-6"
             >
               <div className="section-header mb-4 sm:mb-5">
-                <div className="section-header-icon bg-gradient-to-br from-pink-500/10 to-pink-500/20 text-pink-600 dark:text-pink-400">
+                <div className="section-header-icon bg-linear-to-br from-pink-500/10 to-pink-500/20 text-pink-600 dark:text-pink-400">
                   <Tag className="h-4.5 w-4.5" />
                 </div>
                 <h3 className="text-sm font-bold tracking-tight">Suas Categorias</h3>

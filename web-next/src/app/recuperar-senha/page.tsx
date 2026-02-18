@@ -82,7 +82,7 @@ export default function RecuperarSenhaPage() {
     }`;
 
   const iconCls = (id: string) =>
-    `absolute left-4 top-1/2 -translate-y-1/2 h-[18px] w-[18px] transition-all duration-300 ${
+    `absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
       focusedField === id ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
     }`;
 
@@ -172,7 +172,7 @@ export default function RecuperarSenhaPage() {
                   nós ajudamos.
                 </span>
               </h2>
-              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-[340px]">
+              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-85">
                 Redefina sua senha de forma rápida e segura. Basta verificar seu e-mail e criar uma nova senha.
               </p>
             </motion.div>
@@ -182,7 +182,7 @@ export default function RecuperarSenhaPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 space-y-4"
+              className="rounded-2xl bg-white/3 border border-white/6 p-5 space-y-4"
             >
               <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Etapas do processo</p>
               {[
@@ -201,7 +201,7 @@ export default function RecuperarSenhaPage() {
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${
                       item.active
                         ? "bg-emerald-400/15 border border-emerald-400/30"
-                        : "bg-white/[0.04]"
+                        : "bg-white/4"
                     }`}
                   >
                     <item.icon className={`h-3.5 w-3.5 ${item.active ? "text-emerald-300" : "text-white/30"}`} />
@@ -231,8 +231,8 @@ export default function RecuperarSenhaPage() {
          ════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col relative overflow-hidden">
         {/* Background blobs */}
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-emerald-500/[0.03] dark:bg-emerald-500/[0.05] blur-[100px] pointer-events-none" />
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-teal-500/[0.03] dark:bg-teal-500/[0.05] blur-[100px] pointer-events-none" />
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-emerald-500/3 dark:bg-emerald-500/5 blur-[100px] pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-teal-500/3 dark:bg-teal-500/5 blur-[100px] pointer-events-none" />
 
         {/* ── Mobile Hero Header ── */}
         <div className="lg:hidden relative overflow-hidden">
@@ -274,7 +274,7 @@ export default function RecuperarSenhaPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -16 }}
                 transition={{ duration: 0.35 }}
-                className="w-full max-w-[420px]"
+                className="w-full max-w-105"
               >
                 {/* Desktop header */}
                 <div className="hidden lg:block mb-8">
@@ -322,7 +322,7 @@ export default function RecuperarSenhaPage() {
                         id="email"
                         type="email"
                         placeholder="nome@exemplo.com"
-                        className="pl-12 h-[52px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
+                        className="pl-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
                         autoComplete="email"
                         autoFocus
                         {...emailForm.register("email")}
@@ -341,7 +341,7 @@ export default function RecuperarSenhaPage() {
                     <Button
                       type="submit"
                       disabled={emailForm.formState.isSubmitting}
-                      className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
+                      className="w-full h-13 text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
                     >
                       {emailForm.formState.isSubmitting ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -365,7 +365,7 @@ export default function RecuperarSenhaPage() {
                 <Link href="/login">
                   <Button
                     variant="outline"
-                    className="w-full h-12 rounded-xl text-sm font-semibold gap-2 border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
+                    className="w-full h-12 rounded-xl text-sm font-semibold gap-2 border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/3 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Voltar ao login
@@ -395,7 +395,7 @@ export default function RecuperarSenhaPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -16 }}
                 transition={{ duration: 0.35 }}
-                className="w-full max-w-[420px]"
+                className="w-full max-w-105"
               >
                 {/* Desktop header */}
                 <div className="hidden lg:block mb-8">
@@ -433,7 +433,7 @@ export default function RecuperarSenhaPage() {
                       <Input
                         id="codigo"
                         placeholder="000000"
-                        className="pl-12 h-[56px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-xl font-mono tracking-[0.4em] placeholder:text-muted-foreground/20 placeholder:tracking-[0.4em] font-bold"
+                        className="pl-12 h-14 border-0 bg-transparent shadow-none focus-visible:ring-0 text-xl font-mono tracking-[0.4em] placeholder:text-muted-foreground/20 placeholder:tracking-[0.4em] font-bold"
                         maxLength={6}
                         inputMode="numeric"
                         autoComplete="one-time-code"
@@ -473,7 +473,7 @@ export default function RecuperarSenhaPage() {
                         id="novaSenha"
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
-                        className="pl-12 pr-12 h-[52px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
+                        className="pl-12 pr-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
                         autoComplete="new-password"
                         {...codeForm.register("novaSenha")}
                         onFocus={() => setFocusedField("novaSenha")}
@@ -511,7 +511,7 @@ export default function RecuperarSenhaPage() {
                         id="confirmarSenha"
                         type={showConfPassword ? "text" : "password"}
                         placeholder="••••••••"
-                        className="pl-12 pr-12 h-[52px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
+                        className="pl-12 pr-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
                         autoComplete="new-password"
                         {...codeForm.register("confirmarSenha")}
                         onFocus={() => setFocusedField("confirmarSenha")}
@@ -542,7 +542,7 @@ export default function RecuperarSenhaPage() {
                     <Button
                       type="submit"
                       disabled={codeForm.formState.isSubmitting}
-                      className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
+                      className="w-full h-13 text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
                     >
                       {codeForm.formState.isSubmitting ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -577,7 +577,7 @@ export default function RecuperarSenhaPage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4 }}
-                className="w-full max-w-[420px] text-center"
+                className="w-full max-w-105 text-center"
               >
                 <motion.div
                   initial={{ scale: 0.5, opacity: 0 }}
@@ -613,7 +613,7 @@ export default function RecuperarSenhaPage() {
                 >
                   <Link href="/login">
                     <Button
-                      className="w-full h-[52px] text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
+                      className="w-full h-13 text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
                     >
                       Ir para o login
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />

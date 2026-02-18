@@ -108,6 +108,7 @@ public class AdminCodigoConviteDto
     public int? UsoMaximo { get; set; }
     public int UsosRealizados { get; set; }
     public bool Ilimitado { get; set; }
+    public int? DuracaoAcessoDias { get; set; }
 }
 
 public class CriarCodigoConviteDto
@@ -116,16 +117,16 @@ public class CriarCodigoConviteDto
     public string? Descricao { get; set; }
 
     /// <summary>
-    /// Horas de validade. 0 ou null = código permanente (nunca expira).
+    /// Horas de validade do código para ativação. 0 ou null = código permanente (nunca expira).
     /// </summary>
     [Range(0, 87600, ErrorMessage = "Validade deve ser entre 0 (permanente) e 87600 horas (10 anos)")]
     public int HorasValidade { get; set; } = 48;
 
     /// <summary>
-    /// Máximo de usos. Null ou 0 = ilimitado, 1 = single-use (padrão).
+    /// Duração do acesso ao sistema em dias após ativação. 0 = acesso permanente.
     /// </summary>
-    [Range(0, 10000, ErrorMessage = "Uso máximo deve ser entre 0 (ilimitado) e 10000")]
-    public int? UsoMaximo { get; set; } = 1;
+    [Range(0, 3650, ErrorMessage = "Duração de acesso deve ser entre 0 (permanente) e 3650 dias (10 anos)")]
+    public int DiasAcesso { get; set; } = 30;
 
     /// <summary>
     /// Quantidade de códigos a gerar de uma vez (batch).

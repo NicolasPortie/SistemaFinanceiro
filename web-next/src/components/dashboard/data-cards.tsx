@@ -40,7 +40,7 @@ export function CategorySpendingCard({ gastosPorCategoria }: CategorySpendingCar
       className="card-premium p-4 sm:p-6 space-y-4 sm:space-y-5"
     >
       <div className="section-header">
-        <div className="section-header-icon bg-gradient-to-br from-violet-500/10 to-violet-500/20 text-violet-600 dark:text-violet-400">
+        <div className="section-header-icon bg-linear-to-br from-violet-500/10 to-violet-500/20 text-violet-600 dark:text-violet-400">
           <Tag className="h-4.5 w-4.5" />
         </div>
         <h3 className="text-sm font-bold tracking-tight">Gastos por Categoria</h3>
@@ -103,7 +103,7 @@ export function RecentTransactionsCard({ lancamentos }: RecentTransactionsCardPr
     >
       <div className="p-4 sm:p-6 pb-3 sm:pb-4 flex items-center justify-between">
         <div className="section-header">
-          <div className="section-header-icon bg-gradient-to-br from-blue-500/10 to-blue-500/20 text-blue-600 dark:text-blue-400">
+          <div className="section-header-icon bg-linear-to-br from-blue-500/10 to-blue-500/20 text-blue-600 dark:text-blue-400">
             <Receipt className="h-4.5 w-4.5" />
           </div>
           <h3 className="text-sm font-bold tracking-tight">Últimos Lançamentos</h3>

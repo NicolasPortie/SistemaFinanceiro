@@ -92,7 +92,7 @@ export function PrimeirosPassos({ hasLancamentos, hasMetas, hasCartoes, telegram
       className="card-premium overflow-hidden"
     >
       {/* Header gradient bar */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-primary via-blue-500 to-violet-500" />
+      <div className="h-1.5 w-full bg-linear-to-r from-primary via-blue-500 to-violet-500" />
 
       <div className="p-5 sm:p-7 space-y-6">
         {/* Title */}
@@ -118,7 +118,7 @@ export function PrimeirosPassos({ hasLancamentos, hasMetas, hasCartoes, telegram
         {/* Progress bar */}
         <div className="w-full h-2.5 rounded-full bg-muted/50 overflow-hidden">
           <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-primary to-blue-500"
+            className="h-full rounded-full bg-linear-to-r from-primary to-blue-500"
             initial={{ width: 0 }}
             animate={{ width: `${progressPct}%` }}
             transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}

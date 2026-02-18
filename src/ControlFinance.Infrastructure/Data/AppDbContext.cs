@@ -70,6 +70,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Ativo).HasColumnName("ativo");
             entity.Property(e => e.TentativasLoginFalhadas).HasColumnName("tentativas_login_falhadas").HasDefaultValue(0);
             entity.Property(e => e.BloqueadoAte).HasColumnName("bloqueado_ate");
+            entity.Property(e => e.AcessoExpiraEm).HasColumnName("acesso_expira_em").IsRequired(false);
             entity.Property(e => e.Role).HasColumnName("role").HasDefaultValue(Domain.Enums.RoleUsuario.Usuario);
 
             entity.HasIndex(e => e.Email).IsUnique();
@@ -92,6 +93,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CriadoPorUsuarioId).HasColumnName("criado_por_usuario_id");
             entity.Property(e => e.UsoMaximo).HasColumnName("uso_maximo").IsRequired(false);
             entity.Property(e => e.UsosRealizados).HasColumnName("usos_realizados").HasDefaultValue(0);
+            entity.Property(e => e.DuracaoAcessoDias).HasColumnName("duracao_acesso_dias").IsRequired(false);
 
             entity.HasIndex(e => e.Codigo).IsUnique();
 

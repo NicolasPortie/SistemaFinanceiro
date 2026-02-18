@@ -174,7 +174,7 @@ export default function RegistroPage() {
         </div>
         <Input
           id={id}
-          className={`pl-12 ${rightElement ? "pr-12" : ""} h-[52px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium`}
+          className={`pl-12 ${rightElement ? "pr-12" : ""} h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium`}
           onFocus={() => setFocusedField(id)}
           onBlur={() => setFocusedField(null)}
           {...inputProps}
@@ -262,7 +262,7 @@ export default function RegistroPage() {
                   financeira hoje.
                 </span>
               </h2>
-              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-[340px]">
+              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-85">
                 Plataforma exclusiva com acesso por convite. Use o código recebido para criar sua conta.
               </p>
             </motion.div>
@@ -272,7 +272,7 @@ export default function RegistroPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 space-y-3.5"
+              className="rounded-2xl bg-white/3 border border-white/6 p-5 space-y-3.5"
             >
               <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">O que você terá acesso</p>
               {[
@@ -314,8 +314,8 @@ export default function RegistroPage() {
          ════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col relative overflow-hidden">
         {/* Background blobs */}
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-emerald-500/[0.03] dark:bg-emerald-500/[0.05] blur-[100px] pointer-events-none" />
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-teal-500/[0.03] dark:bg-teal-500/[0.05] blur-[100px] pointer-events-none" />
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-emerald-500/3 dark:bg-emerald-500/5 blur-[100px] pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-teal-500/3 dark:bg-teal-500/5 blur-[100px] pointer-events-none" />
 
         {/* ── Mobile Hero Header ── */}
         <div className="lg:hidden relative overflow-hidden">
@@ -356,7 +356,7 @@ export default function RegistroPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -16 }}
                 transition={{ duration: 0.35 }}
-                className="w-full max-w-[420px]"
+                className="w-full max-w-105"
               >
                 {/* Desktop header */}
                 <div className="hidden lg:block mb-8">
@@ -404,18 +404,18 @@ export default function RegistroPage() {
                           ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
                           : errors.codigoConvite
                             ? "border-red-400/50 ring-4 ring-red-500/5"
-                            : "border-emerald-500/20 bg-emerald-500/[0.02]"
+                            : "border-emerald-500/20 bg-emerald-500/2"
                       }`}
                     >
                       <ShieldCheck
-                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-[18px] w-[18px] transition-all duration-300 ${
+                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
                           focusedField === "codigoConvite" ? "text-emerald-500 scale-110" : "text-emerald-500/40"
                         }`}
                       />
                       <Input
                         id="codigoConvite"
                         placeholder="Insira o código recebido"
-                        className="pl-12 h-[52px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-mono tracking-wider uppercase font-semibold"
+                        className="pl-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-mono tracking-wider uppercase font-semibold"
                         autoComplete="off"
                         {...register("codigoConvite")}
                         onFocus={() => setFocusedField("codigoConvite")}
@@ -448,7 +448,7 @@ export default function RegistroPage() {
                     {renderField(
                       "nome",
                       "Nome completo",
-                      <User className="h-[18px] w-[18px]" />,
+                      <User className="h-4.5 w-4.5" />,
                       { placeholder: "Seu nome completo", autoComplete: "name", ...register("nome") },
                       errors.nome?.message
                     )}
@@ -463,7 +463,7 @@ export default function RegistroPage() {
                     {renderField(
                       "email",
                       "E-mail",
-                      <Mail className="h-[18px] w-[18px]" />,
+                      <Mail className="h-4.5 w-4.5" />,
                       { type: "email", placeholder: "nome@exemplo.com", autoComplete: "email", ...register("email") },
                       errors.email?.message
                     )}
@@ -489,7 +489,7 @@ export default function RegistroPage() {
                       }`}
                     >
                       <Lock
-                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-[18px] w-[18px] transition-all duration-300 ${
+                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
                           focusedField === "senha" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
                         }`}
                       />
@@ -497,7 +497,7 @@ export default function RegistroPage() {
                         id="senha"
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
-                        className="pl-12 pr-12 h-[52px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
+                        className="pl-12 pr-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
                         autoComplete="new-password"
                         {...register("senha")}
                         onFocus={() => setFocusedField("senha")}
@@ -569,7 +569,7 @@ export default function RegistroPage() {
                     <Button
                       type="submit"
                       disabled={isSubmitting || !allPassed}
-                      className="w-full h-[52px] text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group cursor-pointer"
+                      className="w-full h-13 text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group cursor-pointer"
                     >
                       {isSubmitting ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -593,7 +593,7 @@ export default function RegistroPage() {
                 <Link href="/login">
                   <Button
                     variant="outline"
-                    className="w-full h-12 rounded-2xl text-sm font-semibold border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 cursor-pointer"
+                    className="w-full h-12 rounded-2xl text-sm font-semibold border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/3 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 cursor-pointer"
                   >
                     Fazer login
                   </Button>
@@ -662,14 +662,14 @@ export default function RegistroPage() {
                       }`}
                     >
                       <KeyRound
-                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-[18px] w-[18px] transition-all duration-300 ${
+                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
                           focusedField === "codigo" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
                         }`}
                       />
                       <Input
                         id="codigo"
                         placeholder="000000"
-                        className="pl-12 h-[60px] border-0 bg-transparent shadow-none focus-visible:ring-0 text-center text-2xl font-mono tracking-[0.5em] placeholder:text-muted-foreground/20 placeholder:tracking-[0.5em] font-bold"
+                        className="pl-12 h-15 border-0 bg-transparent shadow-none focus-visible:ring-0 text-center text-2xl font-mono tracking-[0.5em] placeholder:text-muted-foreground/20 placeholder:tracking-[0.5em] font-bold"
                         maxLength={6}
                         inputMode="numeric"
                         autoComplete="one-time-code"
@@ -689,7 +689,7 @@ export default function RegistroPage() {
                   <Button
                     type="submit"
                     disabled={verifying}
-                    className="w-full h-[52px] text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 cursor-pointer"
+                    className="w-full h-13 text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 cursor-pointer"
                   >
                     {verifying ? (
                       <Loader2 className="h-5 w-5 animate-spin" />

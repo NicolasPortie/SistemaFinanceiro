@@ -550,7 +550,7 @@ export default function SimulacaoPage() {
                 )}
 
                 {/* Confidence / Data Tip */}
-                <div className="card-premium p-4 flex items-start gap-3 bg-primary/[0.03]">
+                <div className="card-premium p-4 flex items-start gap-3 bg-primary/3">
                   <Activity className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                   <p className="text-xs text-muted-foreground/70 leading-relaxed">
                     <strong className="text-foreground/80">Dica:</strong> Quanto mais lançamentos você cadastrar (receitas, despesas, metas), mais precisa fica a simulação.

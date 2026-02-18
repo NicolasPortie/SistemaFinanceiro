@@ -134,7 +134,7 @@ export default function DecisaoPage() {
         >
           <form onSubmit={form.handleSubmit(handleAvaliar)} className="card-premium p-6 space-y-5">
             <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary shadow-sm">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-primary/15 to-primary/5 text-primary shadow-sm">
                 <Brain className="h-5 w-5" />
               </div>
               <div>
@@ -252,9 +252,9 @@ export default function DecisaoPage() {
               key="placeholder"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="card-premium p-10 flex flex-col items-center justify-center text-center min-h-[300px]"
+              className="card-premium p-10 flex flex-col items-center justify-center text-center min-h-75"
             >
-              <div className="flex h-18 w-18 items-center justify-center rounded-3xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary mb-5 shadow-sm">
+              <div className="flex h-18 w-18 items-center justify-center rounded-3xl bg-linear-to-br from-primary/15 to-primary/5 text-primary mb-5 shadow-sm">
                 <Brain className="h-9 w-9" />
               </div>
               <h3 className="font-extrabold text-lg mb-2">Análise Inteligente</h3>
@@ -542,7 +542,7 @@ function RapidaResult({ data }: { data: DecisaoGastoResult }) {
       </div>
 
       {/* Confidence / Data Quality */}
-      <div className="card-premium p-4 flex items-start gap-3 bg-primary/[0.03]">
+      <div className="card-premium p-4 flex items-start gap-3 bg-primary/3">
         <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <div>
           <p className="text-xs text-muted-foreground/70 leading-relaxed">

@@ -863,12 +863,13 @@ export interface AdminCodigoConvite {
   usoMaximo: number | null;
   usosRealizados: number;
   ilimitado: boolean;
+  duracaoAcessoDias: number | null;
 }
 
 export interface CriarConviteRequest {
   descricao?: string;
   horasValidade: number;
-  usoMaximo?: number | null;
+  diasAcesso: number;
   quantidade?: number;
 }
 

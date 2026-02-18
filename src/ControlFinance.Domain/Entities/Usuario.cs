@@ -26,6 +26,11 @@ public class Usuario
     public int TentativasLoginFalhadas { get; set; }
     public DateTime? BloqueadoAte { get; set; }
 
+    /// <summary>
+    /// Data em que o acesso do usuário expira. Null = acesso permanente.
+    /// </summary>
+    public DateTime? AcessoExpiraEm { get; set; }
+
     // Navegação
     public ICollection<CartaoCredito> Cartoes { get; set; } = new List<CartaoCredito>();
     public ICollection<Lancamento> Lancamentos { get; set; } = new List<Lancamento>();

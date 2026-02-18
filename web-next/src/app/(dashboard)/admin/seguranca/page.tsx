@@ -3,19 +3,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type AdminSegurancaResumo } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Lock,
-
-  Trash2,
-  AlertTriangle,
   Monitor,
-  Unlock,
-  Ban,
+  LogOut,
+  AlertTriangle,
+  ShieldAlert,
+  Wifi,
+  Clock,
+  Info,
+  Trash2,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -28,11 +27,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { motion, AnimatePresence } from "framer-motion";
+import { PageShell, PageHeader, ErrorState, CardSkeleton } from "@/components/shared/page-components";
+import { cn } from "@/lib/utils";
 
 export default function AdminSegurancaPage() {
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery<AdminSegurancaResumo>({
+  const { data, isLoading, isError, error } = useQuery<AdminSegurancaResumo>({
     queryKey: ["admin", "seguranca"],
     queryFn: () => api.admin.seguranca.resumo(),
   });
@@ -41,7 +43,7 @@ export default function AdminSegurancaPage() {
     mutationFn: (tokenId: number) => api.admin.seguranca.revogarSessao(tokenId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
-      toast.success("Sessão revogada");
+      toast.success("Sessão encerrada");
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -50,200 +52,222 @@ export default function AdminSegurancaPage() {
     mutationFn: () => api.admin.seguranca.revogarTodas(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
-      toast.success("Todas as sessões foram revogadas");
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const desbloquear = useMutation({
-    mutationFn: (id: number) => api.admin.usuarios.desbloquear(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin"] });
-      toast.success("Usuário desbloqueado");
+      toast.success("Todas as sessões foram encerradas");
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Lock className="h-6 w-6 text-orange-500" />
-          Segurança
-        </h1>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <Skeleton className="h-16 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+      <PageShell>
+        <PageHeader title="Sessões Ativas" description="Veja quem está logado no sistema agora" />
+        <CardSkeleton count={3} />
+      </PageShell>
     );
   }
 
-  if (!data) return null;
+  if (isError || !data) {
+    return (
+      <PageShell>
+        <PageHeader title="Sessões Ativas" description="Veja quem está logado no sistema agora" />
+        <ErrorState message={error?.message ?? "Erro ao carregar dados"} onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "seguranca"] })} />
+      </PageShell>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Lock className="h-6 w-6 text-orange-500" />
-            Segurança
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Monitoramento de sessões e autenticação
+    <PageShell>
+      <PageHeader title="Sessões Ativas" description="Veja quem está logado no sistema agora e encerre acessos suspeitos">
+        {data.sessoesAtivas > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" className="gap-2 h-9 rounded-xl font-bold">
+                <LogOut className="h-4 w-4" />
+                Encerrar Todas
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Encerrar TODAS as sessões?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Isso vai deslogar <strong>todos os usuários</strong> do sistema, incluindo você. Todos precisarão fazer login novamente. Use somente se suspeitar de acesso não autorizado.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => revogarTodas.mutate()}
+                  disabled={revogarTodas.isPending}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Encerrar Todas
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </PageHeader>
+
+      {/* What is this page — explanation */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-start gap-3 rounded-xl border border-blue-500/15 bg-blue-500/5 p-4 text-sm"
+      >
+        <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="font-semibold text-blue-600 dark:text-blue-400">O que é uma sessão?</p>
+          <p className="text-muted-foreground/70 text-[13px]">
+            Cada vez que alguém faz login, uma sessão é criada. Esta página lista todas as sessões abertas agora — ou seja, quem ainda está logado. Você pode encerrar uma sessão específica (forçar logout), ou encerrar todas de uma vez em caso de emergência.
           </p>
         </div>
+      </motion.div>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" className="gap-1.5">
-              <Trash2 className="h-4 w-4" />
-              Revogar Todas as Sessões
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Revogar TODAS as sessões?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Isso vai deslogar todos os usuários do sistema, incluindo você.
-                Todos terão que fazer login novamente.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => revogarTodas.mutate()}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Revogar Todas
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      {/* Stats */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+        {[
+          {
+            label: "Sessões abertas agora",
+            value: data.sessoesAtivas,
+            color: "text-emerald-500",
+            bg: "bg-emerald-500/10",
+            icon: Monitor,
+            hint: "Logins ativos no momento",
+          },
+          {
+            label: "Usuários bloqueados",
+            value: data.usuariosBloqueados,
+            color: data.usuariosBloqueados > 0 ? "text-red-500" : "text-muted-foreground",
+            bg: data.usuariosBloqueados > 0 ? "bg-red-500/10" : "bg-muted/60",
+            icon: ShieldAlert,
+            hint: "Bloqueados por senha errada — gerencie em Usuários",
+          },
+          {
+            label: "Erros de senha (total)",
+            value: data.tentativasLoginFalhadas,
+            color: data.tentativasLoginFalhadas > 0 ? "text-amber-500" : "text-muted-foreground",
+            bg: data.tentativasLoginFalhadas > 0 ? "bg-amber-500/10" : "bg-muted/60",
+            icon: AlertTriangle,
+            hint: "Total de tentativas de login falhadas",
+          },
+        ].map((item, i) => (
+          <motion.div
+            key={item.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="card-premium p-4 group"
+            title={item.hint}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <p className="text-[11px] text-muted-foreground/60 font-semibold leading-tight max-w-[80%]">{item.label}</p>
+              <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg shrink-0", item.bg)}>
+                <item.icon className={cn("h-3.5 w-3.5", item.color)} />
+              </div>
+            </div>
+            <p className={cn("text-3xl font-extrabold tabular-nums", item.color)}>{item.value}</p>
+            <p className="text-[10px] text-muted-foreground/40 mt-1">{item.hint}</p>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-muted-foreground">Sessões Ativas</span>
-              <div className="p-2 rounded-lg bg-emerald-500/10">
-                <Monitor className="h-4 w-4 text-emerald-500" />
+      {/* Sessions List */}
+      <div className="space-y-2.5">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/50 px-0.5 flex items-center gap-1.5">
+          <Wifi className="h-3 w-3" />
+          {data.sessoes.length === 0 ? "Nenhuma sessão ativa" : `${data.sessoes.length} sessão(ões) ativa(s)`}
+        </p>
+
+        <AnimatePresence mode="popLayout">
+          {data.sessoes.map((s, i) => (
+            <motion.div
+              key={s.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ delay: i * 0.03 }}
+              className="card-premium p-4"
+            >
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-sm">{s.usuarioNome}</p>
+                    <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block animate-pulse" />
+                      Logado agora
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground/60">{s.usuarioEmail}</p>
+                  <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground/50 font-medium">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Login em {formatDate(s.criadoEm)}
+                    </span>
+                    <span>·</span>
+                    <span>Expira em {formatDate(s.expiraEm)}</span>
+                    {s.ipCriacao && (
+                      <>
+                        <span>·</span>
+                        <span className="flex items-center gap-1">
+                          <Monitor className="h-3 w-3" />
+                          IP: {s.ipCriacao}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs rounded-lg gap-1.5 text-red-600 hover:text-red-600 hover:border-red-500/40 hover:bg-red-500/5"
+                      disabled={revogarSessao.isPending}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Encerrar sessão
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Encerrar sessão de {s.usuarioNome}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        O usuário será deslogado imediatamente e precisará fazer login novamente. Use isso se suspeitar que a conta está sendo acessada indevidamente.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => revogarSessao.mutate(s.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        <LogOut className="h-4 w-4 mr-1" />
+                        Encerrar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {data.sessoes.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="card-premium p-10 flex flex-col items-center justify-center text-center"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/60 mb-4">
+              <Monitor className="h-6 w-6 text-muted-foreground/40" />
             </div>
-            <p className="text-3xl font-bold">{data.sessoesAtivas}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-muted-foreground">Usuários Bloqueados</span>
-              <div className="p-2 rounded-lg bg-red-500/10">
-                <Ban className="h-4 w-4 text-red-500" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold">{data.usuariosBloqueados}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-muted-foreground">Tentativas Falhas</span>
-              <div className="p-2 rounded-lg bg-amber-500/10">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold">{data.tentativasLoginFalhadas}</p>
-          </CardContent>
-        </Card>
+            <p className="font-semibold text-muted-foreground/60">Nenhuma sessão ativa no momento</p>
+            <p className="text-xs text-muted-foreground/40 mt-1">Quando alguém fizer login, a sessão aparecerá aqui.</p>
+          </motion.div>
+        )}
       </div>
-
-      {/* Active Sessions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Monitor className="h-4 w-4 text-emerald-500" />
-            Sessões Ativas ({data.sessoes.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.sessoes.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Nenhuma sessão ativa.</p>
-          ) : (
-            <div className="space-y-2">
-              {data.sessoes.map((s) => (
-                <div key={s.id} className="flex items-center justify-between py-2.5 border-b border-border/30 last:border-0 flex-wrap gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{s.usuarioNome}</span>
-                      <span className="text-xs text-muted-foreground">{s.usuarioEmail}</span>
-                    </div>
-                    <div className="flex gap-3 mt-0.5 text-xs text-muted-foreground">
-                      <span>Criada em {formatDate(s.criadoEm)}</span>
-                      <span>Expira em {formatDate(s.expiraEm)}</span>
-                      {s.ipCriacao && <span>IP: {s.ipCriacao}</span>}
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs text-red-600"
-                    onClick={() => revogarSessao.mutate(s.id)}
-                    disabled={revogarSessao.isPending}
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Revogar
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Blocked Users */}
-      {data.usuariosBloqueadosLista.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Ban className="h-4 w-4 text-red-500" />
-              Usuários Bloqueados ({data.usuariosBloqueadosLista.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {data.usuariosBloqueadosLista.map((u) => (
-                <div key={u.id} className="flex items-center justify-between py-2.5 border-b border-border/30 last:border-0 flex-wrap gap-2">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium">{u.nome}</span>
-                    <span className="text-xs text-muted-foreground ml-2">{u.email}</span>
-                    <div className="flex gap-3 mt-0.5 text-xs text-muted-foreground">
-                      <span>{u.tentativasLoginFalhadas} tentativas falhadas</span>
-                      {u.bloqueadoAte && <span>Bloqueado até {formatDate(u.bloqueadoAte)}</span>}
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs text-emerald-600"
-                    onClick={() => desbloquear.mutate(u.id)}
-                    disabled={desbloquear.isPending}
-                  >
-                    <Unlock className="h-3 w-3 mr-1" />
-                    Desbloquear
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+    </PageShell>
   );
 }

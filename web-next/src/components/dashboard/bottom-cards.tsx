@@ -30,7 +30,7 @@ export function AlertsCard({ limitesAlerta }: AlertsCardProps) {
     >
       <div className="flex items-center justify-between mb-4 sm:mb-5">
         <div className="section-header">
-          <div className="section-header-icon bg-gradient-to-br from-amber-500/10 to-amber-500/20 text-amber-600 dark:text-amber-400">
+          <div className="section-header-icon bg-linear-to-br from-amber-500/10 to-amber-500/20 text-amber-600 dark:text-amber-400">
             <Zap className="h-4.5 w-4.5" />
           </div>
           <h3 className="text-sm font-bold tracking-tight">Alertas</h3>
@@ -87,7 +87,7 @@ export function CardsOverviewCard({ cartoes }: CardsOverviewCardProps) {
     >
       <div className="flex items-center justify-between mb-4 sm:mb-5">
         <div className="section-header">
-          <div className="section-header-icon bg-gradient-to-br from-violet-500/10 to-violet-500/20 text-violet-600 dark:text-violet-400">
+          <div className="section-header-icon bg-linear-to-br from-violet-500/10 to-violet-500/20 text-violet-600 dark:text-violet-400">
             <CreditCard className="h-4.5 w-4.5" />
           </div>
           <h3 className="text-sm font-bold tracking-tight">Cartões</h3>
@@ -143,7 +143,7 @@ export function ActiveMetasCard({ metasAtivas }: ActiveMetasCardProps) {
     >
       <div className="flex items-center justify-between mb-4 sm:mb-5">
         <div className="section-header">
-          <div className="section-header-icon bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 text-cyan-600 dark:text-cyan-400">
+          <div className="section-header-icon bg-linear-to-br from-cyan-500/10 to-cyan-500/20 text-cyan-600 dark:text-cyan-400">
             <Target className="h-4.5 w-4.5" />
           </div>
           <h3 className="text-sm font-bold tracking-tight">Metas Ativas</h3>

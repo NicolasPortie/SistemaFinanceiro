@@ -88,14 +88,14 @@ function NavLink({
           {isActive && (
             <motion.div
               layoutId="sidebar-indicator"
-              className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-primary/70"
+              className="absolute left-0 top-1/2 h-6 w-0.75 -translate-y-1/2 rounded-r-full bg-linear-to-b from-primary to-primary/70"
               style={{ boxShadow: "0 0 12px oklch(0.7 0.19 160 / 0.35), 0 0 4px oklch(0.7 0.19 160 / 0.15)" }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
             />
           )}
           <Icon
             className={cn(
-              "h-[18px] w-[18px] shrink-0 transition-all duration-300",
+              "h-4.5 w-4.5 shrink-0 transition-all duration-300",
               isActive ? "scale-105" : "group-hover:scale-105 group-hover:text-foreground/80"
             )}
           />
@@ -206,13 +206,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
         {/* User card */}
         {usuario && (
-          <div className="relative overflow-hidden rounded-2xl p-3.5 border border-primary/6 bg-gradient-to-br from-primary/3 via-primary/1 to-transparent">
+          <div className="relative overflow-hidden rounded-2xl p-3.5 border border-primary/6 bg-linear-to-br from-primary/3 via-primary/1 to-transparent">
             {/* Decorative corner */}
             <div className="absolute -right-4 -top-4 h-18 w-18 rounded-full bg-primary/3 blur-md" />
 
             <div className="relative flex items-center gap-3">
               <Avatar className="h-10 w-10 border-2 border-primary/12 shadow-lg shadow-primary/4 transition-transform duration-300 hover:scale-105">
-                <AvatarFallback className="bg-gradient-to-br from-primary/8 to-primary/18 text-primary text-xs font-extrabold">
+                <AvatarFallback className="bg-linear-to-br from-primary/8 to-primary/18 text-primary text-xs font-extrabold">
                   {getInitials(usuario.nome)}
                 </AvatarFallback>
               </Avatar>

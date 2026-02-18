@@ -169,7 +169,10 @@ public class AuthService : IAuthService
             Email = emailNormalizado,
             SenhaHash = pendente.SenhaHash,
             EmailConfirmado = true,
-            Ativo = true
+            Ativo = true,
+            AcessoExpiraEm = codigoConvite.DuracaoAcessoDias.HasValue
+                ? DateTime.UtcNow.AddDays(codigoConvite.DuracaoAcessoDias.Value)
+                : null
         };
 
         await _usuarioRepo.CriarAsync(usuario);
@@ -275,6 +278,10 @@ public class AuthService : IAuthService
         if (!usuario.Ativo)
             return (null, "Conta desativada. Entre em contato com o suporte.");
 
+        // Verificar expiração de acesso
+        if (usuario.AcessoExpiraEm.HasValue && usuario.AcessoExpiraEm.Value < DateTime.UtcNow)
+            return (null, "Seu período de acesso ao sistema expirou. Solicite um novo convite ao administrador.");
+
         // Reset tentativas no login bem-sucedido
         if (usuario.TentativasLoginFalhadas > 0 || usuario.BloqueadoAte.HasValue)
         {
@@ -313,6 +320,10 @@ public class AuthService : IAuthService
         var usuario = storedToken.Usuario;
         if (usuario == null || !usuario.Ativo)
             return (null, "Usuário inativo.");
+
+        // Verificar expiração de acesso
+        if (usuario.AcessoExpiraEm.HasValue && usuario.AcessoExpiraEm.Value < DateTime.UtcNow)
+            return (null, "Seu período de acesso ao sistema expirou. Solicite um novo convite ao administrador.");
 
         // Gerar novos tokens (rotation)
         var response = await GerarTokenResponseAsync(usuario, ipAddress);

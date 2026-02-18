@@ -64,9 +64,9 @@ services:
       Database__AutoMigrate: "true"
     networks:
       - controlfinance-network
-    # Em produção, a API é acessada internamente pelo Nginx/reverse proxy
-    expose:
-      - "5000"
+    # Cloudflare Tunnel aponta api.nicolasportie.com → localhost:5000
+    ports:
+      - "5000:5000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
