@@ -104,11 +104,17 @@ public class LancamentoRepository : ILancamentoRepository
         return (itens, total);
     }
 
-    public async Task<decimal> ObterTotalPorPeriodoAsync(int usuarioId, TipoLancamento tipo, DateTime de, DateTime ate)
+    public async Task<decimal> ObterTotalPorPeriodoAsync(int usuarioId, TipoLancamento tipo, DateTime de, DateTime ate, bool excluirCredito = false)
     {
-        return await _context.Lancamentos
-            .Where(l => l.UsuarioId == usuarioId && l.Tipo == tipo && l.Data >= de && l.Data <= ate)
-            .SumAsync(l => l.Valor);
+        var query = _context.Lancamentos
+            .Where(l => l.UsuarioId == usuarioId && l.Tipo == tipo && l.Data >= de && l.Data <= ate);
+
+        if (excluirCredito)
+        {
+            query = query.Where(l => l.FormaPagamento != FormaPagamento.Credito);
+        }
+
+        return await query.SumAsync(l => l.Valor);
     }
 
     public async Task AtualizarAsync(Lancamento lancamento)

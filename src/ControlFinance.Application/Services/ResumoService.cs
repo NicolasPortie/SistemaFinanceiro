@@ -9,10 +9,12 @@ namespace ControlFinance.Application.Services;
 public class ResumoService : IResumoService
 {
     private readonly ILancamentoRepository _lancamentoRepo;
+    private readonly ICartaoCreditoRepository _cartaoRepo;
 
-    public ResumoService(ILancamentoRepository lancamentoRepo)
+    public ResumoService(ILancamentoRepository lancamentoRepo, ICartaoCreditoRepository cartaoRepo)
     {
         _lancamentoRepo = lancamentoRepo;
+        _cartaoRepo = cartaoRepo;
     }
 
     public async Task<ResumoFinanceiroDto> GerarResumoAsync(int usuarioId, DateTime de, DateTime ate)
@@ -41,13 +43,25 @@ public class ResumoService : IResumoService
             .OrderByDescending(c => c.Total)
             .ToList();
 
+        // Calcular posição global de caixa para exibição no resumo
+        decimal? saldoAcumulado = null;
+        decimal? totalComprometido = null;
+        try
+        {
+            saldoAcumulado = await GerarSaldoAcumuladoAsync(usuarioId);
+            totalComprometido = await _cartaoRepo.ObterTotalComprometidoAsync(usuarioId);
+        }
+        catch { /* não bloquear resumo se falhar */ }
+
         return new ResumoFinanceiroDto
         {
             De = de,
             Ate = ate,
             TotalGastos = totalGastos,
             TotalReceitas = totalReceitas,
-            GastosPorCategoria = gastosPorCategoria
+            GastosPorCategoria = gastosPorCategoria,
+            SaldoAcumulado = saldoAcumulado,
+            TotalComprometido = totalComprometido
         };
     }
 
@@ -71,13 +85,18 @@ public class ResumoService : IResumoService
 
     public async Task<decimal> GerarSaldoAcumuladoAsync(int usuarioId)
     {
-        // Saldo ALL-TIME: todas as receitas - todos os gastos desde o início.
-        // Representa o dinheiro real disponível (posição de caixa acumulada).
+        // Saldo de Caixa (Liquidez) — Regime de Caixa.
+        // Receitas (todas) - Gastos que efetivamente saíram da conta (débito, pix, dinheiro).
+        // Gastos no CRÉDITO são excluídos porque o dinheiro NÃO saiu da conta;
+        // ele só sairá quando a fatura for paga (e o pagamento de fatura
+        // é registrado como gasto em débito/pix, o que será capturado aqui).
+        // Isso evita que o saldo acumulado fique artificialmente negativo
+        // quando o usuário tem dinheiro na conta mas usou o cartão de crédito.
         var inicio = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var fim = DateTime.UtcNow.AddDays(1);
 
         var totalReceitas = await _lancamentoRepo.ObterTotalPorPeriodoAsync(usuarioId, TipoLancamento.Receita, inicio, fim);
-        var totalGastos = await _lancamentoRepo.ObterTotalPorPeriodoAsync(usuarioId, TipoLancamento.Gasto, inicio, fim);
+        var totalGastos = await _lancamentoRepo.ObterTotalPorPeriodoAsync(usuarioId, TipoLancamento.Gasto, inicio, fim, excluirCredito: true);
 
         return totalReceitas - totalGastos;
     }
@@ -118,6 +137,23 @@ public class ResumoService : IResumoService
             texto += "\n\n💚 Ótimo! Você está gastando menos do que ganha. Continue assim!";
         else if (resumo.Saldo < 0)
             texto += $"\n\n⚠️ Atenção: seus gastos superaram a receita em *R$ {Math.Abs(resumo.Saldo):N2}*. Revise os maiores gastos acima.";
+
+        // Posição Global de Caixa (se tiver dados)
+        if (resumo.SaldoAcumulado.HasValue)
+        {
+            var saldoAcum = resumo.SaldoAcumulado.Value;
+            var comprometido = resumo.TotalComprometido ?? 0;
+            var disponivel = resumo.SaldoDisponivelGlobal ?? saldoAcum;
+
+            texto += "\n\n🏦 *Posição Geral da Conta:*";
+            texto += $"\n  💵 Saldo em conta: R$ {saldoAcum:N2}";
+            if (comprometido > 0)
+            {
+                texto += $"\n  🔒 Garantia (limites cartão): R$ {comprometido:N2}";
+                var dispEmoji = disponivel >= 0 ? "✅" : "⚠️";
+                texto += $"\n  {dispEmoji} Disponível: R$ {disponivel:N2}";
+            }
+        }
 
         return texto;
     }

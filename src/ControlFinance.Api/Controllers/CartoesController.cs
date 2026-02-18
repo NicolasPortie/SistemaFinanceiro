@@ -136,12 +136,19 @@ public class CartoesController : BaseAuthController
 
         if (request.ValorAdicional > saldoDisponivel)
         {
+            var faltam = request.ValorAdicional - saldoDisponivel;
             return BadRequest(new
             {
-                erro = "Saldo insuficiente.",
-                mensagem = $"Seu saldo disponível é R$ {saldoDisponivel:N2}. " +
-                           $"Saldo acumulado: R$ {saldoAcumulado:N2}, " +
-                           $"já comprometido em limites: R$ {totalComprometido:N2}.",
+                erro = "Saldo insuficiente para garantia.",
+                mensagem = $"Você solicitou R$ {request.ValorAdicional:N2} de garantia, " +
+                           $"mas seu saldo disponível é R$ {saldoDisponivel:N2}. " +
+                           $"Faltam R$ {faltam:N2}.",
+                detalhe = $"Saldo em conta (receitas - gastos efetivos): R$ {saldoAcumulado:N2}. " +
+                          $"Já comprometido em limites de cartão: R$ {totalComprometido:N2}. " +
+                          (saldoAcumulado < 0
+                              ? "💡 Dica: seu saldo histórico está negativo. " +
+                                "Registre receitas pendentes ou adicione um ajuste de saldo inicial para equilibrar."
+                              : $"Disponível para nova garantia: R$ {saldoDisponivel:N2}."),
                 saldoAcumulado,
                 totalComprometido,
                 saldoDisponivel,

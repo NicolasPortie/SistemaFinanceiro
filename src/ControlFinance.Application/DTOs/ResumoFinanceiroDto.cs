@@ -7,6 +7,12 @@ public class ResumoFinanceiroDto
     public decimal TotalGastos { get; set; }
     public decimal TotalReceitas { get; set; }
     public decimal Saldo => TotalReceitas - TotalGastos;
+    
+    // Posição Global de Caixa e Garantias
+    public decimal? SaldoAcumulado { get; set; }
+    public decimal? TotalComprometido { get; set; }
+    public decimal? SaldoDisponivelGlobal => SaldoAcumulado.HasValue ? SaldoAcumulado.Value - (TotalComprometido ?? 0) : null;
+
     public List<CategoriaResumoDto> GastosPorCategoria { get; set; } = new();
 }
 
