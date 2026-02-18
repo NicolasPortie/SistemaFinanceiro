@@ -151,6 +151,7 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Nome).HasColumnName("nome").HasMaxLength(100);
+            entity.Property(e => e.LimiteBase).HasColumnName("limite_base").HasColumnType("decimal(18,2)");
             entity.Property(e => e.Limite).HasColumnName("limite").HasColumnType("decimal(18,2)");
             entity.Property(e => e.DiaVencimento).HasColumnName("dia_vencimento");
             entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");

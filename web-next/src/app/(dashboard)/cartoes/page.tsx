@@ -174,7 +174,7 @@ export default function CartoesPage() {
   const openEdit = (cartao: Cartao) => {
     editFormState.reset({
       nome: cartao.nome,
-      limite: cartao.limite.toFixed(2).replace(".", ","),
+      limite: cartao.limiteBase.toFixed(2).replace(".", ","),
       diaFechamento: cartao.diaFechamento.toString(),
       diaVencimento: cartao.diaVencimento.toString(),
     });

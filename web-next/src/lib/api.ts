@@ -57,6 +57,7 @@ export interface Categoria {
 export interface Cartao {
   id: number;
   nome: string;
+  limiteBase: number;
   limite: number;
   limiteUsado: number;
   limiteDisponivel: number;

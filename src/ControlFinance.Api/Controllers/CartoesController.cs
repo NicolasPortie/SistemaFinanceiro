@@ -45,6 +45,7 @@ public class CartoesController : BaseAuthController
             {
                 c.Id,
                 c.Nome,
+                c.LimiteBase,
                 c.Limite,
                 LimiteUsado = limiteUsado,
                 LimiteDisponivel = c.Limite - limiteUsado,
@@ -64,13 +65,14 @@ public class CartoesController : BaseAuthController
         var cartao = await _cartaoRepo.CriarAsync(new CartaoCredito
         {
             Nome = request.Nome,
+            LimiteBase = request.Limite,
             Limite = request.Limite,
             DiaFechamento = request.DiaFechamento,
             DiaVencimento = request.DiaVencimento,
             UsuarioId = UsuarioId
         });
 
-        return Ok(new { cartao.Id, cartao.Nome, cartao.Limite, cartao.DiaFechamento, cartao.DiaVencimento });
+        return Ok(new { cartao.Id, cartao.Nome, cartao.LimiteBase, cartao.Limite, cartao.DiaFechamento, cartao.DiaVencimento });
     }
 
     [HttpGet("{cartaoId}/fatura")]
@@ -100,14 +102,19 @@ public class CartoesController : BaseAuthController
         if (!string.IsNullOrWhiteSpace(request.Nome))
             cartao.Nome = request.Nome;
         if (request.Limite.HasValue && request.Limite.Value > 0)
-            cartao.Limite = request.Limite.Value;
+        {
+            // Preservar o delta de extras (Garantia): Limite = novoLimiteBase + (Limite - LimiteBase)
+            var extrasDelta = cartao.Limite - cartao.LimiteBase;
+            cartao.LimiteBase = request.Limite.Value;
+            cartao.Limite = request.Limite.Value + extrasDelta;
+        }
         if (request.DiaFechamento.HasValue && request.DiaFechamento.Value >= 1 && request.DiaFechamento.Value <= 31)
             cartao.DiaFechamento = request.DiaFechamento.Value;
         if (request.DiaVencimento.HasValue && request.DiaVencimento.Value >= 1 && request.DiaVencimento.Value <= 31)
             cartao.DiaVencimento = request.DiaVencimento.Value;
 
         await _cartaoRepo.AtualizarAsync(cartao);
-        return Ok(new { cartao.Id, cartao.Nome, cartao.Limite, cartao.DiaFechamento, cartao.DiaVencimento, cartao.Ativo });
+        return Ok(new { cartao.Id, cartao.Nome, cartao.LimiteBase, cartao.Limite, cartao.DiaFechamento, cartao.DiaVencimento, cartao.Ativo });
     }
 
     [HttpDelete("{id}")]
