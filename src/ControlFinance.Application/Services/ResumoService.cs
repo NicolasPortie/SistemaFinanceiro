@@ -69,7 +69,7 @@ public class ResumoService : IResumoService
     {
         var hoje = DateTime.UtcNow.Date;
         var inicioSemana = DateTime.SpecifyKind(hoje.AddDays(-(int)hoje.DayOfWeek), DateTimeKind.Utc);
-        var fimSemana = DateTime.SpecifyKind(inicioSemana.AddDays(6), DateTimeKind.Utc);
+        var fimSemana = DateTime.SpecifyKind(inicioSemana.AddDays(7), DateTimeKind.Utc);
 
         return await GerarResumoAsync(usuarioId, inicioSemana, fimSemana);
     }
@@ -78,7 +78,7 @@ public class ResumoService : IResumoService
     {
         var hoje = DateTime.UtcNow;
         var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var fimMes = inicioMes.AddMonths(1).AddDays(-1);
+        var fimMes = inicioMes.AddMonths(1);
 
         return await GerarResumoAsync(usuarioId, inicioMes, fimMes);
     }

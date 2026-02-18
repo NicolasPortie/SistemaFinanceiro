@@ -4,6 +4,8 @@ using System.Text.Json.Serialization;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace ControlFinance.Infrastructure.Services;
 
@@ -276,6 +278,12 @@ public class GeminiService : IGeminiService
             - O valor DEVE ser sempre positivo e maior que zero.
             - Se nao conseguir extrair um valor numerico valido, NAO use intencao "registrar".
             - Converta valores por extenso: "cinquenta" = 50, "mil" = 1000, "dois mil e quinhentos" = 2500.
+            - REGRA CRITICA DE FORMATO NUMERICO NO JSON: NO JSON, o separador decimal eh PONTO e NAO EXISTE separador de milhar.
+              Valores brasileiros devem ser convertidos: 1.668,98 -> 1668.98. NUNCA escreva 1.668 no JSON achando que eh "mil seiscentos e sessenta e oito", porque no JSON 1.668 significa "um ponto seiscentos e sessenta e oito" (um real e 67 centavos).
+              Exemplos CORRETOS no JSON: "valor": 1668.98, "valor": 50.00, "valor": 2500.00, "valor": 99.90, "valor": 1234.56.
+              Exemplos ERRADOS no JSON: "valor": 1.668,98 (VIRGULA nao eh valida em JSON), "valor": 1.668 (isso eh 1 real e 67 centavos, NAO mil seiscentos).
+              - "1.500" no formato brasileiro = 1500 no JSON. "2.350,90" no formato brasileiro = 2350.90 no JSON.
+              - "centavos" na frase indica a parte DECIMAL. "1.668,98 centavos" = 1668.98. O valor inteiro eh 1668 e os centavos sao 98.
 
             DIFERENCA ENTRE "avaliar_gasto" E "prever_compra":
             - "avaliar_gasto": gasto pequeno e a vista. Ex: "posso gastar 50 no lanche?"
@@ -538,11 +546,87 @@ public class GeminiService : IGeminiService
             _logger.LogInformation("Gemini respondeu: {Response}", response);
 
             var resultado = JsonSerializer.Deserialize<RespostaIA>(response, JsonOptions);
-            return resultado ?? new RespostaIA
+            if (resultado == null)
             {
-                Intencao = "erro",
-                Resposta = "Nao entendi direito. Pode reformular?"
-            };
+                return new RespostaIA
+                {
+                    Intencao = "erro",
+                    Resposta = "Nao entendi direito. Pode reformular?"
+                };
+            }
+
+            // VALIDAÇÃO CRÍTICA: corrigir valor se a IA retornou valor incorreto
+            // (ex: "1.668,98" brasileiro sendo interpretado como 1.668 no JSON = 1.67)
+            if (resultado.Lancamento != null && resultado.Lancamento.Valor > 0)
+            {
+                var valorCorrigido = ValidarECorrigirValor(mensagem, resultado.Lancamento.Valor);
+                if (valorCorrigido != resultado.Lancamento.Valor)
+                {
+                    _logger.LogWarning(
+                        "Valor corrigido de {Original} para {Corrigido} (mensagem: {Msg})",
+                        resultado.Lancamento.Valor, valorCorrigido, mensagem);
+                    resultado.Lancamento.Valor = valorCorrigido;
+                }
+            }
+            if (resultado.AvaliacaoGasto != null && resultado.AvaliacaoGasto.Valor > 0)
+            {
+                var valorCorrigido = ValidarECorrigirValor(mensagem, resultado.AvaliacaoGasto.Valor);
+                if (valorCorrigido != resultado.AvaliacaoGasto.Valor)
+                    resultado.AvaliacaoGasto.Valor = valorCorrigido;
+            }
+            if (resultado.Simulacao != null && resultado.Simulacao.Valor > 0)
+            {
+                var valorCorrigido = ValidarECorrigirValor(mensagem, resultado.Simulacao.Valor);
+                if (valorCorrigido != resultado.Simulacao.Valor)
+                    resultado.Simulacao.Valor = valorCorrigido;
+            }
+            if (resultado.DivisaoGasto != null && resultado.DivisaoGasto.ValorTotal > 0)
+            {
+                var valorCorrigido = ValidarECorrigirValor(mensagem, resultado.DivisaoGasto.ValorTotal);
+                if (valorCorrigido != resultado.DivisaoGasto.ValorTotal)
+                    resultado.DivisaoGasto.ValorTotal = valorCorrigido;
+            }
+
+            // Validação para Metas (Valor Alvo e Atual)
+            if (resultado.Meta != null)
+            {
+                if (resultado.Meta.ValorAlvo > 0)
+                {
+                    var corrigidoAlvo = ValidarECorrigirValor(mensagem, resultado.Meta.ValorAlvo);
+                    if (corrigidoAlvo != resultado.Meta.ValorAlvo) resultado.Meta.ValorAlvo = corrigidoAlvo;
+                }
+                if (resultado.Meta.ValorAtual > 0)
+                {
+                    var corrigidoAtual = ValidarECorrigirValor(mensagem, resultado.Meta.ValorAtual);
+                    if (corrigidoAtual != resultado.Meta.ValorAtual) resultado.Meta.ValorAtual = corrigidoAtual;
+                }
+            }
+
+            // Validação para Aporte em Meta
+            if (resultado.AporteMeta != null && resultado.AporteMeta.Valor > 0)
+            {
+                var valorCorrigido = ValidarECorrigirValor(mensagem, resultado.AporteMeta.Valor);
+                if (valorCorrigido != resultado.AporteMeta.Valor)
+                    resultado.AporteMeta.Valor = valorCorrigido;
+            }
+
+            // Validação para Configuração de Limite
+            if (resultado.Limite != null && resultado.Limite.Valor > 0)
+            {
+                var valorCorrigido = ValidarECorrigirValor(mensagem, resultado.Limite.Valor);
+                if (valorCorrigido != resultado.Limite.Valor)
+                    resultado.Limite.Valor = valorCorrigido;
+            }
+
+            // Validação para Cadastro de Cartão (Limite)
+            if (resultado.Cartao != null && resultado.Cartao.Limite > 0)
+            {
+                var valorCorrigido = ValidarECorrigirValor(mensagem, resultado.Cartao.Limite);
+                if (valorCorrigido != resultado.Cartao.Limite)
+                    resultado.Cartao.Limite = valorCorrigido;
+            }
+            
+            return resultado;
         }
         catch (Exception ex)
         {
@@ -553,6 +637,96 @@ public class GeminiService : IGeminiService
                 Resposta = "Tive um probleminha tecnico. Tenta de novo daqui a pouquinho!"
             };
         }
+    }
+
+
+
+    /// <summary>
+    /// Valida se o valor retornado pela IA faz sentido com base na mensagem original.
+    /// Corrige erros comuns de parsing de formato brasileiro (1.000,00 vs 1.000).
+    /// </summary>
+    private decimal ValidarECorrigirValor(string mensagem, decimal valorIa)
+    {
+        try
+        {
+            // Se a mensagem for muito curta, não tente heurísticas complexas
+            if (string.IsNullOrWhiteSpace(mensagem)) return valorIa;
+
+            var valoresEncontrados = ExtrairValoresDaMensagem(mensagem);
+            
+            // Se não encontrou nenhum valor numérico na mensagem, confia na IA (pode ter vindo de "quinhentos reais")
+            if (!valoresEncontrados.Any()) return valorIa;
+
+            // Procurar um valor candidato que seja compatível
+            foreach (var valorMsg in valoresEncontrados)
+            {
+                // Caso 1: Parsing exato (IA acertou)
+                if (Math.Abs(valorMsg - valorIa) < 0.01m)
+                    return valorIa;
+
+                // Caso 2: O valor da IA é exatamente o valor da mensagem dividido por 1000 (erro 1.500 -> 1.5)
+                // Ex: Msg "1.500", IA retornou 1.5
+                if (valorIa > 0 && Math.Abs(valorMsg - (valorIa * 1000)) < 0.05m)
+                    return valorMsg;
+
+                // Caso 3: Inteligência de milhar do JSON ("1.668,98" -> IA leu "1.668" -> JSON 1.668 -> C# 1.67)
+                // A razão entre o valor da msg (1668.98) e o valor da IA (1.67) é aprox 1000.
+                if (valorIa > 0)
+                {
+                    var razao = valorMsg / valorIa;
+                    if (razao > 900 && razao < 1100) // Erro de escala de 1000x (+- 10%)
+                        return valorMsg;
+                }
+            }
+            
+            // Caso 4: IA retornou valor pequeno (< 100) mas a mensagem tem APENAS valores grandes (> 500)
+            // Ex: Msg "Recebi 1.668,98", valores=[1668.98], IA=1.67.
+            // Se TODOS os valores encontrados na mensagem forem > 500 e a IA retornou algo < 100, tem algo errado.
+            if (valorIa < 100 && valoresEncontrados.All(v => v > 500))
+            {
+                // Se existe um valor explicitamente detectado que parece ser o alvo
+                return valoresEncontrados.Max();
+            }
+
+            return valorIa;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao validar valor da IA. Mantendo original: {Valor}", valorIa);
+            return valorIa;
+        }
+    }
+
+    private List<decimal> ExtrairValoresDaMensagem(string mensagem)
+    {
+        var valores = new List<decimal>();
+        // Remove R$ e espaços extras para facilitar regex
+        var msgLimpa = mensagem.Replace("R$", " ").Trim();
+        
+        // Regex para capturar valores monetários brasileiros: 
+        // 1. (1.234,56) -> Milhar ponto, decimal virgula
+        // 2. (1.234)    -> Milhar ponto (inteiro)
+        // 3. (1234,56)  -> Simples virgula
+        var regex = new Regex(@"(?:^|\s)((?:\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?)|(?:\d{1,3}(?:\.\d{3})+)|(?:\d+,\d{1,2}))(?:$|\s|[a-zA-Z])", RegexOptions.Compiled);
+        
+        var matches = regex.Matches(msgLimpa);
+
+        foreach (Match match in matches)
+        {
+            var textoValor = match.Groups[1].Value.Trim();
+            
+            // Tentar parsear estritamente como pt-BR
+            if (decimal.TryParse(textoValor, NumberStyles.Number, new CultureInfo("pt-BR"), out var valor))
+            {
+                // Ignorar se parecer ano (2020 a 2030) e for inteiro, para evitar falsos positivos com datas
+                // (Ex: "ontem 2026")
+                if (valor >= 2020 && valor <= 2030 && valor % 1 == 0) continue;
+                
+                valores.Add(valor);
+            }
+        }
+        
+        return valores;
     }
 
     public async Task<string> TranscreverAudioAsync(byte[] audioData, string mimeType)

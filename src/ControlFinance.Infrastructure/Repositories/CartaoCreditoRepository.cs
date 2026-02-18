@@ -65,4 +65,13 @@ public class CartaoCreditoRepository : ICartaoCreditoRepository
             .Where(a => a.Cartao.UsuarioId == usuarioId && a.Cartao.Ativo)
             .SumAsync(a => a.ValorBase);
     }
+
+    public async Task<Dictionary<int, decimal>> ObterGarantiasPorCartaoAsync(int usuarioId)
+    {
+        return await _context.AjustesLimitesCartao
+            .Where(a => a.Cartao.UsuarioId == usuarioId && a.Cartao.Ativo)
+            .GroupBy(a => a.CartaoId)
+            .Select(g => new { CartaoId = g.Key, Total = g.Sum(a => a.ValorBase) })
+            .ToDictionaryAsync(x => x.CartaoId, x => x.Total);
+    }
 }

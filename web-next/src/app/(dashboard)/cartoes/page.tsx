@@ -315,7 +315,10 @@ export default function CartoesPage() {
                                   <TrendingUp className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Limite extra</TooltipContent>
+                              <TooltipContent>
+                                Limite extra
+                                {cartao.garantia > 0 && <span className="block text-emerald-300 font-semibold tabular-nums text-[10px] mt-0.5">Inv.: {formatCurrency(cartao.garantia)}</span>}
+                              </TooltipContent>
                             </Tooltip>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -323,7 +326,10 @@ export default function CartoesPage() {
                                   <ArrowDownToLine className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Resgatar garantia</TooltipContent>
+                              <TooltipContent>
+                                Resgatar garantia
+                                {cartao.garantia > 0 && <span className="block text-amber-300 font-semibold tabular-nums text-[10px] mt-0.5">Inv.: {formatCurrency(cartao.garantia)}</span>}
+                              </TooltipContent>
                             </Tooltip>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -605,6 +611,16 @@ export default function CartoesPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={resgateForm.handleSubmit(onSubmitResgate)} className="space-y-6">
+            {/* Show Available Guarantee */}
+            <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-4 flex justify-between items-center">
+              <div className="flex items-center gap-2 text-violet-500">
+                <Wallet className="h-4 w-4" />
+                <span className="text-sm font-semibold">Garantia Investida</span>
+              </div>
+              <span className="text-lg font-bold tabular-nums text-foreground">
+                {formatCurrency(resgatarLimiteCard?.garantia || 0)}
+              </span>
+            </div>
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor a Resgatar (R$)</Label>
               <div className="relative">

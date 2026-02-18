@@ -96,17 +96,17 @@ public class DecisaoGastoService : IDecisaoGastoService
         var perfil = await _perfilService.ObterOuCalcularAsync(usuarioId);
         var hoje = DateTime.UtcNow;
         var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var fimMes = inicioMes.AddMonths(1).AddDays(-1);
-        var diasRestantes = Math.Max(1, (fimMes - hoje).Days + 1);
+        var fimMes = inicioMes.AddMonths(1);
+        var diasRestantes = Math.Max(1, (fimMes.Date - hoje.Date).Days);
         var diasNoMes = DateTime.DaysInMonth(hoje.Year, hoje.Month);
 
         // Gastos já realizados no mês
         var gastosMes = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
-            usuarioId, TipoLancamento.Gasto, inicioMes, fimMes.AddDays(1));
+            usuarioId, TipoLancamento.Gasto, inicioMes, fimMes);
 
         // Receitas do mês (real se houver, senão média)
         var receitasMes = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
-            usuarioId, TipoLancamento.Receita, inicioMes, fimMes.AddDays(1));
+            usuarioId, TipoLancamento.Receita, inicioMes, fimMes);
         var receitaPrevista = receitasMes > 0 ? receitasMes : perfil.ReceitaMensalMedia;
 
         // Compromissos futuros no mês (parcelas)
@@ -296,13 +296,13 @@ public class DecisaoGastoService : IDecisaoGastoService
         var perfil = await _perfilService.ObterOuCalcularAsync(usuarioId);
         var hoje = DateTime.UtcNow;
         var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var fimMes = inicioMes.AddMonths(1).AddDays(-1);
-        var diasRestantes = (fimMes - hoje).Days + 1;
+        var fimMes = inicioMes.AddMonths(1);
+        var diasRestantes = (fimMes.Date - hoje.Date).Days;
 
         var gastosMes = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
-            usuarioId, TipoLancamento.Gasto, inicioMes, fimMes.AddDays(1));
+            usuarioId, TipoLancamento.Gasto, inicioMes, fimMes);
         var receitasMes = await _lancamentoRepo.ObterTotalPorPeriodoAsync(
-            usuarioId, TipoLancamento.Receita, inicioMes, fimMes.AddDays(1));
+            usuarioId, TipoLancamento.Receita, inicioMes, fimMes);
         var receitaPrevista = receitasMes > 0 ? receitasMes : perfil.ReceitaMensalMedia;
         var compromissos = await CalcularCompromissosMesAtualAsync(usuarioId);
         var reservaMetas = await CalcularReservaMetasMesAsync(usuarioId);

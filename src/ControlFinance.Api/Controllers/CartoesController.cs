@@ -28,6 +28,7 @@ public class CartoesController : BaseAuthController
     public async Task<IActionResult> Listar()
     {
         var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(UsuarioId);
+        var garantias = await _cartaoRepo.ObterGarantiasPorCartaoAsync(UsuarioId);
 
         // Carregar faturas para todos os cartões de uma vez via FaturaService
         var resultado = new List<object>();
@@ -38,6 +39,8 @@ public class CartoesController : BaseAuthController
                 .Where(f => f.Status != "Paga")
                 .Sum(f => f.Total);
 
+            var garantia = garantias.ContainsKey(c.Id) ? garantias[c.Id] : 0;
+
             resultado.Add(new
             {
                 c.Id,
@@ -47,7 +50,8 @@ public class CartoesController : BaseAuthController
                 LimiteDisponivel = c.Limite - limiteUsado,
                 c.DiaFechamento,
                 c.DiaVencimento,
-                c.Ativo
+                c.Ativo,
+                Garantia = garantia
             });
         }
 
@@ -208,14 +212,16 @@ public class CartoesController : BaseAuthController
         if (valorResgate < 1)
             return BadRequest(new { erro = "Valor mínimo para resgate é R$ 1,00." });
 
-        // 1. Verificar se user tem essa garantia travada
-        var totalComprometido = await _cartaoRepo.ObterTotalComprometidoAsync(UsuarioId);
-        if (totalComprometido < valorResgate)
+        // 1. Verificar se user tem essa garantia travada NESTE cartão
+        var garantias = await _cartaoRepo.ObterGarantiasPorCartaoAsync(UsuarioId);
+        var garantiaCartao = garantias.ContainsKey(id) ? garantias[id] : 0;
+
+        if (garantiaCartao < valorResgate)
         {
             return BadRequest(new
             {
-                erro = "Saldo de garantia insuficiente para resgate.",
-                garantiaAtual = totalComprometido,
+                erro = "Saldo de garantia insuficiente neste cartão.",
+                garantiaAtual = garantiaCartao,
                 valorSolicitado = valorResgate
             });
         }
@@ -261,6 +267,7 @@ public class CartoesController : BaseAuthController
         await _cartaoRepo.AtualizarAsync(cartao);
         await _cartaoRepo.AdicionarAjusteLimiteAsync(ajuste);
 
+        var totalComprometido = garantias.Values.Sum();
         var novoSaldoDisponivel = (await _resumoService.GerarSaldoAcumuladoAsync(UsuarioId)) - (totalComprometido - valorResgate);
 
         return Ok(new

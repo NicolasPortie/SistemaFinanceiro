@@ -63,6 +63,7 @@ export interface Cartao {
   diaFechamento: number;
   diaVencimento: number;
   ativo: boolean;
+  garantia: number;
 }
 
 export interface SimularCompraRequest {

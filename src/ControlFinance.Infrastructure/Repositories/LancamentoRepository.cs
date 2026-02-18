@@ -39,7 +39,7 @@ public class LancamentoRepository : ILancamentoRepository
         if (de.HasValue)
             query = query.Where(l => l.Data >= de.Value);
         if (ate.HasValue)
-            query = query.Where(l => l.Data <= ate.Value);
+            query = query.Where(l => l.Data < ate.Value);
 
         return await query.OrderByDescending(l => l.Data).ThenByDescending(l => l.CriadoEm).ToListAsync();
     }
@@ -53,7 +53,7 @@ public class LancamentoRepository : ILancamentoRepository
         if (de.HasValue)
             query = query.Where(l => l.Data >= de.Value);
         if (ate.HasValue)
-            query = query.Where(l => l.Data <= ate.Value);
+            query = query.Where(l => l.Data < ate.Value);
 
         return await query.OrderByDescending(l => l.Data).ThenByDescending(l => l.CriadoEm).ToListAsync();
     }
@@ -68,7 +68,7 @@ public class LancamentoRepository : ILancamentoRepository
         if (de.HasValue)
             query = query.Where(l => l.Data >= de.Value);
         if (ate.HasValue)
-            query = query.Where(l => l.Data <= ate.Value);
+            query = query.Where(l => l.Data < ate.Value);
 
         var total = await query.CountAsync();
         var itens = await query
@@ -91,7 +91,7 @@ public class LancamentoRepository : ILancamentoRepository
         if (de.HasValue)
             query = query.Where(l => l.Data >= de.Value);
         if (ate.HasValue)
-            query = query.Where(l => l.Data <= ate.Value);
+            query = query.Where(l => l.Data < ate.Value);
 
         var total = await query.CountAsync();
         var itens = await query
@@ -107,7 +107,7 @@ public class LancamentoRepository : ILancamentoRepository
     public async Task<decimal> ObterTotalPorPeriodoAsync(int usuarioId, TipoLancamento tipo, DateTime de, DateTime ate, bool excluirCredito = false)
     {
         var query = _context.Lancamentos
-            .Where(l => l.UsuarioId == usuarioId && l.Tipo == tipo && l.Data >= de && l.Data <= ate);
+            .Where(l => l.UsuarioId == usuarioId && l.Tipo == tipo && l.Data >= de && l.Data < ate);
 
         if (excluirCredito)
         {
