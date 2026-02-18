@@ -100,7 +100,7 @@ jobs:
         docker compose -f docker-compose.prod.yml ps
 
     - name: Aguardar inicialização
-      run: sleep 40
+      run: sleep 60
 
     - name: Verificar saúde da API
       run: |
