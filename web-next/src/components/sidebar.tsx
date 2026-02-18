@@ -241,6 +241,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             </div>
           </div>
         )}
+
+        <div className="mt-1 text-center">
+          <p className="text-[10px] text-muted-foreground/30 font-mono tracking-widest">
+            v1.10.2
+          </p>
+        </div>
       </div>
     </div>
   );
