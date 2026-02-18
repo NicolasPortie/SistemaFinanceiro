@@ -39,7 +39,7 @@ public class FaturaService : IFaturaService
         // Garantir que carregou o cartão, se o repo não trouxer por padrão no ObterPorId (o FaturaRepository atual traz)
         if (fatura.CartaoCredito == null)
         {
-             fatura.CartaoCredito = await _cartaoRepo.ObterPorIdAsync(fatura.CartaoCreditoId);
+             fatura.CartaoCredito = (await _cartaoRepo.ObterPorIdAsync(fatura.CartaoCreditoId))!;
         }
 
         // Verificar que o usuário é dono do cartão/fatura
