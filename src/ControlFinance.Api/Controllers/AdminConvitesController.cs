@@ -26,8 +26,10 @@ public class AdminConvitesController : BaseAuthController
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] CriarCodigoConviteDto dto)
     {
-        var convite = await _adminService.CriarCodigoConviteAsync(UsuarioId, dto);
-        return Created($"/api/admin/convites/{convite.Id}", convite);
+        var convites = await _adminService.CriarCodigoConviteAsync(UsuarioId, dto);
+        if (convites.Count == 1)
+            return Created($"/api/admin/convites/{convites[0].Id}", convites[0]);
+        return Created("/api/admin/convites", convites);
     }
 
     [HttpDelete("{id}")]

@@ -130,4 +130,31 @@ public class FaturaRepository : IFaturaRepository
             await _context.SaveChangesAsync();
         }
     }
+
+    public async Task<bool> RecalcularTotalAtomicamenteAsync(int faturaId)
+    {
+        // Calcular total via SQL para evitar race conditions
+        var total = await _context.Set<Domain.Entities.Parcela>()
+            .Where(p => p.FaturaId == faturaId)
+            .SumAsync(p => (decimal?)p.Valor) ?? 0;
+
+        var temParcelas = await _context.Set<Domain.Entities.Parcela>()
+            .AnyAsync(p => p.FaturaId == faturaId);
+
+        if (total == 0 && !temParcelas)
+        {
+            // Remover fatura vazia não paga (evita faturas fantasma com R$0)
+            var removidas = await _context.Faturas
+                .Where(f => f.Id == faturaId && f.Status != StatusFatura.Paga)
+                .ExecuteDeleteAsync();
+            return removidas == 0; // Se não removeu (porque é Paga), ainda existe
+        }
+
+        // Atualizar total atomicamente
+        await _context.Faturas
+            .Where(f => f.Id == faturaId)
+            .ExecuteUpdateAsync(f => f.SetProperty(x => x.Total, total));
+
+        return true;
+    }
 }

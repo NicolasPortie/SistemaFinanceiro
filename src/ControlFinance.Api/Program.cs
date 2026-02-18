@@ -28,12 +28,20 @@ if (jwtSecretBytes < 64 ||
     throw new InvalidOperationException("JWT Secret não configurado ou muito curto para HS512 (mínimo 64 bytes). Configure em appsettings.Development.json, User Secrets ou variáveis de ambiente.");
 
 var encryptionKey = builder.Configuration["Encryption:Key"];
-var encryptionKeyBytes = string.IsNullOrWhiteSpace(encryptionKey) ? 0 : Encoding.UTF8.GetByteCount(encryptionKey);
-if (encryptionKeyBytes < 32 ||
+byte[] encryptionKeyDecoded;
+try
+{
+    encryptionKeyDecoded = string.IsNullOrWhiteSpace(encryptionKey) ? [] : Convert.FromBase64String(encryptionKey);
+}
+catch (FormatException)
+{
+    throw new InvalidOperationException("Encryption:Key não é um valor Base64 válido. Gere com EncryptionHelper.GenerateKey().");
+}
+if (encryptionKeyDecoded.Length < 32 ||
     encryptionKey!.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase) ||
     encryptionKey.Contains("SEU_SEGREDO", StringComparison.OrdinalIgnoreCase) ||
     encryptionKey.Contains("DEV_ONLY", StringComparison.OrdinalIgnoreCase))
-    throw new InvalidOperationException("Encryption:Key não configurada ou fraca (mínimo 32 bytes). Configure via variáveis de ambiente ou User Secrets.");
+    throw new InvalidOperationException("Encryption:Key não configurada ou fraca (mínimo 32 bytes decodificados). Configure via variáveis de ambiente ou User Secrets. Gere com EncryptionHelper.GenerateKey().");
 
 // === Configuração das camadas ===
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -189,19 +197,29 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// === Aplicar migrations automaticamente ===
+// === Aplicar migrations automaticamente (dev) ou por configuração (prod) ===
+var autoMigrate = app.Environment.IsDevelopment()
+    || builder.Configuration.GetValue<bool>("Database:AutoMigrate");
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try
+
+    if (autoMigrate)
     {
-        app.Logger.LogInformation("Aplicando migrations do banco de dados...");
-        await db.Database.MigrateAsync();
-        app.Logger.LogInformation("Migrations aplicadas com sucesso.");
+        try
+        {
+            app.Logger.LogInformation("Aplicando migrations do banco de dados...");
+            await db.Database.MigrateAsync();
+            app.Logger.LogInformation("Migrations aplicadas com sucesso.");
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogError(ex, "Erro ao aplicar migrations. A aplicação continuará, mas pode haver problemas.");
+        }
     }
-    catch (Exception ex)
+    else
     {
-        app.Logger.LogError(ex, "Erro ao aplicar migrations. A aplicação continuará, mas pode haver problemas.");
+        app.Logger.LogInformation("Auto-migrate desativado. Execute migrations manualmente ou defina Database:AutoMigrate=true.");
     }
 
     // === Seed de usuário dev (somente em Development) ===

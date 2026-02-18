@@ -36,9 +36,9 @@ public class GlobalExceptionMiddleware
         var (statusCode, mensagem) = exception switch
         {
             UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, "Acesso não autorizado."),
-            ArgumentException ex => ((int)HttpStatusCode.BadRequest, ex.Message),
+            ArgumentException => ((int)HttpStatusCode.BadRequest, "Dados inválidos na requisição."),
             KeyNotFoundException => ((int)HttpStatusCode.NotFound, "Recurso não encontrado."),
-            InvalidOperationException ex => ((int)HttpStatusCode.BadRequest, ex.Message),
+            InvalidOperationException => ((int)HttpStatusCode.BadRequest, "Operação inválida."),
             FormatException => ((int)HttpStatusCode.BadRequest, "Formato de dados inválido."),
             _ => ((int)HttpStatusCode.InternalServerError, "Ocorreu um erro interno. Tente novamente mais tarde.")
         };

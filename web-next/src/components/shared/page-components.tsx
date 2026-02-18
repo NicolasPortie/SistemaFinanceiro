@@ -2,8 +2,9 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LottieAnimation } from "@/components/shared/lottie-animation";
 import { emptyBox, errorWarning, processing } from "@/assets/lottie";
 
@@ -53,6 +54,7 @@ interface StatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
+  tooltip?: string;
   icon: React.ReactNode;
   trend?: "up" | "down" | "neutral";
   className?: string;
@@ -64,6 +66,7 @@ export function StatCard({
   title,
   value,
   subtitle,
+  tooltip,
   icon,
   trend,
   className,
@@ -130,8 +133,18 @@ export function StatCard({
 
       <div className="relative z-10 flex items-start justify-between gap-3">
         <div className="space-y-2 sm:space-y-3 min-w-0 flex-1">
-          <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-muted-foreground/55 truncate">
+          <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-muted-foreground/55 truncate flex items-center gap-1">
             {title}
+            {tooltip && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3 w-3 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-help shrink-0" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[220px] text-xs leading-relaxed font-normal normal-case tracking-normal">
+                  {tooltip}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </p>
           <p
             className={cn(

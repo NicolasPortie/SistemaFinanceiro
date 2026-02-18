@@ -9,7 +9,10 @@ import {
 } from "@/hooks/use-queries";
 import type { SimularCompraRequest, SimulacaoResultado } from "@/lib/api";
 import { formatCurrency, riskColor, formatMonth } from "@/lib/format";
+import { simulacaoSchema, type SimulacaoData } from "@/lib/schemas";
 import { motion, AnimatePresence } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ShoppingCart,
   CreditCard,
@@ -48,7 +51,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
 
 const paymentMethods = [
   { value: "pix", label: "PIX", icon: Smartphone },
@@ -65,31 +67,27 @@ export default function SimulacaoPage() {
   const simularMutation = useSimularCompra();
 
   // Form
-  const [descricao, setDescricao] = useState("");
-  const [valor, setValor] = useState("");
-  const [formaPagamento, setFormaPagamento] = useState("pix");
-  const [parcelas, setParcelas] = useState(1);
-  const [cartaoId, setCartaoId] = useState<string>("");
+  const form = useForm<SimulacaoData>({
+    resolver: zodResolver(simulacaoSchema),
+    defaultValues: { descricao: "", valor: "", formaPagamento: "pix", parcelas: 1, cartaoId: "" },
+  });
+
+  const formaPagamento = form.watch("formaPagamento");
+  const parcelas = form.watch("parcelas");
   const [resultado, setResultado] = useState<SimulacaoResultado | null>(null);
   const [showMeses, setShowMeses] = useState(false);
 
-  const handleSimular = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const valorNum = parseFloat(valor.replace(",", "."));
-    if (isNaN(valorNum) || valorNum <= 0) {
-      toast.error("Informe um valor válido");
-      return;
-    }
-
+  const handleSimular = (data: SimulacaoData) => {
+    const valorNum = parseFloat(data.valor.replace(",", "."));
     setResultado(null);
-    const data: SimularCompraRequest = {
-      descricao,
+    const req: SimularCompraRequest = {
+      descricao: data.descricao,
       valor: valorNum,
-      formaPagamento,
-      numeroParcelas: formaPagamento === "credito" ? parcelas : 1,
-      cartaoCreditoId: cartaoId ? parseInt(cartaoId) : undefined,
+      formaPagamento: data.formaPagamento,
+      numeroParcelas: data.formaPagamento === "credito" ? data.parcelas : 1,
+      cartaoCreditoId: data.cartaoId ? parseInt(data.cartaoId) : undefined,
     };
-    simularMutation.mutate(data, {
+    simularMutation.mutate(req, {
       onSuccess: (res) => setResultado(res),
     });
   };
@@ -112,7 +110,7 @@ export default function SimulacaoPage() {
     <PageShell>
       <PageHeader
         title="Simulação de Compra"
-        description="Avalie o impacto financeiro antes de cada decisão"
+        description="Projeta o impacto de uma compra nos próximos 12 meses, considerando suas receitas, despesas e metas"
       />
 
       <Tabs defaultValue="simular" className="space-y-6">
@@ -138,17 +136,16 @@ export default function SimulacaoPage() {
             animate={{ opacity: 1, y: 0 }}
             className="card-premium p-6"
           >
-            <form onSubmit={handleSimular} className="space-y-5">
+            <form onSubmit={form.handleSubmit(handleSimular)} className="space-y-5">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Descrição</Label>
                   <Input
                     placeholder="Ex: iPhone 16 Pro Max"
-                    value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
-                    required
-                    className="h-11 rounded-xl"
+                    className={`h-11 rounded-xl ${form.formState.errors.descricao ? 'border-red-500' : ''}`}
+                    {...form.register("descricao")}
                   />
+                  {form.formState.errors.descricao && <p className="text-xs text-red-500 font-medium">{form.formState.errors.descricao.message}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -157,12 +154,11 @@ export default function SimulacaoPage() {
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                     <Input
                       placeholder="0,00"
-                      value={valor}
-                      onChange={(e) => setValor(e.target.value)}
-                      required
-                      className="h-11 rounded-xl pl-9 tabular-nums text-lg font-semibold"
+                      className={`h-11 rounded-xl pl-9 tabular-nums text-lg font-semibold ${form.formState.errors.valor ? 'border-red-500' : ''}`}
+                      {...form.register("valor")}
                     />
                   </div>
+                  {form.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{form.formState.errors.valor.message}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -174,8 +170,8 @@ export default function SimulacaoPage() {
                         type="button"
                         className={`flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer ${formaPagamento === pm.value ? "bg-primary/10 text-primary border-2 border-primary/30 shadow-md shadow-primary/5" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border/40"}`}
                         onClick={() => {
-                          setFormaPagamento(pm.value);
-                          if (pm.value !== "credito") setParcelas(1);
+                          form.setValue("formaPagamento", pm.value as "pix" | "debito" | "credito");
+                          if (pm.value !== "credito") form.setValue("parcelas", 1);
                         }}
                       >
                         <pm.icon className="h-4.5 w-4.5" />
@@ -202,7 +198,7 @@ export default function SimulacaoPage() {
                             key={p}
                             type="button"
                             className={`h-9 min-w-11 px-3 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer ${parcelas === p ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/40 text-muted-foreground hover:bg-muted border border-border/40"}`}
-                            onClick={() => setParcelas(p)}
+                            onClick={() => form.setValue("parcelas", p)}
                           >
                             {p}x
                           </button>
@@ -212,7 +208,7 @@ export default function SimulacaoPage() {
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cartão</Label>
-                      <Select value={cartaoId} onValueChange={setCartaoId}>
+                      <Select value={form.watch("cartaoId") || ""} onValueChange={(v) => form.setValue("cartaoId", v)}>
                         <SelectTrigger className="h-11 rounded-xl">
                           <SelectValue placeholder="Selecione o cartão" />
                         </SelectTrigger>
@@ -245,6 +241,39 @@ export default function SimulacaoPage() {
               </Button>
             </form>
           </motion.div>
+
+          {/* Como funciona — visible only before first result */}
+          {!resultado && !simularMutation.isPending && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="card-premium p-6 space-y-4"
+            >
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold">Como funciona a simulação?</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex items-start gap-2.5 text-xs text-muted-foreground/60">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">1</span>
+                  <span><strong className="text-muted-foreground/80">Projeção de 12 meses</strong> — Simula mês a mês como fica seu saldo com a compra</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-xs text-muted-foreground/60">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">2</span>
+                  <span><strong className="text-muted-foreground/80">Sazonalidade</strong> — Considera gastos sazonais (IPVA, material escolar, etc.)</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-xs text-muted-foreground/60">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">3</span>
+                  <span><strong className="text-muted-foreground/80">Impacto em metas</strong> — Mostra se a compra atrasa suas metas financeiras</span>
+                </div>
+                <div className="flex items-start gap-2.5 text-xs text-muted-foreground/60">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">4</span>
+                  <span><strong className="text-muted-foreground/80">Cenários alternativos</strong> — Sugere parcelamentos com risco menor</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground/40 italic">Use dados reais para resultados mais precisos. Quanto mais lançamentos, melhor a projeção.</p>
+            </motion.div>
+          )}
 
           {/* Resultado */}
           <AnimatePresence>
@@ -415,6 +444,119 @@ export default function SimulacaoPage() {
                     </div>
                   </>
                 )}
+
+                {/* Health Score & Extra Risk Info */}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {resultado.scoreSaudeFinanceira != null && (
+                    <div className="card-premium p-4 flex items-center gap-4">
+                      <div className="relative h-12 w-12 shrink-0">
+                        <svg className="h-12 w-12 -rotate-90" viewBox="0 0 36 36">
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/20" />
+                          <circle
+                            cx="18" cy="18" r="14" fill="none" strokeWidth="3" strokeLinecap="round"
+                            strokeDasharray={`${(resultado.scoreSaudeFinanceira / 100) * 88} 88`}
+                            className={resultado.scoreSaudeFinanceira >= 70 ? "text-emerald-500" : resultado.scoreSaudeFinanceira >= 40 ? "text-amber-500" : "text-red-500"}
+                          />
+                        </svg>
+                        <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${
+                          resultado.scoreSaudeFinanceira >= 70 ? "text-emerald-500" : resultado.scoreSaudeFinanceira >= 40 ? "text-amber-500" : "text-red-500"
+                        }`}>
+                          {resultado.scoreSaudeFinanceira}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">Saúde Financeira</p>
+                        <p className="text-xs text-muted-foreground/60">
+                          {resultado.scoreSaudeFinanceira >= 70
+                            ? "Situação saudável para esta compra"
+                            : resultado.scoreSaudeFinanceira >= 40
+                            ? "Atenção — orçamento apertado"
+                            : "Momento crítico para gastos extras"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {resultado.probabilidadeMesNegativo != null && resultado.probabilidadeMesNegativo > 0 && (
+                    <div className="card-premium p-4 flex items-center gap-3">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold">Meses no Vermelho</p>
+                        <p className="text-xs text-muted-foreground/60">
+                          {resultado.probabilidadeMesNegativo} de 12 meses projetados ficam com saldo negativo
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Goal Impact */}
+                {resultado.impactoMetas && resultado.impactoMetas.length > 0 && (
+                  <div className="card-premium p-6 space-y-3">
+                    <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground/70">
+                      Impacto nas Metas
+                    </h3>
+                    {resultado.impactoMetas.map((meta) => (
+                      <div key={meta.nomeMeta} className="rounded-xl border border-border/50 p-4 space-y-2 bg-muted/10">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <Target className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium">{meta.nomeMeta}</span>
+                          </div>
+                          {meta.mesesAtraso > 0 && (
+                            <Badge variant="destructive" className="text-[10px]">
+                              +{meta.mesesAtraso} {meta.mesesAtraso === 1 ? "mês" : "meses"} de atraso
+                            </Badge>
+                          )}
+                          {meta.reservaAbaixoMinimo && (
+                            <Badge variant="destructive" className="text-[10px]">
+                              Abaixo da reserva mínima
+                            </Badge>
+                          )}
+                        </div>
+                        {meta.descricao && (
+                          <p className="text-xs text-muted-foreground/70">{meta.descricao}</p>
+                        )}
+                        {meta.valorMensalNecessarioAntes > 0 && meta.valorMensalNecessarioDepois > meta.valorMensalNecessarioAntes && (
+                          <p className="text-xs">
+                            Parcela mensal necessária: {formatCurrency(meta.valorMensalNecessarioAntes)} → {formatCurrency(meta.valorMensalNecessarioDepois)}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Seasonal Events */}
+                {resultado.eventosSazonaisConsiderados && resultado.eventosSazonaisConsiderados.length > 0 && (
+                  <div className="card-premium p-6 space-y-3">
+                    <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground/70">
+                      Eventos Sazonais Considerados
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {resultado.eventosSazonaisConsiderados.map((ev) => (
+                        <div key={ev.id} className="flex items-center gap-2 rounded-lg border border-border/50 px-3 py-2 bg-muted/10">
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground/60" />
+                          <span className="text-xs font-medium">{ev.descricao}</span>
+                          <span className="text-xs text-muted-foreground/60">
+                            {ev.ehReceita ? "+" : "-"}{formatCurrency(ev.valorMedio)}
+                          </span>
+                          {ev.detectadoAutomaticamente && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0">Auto</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Confidence / Data Tip */}
+                <div className="card-premium p-4 flex items-start gap-3 bg-primary/[0.03]">
+                  <Activity className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                    <strong className="text-foreground/80">Dica:</strong> Quanto mais lançamentos você cadastrar (receitas, despesas, metas), mais precisa fica a simulação.
+                    As projeções usam seus dados reais e consideram sazonalidades detectadas automaticamente.
+                  </p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

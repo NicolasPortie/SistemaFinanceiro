@@ -7,9 +7,11 @@ import {
   RefreshCw,
   Plus,
   ShoppingCart,
+  Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getGreeting, getFirstName } from "@/lib/format";
 import type { Usuario } from "@/lib/api";
 
@@ -25,7 +27,7 @@ interface HeroSectionProps {
 
 export function HeroSection({ usuario, healthLabel, saldo, totalReceitas, totalGastos, loading, onRefresh }: HeroSectionProps) {
   const comprometimento = totalReceitas > 0 ? Math.round((totalGastos / totalReceitas) * 100) : null;
-  const resultadoLabel = saldo > 0 ? "Superávit" : saldo < 0 ? "Déficit" : "Equilibrado";
+  const resultadoLabel = saldo > 0 ? "Sobrou" : saldo < 0 ? "Faltou" : "Equilibrado";
   const absValue = Math.abs(saldo);
   const formatBRL = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -67,7 +69,17 @@ export function HeroSection({ usuario, healthLabel, saldo, totalReceitas, totalG
             {healthLabel
               ? <>
                 Saúde financeira:{" "}
-                <span className="text-white/90 font-semibold">{healthLabel}</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-white/90 font-semibold cursor-help border-b border-dashed border-white/30">
+                      {healthLabel}
+                      <Info className="inline h-3 w-3 ml-1 opacity-50" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[260px] text-xs leading-relaxed">
+                    Baseado na % da renda que você consegue poupar: Excelente (≥30%), Boa (≥15%), Regular (≥5%), Apertada (&lt;5%), Crítica (gastando mais do que ganha).
+                  </TooltipContent>
+                </Tooltip>
                 {" · "}
                 <span className="text-white/95 font-bold">{resultadoLabel}</span>
                 {saldo !== 0 && (

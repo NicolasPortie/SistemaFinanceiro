@@ -17,7 +17,7 @@ public interface IAdminService
 
     // Códigos de convite
     Task<List<AdminCodigoConviteDto>> ListarCodigosConviteAsync();
-    Task<AdminCodigoConviteDto> CriarCodigoConviteAsync(int adminUsuarioId, CriarCodigoConviteDto dto);
+    Task<List<AdminCodigoConviteDto>> CriarCodigoConviteAsync(int adminUsuarioId, CriarCodigoConviteDto dto);
     Task<string?> RemoverCodigoConviteAsync(int id);
 
     // Lançamentos

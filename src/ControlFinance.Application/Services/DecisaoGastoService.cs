@@ -212,18 +212,28 @@ public class DecisaoGastoService : IDecisaoGastoService
         });
 
         // Consolidar parecer final (prioridade: segurar > cautela > pode)
-        var pareceres = camadas.Select(c => c.Parecer).ToList();
-        if (pareceres.Count(p => p == "segurar") >= 2)
+        // REGRA: se a camada matemática diz "segurar" (sem saldo), é constraint absoluto
+        var parecerMatematica = camadas.First(c => c.Camada == "matematica").Parecer;
+        if (parecerMatematica == "segurar")
         {
             parecer = "segurar";
             podeGastar = false;
         }
-        else if (pareceres.Count(p => p == "segurar") >= 1 || pareceres.Count(p => p == "cautela") >= 2)
+        else
         {
-            parecer = "cautela";
-            podeGastar = true;
+            var pareceres = camadas.Select(c => c.Parecer).ToList();
+            if (pareceres.Count(p => p == "segurar") >= 2)
+            {
+                parecer = "segurar";
+                podeGastar = false;
+            }
+            else if (pareceres.Count(p => p == "segurar") >= 1 || pareceres.Count(p => p == "cautela") >= 2)
+            {
+                parecer = "cautela";
+                podeGastar = true;
+            }
+            // else mantém parecer da camada matemática
         }
-        // else mantém parecer da camada matemática
 
         // Impacto em metas
         List<ImpactoMetaDto>? impactoMetas = null;

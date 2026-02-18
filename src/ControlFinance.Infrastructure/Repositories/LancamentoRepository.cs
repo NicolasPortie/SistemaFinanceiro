@@ -33,6 +33,7 @@ public class LancamentoRepository : ILancamentoRepository
     public async Task<List<Lancamento>> ObterPorUsuarioAsync(int usuarioId, DateTime? de = null, DateTime? ate = null)
     {
         var query = _context.Lancamentos
+            .AsNoTracking()
             .Include(l => l.Categoria)
             .Where(l => l.UsuarioId == usuarioId);
 
@@ -47,6 +48,7 @@ public class LancamentoRepository : ILancamentoRepository
     public async Task<List<Lancamento>> ObterPorUsuarioETipoAsync(int usuarioId, TipoLancamento tipo, DateTime? de = null, DateTime? ate = null)
     {
         var query = _context.Lancamentos
+            .AsNoTracking()
             .Include(l => l.Categoria)
             .Where(l => l.UsuarioId == usuarioId && l.Tipo == tipo);
 
@@ -62,6 +64,7 @@ public class LancamentoRepository : ILancamentoRepository
         int usuarioId, int pagina, int tamanhoPagina, DateTime? de = null, DateTime? ate = null)
     {
         var query = _context.Lancamentos
+            .AsNoTracking()
             .Include(l => l.Categoria)
             .Where(l => l.UsuarioId == usuarioId);
 
@@ -85,6 +88,7 @@ public class LancamentoRepository : ILancamentoRepository
         int usuarioId, TipoLancamento tipo, int pagina, int tamanhoPagina, DateTime? de = null, DateTime? ate = null)
     {
         var query = _context.Lancamentos
+            .AsNoTracking()
             .Include(l => l.Categoria)
             .Where(l => l.UsuarioId == usuarioId && l.Tipo == tipo);
 
@@ -117,6 +121,38 @@ public class LancamentoRepository : ILancamentoRepository
         return await query.SumAsync(l => l.Valor);
     }
 
+    public async Task<(List<Lancamento> Itens, int Total)> ObterPaginadoComFiltrosAsync(
+        int usuarioId, int pagina, int tamanhoPagina,
+        TipoLancamento? tipo = null, int? categoriaId = null, string? busca = null,
+        DateTime? de = null, DateTime? ate = null)
+    {
+        var query = _context.Lancamentos
+            .AsNoTracking()
+            .Include(l => l.Categoria)
+            .Where(l => l.UsuarioId == usuarioId);
+
+        if (tipo.HasValue)
+            query = query.Where(l => l.Tipo == tipo.Value);
+        if (categoriaId.HasValue)
+            query = query.Where(l => l.CategoriaId == categoriaId.Value);
+        if (!string.IsNullOrWhiteSpace(busca))
+            query = query.Where(l => EF.Functions.ILike(l.Descricao, $"%{busca.Trim()}%"));
+        if (de.HasValue)
+            query = query.Where(l => l.Data >= de.Value);
+        if (ate.HasValue)
+            query = query.Where(l => l.Data < ate.Value);
+
+        var total = await query.CountAsync();
+        var itens = await query
+            .OrderByDescending(l => l.Data)
+            .ThenByDescending(l => l.CriadoEm)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .ToListAsync();
+
+        return (itens, total);
+    }
+
     public async Task AtualizarAsync(Lancamento lancamento)
     {
         _context.Lancamentos.Update(lancamento);
@@ -125,11 +161,6 @@ public class LancamentoRepository : ILancamentoRepository
 
     public async Task RemoverAsync(int id)
     {
-        var lancamento = await _context.Lancamentos.FindAsync(id);
-        if (lancamento != null)
-        {
-            _context.Lancamentos.Remove(lancamento);
-            await _context.SaveChangesAsync();
-        }
+        await _context.Lancamentos.Where(l => l.Id == id).ExecuteDeleteAsync();
     }
 }

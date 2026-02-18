@@ -85,11 +85,13 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Codigo).HasColumnName("codigo").HasMaxLength(50);
             entity.Property(e => e.Descricao).HasColumnName("descricao").HasMaxLength(200);
             entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
-            entity.Property(e => e.ExpiraEm).HasColumnName("expira_em");
+            entity.Property(e => e.ExpiraEm).HasColumnName("expira_em").IsRequired(false);
             entity.Property(e => e.Usado).HasColumnName("usado");
             entity.Property(e => e.UsadoEm).HasColumnName("usado_em");
             entity.Property(e => e.UsadoPorUsuarioId).HasColumnName("usado_por_usuario_id");
             entity.Property(e => e.CriadoPorUsuarioId).HasColumnName("criado_por_usuario_id");
+            entity.Property(e => e.UsoMaximo).HasColumnName("uso_maximo").IsRequired(false);
+            entity.Property(e => e.UsosRealizados).HasColumnName("usos_realizados").HasDefaultValue(0);
 
             entity.HasIndex(e => e.Codigo).IsUnique();
 
@@ -209,6 +211,14 @@ public class AppDbContext : DbContext
                   .WithMany(c => c.Lancamentos)
                   .HasForeignKey(e => e.CategoriaId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            // Índices para performance — cobrem as queries mais frequentes
+            entity.HasIndex(e => new { e.UsuarioId, e.Tipo, e.Data })
+                  .HasDatabaseName("IX_lancamentos_usuario_tipo_data");
+            entity.HasIndex(e => new { e.UsuarioId, e.Data })
+                  .HasDatabaseName("IX_lancamentos_usuario_data");
+            entity.HasIndex(e => e.CategoriaId)
+                  .HasDatabaseName("IX_lancamentos_categoria");
         });
 
         // === Parcela ===

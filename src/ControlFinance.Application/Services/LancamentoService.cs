@@ -15,6 +15,7 @@ public class LancamentoService : ILancamentoService
     private readonly IFaturaRepository _faturaRepo;
     private readonly IParcelaRepository _parcelaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<LancamentoService> _logger;
 
     public LancamentoService(
@@ -23,6 +24,7 @@ public class LancamentoService : ILancamentoService
         IFaturaRepository faturaRepo,
         IParcelaRepository parcelaRepo,
         ICartaoCreditoRepository cartaoRepo,
+        IUnitOfWork unitOfWork,
         ILogger<LancamentoService> logger)
     {
         _lancamentoRepo = lancamentoRepo;
@@ -30,6 +32,7 @@ public class LancamentoService : ILancamentoService
         _faturaRepo = faturaRepo;
         _parcelaRepo = parcelaRepo;
         _cartaoRepo = cartaoRepo;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -110,18 +113,12 @@ public class LancamentoService : ILancamentoService
     private async Task GerarParcelasAsync(Lancamento lancamento, int? cartaoId)
     {
         if (!cartaoId.HasValue)
-        {
-            _logger.LogWarning("Cartão não informado para lançamento parcelado {Id}", lancamento.Id);
-            return;
-        }
+            throw new ArgumentException("Cartão de crédito é obrigatório para lançamento parcelado.");
 
         // Buscar cartão para saber o DiaFechamento
         var cartao = await _cartaoRepo.ObterPorIdAsync(cartaoId.Value);
         if (cartao == null)
-        {
-            _logger.LogWarning("Cartão {Id} não encontrado para gerar parcelas", cartaoId.Value);
-            return;
-        }
+            throw new ArgumentException($"Cartão de crédito {cartaoId.Value} não encontrado.");
 
         var valorParcela = Math.Round(lancamento.Valor / lancamento.NumeroParcelas, 2);
         var resto = lancamento.Valor - (valorParcela * lancamento.NumeroParcelas);
@@ -163,18 +160,12 @@ public class LancamentoService : ILancamentoService
     private async Task GerarParcelaUnicaAsync(Lancamento lancamento, int? cartaoId)
     {
         if (!cartaoId.HasValue)
-        {
-            _logger.LogWarning("Cartão não informado para lançamento crédito {Id}", lancamento.Id);
-            return;
-        }
+            throw new ArgumentException("Cartão de crédito é obrigatório para lançamento em crédito.");
 
         // Buscar cartão para saber o DiaFechamento
         var cartao = await _cartaoRepo.ObterPorIdAsync(cartaoId.Value);
         if (cartao == null)
-        {
-            _logger.LogWarning("Cartão {Id} não encontrado para gerar parcela única", cartaoId.Value);
-            return;
-        }
+            throw new ArgumentException($"Cartão de crédito {cartaoId.Value} não encontrado.");
 
         // Determinar em qual fatura a compra entra (baseado no dia de fechamento)
         var mesFatura = FaturaCicloHelper.DeterminarMesFatura(lancamento.Data, cartao.DiaFechamento);
@@ -199,20 +190,9 @@ public class LancamentoService : ILancamentoService
 
     private async Task AtualizarTotalFaturaAsync(int faturaId)
     {
-        var fatura = await _faturaRepo.ObterPorIdAsync(faturaId);
-        if (fatura == null) return;
-
-        fatura.Total = fatura.Parcelas.Sum(p => p.Valor);
-
-        // Se a fatura ficou sem parcelas e não está paga, remover para não deixar fatura fantasma com R$0
-        if (fatura.Total == 0 && !fatura.Parcelas.Any() && fatura.Status != Domain.Enums.StatusFatura.Paga)
-        {
-            await _faturaRepo.RemoverAsync(faturaId);
-            _logger.LogInformation("Fatura {Id} ({Mes:MM/yyyy}) removida por estar vazia (total R$ 0,00)", fatura.Id, fatura.MesReferencia);
-            return;
-        }
-
-        await _faturaRepo.AtualizarAsync(fatura);
+        var existe = await _faturaRepo.RecalcularTotalAtomicamenteAsync(faturaId);
+        if (!existe)
+            _logger.LogInformation("Fatura {Id} removida por estar vazia (total R$ 0,00)", faturaId);
     }
 
     public async Task<List<Lancamento>> ObterGastosAsync(int usuarioId, DateTime? de = null, DateTime? ate = null)
@@ -223,6 +203,27 @@ public class LancamentoService : ILancamentoService
     public async Task<List<Lancamento>> ObterReceitasAsync(int usuarioId, DateTime? de = null, DateTime? ate = null)
     {
         return await _lancamentoRepo.ObterPorUsuarioETipoAsync(usuarioId, TipoLancamento.Receita, de, ate);
+    }
+
+    public async Task<Lancamento?> ObterPorIdAsync(int usuarioId, int lancamentoId)
+    {
+        var lancamento = await _lancamentoRepo.ObterPorIdAsync(lancamentoId);
+        if (lancamento == null || lancamento.UsuarioId != usuarioId)
+            return null;
+        return lancamento;
+    }
+
+    public async Task<(List<Lancamento> Itens, int Total)> ListarPaginadoAsync(
+        int usuarioId, int pagina, int tamanhoPagina,
+        string? tipo = null, int? categoriaId = null, string? busca = null,
+        DateTime? de = null, DateTime? ate = null)
+    {
+        TipoLancamento? tipoEnum = null;
+        if (!string.IsNullOrEmpty(tipo) && Enum.TryParse<TipoLancamento>(tipo, true, out var parsed))
+            tipoEnum = parsed;
+
+        return await _lancamentoRepo.ObterPaginadoComFiltrosAsync(
+            usuarioId, pagina, tamanhoPagina, tipoEnum, categoriaId, busca, de, ate);
     }
 
     public async Task AtualizarAsync(int usuarioId, int lancamentoId, AtualizarLancamentoDto dto)
@@ -294,18 +295,21 @@ public class LancamentoService : ILancamentoService
             .Distinct()
             .ToList();
 
-        // Descobrir o cartão a partir das parcelas antigas
+        // Descobrir o cartão a partir das parcelas antigas (buscar todas faturas de uma vez — evita N+1)
         int? cartaoId = null;
-        foreach (var parcela in parcelasAntigas)
+        var faturaIdsParaBuscar = parcelasAntigas
+            .Where(p => p.FaturaId.HasValue)
+            .Select(p => p.FaturaId!.Value)
+            .Distinct()
+            .ToList();
+
+        foreach (var faturaId in faturaIdsParaBuscar)
         {
-            if (parcela.FaturaId.HasValue)
+            var fatura = await _faturaRepo.ObterPorIdAsync(faturaId);
+            if (fatura != null)
             {
-                var fatura = await _faturaRepo.ObterPorIdAsync(parcela.FaturaId.Value);
-                if (fatura != null)
-                {
-                    cartaoId = fatura.CartaoCreditoId;
-                    break;
-                }
+                cartaoId = fatura.CartaoCreditoId;
+                break;
             }
         }
 
@@ -337,16 +341,13 @@ public class LancamentoService : ILancamentoService
         _logger.LogInformation("Parcelas do lançamento {Id} recalculadas para nova data/valor", lancamento.Id);
     }
 
-    public async Task RemoverAsync(int lancamentoId, int? usuarioId = null)
+    public async Task RemoverAsync(int lancamentoId, int usuarioId)
     {
-        if (usuarioId.HasValue)
-        {
-            var lancamento = await _lancamentoRepo.ObterPorIdAsync(lancamentoId);
-            if (lancamento == null || lancamento.UsuarioId != usuarioId.Value)
-                throw new KeyNotFoundException("Lançamento não encontrado.");
-        }
+        var lancamento = await _lancamentoRepo.ObterPorIdAsync(lancamentoId);
+        if (lancamento == null || lancamento.UsuarioId != usuarioId)
+            throw new KeyNotFoundException("Lançamento não encontrado.");
 
         await _lancamentoRepo.RemoverAsync(lancamentoId);
-        _logger.LogInformation("Lançamento {Id} removido", lancamentoId);
+        _logger.LogInformation("Lançamento {Id} removido pelo usuário {UsuarioId}", lancamentoId, usuarioId);
     }
 }

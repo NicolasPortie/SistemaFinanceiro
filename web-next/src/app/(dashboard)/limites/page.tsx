@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useLimites, useCategorias, useDefinirLimite, useRemoverLimite } from "@/hooks/use-queries";
 import { formatCurrency, statusColor } from "@/lib/format";
+import { limiteSchema, type LimiteData } from "@/lib/schemas";
 import { motion, AnimatePresence } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Gauge,
   Plus,
@@ -59,7 +62,6 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { toast } from "sonner";
 
 function statusIcon(status: string) {
   switch (status) {
@@ -108,21 +110,25 @@ export default function LimitesPage() {
   const removerLimite = useRemoverLimite();
 
   const [showForm, setShowForm] = useState(false);
-  const [categoria, setCategoria] = useState("");
-  const [valor, setValor] = useState("");
   const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  const form = useForm<LimiteData>({
+    resolver: zodResolver(limiteSchema),
+    defaultValues: { categoria: "", valor: "" },
+  });
+
+  const categoriaWatch = form.watch("categoria");
+  const valorWatch = form.watch("valor");
 
   const categoriasDisponiveis = categorias.filter(
     (c) => !limites.find((l) => l.categoriaNome === c.nome)
   );
 
-  const handleSalvar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const valorNum = parseFloat(valor.replace(",", "."));
-    if (isNaN(valorNum) || valorNum <= 0) { toast.error("Informe um valor válido"); return; }
+  const handleSalvar = (data: LimiteData) => {
+    const valorNum = parseFloat(data.valor.replace(",", "."));
     definirLimite.mutate(
-      { categoria, valor: valorNum },
-      { onSuccess: () => { setCategoria(""); setValor(""); setShowForm(false); } }
+      { categoria: data.categoria, valor: valorNum },
+      { onSuccess: () => { form.reset(); setShowForm(false); } }
     );
   };
 
@@ -306,13 +312,13 @@ export default function LimitesPage() {
 
           {/* Scrollable form body */}
           <div className="flex-1 overflow-y-auto overscroll-contain">
-            <form onSubmit={handleSalvar} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            <form onSubmit={form.handleSubmit(handleSalvar)} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
               {/* Main fields */}
               <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Categoria</Label>
-                  <Select value={categoria} onValueChange={setCategoria}>
-                    <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30">
+                  <Select value={categoriaWatch} onValueChange={(v) => form.setValue("categoria", v, { shouldValidate: true })}>
+                    <SelectTrigger className={`h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30 ${form.formState.errors.categoria ? 'border-red-500' : ''}`}>
                       <SelectValue placeholder="Selecione a categoria" />
                     </SelectTrigger>
                     <SelectContent>
@@ -321,6 +327,7 @@ export default function LimitesPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {form.formState.errors.categoria && <p className="text-xs text-red-500 font-medium">{form.formState.errors.categoria.message}</p>}
                   {categoriasDisponiveis.length === 0 && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Todas as categorias já possuem limites definidos.</p>
                   )}
@@ -332,13 +339,14 @@ export default function LimitesPage() {
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor Limite (R$)</Label>
                   <div className="relative">
                     <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-amber-500/10 text-amber-500">R$</div>
-                    <Input placeholder="0,00" value={valor} onChange={(e) => setValor(e.target.value)} className="h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" required />
+                    <Input placeholder="0,00" className={`h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all ${form.formState.errors.valor ? 'border-red-500' : ''}`} {...form.register("valor")} />
                   </div>
+                  {form.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{form.formState.errors.valor.message}</p>}
                 </div>
               </div>
 
               {/* Preview */}
-              {categoria && valor && (
+              {categoriaWatch && valorWatch && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5 space-y-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Preview</p>
                   <div className="flex items-center gap-3">
@@ -346,8 +354,8 @@ export default function LimitesPage() {
                       <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-sm">{categoria}</p>
-                      <p className="text-xs text-muted-foreground">Limite: {formatCurrency(parseFloat(valor.replace(",", ".")) || 0)}</p>
+                      <p className="font-bold text-sm">{categoriaWatch}</p>
+                      <p className="text-xs text-muted-foreground">Limite: {formatCurrency(parseFloat(valorWatch.replace(",", ".")) || 0)}</p>
                     </div>
                     <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 border-0">0%</Badge>
                   </div>
@@ -359,7 +367,7 @@ export default function LimitesPage() {
                 <Button
                   type="submit"
                   className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
-                  disabled={definirLimite.isPending || !categoria}
+                  disabled={definirLimite.isPending || !categoriaWatch}
                 >
                   {definirLimite.isPending ? (
                     <Loader2 className="h-5 w-5 animate-spin" />

@@ -74,7 +74,7 @@ public class AdminService : IAdminService
             TotalCartoes = await _context.CartoesCredito.CountAsync(c => c.Ativo),
             MetasAtivas = await _context.MetasFinanceiras.CountAsync(m => m.Status == StatusMeta.Ativa),
             SessoesAtivas = await _context.RefreshTokens.CountAsync(r => !r.Usado && !r.Revogado && r.ExpiraEm > agora),
-            CodigosConviteAtivos = await _context.CodigosConvite.CountAsync(c => !c.Usado && c.ExpiraEm > agora),
+            CodigosConviteAtivos = await _context.CodigosConvite.CountAsync(c => !c.Usado && (!c.ExpiraEm.HasValue || c.ExpiraEm > agora)),
             CadastrosPorDia = cadastrosPorDia
         };
     }
@@ -287,38 +287,61 @@ public class AdminService : IAdminService
             UsadoEm = c.UsadoEm,
             UsadoPorNome = c.UsadoPorUsuario?.Nome,
             CriadoPorNome = c.CriadoPorUsuario?.Nome ?? "Sistema",
-            Expirado = !c.Usado && c.ExpiraEm < agora
+            Expirado = !c.Usado && c.ExpiraEm.HasValue && c.ExpiraEm < agora,
+            Permanente = !c.ExpiraEm.HasValue,
+            UsoMaximo = c.UsoMaximo,
+            UsosRealizados = c.UsosRealizados,
+            Ilimitado = !c.UsoMaximo.HasValue || c.UsoMaximo == 0
         }).ToList();
     }
 
-    public async Task<AdminCodigoConviteDto> CriarCodigoConviteAsync(int adminUsuarioId, CriarCodigoConviteDto dto)
+    public async Task<List<AdminCodigoConviteDto>> CriarCodigoConviteAsync(int adminUsuarioId, CriarCodigoConviteDto dto)
     {
-        var codigo = GerarCodigoConviteSeguro();
         var agora = DateTime.UtcNow;
+        var resultado = new List<AdminCodigoConviteDto>();
 
-        var codigoConvite = new CodigoConvite
+        // Normalizar: UsoMaximo 0 = ilimitado (null)
+        int? usoMaximo = dto.UsoMaximo is null or 0 ? null : dto.UsoMaximo;
+
+        for (int i = 0; i < dto.Quantidade; i++)
         {
-            Codigo = codigo,
-            Descricao = dto.Descricao,
-            CriadoEm = agora,
-            ExpiraEm = agora.AddHours(dto.HorasValidade),
-            CriadoPorUsuarioId = adminUsuarioId
-        };
+            var codigo = GerarCodigoConviteSeguro();
 
-        await _codigoConviteRepo.CriarAsync(codigoConvite);
-        _logger.LogInformation("Código de convite gerado pelo admin {AdminId}: {Codigo}", adminUsuarioId, codigo);
+            var codigoConvite = new CodigoConvite
+            {
+                Codigo = codigo,
+                Descricao = dto.Descricao,
+                CriadoEm = agora,
+                ExpiraEm = dto.HorasValidade > 0 ? agora.AddHours(dto.HorasValidade) : null,
+                CriadoPorUsuarioId = adminUsuarioId,
+                UsoMaximo = usoMaximo ?? 1,
+                UsosRealizados = 0
+            };
 
-        return new AdminCodigoConviteDto
-        {
-            Id = codigoConvite.Id,
-            Codigo = codigo,
-            Descricao = dto.Descricao,
-            CriadoEm = agora,
-            ExpiraEm = codigoConvite.ExpiraEm,
-            Usado = false,
-            CriadoPorNome = "Você",
-            Expirado = false
-        };
+            await _codigoConviteRepo.CriarAsync(codigoConvite);
+
+            _logger.LogInformation(
+                "Código de convite gerado pelo admin {AdminId}: {Codigo} (max usos: {MaxUsos}, permanente: {Permanente})",
+                adminUsuarioId, codigo, usoMaximo?.ToString() ?? "ilimitado", dto.HorasValidade == 0);
+
+            resultado.Add(new AdminCodigoConviteDto
+            {
+                Id = codigoConvite.Id,
+                Codigo = codigo,
+                Descricao = dto.Descricao,
+                CriadoEm = agora,
+                ExpiraEm = codigoConvite.ExpiraEm,
+                Usado = false,
+                CriadoPorNome = "Você",
+                Expirado = false,
+                Permanente = !codigoConvite.ExpiraEm.HasValue,
+                UsoMaximo = codigoConvite.UsoMaximo,
+                UsosRealizados = 0,
+                Ilimitado = usoMaximo == null
+            });
+        }
+
+        return resultado;
     }
 
     public async Task<string?> RemoverCodigoConviteAsync(int id)

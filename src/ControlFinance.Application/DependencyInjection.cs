@@ -37,8 +37,9 @@ public static class DependencyInjection
         services.AddScoped<IPrevisaoHandler, PrevisaoHandler>();
         services.AddScoped<ILancamentoHandler, LancamentoFlowHandler>();
 
-        // TelegramBotService mantém registro concreto (depende de estado estático)
-        services.AddScoped<TelegramBotService>();
+        // TelegramBotService — registrado via interface para testabilidade
+        // ConsumirTeclado permanece estático (acessado diretamente via TelegramBotService.ConsumirTeclado)
+        services.AddScoped<ITelegramBotService, TelegramBotService>();
 
         return services;
     }

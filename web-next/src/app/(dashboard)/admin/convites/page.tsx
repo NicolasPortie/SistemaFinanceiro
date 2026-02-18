@@ -18,6 +18,8 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Infinity,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -44,6 +46,10 @@ export default function AdminConvitesPage() {
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [descricao, setDescricao] = useState("");
   const [horasValidade, setHorasValidade] = useState(48);
+  const [permanente, setPermanente] = useState(false);
+  const [usoMaximo, setUsoMaximo] = useState(1);
+  const [ilimitado, setIlimitado] = useState(false);
+  const [quantidade, setQuantidade] = useState(1);
 
   const { data: convites, isLoading } = useQuery({
     queryKey: ["admin", "convites"],
@@ -54,14 +60,24 @@ export default function AdminConvitesPage() {
     mutationFn: () =>
       api.admin.convites.criar({
         descricao: descricao || undefined,
-        horasValidade,
+        horasValidade: permanente ? 0 : horasValidade,
+        usoMaximo: ilimitado ? 0 : usoMaximo,
+        quantidade,
       }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "convites"] });
-      toast.success(`Código gerado: ${data.codigo}`);
+      if (data.length === 1) {
+        toast.success(`Código gerado: ${data[0].codigo}`);
+      } else {
+        toast.success(`${data.length} códigos gerados com sucesso!`);
+      }
       setShowCreate(false);
       setDescricao("");
       setHorasValidade(48);
+      setPermanente(false);
+      setUsoMaximo(1);
+      setIlimitado(false);
+      setQuantidade(1);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -86,8 +102,9 @@ export default function AdminConvitesPage() {
   };
 
   const getStatus = (c: AdminCodigoConvite) => {
-    if (c.usado) return { label: "Usado", color: "text-blue-500", bg: "bg-blue-500/10", icon: CheckCircle2 };
+    if (c.usado && !c.ilimitado) return { label: "Esgotado", color: "text-blue-500", bg: "bg-blue-500/10", icon: CheckCircle2 };
     if (c.expirado) return { label: "Expirado", color: "text-red-500", bg: "bg-red-500/10", icon: XCircle };
+    if (c.usosRealizados > 0 && !c.usado) return { label: "Em uso", color: "text-amber-500", bg: "bg-amber-500/10", icon: Users };
     return { label: "Ativo", color: "text-emerald-500", bg: "bg-emerald-500/10", icon: Clock };
   };
 
@@ -176,7 +193,16 @@ export default function AdminConvitesPage() {
                     )}
                     <div className="flex gap-4 mt-1.5 text-xs text-muted-foreground flex-wrap">
                       <span>Criado {formatDate(c.criadoEm)}</span>
-                      <span>Expira {formatDate(c.expiraEm)}</span>
+                      {c.permanente ? (
+                        <span className="text-emerald-500 font-medium">♾️ Permanente</span>
+                      ) : c.expiraEm ? (
+                        <span>Expira {formatDate(c.expiraEm)}</span>
+                      ) : null}
+                      {c.ilimitado ? (
+                        <span className="text-purple-500 font-medium">Usos: {c.usosRealizados} / ∞</span>
+                      ) : c.usoMaximo && c.usoMaximo > 1 ? (
+                        <span>Usos: {c.usosRealizados} / {c.usoMaximo}</span>
+                      ) : null}
                       <span>Por: {c.criadoPorNome}</span>
                       {c.usado && c.usadoPorNome && (
                         <span className="text-blue-500">
@@ -273,22 +299,83 @@ export default function AdminConvitesPage() {
                 maxLength={200}
               />
             </div>
+
+            {/* Validade */}
             <div className="space-y-2">
-              <Label htmlFor="horas">Validade (horas)</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="permanente"
+                  checked={permanente}
+                  onChange={(e) => setPermanente(e.target.checked)}
+                  className="rounded border-input"
+                />
+                <Label htmlFor="permanente" className="cursor-pointer">Permanente (sem expiração)</Label>
+              </div>
+              {!permanente && (
+                <>
+                  <Label htmlFor="horas">Validade (horas)</Label>
+                  <Input
+                    id="horas"
+                    type="number"
+                    min={1}
+                    max={87600}
+                    value={horasValidade}
+                    onChange={(e) => setHorasValidade(Number(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Expira em{" "}
+                    {horasValidade >= 24
+                      ? `${Math.floor(horasValidade / 24)} dia(s) e ${horasValidade % 24} hora(s)`
+                      : `${horasValidade} hora(s)`}
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Uso máximo */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="ilimitado"
+                  checked={ilimitado}
+                  onChange={(e) => setIlimitado(e.target.checked)}
+                  className="rounded border-input"
+                />
+                <Label htmlFor="ilimitado" className="cursor-pointer">Usos ilimitados</Label>
+              </div>
+              {!ilimitado && (
+                <>
+                  <Label htmlFor="usoMaximo">Máximo de usos</Label>
+                  <Input
+                    id="usoMaximo"
+                    type="number"
+                    min={1}
+                    max={10000}
+                    value={usoMaximo}
+                    onChange={(e) => setUsoMaximo(Number(e.target.value))}
+                  />
+                </>
+              )}
+            </div>
+
+            {/* Quantidade em batch */}
+            <div className="space-y-2">
+              <Label htmlFor="quantidade">Quantidade de códigos</Label>
               <Input
-                id="horas"
+                id="quantidade"
                 type="number"
                 min={1}
-                max={8760}
-                value={horasValidade}
-                onChange={(e) => setHorasValidade(Number(e.target.value))}
+                max={50}
+                value={quantidade}
+                onChange={(e) => setQuantidade(Number(e.target.value))}
               />
-              <p className="text-xs text-muted-foreground">
-                O código expirará em{" "}
-                {horasValidade >= 24
-                  ? `${Math.floor(horasValidade / 24)} dia(s) e ${horasValidade % 24} hora(s)`
-                  : `${horasValidade} hora(s)`}
-              </p>
+              {quantidade > 1 && (
+                <p className="text-xs text-muted-foreground">
+                  Será(ão) gerado(s) {quantidade} código(s) com as mesmas configurações
+                </p>
+              )}
             </div>
           </div>
 

@@ -13,4 +13,10 @@ public interface IFaturaRepository
     Task<Fatura?> ObterFaturaAtualAsync(int cartaoId);
     Task AtualizarAsync(Fatura fatura);
     Task RemoverAsync(int faturaId);
+    /// <summary>
+    /// Recalcula o total da fatura atomicamente via SQL (SUM das parcelas).
+    /// Remove faturas vazias não pagas automaticamente.
+    /// Retorna true se a fatura ainda existe após a operação.
+    /// </summary>
+    Task<bool> RecalcularTotalAtomicamenteAsync(int faturaId);
 }

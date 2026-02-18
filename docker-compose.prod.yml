@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-controlfinance}
       POSTGRES_USER: ${POSTGRES_USER:-cf_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
     networks:
@@ -37,7 +37,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5000
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-controlfinance};Username=${POSTGRES_USER:-cf_user};Password=${POSTGRES_PASSWORD}
-      Jwt__Secret: ${JWT_SECRET}
+      Jwt__Secret: ${JWT_SECRET:?Defina JWT_SECRET no .env}
       Jwt__Issuer: ${JWT_ISSUER:-ControlFinance}
       Jwt__Audience: ${JWT_AUDIENCE:-ControlFinanceApp}
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN}
@@ -59,12 +59,13 @@ services:
       Email__Smtp__Username: ${EMAIL_SMTP_USERNAME}
       Email__Smtp__Password: ${EMAIL_SMTP_PASSWORD}
       Email__Smtp__UseSsl: ${EMAIL_SMTP_USE_SSL:-true}
-      Encryption__Key: ${ENCRYPTION_KEY}
+      Encryption__Key: ${ENCRYPTION_KEY:?Defina ENCRYPTION_KEY no .env}
       InviteCode__Hash: ${INVITE_CODE_HASH}
     networks:
       - controlfinance-network
-    ports:
-      - "5000:5000"
+    # Em produção, a API é acessada internamente pelo Nginx/reverse proxy
+    expose:
+      - "5000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s

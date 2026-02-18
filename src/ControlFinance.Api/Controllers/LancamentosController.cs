@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
-using ControlFinance.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,16 +13,18 @@ public class LancamentosController : BaseAuthController
 {
     private readonly ILancamentoService _lancamentoService;
     private readonly IResumoService _resumoService;
-    private readonly ILancamentoRepository _lancamentoRepo;
+    private readonly ILogger<LancamentosController> _logger;
+
+    private const int TamanhoPaginaMaximo = 100;
 
     public LancamentosController(
         ILancamentoService lancamentoService,
         IResumoService resumoService,
-        ILancamentoRepository lancamentoRepo)
+        ILogger<LancamentosController> logger)
     {
         _lancamentoService = lancamentoService;
         _resumoService = resumoService;
-        _lancamentoRepo = lancamentoRepo;
+        _logger = logger;
     }
 
     [HttpPost]
@@ -32,6 +33,7 @@ public class LancamentosController : BaseAuthController
         try
         {
             var lancamento = await _lancamentoService.RegistrarAsync(UsuarioId, dto);
+            _logger.LogInformation("Lançamento {Id} registrado pelo usuário {UsuarioId}", lancamento.Id, UsuarioId);
             return Ok(MapearLancamento(lancamento));
         }
         catch (ArgumentException ex)
@@ -75,86 +77,27 @@ public class LancamentosController : BaseAuthController
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanhoPagina = 20)
     {
-        // Filtro por tipo usa query paginada no banco quando possível
-        if (!string.IsNullOrEmpty(tipo) && Enum.TryParse<Domain.Enums.TipoLancamento>(tipo, true, out var tipoEnum)
-            && !categoriaId.HasValue && string.IsNullOrWhiteSpace(busca))
-        {
-            // Paginação 100% server-side (tipo + período)
-            var (itens, total) = await _lancamentoRepo.ObterPorUsuarioETipoPaginadoAsync(
-                UsuarioId, tipoEnum, pagina, tamanhoPagina, de, ate);
+        // Clampar tamanhoPagina para evitar abuso
+        tamanhoPagina = Math.Clamp(tamanhoPagina, 1, TamanhoPaginaMaximo);
+        if (pagina < 1) pagina = 1;
 
-            return Ok(new
-            {
-                items = itens.Select(MapearLancamento).ToList(),
-                total,
-                pagina,
-                tamanhoPagina,
-                totalPaginas = (int)Math.Ceiling((double)total / tamanhoPagina)
-            });
-        }
-
-        // Sem filtro de tipo ou com filtros adicionais: paginação server-side geral
-        if (!categoriaId.HasValue && string.IsNullOrWhiteSpace(busca) && string.IsNullOrEmpty(tipo))
-        {
-            var (itens, total) = await _lancamentoRepo.ObterPorUsuarioPaginadoAsync(
-                UsuarioId, pagina, tamanhoPagina, de, ate);
-
-            return Ok(new
-            {
-                items = itens.Select(MapearLancamento).ToList(),
-                total,
-                pagina,
-                tamanhoPagina,
-                totalPaginas = (int)Math.Ceiling((double)total / tamanhoPagina)
-            });
-        }
-
-        // Fallback com filtros complexos (categoria, busca): carrega e filtra in-memory
-        var gastos = await _lancamentoService.ObterGastosAsync(UsuarioId, de, ate);
-        var receitas = await _lancamentoService.ObterReceitasAsync(UsuarioId, de, ate);
-        var lancamentos = gastos.Concat(receitas).ToList();
-
-        if (!string.IsNullOrEmpty(tipo) && Enum.TryParse<Domain.Enums.TipoLancamento>(tipo, true, out var tipoFallback))
-            lancamentos = lancamentos.Where(l => l.Tipo == tipoFallback).ToList();
-
-        if (categoriaId.HasValue)
-            lancamentos = lancamentos.Where(l => l.CategoriaId == categoriaId.Value).ToList();
-
-        if (!string.IsNullOrWhiteSpace(busca))
-        {
-            var termoBusca = busca.Trim();
-            lancamentos = lancamentos
-                .Where(l => !string.IsNullOrWhiteSpace(l.Descricao) &&
-                            l.Descricao.Contains(termoBusca, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-
-        var totalFallback = lancamentos.Count;
-        var items = lancamentos
-            .OrderByDescending(l => l.Data)
-            .Skip((pagina - 1) * tamanhoPagina)
-            .Take(tamanhoPagina)
-            .Select(MapearLancamento)
-            .ToList();
+        var (itens, total) = await _lancamentoService.ListarPaginadoAsync(
+            UsuarioId, pagina, tamanhoPagina, tipo, categoriaId, busca, de, ate);
 
         return Ok(new
         {
-            items,
-            total = totalFallback,
+            items = itens.Select(MapearLancamento).ToList(),
+            total,
             pagina,
             tamanhoPagina,
-            totalPaginas = (int)Math.Ceiling((double)totalFallback / tamanhoPagina)
+            totalPaginas = (int)Math.Ceiling((double)total / tamanhoPagina)
         });
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> ObterPorId(int id)
     {
-        // ObterGastos e ObterReceitas não têm filtro por ID.
-        // Usar RemoverAsync ownership check to verify
-        var gastos = await _lancamentoService.ObterGastosAsync(UsuarioId);
-        var receitas = await _lancamentoService.ObterReceitasAsync(UsuarioId);
-        var lancamento = gastos.Concat(receitas).FirstOrDefault(l => l.Id == id);
+        var lancamento = await _lancamentoService.ObterPorIdAsync(UsuarioId, id);
 
         if (lancamento == null)
             return NotFound(new { erro = "Lançamento não encontrado." });
@@ -168,6 +111,7 @@ public class LancamentosController : BaseAuthController
         try
         {
             await _lancamentoService.AtualizarAsync(UsuarioId, id, dto);
+            _logger.LogInformation("Lançamento {Id} atualizado pelo usuário {UsuarioId}", id, UsuarioId);
             return Ok(new { mensagem = "Lançamento atualizado com sucesso." });
         }
         catch (InvalidOperationException)
@@ -182,6 +126,7 @@ public class LancamentosController : BaseAuthController
         try
         {
             await _lancamentoService.RemoverAsync(id, UsuarioId);
+            _logger.LogInformation("Lançamento {Id} removido pelo usuário {UsuarioId}", id, UsuarioId);
             return Ok(new { mensagem = "Lançamento removido com sucesso." });
         }
         catch (KeyNotFoundException)

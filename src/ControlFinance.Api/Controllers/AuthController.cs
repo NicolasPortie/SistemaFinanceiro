@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Security.Cryptography;
 using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
@@ -10,7 +9,7 @@ namespace ControlFinance.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController : ControllerBase
+public class AuthController : BaseAuthController
 {
     private const string AccessCookieName = "cf_access_token";
     private const string RefreshCookieName = "cf_refresh_token";
@@ -117,10 +116,7 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
-        var userId = ObterUsuarioId();
-        if (userId == null) return Unauthorized();
-
-        await _authService.RevogarTokensAsync(userId.Value);
+        await _authService.RevogarTokensAsync(UsuarioId);
         LimparCookiesAutenticacao();
         return Ok(new { mensagem = "Sessão encerrada." });
     }
@@ -129,10 +125,7 @@ public class AuthController : ControllerBase
     [HttpGet("perfil")]
     public async Task<IActionResult> ObterPerfil()
     {
-        var userId = ObterUsuarioId();
-        if (userId == null) return Unauthorized();
-
-        var perfil = await _authService.ObterPerfilAsync(userId.Value);
+        var perfil = await _authService.ObterPerfilAsync(UsuarioId);
         if (perfil == null) return NotFound();
 
         return Ok(perfil);
@@ -142,10 +135,7 @@ public class AuthController : ControllerBase
     [HttpPost("telegram/gerar-codigo")]
     public async Task<IActionResult> GerarCodigoTelegram()
     {
-        var userId = ObterUsuarioId();
-        if (userId == null) return Unauthorized();
-
-        var (response, erro) = await _authService.GerarCodigoTelegramAsync(userId.Value);
+        var (response, erro) = await _authService.GerarCodigoTelegramAsync(UsuarioId);
         if (erro != null)
             return BadRequest(new { erro });
 
@@ -156,10 +146,7 @@ public class AuthController : ControllerBase
     [HttpPut("perfil")]
     public async Task<IActionResult> AtualizarPerfil([FromBody] AtualizarPerfilDto dto)
     {
-        var userId = ObterUsuarioId();
-        if (userId == null) return Unauthorized();
-
-        var (response, erro) = await _authService.AtualizarPerfilAsync(userId.Value, dto);
+        var (response, erro) = await _authService.AtualizarPerfilAsync(UsuarioId, dto);
         if (erro != null)
             return BadRequest(new { erro });
 
@@ -207,75 +194,44 @@ public class AuthController : ControllerBase
         return Ok(new { mensagem = "Senha redefinida com sucesso." });
     }
 
-    private int? ObterUsuarioId()
+    private bool IsSecure => Request.IsHttps || !_environment.IsDevelopment();
+
+    private CookieOptions CriarCookieOptions(DateTimeOffset? expires, bool httpOnly = true)
     {
-        var claim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (claim == null || !int.TryParse(claim.Value, out var id))
-            return null;
-        return id;
+        return new CookieOptions
+        {
+            HttpOnly = httpOnly,
+            Secure = IsSecure,
+            SameSite = SameSiteMode.Strict,
+            Path = "/",
+            Expires = expires
+        };
     }
 
     private void DefinirCookiesAutenticacao(AuthResponseDto response)
     {
-        var secure = !Request.IsHttps ? !_environment.IsDevelopment() : true;
-
-        var accessOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = secure,
-            SameSite = SameSiteMode.Lax,
-            Path = "/",
-            Expires = response.ExpiraEm
-        };
-
         var refreshDays = _configuration.GetValue("Jwt:RefreshTokenExpirationDays", 30);
-        var refreshOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = secure,
-            SameSite = SameSiteMode.Lax,
-            Path = "/",
-            Expires = DateTime.UtcNow.AddDays(refreshDays)
-        };
 
-        Response.Cookies.Append(AccessCookieName, response.Token, accessOptions);
-        Response.Cookies.Append(RefreshCookieName, response.RefreshToken, refreshOptions);
+        Response.Cookies.Append(AccessCookieName, response.Token,
+            CriarCookieOptions(response.ExpiraEm));
+        Response.Cookies.Append(RefreshCookieName, response.RefreshToken,
+            CriarCookieOptions(DateTime.UtcNow.AddDays(refreshDays)));
         DefinirCsrfCookie();
     }
 
     private void LimparCookiesAutenticacao()
     {
-        var secure = !Request.IsHttps ? !_environment.IsDevelopment() : true;
-
-        var options = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = secure,
-            SameSite = SameSiteMode.Lax,
-            Path = "/",
-            Expires = DateTime.UtcNow.AddDays(-1)
-        };
-
-        Response.Cookies.Append(AccessCookieName, string.Empty, options);
-        Response.Cookies.Append(RefreshCookieName, string.Empty, options);
-        Response.Cookies.Append(CsrfCookieName, string.Empty, options);
+        var expired = CriarCookieOptions(DateTime.UtcNow.AddDays(-1));
+        Response.Cookies.Append(AccessCookieName, string.Empty, expired);
+        Response.Cookies.Append(RefreshCookieName, string.Empty, expired);
+        Response.Cookies.Append(CsrfCookieName, string.Empty, expired);
     }
 
     private string DefinirCsrfCookie()
     {
-        var secure = !Request.IsHttps ? !_environment.IsDevelopment() : true;
         var token = GerarTokenSeguro(32);
-
-        var options = new CookieOptions
-        {
-            HttpOnly = false,
-            Secure = secure,
-            SameSite = SameSiteMode.Lax,
-            Path = "/",
-            Expires = DateTime.UtcNow.AddHours(8)
-        };
-
-        Response.Cookies.Append(CsrfCookieName, token, options);
+        Response.Cookies.Append(CsrfCookieName, token,
+            CriarCookieOptions(DateTime.UtcNow.AddHours(8), httpOnly: false));
         return token;
     }
 

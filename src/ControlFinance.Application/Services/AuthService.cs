@@ -51,7 +51,7 @@ public class AuthService : IAuthService
     {
         // Validar código de convite
         var codigoConvite = await _codigoConviteRepo.ObterPorCodigoAsync(dto.CodigoConvite.Trim());
-        if (codigoConvite == null || codigoConvite.Usado || codigoConvite.ExpiraEm < DateTime.UtcNow)
+        if (codigoConvite == null || !codigoConvite.PodeSerUsado())
         {
             _logger.LogWarning("Tentativa de registro com código de convite inválido. IP: {IP}", ipAddress);
             return (null, "Código de convite inválido ou expirado.");
@@ -149,7 +149,7 @@ public class AuthService : IAuthService
 
         // Revalidar convite (pode ter sido usado enquanto aguardava verificação)
         var codigoConvite = await _codigoConviteRepo.ObterPorCodigoAsync(pendente.CodigoConvite);
-        if (codigoConvite == null || codigoConvite.Usado || codigoConvite.ExpiraEm < DateTime.UtcNow)
+        if (codigoConvite == null || !codigoConvite.PodeSerUsado())
         {
             await _registroPendenteRepo.RemoverAsync(pendente.Id);
             return (null, "Código de convite expirado ou já utilizado. Solicite um novo convite.");
@@ -175,10 +175,8 @@ public class AuthService : IAuthService
         await _usuarioRepo.CriarAsync(usuario);
         await _categoriaRepo.CriarCategoriasIniciais(usuario.Id);
 
-        // Marcar convite como usado
-        codigoConvite.Usado = true;
-        codigoConvite.UsadoEm = DateTime.UtcNow;
-        codigoConvite.UsadoPorUsuarioId = usuario.Id;
+        // Registrar uso do convite
+        codigoConvite.RegistrarUso(usuario.Id);
         await _codigoConviteRepo.AtualizarAsync(codigoConvite);
 
         // Limpar registro pendente
@@ -365,20 +363,21 @@ public class AuthService : IAuthService
         }, null);
     }
 
+    private static UsuarioDto MapearParaDto(Usuario usuario) => new()
+    {
+        Id = usuario.Id,
+        Nome = usuario.Nome,
+        Email = usuario.Email,
+        TelegramVinculado = usuario.TelegramVinculado,
+        CriadoEm = usuario.CriadoEm,
+        Role = usuario.Role.ToString()
+    };
+
     public async Task<UsuarioDto?> ObterPerfilAsync(int usuarioId)
     {
         var usuario = await _usuarioRepo.ObterPorIdAsync(usuarioId);
         if (usuario == null) return null;
-
-        return new UsuarioDto
-        {
-            Id = usuario.Id,
-            Nome = usuario.Nome,
-            Email = usuario.Email,
-            TelegramVinculado = usuario.TelegramVinculado,
-            CriadoEm = usuario.CriadoEm,
-            Role = usuario.Role.ToString()
-        };
+        return MapearParaDto(usuario);
     }
 
     public async Task<(UsuarioDto? Response, string? Erro)> AtualizarPerfilAsync(int usuarioId, AtualizarPerfilDto dto)
@@ -407,15 +406,7 @@ public class AuthService : IAuthService
         await _usuarioRepo.AtualizarAsync(usuario);
         _logger.LogInformation("Perfil atualizado para usuário {UserId}", usuarioId);
 
-        return (new UsuarioDto
-        {
-            Id = usuario.Id,
-            Nome = usuario.Nome,
-            Email = usuario.Email,
-            TelegramVinculado = usuario.TelegramVinculado,
-            CriadoEm = usuario.CriadoEm,
-            Role = usuario.Role.ToString()
-        }, null);
+        return (MapearParaDto(usuario), null);
     }
 
     public async Task<string?> SolicitarRecuperacaoSenhaAsync(RecuperarSenhaDto dto)
@@ -513,15 +504,7 @@ public class AuthService : IAuthService
             Token = token,
             RefreshToken = refreshTokenStr,
             ExpiraEm = expiraEm,
-            Usuario = new UsuarioDto
-            {
-                Id = usuario.Id,
-                Nome = usuario.Nome,
-                Email = usuario.Email,
-                TelegramVinculado = usuario.TelegramVinculado,
-                CriadoEm = usuario.CriadoEm,
-                Role = usuario.Role.ToString()
-            }
+            Usuario = MapearParaDto(usuario)
         };
     }
 
@@ -579,6 +562,8 @@ public class AuthService : IAuthService
     {
         if (string.IsNullOrWhiteSpace(senha) || senha.Length < 8)
             return "A senha deve ter no mínimo 8 caracteres.";
+        if (senha.Length > 128)
+            return "A senha deve ter no máximo 128 caracteres.";
         if (!senha.Any(char.IsUpper))
             return "A senha deve conter pelo menos uma letra maiúscula.";
         if (!senha.Any(char.IsLower))

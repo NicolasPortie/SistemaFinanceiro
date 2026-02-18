@@ -98,12 +98,16 @@ public class AdminCodigoConviteDto
     public string Codigo { get; set; } = string.Empty;
     public string? Descricao { get; set; }
     public DateTime CriadoEm { get; set; }
-    public DateTime ExpiraEm { get; set; }
+    public DateTime? ExpiraEm { get; set; }
     public bool Usado { get; set; }
     public DateTime? UsadoEm { get; set; }
     public string? UsadoPorNome { get; set; }
     public string CriadoPorNome { get; set; } = string.Empty;
     public bool Expirado { get; set; }
+    public bool Permanente { get; set; }
+    public int? UsoMaximo { get; set; }
+    public int UsosRealizados { get; set; }
+    public bool Ilimitado { get; set; }
 }
 
 public class CriarCodigoConviteDto
@@ -111,9 +115,23 @@ public class CriarCodigoConviteDto
     [StringLength(200, ErrorMessage = "Descrição deve ter no máximo 200 caracteres")]
     public string? Descricao { get; set; }
 
-    [Required(ErrorMessage = "Horas de validade é obrigatório")]
-    [Range(1, 8760, ErrorMessage = "Validade deve ser entre 1 hora e 365 dias (8760 horas)")]
+    /// <summary>
+    /// Horas de validade. 0 ou null = código permanente (nunca expira).
+    /// </summary>
+    [Range(0, 87600, ErrorMessage = "Validade deve ser entre 0 (permanente) e 87600 horas (10 anos)")]
     public int HorasValidade { get; set; } = 48;
+
+    /// <summary>
+    /// Máximo de usos. Null ou 0 = ilimitado, 1 = single-use (padrão).
+    /// </summary>
+    [Range(0, 10000, ErrorMessage = "Uso máximo deve ser entre 0 (ilimitado) e 10000")]
+    public int? UsoMaximo { get; set; } = 1;
+
+    /// <summary>
+    /// Quantidade de códigos a gerar de uma vez (batch).
+    /// </summary>
+    [Range(1, 50, ErrorMessage = "Quantidade deve ser entre 1 e 50")]
+    public int Quantidade { get; set; } = 1;
 }
 
 // === Sessões ===

@@ -90,6 +90,13 @@ export interface SimulacaoResultado {
   meses: SimulacaoMes[];
   cenariosAlternativos?: CenarioAlternativo[];
   resumoTexto: string;
+  // Campos avançados
+  classificacaoRisco?: string;
+  probabilidadeMesNegativo?: number;
+  impactoReservaMinima?: number;
+  impactoMetas?: ImpactoMeta[];
+  scoreSaudeFinanceira?: number;
+  eventosSazonaisConsiderados?: EventoSazonal[];
 }
 
 export interface SimulacaoMes {
@@ -334,11 +341,43 @@ export interface DecisaoGastoResult {
   reservaMetas: number;
   alertaLimite: string | null;
   resumoTexto: string;
+  // Campos avançados
+  camadas?: DecisaoCamada[];
+  impactoAcumuladoMes?: number;
+  variacaoVsMediaHistorica?: number;
+  scoreSaudeFinanceira?: number;
+  impactoMetas?: ImpactoMeta[];
 }
 
 export interface DecisaoCompletaResult {
   tipo: string;
   analise: string;
+}
+
+export interface DecisaoCamada {
+  camada: string;
+  parecer: string;
+  justificativa: string;
+}
+
+export interface ImpactoMeta {
+  nomeMeta: string;
+  mesesAtraso: number;
+  valorMensalNecessarioAntes: number;
+  valorMensalNecessarioDepois: number;
+  reservaAbaixoMinimo: boolean;
+  descricao: string;
+}
+
+export interface EventoSazonal {
+  id: number;
+  descricao: string;
+  mesOcorrencia: number;
+  valorMedio: number;
+  recorrenteAnual: boolean;
+  ehReceita: boolean;
+  categoriaNome?: string;
+  detectadoAutomaticamente: boolean;
 }
 
 export interface RecuperarSenhaResponse {
@@ -705,8 +744,10 @@ export const api = {
 
     convites: {
       listar: () => request<AdminCodigoConvite[]>("/admin/convites"),
-      criar: (data: CriarConviteRequest) =>
-        request<AdminCodigoConvite>("/admin/convites", { method: "POST", body: data }),
+      criar: async (data: CriarConviteRequest) => {
+        const result = await request<AdminCodigoConvite | AdminCodigoConvite[]>("/admin/convites", { method: "POST", body: data });
+        return Array.isArray(result) ? result : [result];
+      },
       remover: (id: number) =>
         request<{ message: string }>(`/admin/convites/${id}`, { method: "DELETE" }),
     },
@@ -811,17 +852,23 @@ export interface AdminCodigoConvite {
   codigo: string;
   descricao: string | null;
   criadoEm: string;
-  expiraEm: string;
+  expiraEm: string | null;
   usado: boolean;
   usadoEm: string | null;
   usadoPorNome: string | null;
   criadoPorNome: string;
   expirado: boolean;
+  permanente: boolean;
+  usoMaximo: number | null;
+  usosRealizados: number;
+  ilimitado: boolean;
 }
 
 export interface CriarConviteRequest {
   descricao?: string;
   horasValidade: number;
+  usoMaximo?: number | null;
+  quantidade?: number;
 }
 
 export interface AdminSessao {

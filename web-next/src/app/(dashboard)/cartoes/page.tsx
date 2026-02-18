@@ -28,7 +28,16 @@ import {
   DollarSign,
   Wallet,
   ArrowDownToLine,
+  ArrowUpFromLine,
+  Shield,
+  Info,
 } from "lucide-react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import {
   PageShell,
   PageHeader,
@@ -85,8 +94,8 @@ export default function CartoesPage() {
   const [editingCard, setEditingCard] = useState<Cartao | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewingFaturaId, setViewingFaturaId] = useState<{ id: number; nome: string } | null>(null);
-  const [ajusteLimiteCard, setAjusteLimiteCard] = useState<Cartao | null>(null);
-  const [resgatarLimiteCard, setResgatarLimiteCard] = useState<Cartao | null>(null);
+  const [garantiaCard, setGarantiaCard] = useState<Cartao | null>(null);
+  const [garantiaTab, setGarantiaTab] = useState<string>("adicionar");
 
   const { data: cartoes = [], isLoading } = useCartoes();
   const criarCartao = useCriarCartao();
@@ -111,15 +120,18 @@ export default function CartoesPage() {
   const valorAdicionalWatch = parseFloat(ajusteForm.watch("valorAdicional")?.replace(",", ".") || "0");
   const percentualExtraWatch = parseFloat(ajusteForm.watch("percentualExtra")?.replace(",", ".") || "0");
   const valorExtraCalculado = valorAdicionalWatch * (percentualExtraWatch / 100);
-  const novoLimiteCalculado = (ajusteLimiteCard?.limite || 0) + valorAdicionalWatch + valorExtraCalculado;
+  const novoLimiteCalculado = (garantiaCard?.limite || 0) + valorAdicionalWatch + valorExtraCalculado;
 
   // ── Resgate form ──
   const resgateForm = useForm<{ valorResgate: string }>({ defaultValues: { valorResgate: "" } });
   const PERCENTUAL_BONUS_FIXO = 40;
   const valorResgateRaw = parseFloat(resgateForm.watch("valorResgate")?.replace(",", ".") || "0");
   const valorResgateBase = Math.floor(valorResgateRaw);  // Backend usa Math.Floor
+  const garantiaDisponivel = garantiaCard?.garantia || 0;
+  const resgateExcedeGarantia = valorResgateBase > garantiaDisponivel;
   const reducaoLimite = valorResgateBase * (1 + PERCENTUAL_BONUS_FIXO / 100);
-  const novoLimiteResgate = (resgatarLimiteCard?.limite || 0) - reducaoLimite;
+  const novoLimiteResgate = (garantiaCard?.limite || 0) - reducaoLimite;
+  const maxResgatePermitido = Math.min(garantiaDisponivel, Math.floor((garantiaCard?.limite || 0) / (1 + PERCENTUAL_BONUS_FIXO / 100)));
 
   const onSubmitCreate = (data: CartaoData) => {
     criarCartao.mutate(
@@ -169,44 +181,42 @@ export default function CartoesPage() {
     setEditingCard(cartao);
   };
 
-  const openAjuste = (cartao: Cartao) => {
+  const openGarantia = (cartao: Cartao, tab: string = "adicionar") => {
     ajusteForm.reset({ valorAdicional: "", percentualExtra: "40" });
-    setAjusteLimiteCard(cartao);
+    resgateForm.reset({ valorResgate: "" });
+    setGarantiaTab(tab);
+    setGarantiaCard(cartao);
   };
 
   const onSubmitAjuste = (data: { valorAdicional: string; percentualExtra: string }) => {
-    if (!ajusteLimiteCard) return;
+    if (!garantiaCard) return;
     adicionarLimiteExtra.mutate(
       {
-        id: ajusteLimiteCard.id,
+        id: garantiaCard.id,
         data: {
           valorAdicional: parseFloat(data.valorAdicional.replace(",", ".")),
           percentualExtra: parseFloat(data.percentualExtra.replace(",", ".")),
         },
       },
       {
-        onSuccess: () => setAjusteLimiteCard(null),
+        onSuccess: () => setGarantiaCard(null),
       }
     );
   };
 
-  const openResgate = (cartao: Cartao) => {
-    resgateForm.reset({ valorResgate: "" });
-    setResgatarLimiteCard(cartao);
-  };
-
   const onSubmitResgate = (data: { valorResgate: string }) => {
-    if (!resgatarLimiteCard) return;
+    if (!garantiaCard) return;
+    if (resgateExcedeGarantia || novoLimiteResgate < 0) return;
     resgatarLimiteExtra.mutate(
       {
-        id: resgatarLimiteCard.id,
+        id: garantiaCard.id,
         data: {
           valorResgate: parseFloat(data.valorResgate.replace(",", ".")),
           percentualBonus: PERCENTUAL_BONUS_FIXO,
         },
       },
       {
-        onSuccess: () => setResgatarLimiteCard(null),
+        onSuccess: () => setGarantiaCard(null),
       }
     );
   };
@@ -311,25 +321,11 @@ export default function CartoesPage() {
                             </Tooltip>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-emerald-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => openAjuste(cartao)}>
-                                  <TrendingUp className="h-4 w-4" />
+                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-emerald-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => openGarantia(cartao)}>
+                                  <Shield className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>
-                                Limite extra
-                                {cartao.garantia > 0 && <span className="block text-emerald-300 font-semibold tabular-nums text-[10px] mt-0.5">Inv.: {formatCurrency(cartao.garantia)}</span>}
-                              </TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-amber-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => openResgate(cartao)}>
-                                  <ArrowDownToLine className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                Resgatar garantia
-                                {cartao.garantia > 0 && <span className="block text-amber-300 font-semibold tabular-nums text-[10px] mt-0.5">Inv.: {formatCurrency(cartao.garantia)}</span>}
-                              </TooltipContent>
+                              <TooltipContent>Garantia</TooltipContent>
                             </Tooltip>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -346,31 +342,33 @@ export default function CartoesPage() {
                       <div>
                         <p className="text-[10px] uppercase tracking-[0.15em] opacity-50 font-semibold">Limite disponível</p>
                         <p className="text-2xl font-extrabold tabular-nums mt-1 tracking-tight">{formatCurrency(cartao.limiteDisponivel ?? cartao.limite)}</p>
-                        {cartao.limiteUsado > 0 && (
-                          <div className="mt-2">
-                            <div className="flex justify-between text-[10px] opacity-60 mb-1">
-                              <span>Usado: {formatCurrency(cartao.limiteUsado)}</span>
-                              <span>{((cartao.limiteUsado / cartao.limite) * 100).toFixed(0)}%</span>
-                            </div>
-                            <div className="h-1 rounded-full bg-white/20 overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-white/70 transition-all duration-500"
-                                style={{ width: `${Math.min((cartao.limiteUsado / cartao.limite) * 100, 100)}%` }}
-                              />
-                            </div>
+                        <div className="mt-2">
+                          <div className="flex justify-between text-[10px] opacity-60 mb-1">
+                            <span>Usado: {formatCurrency(cartao.limiteUsado)}</span>
+                            <span>de {formatCurrency(cartao.limite)}</span>
                           </div>
-                        )}
+                          <div className="h-1 rounded-full bg-white/20 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-white/70 transition-all duration-500"
+                              style={{ width: `${Math.min((cartao.limiteUsado / cartao.limite) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between pt-1">
-                        <div>
-                          <p className="text-sm font-bold tracking-tight">{cartao.nome}</p>
-                          <p className="text-[10px] opacity-40 mt-0.5 font-medium">Fechamento: 1º dia útil</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold tracking-tight truncate">{cartao.nome}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[10px] opacity-40 font-medium">Fecha dia {cartao.diaFechamento} · Vence dia {cartao.diaVencimento}</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 bg-white/10 rounded-lg px-2.5 py-1.5 backdrop-blur-sm">
-                          <Calendar className="h-3 w-3 opacity-70" />
-                          <span className="text-xs font-semibold opacity-90">Dia {cartao.diaVencimento}</span>
-                        </div>
+                        {cartao.garantia > 0 && (
+                          <div className="flex items-center gap-1 bg-emerald-500/20 rounded-lg px-2 py-1 backdrop-blur-sm shrink-0">
+                            <Shield className="h-3 w-3 text-emerald-300" />
+                            <span className="text-[10px] font-semibold text-emerald-300 tabular-nums">{formatCurrency(cartao.garantia)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -510,12 +508,6 @@ export default function CartoesPage() {
                 {editFormState.formState.errors.diaVencimento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaVencimento.message}</p>}
               </div>
             </div>
-            <div className="rounded-xl bg-muted/40 p-4 border border-border/30">
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                <span><strong>Fechamento:</strong> dia em que a fatura fecha. Compras após essa data entram na fatura seguinte.</span>
-              </p>
-            </div>
             <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] shadow-premium btn-premium" disabled={atualizarCartao.isPending}>
               {atualizarCartao.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : "Salvar alterações"}
             </Button>
@@ -541,148 +533,168 @@ export default function CartoesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Ajuste Limite Dialog */}
-      <Dialog open={ajusteLimiteCard !== null} onOpenChange={() => setAjusteLimiteCard(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Limite Extra</DialogTitle>
-            <DialogDescription>
-              Adicione um valor ao limite e aplique um percentual extra.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={ajusteForm.handleSubmit(onSubmitAjuste)} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Adicional (R$)</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input
-                    className="h-11 rounded-xl pl-9 tabular-nums font-semibold"
-                    placeholder="0,00"
-                    {...ajusteForm.register("valorAdicional", { required: true })}
-                  />
+      {/* Garantia / Limite Extra — Dialog unificado */}
+      <Dialog open={garantiaCard !== null} onOpenChange={() => setGarantiaCard(null)}>
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+          {/* Header com infos do cartão */}
+          <div className="px-6 pt-6 pb-4 space-y-3">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="text-lg font-bold tracking-tight flex items-center gap-2">
+                <Shield className="h-5 w-5 text-emerald-500" />
+                Garantia — {garantiaCard?.nome}
+              </DialogTitle>
+              <DialogDescription>
+                Adicione ou resgate a garantia deste cartão.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Explicação da Garantia */}
+            <div className="rounded-xl bg-blue-500/8 border border-blue-500/15 p-3.5 space-y-1.5">
+              <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                <Info className="h-3.5 w-3.5 shrink-0" />
+                Como funciona?
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                A garantia é um valor que você deposita para aumentar o limite do cartão. O banco concede um bônus de {PERCENTUAL_BONUS_FIXO}% sobre o valor depositado. 
+                Exemplo: depositar R$ 1.000 aumenta seu limite em R$ 1.400 (R$ 1.000 + 40% de bônus).
+              </p>
+            </div>
+
+            {/* Resumo compacto */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-muted/20 border border-border/30 p-3 text-center">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold">Limite Atual</p>
+                <p className="text-base font-extrabold tabular-nums mt-0.5">{formatCurrency(garantiaCard?.limite || 0)}</p>
+              </div>
+              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-center">
+                <p className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-semibold">Garantia Investida</p>
+                <p className="text-base font-extrabold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">{formatCurrency(garantiaDisponivel)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <Tabs value={garantiaTab} onValueChange={(v) => setGarantiaTab(v)} className="gap-0">
+            <div className="px-6">
+              <TabsList className="w-full">
+                <TabsTrigger value="adicionar" className="gap-1.5">
+                  <ArrowUpFromLine className="h-3.5 w-3.5" />
+                  Adicionar
+                </TabsTrigger>
+                <TabsTrigger value="resgatar" className="gap-1.5">
+                  <ArrowDownToLine className="h-3.5 w-3.5" />
+                  Resgatar
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* ── Tab: Adicionar ── */}
+            <TabsContent value="adicionar" className="px-6 pb-6 pt-4">
+              <form onSubmit={ajusteForm.handleSubmit(onSubmitAjuste)} className="space-y-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Valor da garantia (R$)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <Input
+                      className="h-12 rounded-xl pl-9 tabular-nums font-bold text-lg"
+                      placeholder="0,00"
+                      {...ajusteForm.register("valorAdicional", { required: true })}
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/60">Bônus de {percentualExtraWatch}% será aplicado automaticamente (+{formatCurrency(valorExtraCalculado)}).</p>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Percentual Extra (%)</Label>
-                <Input
-                  className="h-11 rounded-xl tabular-nums font-semibold"
-                  placeholder="40"
-                  {...ajusteForm.register("percentualExtra", { required: true })}
-                />
-              </div>
-            </div>
 
-            {/* Live Calculation Preview */}
-            <div className="rounded-xl bg-muted/20 p-5 space-y-3 border border-border/30">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground/70 font-medium">Limite Atual:</span>
-                <span className="font-bold tabular-nums">{formatCurrency(ajusteLimiteCard?.limite || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground/70 font-medium">Valor Base:</span>
-                <span className="font-bold tabular-nums">+ {formatCurrency(valorAdicionalWatch)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground/70 font-medium">Extra ({percentualExtraWatch}%):</span>
-                <span className="font-bold tabular-nums">+ {formatCurrency(valorExtraCalculado)}</span>
-              </div>
-              <div className="h-px bg-border/30 my-2" />
-              <div className="flex justify-between items-center text-base">
-                <span className="font-extrabold text-foreground">Novo Limite:</span>
-                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(novoLimiteCalculado)}</span>
-              </div>
-            </div>
+                {/* Preview */}
+                <div className="rounded-xl bg-muted/20 p-4 space-y-2.5 border border-border/30">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground/70 font-medium">Aumento no limite (×{(1 + percentualExtraWatch / 100).toFixed(1)}):</span>
+                    <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">+ {formatCurrency(valorAdicionalWatch + valorExtraCalculado)}</span>
+                  </div>
+                  <div className="h-px bg-border/30" />
+                  <div className="flex justify-between items-center">
+                    <span className="font-extrabold text-foreground text-sm">Novo Limite:</span>
+                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums text-base">{formatCurrency(novoLimiteCalculado)}</span>
+                  </div>
+                </div>
 
-            <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] gap-2 shadow-premium btn-premium" disabled={adicionarLimiteExtra.isPending}>
-              {adicionarLimiteExtra.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><TrendingUp className="h-4.5 w-4.5" /> Aplicar Limite Extra</>}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+                <Button type="submit" className="w-full h-12 rounded-2xl font-bold text-[15px] gap-2 shadow-premium btn-premium" disabled={adicionarLimiteExtra.isPending || valorAdicionalWatch <= 0}>
+                  {adicionarLimiteExtra.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><ArrowUpFromLine className="h-4.5 w-4.5" /> Adicionar Garantia</>}
+                </Button>
+              </form>
+            </TabsContent>
 
-      {/* Resgatar Limite Dialog */}
-      <Dialog open={resgatarLimiteCard !== null} onOpenChange={() => setResgatarLimiteCard(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Resgatar Garantia</DialogTitle>
-            <DialogDescription>
-              Retire uma garantia do cartão <strong>{resgatarLimiteCard?.nome}</strong> e libere o saldo comprometido.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={resgateForm.handleSubmit(onSubmitResgate)} className="space-y-6">
-            {/* Show Available Guarantee */}
-            <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-4 flex justify-between items-center">
-              <div className="flex items-center gap-2 text-violet-500">
-                <Wallet className="h-4 w-4" />
-                <span className="text-sm font-semibold">Garantia Investida</span>
-              </div>
-              <span className="text-lg font-bold tabular-nums text-foreground">
-                {formatCurrency(resgatarLimiteCard?.garantia || 0)}
-              </span>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor a Resgatar (R$)</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input
-                  className="h-11 rounded-xl pl-9 tabular-nums font-semibold"
-                  placeholder="0,00"
-                  {...resgateForm.register("valorResgate", { required: true })}
-                />
-              </div>
-            </div>
+            {/* ── Tab: Resgatar ── */}
+            <TabsContent value="resgatar" className="px-6 pb-6 pt-4">
+              {garantiaDisponivel <= 0 ? (
+                <div className="text-center py-8 space-y-3">
+                  <div className="mx-auto h-12 w-12 rounded-full bg-muted/30 flex items-center justify-center">
+                    <Wallet className="h-5 w-5 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Nenhuma garantia investida para resgatar.</p>
+                  <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setGarantiaTab("adicionar")}>
+                    Adicionar garantia
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={resgateForm.handleSubmit(onSubmitResgate)} className="space-y-5">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Valor a Resgatar (R$)</Label>
+                      <button
+                        type="button"
+                        className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                        onClick={() => resgateForm.setValue("valorResgate", maxResgatePermitido.toString().replace(".", ","))}
+                      >
+                        Máx: {formatCurrency(maxResgatePermitido)}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                      <Input
+                        className={`h-11 rounded-xl pl-9 tabular-nums font-semibold ${resgateExcedeGarantia && valorResgateBase > 0 ? 'border-red-500 focus-visible:ring-red-500/30' : ''}`}
+                        placeholder="0,00"
+                        {...resgateForm.register("valorResgate", { required: true })}
+                      />
+                    </div>
+                    {resgateExcedeGarantia && valorResgateBase > 0 && (
+                      <p className="text-[11px] text-red-500 font-medium">Valor excede a garantia disponível ({formatCurrency(garantiaDisponivel)})</p>
+                    )}
+                  </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Percentual Bônus (%)</Label>
-              <Input
-                className="h-11 rounded-xl tabular-nums font-semibold bg-muted/30 cursor-not-allowed"
-                value={PERCENTUAL_BONUS_FIXO}
-                disabled
-                readOnly
-              />
-              <p className="text-[11px] text-muted-foreground/60">Fixo em {PERCENTUAL_BONUS_FIXO}% — mesmo valor usado na adição.</p>
-            </div>
+                  {/* Preview */}
+                  <div className="rounded-xl bg-muted/20 p-4 space-y-2.5 border border-border/30">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground/70 font-medium">Valor devolvido:</span>
+                      <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">+ {formatCurrency(valorResgateBase)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground/70 font-medium">Limite reduzido (×{(1 + PERCENTUAL_BONUS_FIXO / 100).toFixed(1)}):</span>
+                      <span className="font-bold tabular-nums text-red-500">- {formatCurrency(reducaoLimite)}</span>
+                    </div>
+                    <div className="h-px bg-border/30" />
+                    <div className="flex justify-between items-center">
+                      <span className="font-extrabold text-foreground text-sm">Novo Limite:</span>
+                      <span className={`font-extrabold tabular-nums text-base ${novoLimiteResgate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>{formatCurrency(novoLimiteResgate)}</span>
+                    </div>
+                  </div>
 
-            {/* Live Calculation Preview */}
-            <div className="rounded-xl bg-muted/20 p-5 space-y-3 border border-border/30">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground/70 font-medium">Limite Atual:</span>
-                <span className="font-bold tabular-nums">{formatCurrency(resgatarLimiteCard?.limite || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground/70 font-medium">Garantia devolvida:</span>
-                <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">+ {formatCurrency(valorResgateBase)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground/70 font-medium">Bônus removido ({PERCENTUAL_BONUS_FIXO}%):</span>
-                <span className="font-bold tabular-nums text-red-500">- {formatCurrency(valorResgateBase * (PERCENTUAL_BONUS_FIXO / 100))}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground/70 font-medium">Redução total no limite:</span>
-                <span className="font-bold tabular-nums text-red-500">- {formatCurrency(reducaoLimite)}</span>
-              </div>
-              <div className="h-px bg-border/30 my-2" />
-              <div className="flex justify-between items-center text-base">
-                <span className="font-extrabold text-foreground">Novo Limite:</span>
-                <span className={`font-extrabold tabular-nums ${novoLimiteResgate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>{formatCurrency(novoLimiteResgate)}</span>
-              </div>
-            </div>
+                  {novoLimiteResgate < 0 && valorResgateBase > 0 && !resgateExcedeGarantia && (
+                    <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3">
+                      <p className="text-[11px] text-red-500 font-medium">O limite ficaria negativo. Reduza o valor.</p>
+                    </div>
+                  )}
 
-            {novoLimiteResgate < 0 && valorResgateBase > 0 && (
-              <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3">
-                <p className="text-xs text-red-500 font-medium">⚠️ O novo limite ficaria negativo. Reduza o valor de resgate.</p>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full h-13 rounded-2xl font-bold text-[15px] gap-2 shadow-premium bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
-              disabled={resgatarLimiteExtra.isPending || novoLimiteResgate < 0 || valorResgateBase < 1}
-            >
-              {resgatarLimiteExtra.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><ArrowDownToLine className="h-4.5 w-4.5" /> Resgatar Garantia</>}
-            </Button>
-          </form>
+                  <Button
+                    type="submit"
+                    className="w-full h-12 rounded-2xl font-bold text-[15px] gap-2 shadow-premium bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
+                    disabled={resgatarLimiteExtra.isPending || novoLimiteResgate < 0 || valorResgateBase < 1 || resgateExcedeGarantia}
+                  >
+                    {resgatarLimiteExtra.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><ArrowDownToLine className="h-4.5 w-4.5" /> Resgatar Garantia</>}
+                  </Button>
+                </form>
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 

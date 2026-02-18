@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +19,7 @@ namespace ControlFinance.Api.Controllers;
 [Route("api/telegram")]
 public class TelegramController : ControllerBase
 {
-    private readonly TelegramBotService _botService;
+    private readonly ITelegramBotService _botService;
     private readonly ITelegramBotClient? _botClient;
     private readonly ILogger<TelegramController> _logger;
     private readonly IConfiguration _configuration;
@@ -26,7 +29,7 @@ public class TelegramController : ControllerBase
     private static readonly ConcurrentDictionary<int, DateTime> _processedUpdates = new();
 
     public TelegramController(
-        TelegramBotService botService,
+        ITelegramBotService botService,
         ILogger<TelegramController> logger,
         IConfiguration configuration,
         IServiceScopeFactory scopeFactory,
@@ -57,7 +60,10 @@ public class TelegramController : ControllerBase
         }
 
         var receivedSecret = Request.Headers["X-Telegram-Bot-Api-Secret-Token"].FirstOrDefault();
-        if (receivedSecret != expectedSecret)
+        if (string.IsNullOrEmpty(receivedSecret) ||
+            !CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(receivedSecret),
+                Encoding.UTF8.GetBytes(expectedSecret)))
         {
             _logger.LogWarning("Webhook rejeitado: secret token inválido de {IP}", HttpContext.Connection.RemoteIpAddress);
             return Unauthorized();
@@ -94,7 +100,7 @@ public class TelegramController : ControllerBase
                 _ = Task.Run(async () =>
                 {
                     await using var scope = _scopeFactory.CreateAsyncScope();
-                    var botService = scope.ServiceProvider.GetRequiredService<TelegramBotService>();
+                    var botService = scope.ServiceProvider.GetRequiredService<ITelegramBotService>();
                     try { await ProcessarMensagem(message, botService); }
                     catch (Exception ex) { _logger.LogError(ex, "Erro ao processar mensagem em background"); }
                 });
@@ -104,7 +110,7 @@ public class TelegramController : ControllerBase
                 _ = Task.Run(async () =>
                 {
                     await using var scope = _scopeFactory.CreateAsyncScope();
-                    var botService = scope.ServiceProvider.GetRequiredService<TelegramBotService>();
+                    var botService = scope.ServiceProvider.GetRequiredService<ITelegramBotService>();
                     try { await ProcessarCallback(callback, botService); }
                     catch (Exception ex) { _logger.LogError(ex, "Erro ao processar callback em background"); }
                 });
@@ -119,7 +125,7 @@ public class TelegramController : ControllerBase
         return Ok();
     }
 
-    private async Task ProcessarMensagem(Message message, TelegramBotService botService)
+    private async Task ProcessarMensagem(Message message, ITelegramBotService botService)
     {
         if (_botClient == null)
         {
@@ -173,7 +179,7 @@ public class TelegramController : ControllerBase
         await EnviarResposta(chatId, resposta);
     }
 
-    private async Task ProcessarCallback(CallbackQuery callback, TelegramBotService botService)
+    private async Task ProcessarCallback(CallbackQuery callback, ITelegramBotService botService)
     {
         if (_botClient == null || callback.Data == null || callback.Message == null) return;
 
@@ -281,7 +287,7 @@ public class TelegramController : ControllerBase
         return texto;
     }
 
-    private async Task<string> ProcessarVoz(Message message, TelegramBotService botService)
+    private async Task<string> ProcessarVoz(Message message, ITelegramBotService botService)
     {
         if (_botClient == null)
             return "❌ Bot do Telegram está desativado no servidor.";
@@ -320,7 +326,7 @@ public class TelegramController : ControllerBase
         }
     }
 
-    private async Task<string> ProcessarAudioArquivo(Message message, TelegramBotService botService)
+    private async Task<string> ProcessarAudioArquivo(Message message, ITelegramBotService botService)
     {
         if (_botClient == null)
             return "❌ Bot do Telegram está desativado no servidor.";
@@ -365,7 +371,7 @@ public class TelegramController : ControllerBase
         }
     }
 
-    private async Task<string> ProcessarVideoNote(Message message, TelegramBotService botService)
+    private async Task<string> ProcessarVideoNote(Message message, ITelegramBotService botService)
     {
         if (_botClient == null)
             return "❌ Bot do Telegram está desativado no servidor.";
@@ -403,7 +409,7 @@ public class TelegramController : ControllerBase
         }
     }
 
-    private async Task<string> ProcessarFoto(Message message, TelegramBotService botService)
+    private async Task<string> ProcessarFoto(Message message, ITelegramBotService botService)
     {
         if (_botClient == null)
             return "❌ Bot do Telegram está desativado no servidor.";

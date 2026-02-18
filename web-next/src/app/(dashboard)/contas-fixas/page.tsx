@@ -12,6 +12,9 @@ import {
 import { formatCurrency, formatShortDate } from "@/lib/format";
 import type { FrequenciaLembrete } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { lembreteSchema, type LembreteData } from "@/lib/schemas";
 import {
   CalendarClock,
   Plus,
@@ -74,7 +77,6 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { toast } from "sonner";
 import type { LembretePagamento } from "@/lib/api";
 
 const isVencido = (dataVenc: string) => new Date(dataVenc) < new Date(new Date().toISOString().split("T")[0]);
@@ -115,123 +117,96 @@ export default function ContasFixasPage() {
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
 
-  // Form state
-  const [descricao, setDescricao] = useState("");
-  const [valor, setValor] = useState("");
-  const [dataVencimento, setDataVencimento] = useState("");
-  const [diaRecorrente, setDiaRecorrente] = useState("");
-  const [frequencia, setFrequencia] = useState<FrequenciaLembrete | "Unico">("Unico");
-  const [diaSemana, setDiaSemana] = useState("");
-  const [categoria, setCategoria] = useState("");
-  const [formaPagamento, setFormaPagamento] = useState("");
-  const [lembreteTelegramAtivo, setLembreteTelegramAtivo] = useState(true);
-  const [dataFimRecorrencia, setDataFimRecorrencia] = useState("");
+  // Form instances (Zod + react-hook-form)
+  const createForm = useForm<LembreteData>({
+    resolver: zodResolver(lembreteSchema),
+    defaultValues: { descricao: "", valor: "", dataVencimento: "", diaRecorrente: "", frequencia: "Unico", diaSemana: "", categoria: "", formaPagamento: "", lembreteTelegramAtivo: true, dataFimRecorrencia: "" },
+  });
+
+  const editForm = useForm<LembreteData>({
+    resolver: zodResolver(lembreteSchema),
+    defaultValues: { descricao: "", valor: "", dataVencimento: "", diaRecorrente: "", frequencia: "Unico", diaSemana: "", categoria: "", formaPagamento: "", lembreteTelegramAtivo: true, dataFimRecorrencia: "" },
+  });
 
   const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
   const resetForm = () => {
-    setDescricao("");
-    setValor("");
-    setDataVencimento("");
-    setDiaRecorrente("");
-    setFrequencia("Unico");
-    setDiaSemana("");
-    setCategoria("");
-    setFormaPagamento("");
-    setLembreteTelegramAtivo(true);
-    setDataFimRecorrencia("");
+    createForm.reset();
+    editForm.reset();
     setShowForm(false);
     setEditItem(null);
   };
 
   const openEdit = (lembrete: LembretePagamento) => {
     setEditItem(lembrete);
-    setDescricao(lembrete.descricao);
-    setValor(lembrete.valor?.toString() ?? "");
-    setDataVencimento(lembrete.dataVencimento);
-    setDiaRecorrente(lembrete.diaRecorrente?.toString() ?? "");
-    setFrequencia(lembrete.frequencia ?? (lembrete.recorrenteMensal ? "Mensal" : "Unico"));
-    setDiaSemana(lembrete.diaSemanaRecorrente?.toString() ?? "");
     // Match categoria by categoriaId for reliable pre-fill
     const matchedCat = categorias.find(c => c.id === lembrete.categoriaId);
-    setCategoria(matchedCat?.nome ?? lembrete.categoria ?? "");
-    setFormaPagamento((lembrete.formaPagamento ?? "").toLowerCase());
-    setLembreteTelegramAtivo(lembrete.lembreteTelegramAtivo ?? true);
-    setDataFimRecorrencia(lembrete.dataFimRecorrencia ?? "");
+    editForm.reset({
+      descricao: lembrete.descricao,
+      valor: lembrete.valor?.toString() ?? "",
+      dataVencimento: lembrete.dataVencimento,
+      diaRecorrente: lembrete.diaRecorrente?.toString() ?? "",
+      frequencia: lembrete.frequencia ?? (lembrete.recorrenteMensal ? "Mensal" : "Unico"),
+      diaSemana: lembrete.diaSemanaRecorrente?.toString() ?? "",
+      categoria: matchedCat?.nome ?? lembrete.categoria ?? "",
+      formaPagamento: (lembrete.formaPagamento ?? "").toLowerCase(),
+      lembreteTelegramAtivo: lembrete.lembreteTelegramAtivo ?? true,
+      dataFimRecorrencia: lembrete.dataFimRecorrencia ?? "",
+    });
   };
 
-  const handleCriar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!descricao.trim()) { toast.error("Informe a descrição"); return; }
+  const handleCriar = (data: LembreteData) => {
+    const isRecorrente = data.frequencia !== "Unico";
+    let vencimento = data.dataVencimento || "";
 
-    const isRecorrente = frequencia !== "Unico";
-    let vencimento = dataVencimento;
-
-    if (frequencia === "Mensal") {
-      const dia = parseInt(diaRecorrente);
-      if (!diaRecorrente || dia < 1 || dia > 31) { toast.error("Informe o dia de vencimento (1-31)"); return; }
-      vencimento = getNextOccurrenceDate(dia);
-    } else if (frequencia === "Semanal" || frequencia === "Quinzenal") {
-      if (!dataVencimento) { toast.error("Informe a data do primeiro pagamento"); return; }
-    } else if (frequencia === "Anual") {
-      if (!dataVencimento) { toast.error("Informe a data do pagamento anual"); return; }
-    } else {
-      if (!dataVencimento) { toast.error("Informe a data do pagamento"); return; }
+    if (data.frequencia === "Mensal" && data.diaRecorrente) {
+      vencimento = getNextOccurrenceDate(parseInt(data.diaRecorrente));
     }
 
-    if (!valor.trim()) { toast.error("Informe o valor da conta fixa"); return; }
-    if (!categoria.trim()) { toast.error("Selecione uma categoria"); return; }
-    if (!formaPagamento.trim()) { toast.error("Selecione a forma de pagamento"); return; }
-
-    const valorNum = valor ? parseFloat(valor.replace(",", ".")) : undefined;
-    if (!valorNum || valorNum <= 0) { toast.error("Informe um valor válido"); return; }
+    const valorNum = parseFloat(data.valor.replace(",", "."));
 
     criarLembrete.mutate(
       {
-        descricao: descricao.trim(),
+        descricao: data.descricao.trim(),
         valor: valorNum,
         dataVencimento: vencimento,
         recorrenteMensal: isRecorrente,
-        diaRecorrente: frequencia === "Mensal" && diaRecorrente ? parseInt(diaRecorrente) : undefined,
-        frequencia: isRecorrente ? frequencia as FrequenciaLembrete : undefined,
-        diaSemanaRecorrente: (frequencia === "Semanal" || frequencia === "Quinzenal") && diaSemana ? parseInt(diaSemana) : undefined,
-        categoria: categoria.trim(),
-        formaPagamento,
-        lembreteTelegramAtivo,
-        dataFimRecorrencia: isRecorrente && dataFimRecorrencia ? dataFimRecorrencia : undefined,
+        diaRecorrente: data.frequencia === "Mensal" && data.diaRecorrente ? parseInt(data.diaRecorrente) : undefined,
+        frequencia: isRecorrente ? data.frequencia as FrequenciaLembrete : undefined,
+        diaSemanaRecorrente: (data.frequencia === "Semanal" || data.frequencia === "Quinzenal") && data.diaSemana ? parseInt(data.diaSemana) : undefined,
+        categoria: data.categoria.trim(),
+        formaPagamento: data.formaPagamento,
+        lembreteTelegramAtivo: data.lembreteTelegramAtivo,
+        dataFimRecorrencia: isRecorrente && data.dataFimRecorrencia ? data.dataFimRecorrencia : undefined,
       },
       { onSuccess: resetForm }
     );
   };
 
-  const handleAtualizar = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAtualizar = (data: LembreteData) => {
     if (!editItem) return;
-    const isRecorrente = frequencia !== "Unico";
-    const valorNum = valor ? parseFloat(valor.replace(",", ".")) : undefined;
-    if (!valorNum || valorNum <= 0) { toast.error("Informe um valor válido"); return; }
-    if (!categoria.trim()) { toast.error("Selecione uma categoria"); return; }
-    if (!formaPagamento.trim()) { toast.error("Selecione a forma de pagamento"); return; }
+    const isRecorrente = data.frequencia !== "Unico";
+    const valorNum = parseFloat(data.valor.replace(",", "."));
 
-    let vencimento = dataVencimento || undefined;
-    if (frequencia === "Mensal" && diaRecorrente) {
-      vencimento = getNextOccurrenceDate(parseInt(diaRecorrente));
+    let vencimento = data.dataVencimento || undefined;
+    if (data.frequencia === "Mensal" && data.diaRecorrente) {
+      vencimento = getNextOccurrenceDate(parseInt(data.diaRecorrente));
     }
     atualizarLembrete.mutate(
       {
         id: editItem.id,
         data: {
-          descricao: descricao.trim() || undefined,
+          descricao: data.descricao.trim() || undefined,
           valor: valorNum,
           dataVencimento: vencimento,
           recorrenteMensal: isRecorrente,
-          diaRecorrente: frequencia === "Mensal" && diaRecorrente ? parseInt(diaRecorrente) : undefined,
-          frequencia: isRecorrente ? frequencia as FrequenciaLembrete : undefined,
-          diaSemanaRecorrente: (frequencia === "Semanal" || frequencia === "Quinzenal") && diaSemana ? parseInt(diaSemana) : undefined,
-          categoria: categoria.trim(),
-          formaPagamento,
-          lembreteTelegramAtivo,
-          dataFimRecorrencia: isRecorrente && dataFimRecorrencia ? dataFimRecorrencia : (isRecorrente ? undefined : ""),
+          diaRecorrente: data.frequencia === "Mensal" && data.diaRecorrente ? parseInt(data.diaRecorrente) : undefined,
+          frequencia: isRecorrente ? data.frequencia as FrequenciaLembrete : undefined,
+          diaSemanaRecorrente: (data.frequencia === "Semanal" || data.frequencia === "Quinzenal") && data.diaSemana ? parseInt(data.diaSemana) : undefined,
+          categoria: data.categoria.trim(),
+          formaPagamento: data.formaPagamento,
+          lembreteTelegramAtivo: data.lembreteTelegramAtivo,
+          dataFimRecorrencia: isRecorrente && data.dataFimRecorrencia ? data.dataFimRecorrencia : (isRecorrente ? undefined : ""),
         },
       },
       { onSuccess: resetForm }
@@ -277,7 +252,7 @@ export default function ContasFixasPage() {
             <TooltipContent>Atualizar dados</TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
+        <Button onClick={() => { createForm.reset(); setShowForm(true); }} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
           <Plus className="h-4 w-4" />
           Novo Lembrete
         </Button>
@@ -522,44 +497,45 @@ export default function ContasFixasPage() {
 
           {/* Scrollable form body */}
           <div className="flex-1 overflow-y-auto overscroll-contain">
-            <form onSubmit={handleCriar} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            <form onSubmit={createForm.handleSubmit(handleCriar)} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
               {/* Main fields */}
               <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Descrição</Label>
-                  <Input placeholder="Ex: Aluguel, Internet, Energia..." value={descricao} onChange={(e) => setDescricao(e.target.value)} className="h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" required />
+                  <Input placeholder="Ex: Aluguel, Internet, Energia..." {...createForm.register("descricao")} className={cn("h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.descricao && "border-red-500")} />
+                  {createForm.formState.errors.descricao && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.descricao.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
                   <div className="relative">
                     <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-blue-500/10 text-blue-500">R$</div>
-                    <Input placeholder="0,00" value={valor} onChange={(e) => setValor(e.target.value)} className="h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                    <Input placeholder="0,00" {...createForm.register("valor")} className={cn("h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.valor && "border-red-500")} />
                   </div>
+                  {createForm.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.valor.message}</p>}
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Categoria</Label>
                     <select
-                      value={categoria}
-                      onChange={(e) => setCategoria(e.target.value)}
-                      className="h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm"
-                      required
+                      value={createForm.watch("categoria")}
+                      onChange={(e) => createForm.setValue("categoria", e.target.value, { shouldValidate: true })}
+                      className={cn("h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm", createForm.formState.errors.categoria && "border-red-500")}
                     >
                       <option value="">Selecione</option>
                       {categorias.map((cat) => (
                         <option key={cat.id} value={cat.nome}>{cat.nome}</option>
                       ))}
                     </select>
+                    {createForm.formState.errors.categoria && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.categoria.message}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Forma de pagamento</Label>
                     <select
-                      value={formaPagamento}
-                      onChange={(e) => setFormaPagamento(e.target.value)}
-                      className="h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm"
-                      required
+                      value={createForm.watch("formaPagamento")}
+                      onChange={(e) => createForm.setValue("formaPagamento", e.target.value, { shouldValidate: true })}
+                      className={cn("h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm", createForm.formState.errors.formaPagamento && "border-red-500")}
                     >
                       <option value="">Selecione</option>
                       <option value="pix">PIX</option>
@@ -568,6 +544,7 @@ export default function ContasFixasPage() {
                       <option value="dinheiro">Dinheiro</option>
                       <option value="outro">Outro</option>
                     </select>
+                    {createForm.formState.errors.formaPagamento && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.formaPagamento.message}</p>}
                   </div>
                 </div>
 
@@ -576,20 +553,20 @@ export default function ContasFixasPage() {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => setLembreteTelegramAtivo(true)}
+                      onClick={() => createForm.setValue("lembreteTelegramAtivo", true)}
                       className={cn(
                         "h-10 px-3 rounded-xl border text-sm font-medium",
-                        lembreteTelegramAtivo ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
+                        createForm.watch("lembreteTelegramAtivo") ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
                       )}
                     >
                       Sim
                     </button>
                     <button
                       type="button"
-                      onClick={() => setLembreteTelegramAtivo(false)}
+                      onClick={() => createForm.setValue("lembreteTelegramAtivo", false)}
                       className={cn(
                         "h-10 px-3 rounded-xl border text-sm font-medium",
-                        !lembreteTelegramAtivo ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
+                        !createForm.watch("lembreteTelegramAtivo") ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
                       )}
                     >
                       Não
@@ -612,10 +589,10 @@ export default function ContasFixasPage() {
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setFrequencia(key)}
+                      onClick={() => createForm.setValue("frequencia", key)}
                       className={cn(
                         "flex flex-col items-center gap-1.5 sm:gap-2 p-2.5 sm:p-3 rounded-xl border-2 transition-all duration-200 cursor-pointer",
-                        frequencia === key
+                        createForm.watch("frequencia") === key
                           ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-sm shadow-blue-500/10"
                           : "border-border/40 hover:border-border/60 text-muted-foreground hover:bg-muted/30"
                       )}
@@ -629,31 +606,33 @@ export default function ContasFixasPage() {
                 <div className="border-t border-border/20" />
 
                 <AnimatePresence mode="wait">
-                  {frequencia === "Unico" && (
+                  {createForm.watch("frequencia") === "Unico" && (
                     <motion.div key="unico" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="space-y-1.5">
                       <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Data do Pagamento</Label>
                       <div className="relative">
                         <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                        <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                        <Input type="date" {...createForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.dataVencimento && "border-red-500")} />
                       </div>
+                      {createForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.dataVencimento.message}</p>}
                     </motion.div>
                   )}
 
-                  {frequencia === "Mensal" && (
+                  {createForm.watch("frequencia") === "Mensal" && (
                     <motion.div key="mensal" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="space-y-2">
                       <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia do vencimento no mês</Label>
                       <div className="relative">
                         <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                        <Input type="number" min={1} max={31} placeholder="Ex: 10" value={diaRecorrente} onChange={(e) => setDiaRecorrente(e.target.value)} className="h-11 rounded-xl pl-10 border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                        <Input type="number" min={1} max={31} placeholder="Ex: 10" {...createForm.register("diaRecorrente")} className={cn("h-11 rounded-xl pl-10 border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.diaRecorrente && "border-red-500")} />
                       </div>
+                      {createForm.formState.errors.diaRecorrente && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.diaRecorrente.message}</p>}
                       <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
                         <Repeat className="h-3 w-3" />
-                        {diaRecorrente ? `Pagamento todo dia ${diaRecorrente} de cada mês` : "Informe o dia para repetir todo mês"}
+                        {createForm.watch("diaRecorrente") ? `Pagamento todo dia ${createForm.watch("diaRecorrente")} de cada mês` : "Informe o dia para repetir todo mês"}
                       </p>
                     </motion.div>
                   )}
 
-                  {(frequencia === "Semanal" || frequencia === "Quinzenal") && (
+                  {(createForm.watch("frequencia") === "Semanal" || createForm.watch("frequencia") === "Quinzenal") && (
                     <motion.div key="semanal" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="space-y-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia da semana</Label>
@@ -662,10 +641,10 @@ export default function ContasFixasPage() {
                             <button
                               key={idx}
                               type="button"
-                              onClick={() => setDiaSemana(String(idx))}
+                              onClick={() => createForm.setValue("diaSemana", String(idx))}
                               className={cn(
                                 "p-1.5 sm:p-2 rounded-lg text-[10px] sm:text-xs font-medium transition-all cursor-pointer border",
-                                diaSemana === String(idx)
+                                createForm.watch("diaSemana") === String(idx)
                                   ? "border-blue-500 bg-blue-500/15 text-blue-600 dark:text-blue-400"
                                   : "border-transparent hover:bg-muted/40 text-muted-foreground"
                               )}
@@ -679,24 +658,26 @@ export default function ContasFixasPage() {
                         <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Data do primeiro pagamento</Label>
                         <div className="relative">
                           <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                          <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                          <Input type="date" {...createForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.dataVencimento && "border-red-500")} />
                         </div>
+                        {createForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.dataVencimento.message}</p>}
                       </div>
                       <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
                         <Repeat className="h-3 w-3" />
-                        {frequencia === "Semanal" ? "Repete toda semana" : "Repete a cada 15 dias"}
-                        {diaSemana ? ` (${DIAS_SEMANA[parseInt(diaSemana)]})` : ""}
+                        {createForm.watch("frequencia") === "Semanal" ? "Repete toda semana" : "Repete a cada 15 dias"}
+                        {createForm.watch("diaSemana") ? ` (${DIAS_SEMANA[parseInt(createForm.watch("diaSemana") || "0")]})` : ""}
                       </p>
                     </motion.div>
                   )}
 
-                  {frequencia === "Anual" && (
+                  {createForm.watch("frequencia") === "Anual" && (
                     <motion.div key="anual" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} className="space-y-2">
                       <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Data do pagamento anual</Label>
                       <div className="relative">
                         <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                        <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                        <Input type="date" {...createForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.dataVencimento && "border-red-500")} />
                       </div>
+                      {createForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.dataVencimento.message}</p>}
                       <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
                         <Repeat className="h-3 w-3" />
                         Repete uma vez por ano na mesma data
@@ -707,17 +688,17 @@ export default function ContasFixasPage() {
               </div>
 
               {/* Optional end date for recurring bills */}
-              {frequencia !== "Unico" && (
+              {createForm.watch("frequencia") !== "Unico" && (
                 <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Até quando pagar? <span className="text-muted-foreground/40">(opcional)</span></Label>
                     <div className="relative">
                       <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                      <Input type="date" value={dataFimRecorrencia} onChange={(e) => setDataFimRecorrencia(e.target.value)} className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                      <Input type="date" {...createForm.register("dataFimRecorrencia")} className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
                     </div>
                     <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
                       <CalendarClock className="h-3 w-3" />
-                      {dataFimRecorrencia ? `Lembretes serão enviados até ${new Date(dataFimRecorrencia + "T12:00:00").toLocaleDateString("pt-BR")}` : "Se não informar, o lembrete continuará indefinidamente"}
+                      {createForm.watch("dataFimRecorrencia") ? `Lembretes serão enviados até ${new Date(createForm.watch("dataFimRecorrencia") + "T12:00:00").toLocaleDateString("pt-BR")}` : "Se não informar, o lembrete continuará indefinidamente"}
                     </p>
                   </div>
                 </div>
@@ -752,41 +733,42 @@ export default function ContasFixasPage() {
             <DialogTitle className="text-lg font-bold tracking-tight">Editar Conta Fixa</DialogTitle>
             <DialogDescription>Altere os dados da conta fixa</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAtualizar} className="space-y-5">
+          <form onSubmit={editForm.handleSubmit(handleAtualizar)} className="space-y-5">
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Descrição</Label>
-              <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} className="h-11 rounded-xl" />
+              <Input {...editForm.register("descricao")} className={cn("h-11 rounded-xl", editForm.formState.errors.descricao && "border-red-500")} />
+              {editForm.formState.errors.descricao && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.descricao.message}</p>}
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input placeholder="0,00" value={valor} onChange={(e) => setValor(e.target.value)} className="h-11 rounded-xl pl-9 tabular-nums" />
+                <Input placeholder="0,00" {...editForm.register("valor")} className={cn("h-11 rounded-xl pl-9 tabular-nums", editForm.formState.errors.valor && "border-red-500")} />
               </div>
+              {editForm.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.valor.message}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</Label>
                 <select
-                  value={categoria}
-                  onChange={(e) => setCategoria(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm"
-                  required
+                  value={editForm.watch("categoria")}
+                  onChange={(e) => editForm.setValue("categoria", e.target.value, { shouldValidate: true })}
+                  className={cn("h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm", editForm.formState.errors.categoria && "border-red-500")}
                 >
                   <option value="">Selecione</option>
                   {categorias.map((cat) => (
                     <option key={cat.id} value={cat.nome}>{cat.nome}</option>
                   ))}
                 </select>
+                {editForm.formState.errors.categoria && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.categoria.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Forma de pagamento</Label>
                 <select
-                  value={formaPagamento}
-                  onChange={(e) => setFormaPagamento(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm"
-                  required
+                  value={editForm.watch("formaPagamento")}
+                  onChange={(e) => editForm.setValue("formaPagamento", e.target.value, { shouldValidate: true })}
+                  className={cn("h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm", editForm.formState.errors.formaPagamento && "border-red-500")}
                 >
                   <option value="">Selecione</option>
                   <option value="pix">PIX</option>
@@ -795,6 +777,7 @@ export default function ContasFixasPage() {
                   <option value="dinheiro">Dinheiro</option>
                   <option value="outro">Outro</option>
                 </select>
+                {editForm.formState.errors.formaPagamento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.formaPagamento.message}</p>}
               </div>
             </div>
 
@@ -803,20 +786,20 @@ export default function ContasFixasPage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setLembreteTelegramAtivo(true)}
+                  onClick={() => editForm.setValue("lembreteTelegramAtivo", true)}
                   className={cn(
                     "h-10 px-3 rounded-xl border text-sm font-medium",
-                    lembreteTelegramAtivo ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
+                    editForm.watch("lembreteTelegramAtivo") ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
                   )}
                 >
                   Sim
                 </button>
                 <button
                   type="button"
-                  onClick={() => setLembreteTelegramAtivo(false)}
+                  onClick={() => editForm.setValue("lembreteTelegramAtivo", false)}
                   className={cn(
                     "h-10 px-3 rounded-xl border text-sm font-medium",
-                    !lembreteTelegramAtivo ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
+                    !editForm.watch("lembreteTelegramAtivo") ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400" : "border-border/40 text-muted-foreground"
                   )}
                 >
                   Não
@@ -838,10 +821,10 @@ export default function ContasFixasPage() {
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setFrequencia(key)}
+                    onClick={() => editForm.setValue("frequencia", key)}
                     className={cn(
                       "p-2 rounded-lg border-2 text-[11px] font-semibold transition-all duration-200 cursor-pointer",
-                      frequencia === key
+                      editForm.watch("frequencia") === key
                         ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400"
                         : "border-border/40 hover:border-border/60 text-muted-foreground"
                     )}
@@ -852,28 +835,30 @@ export default function ContasFixasPage() {
               </div>
             </div>
 
-            {frequencia === "Unico" && (
+            {editForm.watch("frequencia") === "Unico" && (
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do Pagamento</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-9" />
+                  <Input type="date" {...editForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-9", editForm.formState.errors.dataVencimento && "border-red-500")} />
                 </div>
+                {editForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.dataVencimento.message}</p>}
               </div>
             )}
 
-            {frequencia === "Mensal" && (
+            {editForm.watch("frequencia") === "Mensal" && (
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia do vencimento no mês</Label>
-                <Input type="number" min={1} max={31} placeholder="Ex: 10" value={diaRecorrente} onChange={(e) => setDiaRecorrente(e.target.value)} className="h-11 rounded-xl" />
+                <Input type="number" min={1} max={31} placeholder="Ex: 10" {...editForm.register("diaRecorrente")} className={cn("h-11 rounded-xl", editForm.formState.errors.diaRecorrente && "border-red-500")} />
+                {editForm.formState.errors.diaRecorrente && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.diaRecorrente.message}</p>}
                 <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
                   <Repeat className="h-3 w-3" />
-                  {diaRecorrente ? `Todo dia ${diaRecorrente} de cada mês` : "Informe o dia"}
+                  {editForm.watch("diaRecorrente") ? `Todo dia ${editForm.watch("diaRecorrente")} de cada mês` : "Informe o dia"}
                 </p>
               </div>
             )}
 
-            {(frequencia === "Semanal" || frequencia === "Quinzenal") && (
+            {(editForm.watch("frequencia") === "Semanal" || editForm.watch("frequencia") === "Quinzenal") && (
               <div className="space-y-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia da semana</Label>
@@ -882,10 +867,10 @@ export default function ContasFixasPage() {
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => setDiaSemana(String(idx))}
+                        onClick={() => editForm.setValue("diaSemana", String(idx))}
                         className={cn(
                           "p-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer border",
-                          diaSemana === String(idx)
+                          editForm.watch("diaSemana") === String(idx)
                             ? "border-blue-500 bg-blue-500/15 text-blue-600 dark:text-blue-400"
                             : "border-transparent hover:bg-muted/40 text-muted-foreground"
                         )}
@@ -899,33 +884,35 @@ export default function ContasFixasPage() {
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do primeiro pagamento</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                    <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-9" />
+                    <Input type="date" {...editForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-9", editForm.formState.errors.dataVencimento && "border-red-500")} />
                   </div>
+                  {editForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.dataVencimento.message}</p>}
                 </div>
               </div>
             )}
 
-            {frequencia === "Anual" && (
+            {editForm.watch("frequencia") === "Anual" && (
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do pagamento anual</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} className="h-11 rounded-xl pl-9" />
+                  <Input type="date" {...editForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-9", editForm.formState.errors.dataVencimento && "border-red-500")} />
                 </div>
+                {editForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.dataVencimento.message}</p>}
               </div>
             )}
 
             {/* Optional end date for recurring bills */}
-            {frequencia !== "Unico" && (
+            {editForm.watch("frequencia") !== "Unico" && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Até quando pagar? <span className="text-muted-foreground/40">(opcional)</span></Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input type="date" value={dataFimRecorrencia} onChange={(e) => setDataFimRecorrencia(e.target.value)} className="h-11 rounded-xl pl-9" />
+                  <Input type="date" {...editForm.register("dataFimRecorrencia")} className="h-11 rounded-xl pl-9" />
                 </div>
                 <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
                   <CalendarClock className="h-3 w-3" />
-                  {dataFimRecorrencia ? `Até ${new Date(dataFimRecorrencia + "T12:00:00").toLocaleDateString("pt-BR")}` : "Sem data limite"}
+                  {editForm.watch("dataFimRecorrencia") ? `Até ${new Date(editForm.watch("dataFimRecorrencia") + "T12:00:00").toLocaleDateString("pt-BR")}` : "Sem data limite"}
                 </p>
               </div>
             )}

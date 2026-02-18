@@ -167,6 +167,73 @@ export const verificarRegistroSchema = z.object({
   codigo: z.string().min(6, "Código deve ter 6 dígitos").max(6, "Código deve ter 6 dígitos"),
 });
 
+export const decisaoGastoSchema = z.object({
+  valor: z
+    .string()
+    .min(1, "Valor é obrigatório")
+    .refine((v) => {
+      const num = parseFloat(v.replace(",", "."));
+      return !isNaN(num) && num > 0;
+    }, "Valor deve ser maior que zero"),
+  descricao: z.string().optional(),
+  categoria: z.string().optional(),
+  parcelado: z.boolean(),
+  parcelas: z.string().optional(),
+});
+
+export const lembreteSchema = z
+  .object({
+    descricao: z.string().min(1, "Descrição é obrigatória").max(200, "Descrição muito longa"),
+    valor: z
+      .string()
+      .min(1, "Valor é obrigatório")
+      .refine((v) => {
+        const num = parseFloat(v.replace(",", "."));
+        return !isNaN(num) && num > 0;
+      }, "Valor deve ser maior que zero"),
+    categoria: z.string().min(1, "Selecione uma categoria"),
+    formaPagamento: z.string().min(1, "Selecione a forma de pagamento"),
+    frequencia: z.enum(["Unico", "Semanal", "Quinzenal", "Mensal", "Anual"]),
+    lembreteTelegramAtivo: z.boolean(),
+    dataVencimento: z.string().optional(),
+    diaRecorrente: z.string().optional(),
+    diaSemana: z.string().optional(),
+    dataFimRecorrencia: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.frequencia === "Mensal") {
+      const dia = parseInt(data.diaRecorrente || "");
+      if (!data.diaRecorrente || isNaN(dia) || dia < 1 || dia > 31) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Dia de vencimento deve ser entre 1 e 31",
+          path: ["diaRecorrente"],
+        });
+      }
+    } else {
+      if (!data.dataVencimento) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            data.frequencia === "Unico"
+              ? "Informe a data do pagamento"
+              : "Informe a data do primeiro pagamento",
+          path: ["dataVencimento"],
+        });
+      }
+    }
+  });
+
+export const atualizarMetaSchema = z.object({
+  valorAtual: z
+    .string()
+    .min(1, "Valor é obrigatório")
+    .refine((v) => {
+      const num = parseFloat(v.replace(",", "."));
+      return !isNaN(num) && num >= 0;
+    }, "Informe um valor válido"),
+});
+
 // ── Inferred Types ─────────────────────────────────────────
 export type LoginData = z.infer<typeof loginSchema>;
 export type RegistroData = z.infer<typeof registroSchema>;
@@ -182,3 +249,6 @@ export type AtualizarPerfilData = z.infer<typeof atualizarPerfilSchema>;
 export type AlterarSenhaData = z.infer<typeof alterarSenhaSchema>;
 export type RecuperarSenhaData = z.infer<typeof recuperarSenhaSchema>;
 export type RedefinirSenhaData = z.infer<typeof redefinirSenhaSchema>;
+export type DecisaoGastoData = z.infer<typeof decisaoGastoSchema>;
+export type LembreteData = z.infer<typeof lembreteSchema>;
+export type AtualizarMetaData = z.infer<typeof atualizarMetaSchema>;

@@ -10,6 +10,9 @@ import {
 } from "@/hooks/use-queries";
 import type { CriarMetaRequest, MetaFinanceira } from "@/lib/api";
 import { formatCurrency, formatShortDate } from "@/lib/format";
+import { metaSchema, atualizarMetaSchema, type MetaData, type AtualizarMetaData } from "@/lib/schemas";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Target,
@@ -81,7 +84,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { toast } from "sonner";
+
 
 const tiposLabel: Record<string, string> = {
   juntar_valor: "Juntar Valor",
@@ -123,44 +126,40 @@ export default function MetasPage() {
 
   const [showForm, setShowForm] = useState(false);
 
-  // Create form state
-  const [nome, setNome] = useState("");
-  const [tipo, setTipo] = useState("juntar_valor");
-  const [prioridade, setPrioridade] = useState("media");
-  const [valorAlvo, setValorAlvo] = useState("");
-  const [valorAtual, setValorAtual] = useState("");
-  const [prazo, setPrazo] = useState("");
-  const [categoria, setCategoria] = useState("");
+  // Create form
+  const createForm = useForm<MetaData>({
+    resolver: zodResolver(metaSchema),
+    defaultValues: { nome: "", tipo: "juntar_valor", prioridade: "media", valorAlvo: "", valorAtual: "", prazo: "", categoria: "" },
+  });
+  const tipo = createForm.watch("tipo");
+  const prioridade = createForm.watch("prioridade");
+
+  // Edit form
+  const editForm = useForm<AtualizarMetaData>({
+    resolver: zodResolver(atualizarMetaSchema),
+    defaultValues: { valorAtual: "" },
+  });
 
   // Edit/Delete
   const [editMeta, setEditMeta] = useState<MetaFinanceira | null>(null);
-  const [editValor, setEditValor] = useState("");
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  const resetForm = () => {
-    setNome(""); setTipo("juntar_valor"); setPrioridade("media");
-    setValorAlvo(""); setValorAtual(""); setPrazo(""); setCategoria("");
-  };
-
-  const handleCriar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const alvo = parseFloat(valorAlvo.replace(",", "."));
-    const atual = parseFloat(valorAtual.replace(",", ".") || "0");
-    if (isNaN(alvo) || alvo <= 0) { toast.error("Informe um valor alvo válido"); return; }
-    const data: CriarMetaRequest = {
-      nome, tipo, valorAlvo: alvo, valorAtual: atual, prazo, prioridade,
-      categoria: tipo === "reduzir_gasto" ? categoria : undefined,
+  const handleCriar = (data: MetaData) => {
+    const alvo = parseFloat(data.valorAlvo.replace(",", "."));
+    const atual = parseFloat((data.valorAtual || "").replace(",", ".") || "0");
+    const req: CriarMetaRequest = {
+      nome: data.nome, tipo: data.tipo, valorAlvo: alvo, valorAtual: atual, prazo: data.prazo, prioridade: data.prioridade,
+      categoria: data.tipo === "reduzir_gasto" ? data.categoria : undefined,
     };
-    criarMeta.mutate(data, {
-      onSuccess: () => { resetForm(); setShowForm(false); },
+    criarMeta.mutate(req, {
+      onSuccess: () => { createForm.reset(); setShowForm(false); },
     });
   };
 
-  const handleAtualizar = async () => {
+  const handleAtualizar = (data: AtualizarMetaData) => {
     if (!editMeta) return;
-    const val = parseFloat(editValor.replace(",", "."));
-    if (isNaN(val)) return;
+    const val = parseFloat(data.valorAtual.replace(",", "."));
     setActionLoading(editMeta.id);
     atualizarMeta.mutate(
       { id: editMeta.id, data: { valorAtual: val } },
@@ -199,7 +198,7 @@ export default function MetasPage() {
     <PageShell>
       {/* ── Page Header ── */}
       <PageHeader title="Metas Financeiras" description="Defina e acompanhe suas metas de economia e investimento">
-        <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
+        <Button onClick={() => { createForm.reset(); setShowForm(true); }} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
           <Plus className="h-4 w-4" />
           Nova Meta
         </Button>
@@ -254,7 +253,7 @@ export default function MetasPage() {
                   meta={meta}
                   index={i}
                   actionLoading={actionLoading}
-                  onEdit={() => { setEditMeta(meta); setEditValor(meta.valorAtual.toString()); }}
+                  onEdit={() => { setEditMeta(meta); editForm.reset({ valorAtual: meta.valorAtual.toString() }); }}
                   onPausar={() => handlePausarResumir(meta)}
                   onRemover={() => setDeleteId(meta.id)}
                 />
@@ -275,7 +274,7 @@ export default function MetasPage() {
                 meta={meta}
                 index={i}
                 actionLoading={actionLoading}
-                onEdit={() => { setEditMeta(meta); setEditValor(meta.valorAtual.toString()); }}
+                onEdit={() => { setEditMeta(meta); editForm.reset({ valorAtual: meta.valorAtual.toString() }); }}
                 onPausar={() => handlePausarResumir(meta)}
                 onRemover={() => setDeleteId(meta.id)}
               />
@@ -344,12 +343,13 @@ export default function MetasPage() {
 
           {/* Scrollable form body */}
           <div className="flex-1 overflow-y-auto overscroll-contain">
-            <form onSubmit={handleCriar} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            <form onSubmit={createForm.handleSubmit(handleCriar)} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
               {/* Main fields */}
               <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Nome da Meta</Label>
-                  <Input placeholder="Ex: Reserva de emergência" value={nome} onChange={(e) => setNome(e.target.value)} required className="h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                  <Input placeholder="Ex: Reserva de emergência" {...createForm.register("nome")} className={`h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all ${createForm.formState.errors.nome ? 'border-red-500' : ''}`} />
+                  {createForm.formState.errors.nome && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.nome.message}</p>}
                 </div>
 
                 <div className="border-t border-border/20" />
@@ -362,7 +362,7 @@ export default function MetasPage() {
                       <button
                         key={t}
                         type="button"
-                        onClick={() => setTipo(t)}
+                        onClick={() => createForm.setValue("tipo", t)}
                         className={`group relative flex flex-col items-center gap-1.5 sm:gap-2.5 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer border ${tipo === t ? "bg-primary/5 text-primary border-primary/20 shadow-sm shadow-primary/5" : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40 hover:border-border/50 hover:text-foreground"}`}
                       >
                         <div className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg sm:rounded-xl transition-all ${tipo === t ? "bg-primary/10" : "bg-muted/40 group-hover:bg-muted/60"}`}>
@@ -384,7 +384,7 @@ export default function MetasPage() {
                       <button
                         key={p}
                         type="button"
-                        onClick={() => setPrioridade(p)}
+                        onClick={() => createForm.setValue("prioridade", p)}
                         className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer border ${prioridade === p ? `${prioridadeConfig[p].badge} border-2 shadow-sm` : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40 hover:border-border/50 hover:text-foreground"}`}
                       >
                         <Flag className={`h-3 w-3 ${prioridade === p ? prioridadeConfig[p].color : ""}`} />
@@ -402,14 +402,15 @@ export default function MetasPage() {
                     <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor Alvo (R$)</Label>
                     <div className="relative">
                       <div className="absolute left-0 top-0 bottom-0 w-9 sm:w-10 flex items-center justify-center rounded-l-xl text-xs font-bold bg-emerald-500/10 text-emerald-500">R$</div>
-                      <Input placeholder="0,00" value={valorAlvo} onChange={(e) => setValorAlvo(e.target.value)} required className="h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                      <Input placeholder="0,00" {...createForm.register("valorAlvo")} className={`h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all ${createForm.formState.errors.valorAlvo ? 'border-red-500' : ''}`} />
                     </div>
+                    {createForm.formState.errors.valorAlvo && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.valorAlvo.message}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Já guardado (R$)</Label>
                     <div className="relative">
                       <div className="absolute left-0 top-0 bottom-0 w-9 sm:w-10 flex items-center justify-center rounded-l-xl text-xs font-bold bg-blue-500/10 text-blue-500">R$</div>
-                      <Input placeholder="0,00" value={valorAtual} onChange={(e) => setValorAtual(e.target.value)} className="h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                      <Input placeholder="0,00" {...createForm.register("valorAtual")} className="h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
                     </div>
                   </div>
                 </div>
@@ -421,7 +422,8 @@ export default function MetasPage() {
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Prazo</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                    <Input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} required className="h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                    <Input type="date" {...createForm.register("prazo")} className={`h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all ${createForm.formState.errors.prazo ? 'border-red-500' : ''}`} />
+                    {createForm.formState.errors.prazo && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.prazo.message}</p>}
                   </div>
                 </div>
 
@@ -430,7 +432,7 @@ export default function MetasPage() {
                   {tipo === "reduzir_gasto" && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-1.5 overflow-hidden">
                       <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Categoria</Label>
-                      <Select value={categoria} onValueChange={setCategoria}>
+                      <Select value={createForm.watch("categoria") || ""} onValueChange={(v) => createForm.setValue("categoria", v)}>
                         <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30"><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
                         <SelectContent>{categorias.map((c) => (<SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>))}</SelectContent>
                       </Select>
@@ -482,12 +484,13 @@ export default function MetasPage() {
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Atual (R$)</Label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-              <Input value={editValor} onChange={(e) => setEditValor(e.target.value)} className="h-11 rounded-xl pl-9 tabular-nums font-semibold" />
+              <Input {...editForm.register("valorAtual")} className={`h-11 rounded-xl pl-9 tabular-nums font-semibold ${editForm.formState.errors.valorAtual ? 'border-red-500' : ''}`} />
             </div>
+            {editForm.formState.errors.valorAtual && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.valorAtual.message}</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditMeta(null)} className="rounded-xl">Cancelar</Button>
-            <Button onClick={handleAtualizar} disabled={actionLoading === editMeta?.id} className="gap-2 rounded-xl shadow-premium font-semibold">
+            <Button onClick={editForm.handleSubmit(handleAtualizar)} disabled={actionLoading === editMeta?.id} className="gap-2 rounded-xl shadow-premium font-semibold">
               {actionLoading === editMeta?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" /> }
               Salvar
             </Button>

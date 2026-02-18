@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ControlFinance.Application.Services;
 
-public class TelegramBotService
+public class TelegramBotService : ITelegramBotService
 {
     private readonly string _sistemaWebUrl;
     private readonly IUsuarioRepository _usuarioRepo;
@@ -54,6 +54,48 @@ public class TelegramBotService
     private static readonly ConcurrentDictionary<long, ExclusaoPendente> _exclusaoPendente = new();
     // Semáforos por chat para evitar processamento concorrente que corrompe o estado
     private static readonly ConcurrentDictionary<long, SemaphoreSlim> _chatLocks = new();
+    // Controle: última vez que a limpeza periódica rodou
+    private static DateTime _ultimaLimpeza = DateTime.UtcNow;
+    private static readonly TimeSpan _intervaloLimpeza = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan _ttlPendente = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// Limpa entradas expiradas dos caches estáticos para evitar memory leak.
+    /// Chamado automaticamente a cada 30 min dentro do processamento de mensagens.
+    /// </summary>
+    internal static void LimparCachesExpirados()
+    {
+        var agora = DateTime.UtcNow;
+        if (agora - _ultimaLimpeza < _intervaloLimpeza)
+            return;
+        _ultimaLimpeza = agora;
+
+        // Limpar desvinculações expiradas
+        foreach (var kv in _desvinculacaoPendente)
+        {
+            if (agora - kv.Value > _ttlPendente)
+                _desvinculacaoPendente.TryRemove(kv.Key, out _);
+        }
+
+        // Limpar exclusões expiradas
+        foreach (var kv in _exclusaoPendente)
+        {
+            if (agora - kv.Value.CriadoEm > _ttlPendente)
+                _exclusaoPendente.TryRemove(kv.Key, out _);
+        }
+
+        // Limpar semáforos de chats que não têm pendências ativas e cujo semáforo está livre
+        foreach (var kv in _chatLocks)
+        {
+            if (!_desvinculacaoPendente.ContainsKey(kv.Key) &&
+                !_exclusaoPendente.ContainsKey(kv.Key) &&
+                kv.Value.CurrentCount > 0)
+            {
+                if (_chatLocks.TryRemove(kv.Key, out var sem))
+                    sem.Dispose();
+            }
+        }
+    }
 
     private class ExclusaoPendente
     {
@@ -289,6 +331,9 @@ public class TelegramBotService
 
     public async Task<string> ProcessarMensagemAsync(long chatId, string mensagem, string nomeUsuario)
     {
+        // Limpeza periódica dos caches estáticos (a cada 30 min)
+        LimparCachesExpirados();
+
         // Serializar processamento por chat — evita race conditions que corrompem estado
         var chatLock = ObterChatLock(chatId);
         await chatLock.WaitAsync();

@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useAvaliarGasto, useCategorias } from "@/hooks/use-queries";
 import { formatCurrency } from "@/lib/format";
+import { decisaoGastoSchema, type DecisaoGastoData } from "@/lib/schemas";
 import { motion, AnimatePresence } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Brain,
   Loader2,
@@ -18,6 +21,12 @@ import {
   ShieldAlert,
   Info,
   RotateCcw,
+  Calculator,
+  BarChart3,
+  Activity,
+  Heart,
+  ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import {
   PageShell,
@@ -30,14 +39,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { toast } from "sonner";
 import type { DecisaoGastoResult, DecisaoCompletaResult } from "@/lib/api";
 
 function isDecisaoRapida(result: DecisaoGastoResult | DecisaoCompletaResult): result is DecisaoGastoResult {
@@ -89,50 +90,40 @@ export default function DecisaoPage() {
   const avaliarGasto = useAvaliarGasto();
   const { data: categorias = [] } = useCategorias();
 
-  const [valor, setValor] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [categoria, setCategoria] = useState("");
-  const [parcelado, setParcelado] = useState(false);
-  const [parcelas, setParcelas] = useState("1");
+  const form = useForm<DecisaoGastoData>({
+    resolver: zodResolver(decisaoGastoSchema),
+    defaultValues: { valor: "", descricao: "", categoria: "", parcelado: false, parcelas: "1" },
+  });
 
+  const parcelado = form.watch("parcelado");
   const [resultado, setResultado] = useState<DecisaoGastoResult | DecisaoCompletaResult | null>(null);
 
-  const handleAvaliar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const valorNum = parseFloat(valor.replace(",", "."));
-    if (isNaN(valorNum) || valorNum <= 0) {
-      toast.error("Informe um valor válido maior que zero");
-      return;
-    }
-
+  const handleAvaliar = (data: DecisaoGastoData) => {
+    const valorNum = parseFloat(data.valor.replace(",", "."));
     avaliarGasto.mutate(
       {
         valor: valorNum,
-        descricao: descricao.trim() || undefined,
-        categoria: categoria || undefined,
-        parcelado,
-        parcelas: parcelado ? parseInt(parcelas) || 1 : 1,
+        descricao: data.descricao?.trim() || undefined,
+        categoria: data.categoria || undefined,
+        parcelado: data.parcelado,
+        parcelas: data.parcelado ? parseInt(data.parcelas || "1") || 1 : 1,
       },
       {
-        onSuccess: (data) => setResultado(data),
+        onSuccess: (res) => setResultado(res),
       }
     );
   };
 
   const handleReset = () => {
     setResultado(null);
-    setValor("");
-    setDescricao("");
-    setCategoria("");
-    setParcelado(false);
-    setParcelas("1");
+    form.reset();
   };
 
   return (
     <PageShell>
       <PageHeader
         title="Decisão de Gasto"
-        description="Avalie se uma compra cabe no seu orçamento antes de realizá-la"
+        description="Avalie se uma compra cabe no seu orçamento. Analisamos seus gastos, limites e receita para dar a melhor recomendação."
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -141,7 +132,7 @@ export default function DecisaoPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <form onSubmit={handleAvaliar} className="card-premium p-6 space-y-5">
+          <form onSubmit={form.handleSubmit(handleAvaliar)} className="card-premium p-6 space-y-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary shadow-sm">
                 <Brain className="h-5 w-5" />
@@ -158,43 +149,38 @@ export default function DecisaoPage() {
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                 <Input
                   placeholder="0,00"
-                  value={valor}
-                  onChange={(e) => setValor(e.target.value)}
-                  className="h-11 rounded-xl pl-9 tabular-nums text-lg font-semibold"
-                  required
+                  className={`h-11 rounded-xl pl-9 tabular-nums text-lg font-semibold ${form.formState.errors.valor ? 'border-red-500' : ''}`}
+                  {...form.register("valor")}
                 />
               </div>
+              {form.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{form.formState.errors.valor.message}</p>}
             </div>
 
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Descrição</Label>
               <Input
                 placeholder="Ex: Notebook, Tênis, Jantar..."
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
                 className="h-11 rounded-xl"
+                {...form.register("descricao")}
               />
             </div>
 
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</Label>
-              <Select value={categoria} onValueChange={setCategoria}>
-                <SelectTrigger className="h-11 rounded-xl">
-                  <SelectValue placeholder="Selecione (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categorias.map((c) => (
-                    <SelectItem key={c.id} value={c.nome}>
-                      {c.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <select
+                className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                {...form.register("categoria")}
+              >
+                <option value="">Selecione (opcional)</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.nome}>{c.nome}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/20 border border-border/30">
               <Label className="cursor-pointer text-sm font-semibold">Parcelado</Label>
-              <Switch checked={parcelado} onCheckedChange={setParcelado} />
+              <Switch checked={parcelado} onCheckedChange={(v) => form.setValue("parcelado", v)} />
             </div>
 
             {parcelado && (
@@ -204,9 +190,8 @@ export default function DecisaoPage() {
                   type="number"
                   min={2}
                   max={48}
-                  value={parcelas}
-                  onChange={(e) => setParcelas(e.target.value)}
                   className="h-11 rounded-xl"
+                  {...form.register("parcelas")}
                 />
               </div>
             )}
@@ -273,10 +258,32 @@ export default function DecisaoPage() {
                 <Brain className="h-9 w-9" />
               </div>
               <h3 className="font-extrabold text-lg mb-2">Análise Inteligente</h3>
-              <p className="text-sm text-muted-foreground/60 max-w-sm leading-relaxed">
+              <p className="text-sm text-muted-foreground/60 max-w-sm leading-relaxed mb-6">
                 Informe o valor e os detalhes da compra. O sistema analisará seu orçamento e
                 indicará se é seguro realizar o gasto.
               </p>
+              <div className="text-left w-full max-w-md space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider">Como funciona?</p>
+                <div className="grid gap-2">
+                  <div className="flex items-start gap-2.5 text-xs text-muted-foreground/60">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">1</span>
+                    <span><strong className="text-muted-foreground/80">Orçamento</strong> — Verifica se o valor cabe no seu saldo livre do mês</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-muted-foreground/60">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">2</span>
+                    <span><strong className="text-muted-foreground/80">Histórico</strong> — Compara com sua média de gastos dos últimos 3 meses</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-muted-foreground/60">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">3</span>
+                    <span><strong className="text-muted-foreground/80">Tendência</strong> — Analisa se seus gastos estão subindo ou caindo</span>
+                  </div>
+                  <div className="flex items-start gap-2.5 text-xs text-muted-foreground/60">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">4</span>
+                    <span><strong className="text-muted-foreground/80">Saúde Financeira</strong> — Gera um score de 0 a 100 avaliando sua situação geral</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground/40 italic">Quanto mais dados você cadastrar, mais precisa fica a análise.</p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -285,7 +292,54 @@ export default function DecisaoPage() {
   );
 }
 
+const camadaIconMap: Record<string, React.ReactNode> = {
+  matematica: <Calculator className="h-4 w-4" />,
+  historico: <BarChart3 className="h-4 w-4" />,
+  tendencia: <Activity className="h-4 w-4" />,
+  comportamental: <Heart className="h-4 w-4" />,
+};
+
+const camadaLabelMap: Record<string, string> = {
+  matematica: "Orçamento",
+  historico: "Histórico",
+  tendencia: "Tendência",
+  comportamental: "Saúde Financeira",
+};
+
+const camadaDescMap: Record<string, string> = {
+  matematica: "Verifica se o valor cabe no saldo livre do mês",
+  historico: "Compara com a média dos últimos 3 meses",
+  tendencia: "Analisa se seus gastos estão subindo ou caindo",
+  comportamental: "Avalia sua saúde financeira geral (score 0-100)",
+};
+
+function ScoreGauge({ score }: { score: number }) {
+  const color = score >= 70 ? "text-emerald-500" : score >= 40 ? "text-amber-500" : "text-red-500";
+  const bgColor = score >= 70 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-red-500";
+  const label = score >= 70 ? "Saudável" : score >= 40 ? "Atenção" : "Crítico";
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative h-10 w-10">
+        <svg className="h-10 w-10 -rotate-90" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/20" />
+          <circle cx="18" cy="18" r="14" fill="none" strokeWidth="3" strokeDasharray={`${(score / 100) * 88} 88`} strokeLinecap="round" className={color} />
+        </svg>
+        <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${color}`}>{score}</span>
+      </div>
+      <div>
+        <span className={`text-xs font-semibold ${color}`}>{label}</span>
+        <div className="flex items-center gap-1 mt-0.5">
+          <div className={`h-1.5 w-1.5 rounded-full ${bgColor}`} />
+          <span className="text-[10px] text-muted-foreground/60">Saúde Financeira</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RapidaResult({ data }: { data: DecisaoGastoResult }) {
+  const [layersOpen, setLayersOpen] = useState(false);
   const config = parecerConfig(data.parecer);
   const percentualUsado = data.receitaPrevistoMes > 0
     ? ((data.gastoAcumuladoMes / data.receitaPrevistoMes) * 100)
@@ -299,8 +353,13 @@ function RapidaResult({ data }: { data: DecisaoGastoResult }) {
           <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${config.bg} ${config.color}`}>
             {config.icon}
           </div>
-          <div>
-            <Badge className={config.badgeCls}>{config.label}</Badge>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <Badge className={config.badgeCls}>{config.label}</Badge>
+              {data.scoreSaudeFinanceira != null && (
+                <ScoreGauge score={data.scoreSaudeFinanceira} />
+              )}
+            </div>
             <p className="text-sm text-muted-foreground/70 mt-1">
               {data.podeGastar ? "Este gasto está ok para seu orçamento" : "Cuidado com este gasto"}
             </p>
@@ -310,6 +369,71 @@ function RapidaResult({ data }: { data: DecisaoGastoResult }) {
           <p className="text-sm leading-relaxed">{data.resumoTexto}</p>
         )}
       </div>
+
+      {/* 4-Layer Analysis */}
+      {data.camadas && data.camadas.length > 0 && (
+        <div className="card-premium overflow-hidden">
+          <button
+            onClick={() => setLayersOpen(!layersOpen)}
+            className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Como analisamos</span>
+              <span className="text-xs text-muted-foreground/60">
+                ({data.camadas.length} camadas de análise)
+              </span>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground/60 transition-transform ${layersOpen ? "rotate-180" : ""}`} />
+          </button>
+          <AnimatePresence>
+            {layersOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4 space-y-3">
+                  {data.camadas.map((camada, i) => {
+                    const layerConfig = parecerConfig(camada.parecer);
+                    return (
+                      <motion.div
+                        key={camada.camada}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.08 }}
+                        className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 border border-border/40"
+                      >
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${layerConfig.bg} ${layerConfig.color}`}>
+                          {camadaIconMap[camada.camada] ?? <Info className="h-4 w-4" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-semibold">
+                              {camadaLabelMap[camada.camada] ?? camada.camada}
+                            </span>
+                            <Badge className={`text-[10px] px-1.5 py-0 ${layerConfig.badgeCls}`}>
+                              {layerConfig.label}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground/70 mb-1">
+                            {camadaDescMap[camada.camada] ?? ""}
+                          </p>
+                          <p className="text-xs leading-relaxed">
+                            {camada.justificativa}
+                          </p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -355,6 +479,36 @@ function RapidaResult({ data }: { data: DecisaoGastoResult }) {
         </div>
       </div>
 
+      {/* Goal Impact */}
+      {data.impactoMetas && data.impactoMetas.length > 0 && (
+        <div className="card-premium p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">Impacto nas Metas</span>
+          </div>
+          {data.impactoMetas.map((meta) => (
+            <div key={meta.nomeMeta} className="p-3 rounded-xl bg-muted/20 border border-border/40 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{meta.nomeMeta}</span>
+                {meta.mesesAtraso > 0 && (
+                  <Badge variant="destructive" className="text-[10px]">
+                    +{meta.mesesAtraso} {meta.mesesAtraso === 1 ? "mês" : "meses"} de atraso
+                  </Badge>
+                )}
+              </div>
+              {meta.descricao && (
+                <p className="text-xs text-muted-foreground/70">{meta.descricao}</p>
+              )}
+              {meta.valorMensalNecessarioAntes > 0 && meta.valorMensalNecessarioDepois > meta.valorMensalNecessarioAntes && (
+                <p className="text-xs">
+                  Parcela mensal: {formatCurrency(meta.valorMensalNecessarioAntes)} → {formatCurrency(meta.valorMensalNecessarioDepois)}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Additional Info */}
       <div className="flex flex-wrap gap-3">
         <div className="card-premium px-4 py-3 flex items-center gap-2">
@@ -363,6 +517,14 @@ function RapidaResult({ data }: { data: DecisaoGastoResult }) {
             <strong>{data.diasRestantesMes}</strong> dias restantes no mês
           </span>
         </div>
+        {data.variacaoVsMediaHistorica != null && (
+          <div className="card-premium px-4 py-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            <span className="text-sm">
+              {data.variacaoVsMediaHistorica > 0 ? "+" : ""}{data.variacaoVsMediaHistorica.toFixed(0)}% vs média histórica
+            </span>
+          </div>
+        )}
         {data.reservaMetas > 0 && (
           <div className="card-premium px-4 py-3 flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" />
@@ -377,6 +539,17 @@ function RapidaResult({ data }: { data: DecisaoGastoResult }) {
             <span className="text-sm text-amber-700 dark:text-amber-400">{data.alertaLimite}</span>
           </div>
         )}
+      </div>
+
+      {/* Confidence / Data Quality */}
+      <div className="card-premium p-4 flex items-start gap-3 bg-primary/[0.03]">
+        <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+        <div>
+          <p className="text-xs text-muted-foreground/70 leading-relaxed">
+            <strong className="text-foreground/80">Dica:</strong> Quanto mais lançamentos você cadastrar (receitas, despesas, metas), mais precisa fica a análise.
+            O sistema usa seus dados reais dos últimos 3 meses para calcular tendências e padrões de gasto.
+          </p>
+        </div>
       </div>
     </div>
   );

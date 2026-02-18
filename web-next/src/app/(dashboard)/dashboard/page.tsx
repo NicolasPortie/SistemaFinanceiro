@@ -23,7 +23,6 @@ import {
   ChevronRight,
   CalendarDays,
   Plus,
-  PiggyBank,
   Activity,
   Tag,
   Scale,
@@ -47,6 +46,8 @@ import {
   AlertsCard,
   CardsOverviewCard,
   ActiveMetasCard,
+  TelegramOnboarding,
+  PrimeirosPassos,
 } from "@/components/dashboard";
 
 const categoryColors = [
@@ -131,6 +132,17 @@ export default function DashboardPage() {
 
   return (
     <PageShell>
+      {/* ── Telegram Onboarding (new users) ── */}
+      <TelegramOnboarding />
+
+      {/* ── Primeiros Passos (new users) ── */}
+      <PrimeirosPassos
+        hasLancamentos={!!lancamentos && lancamentos.items.length > 0}
+        hasMetas={metas.length > 0}
+        hasCartoes={cartoes.length > 0}
+        telegramVinculado={!!usuario?.telegramVinculado}
+      />
+
       {/* ── Hero Welcome ── */}
       <HeroSection
         usuario={usuario}
@@ -178,6 +190,7 @@ export default function DashboardPage() {
             <StatCard
               title="Receitas"
               value={formatCurrency(resumo.totalReceitas)}
+              tooltip="Total de dinheiro que entrou neste mês (salário, freelance, etc)."
               icon={<TrendingUp className="h-5 w-5" />}
               trend="up"
               delay={0}
@@ -185,6 +198,7 @@ export default function DashboardPage() {
             <StatCard
               title="Gastos"
               value={formatCurrency(resumo.totalGastos)}
+              tooltip="Total de despesas registradas neste mês."
               icon={<TrendingDown className="h-5 w-5" />}
               trend="down"
               delay={1}
@@ -193,10 +207,11 @@ export default function DashboardPage() {
               title="Resultado do Mês"
               value={formatCurrency(resumo.saldo)}
               subtitle={
-                resumo.saldo > 0 ? "Superávit" :
-                  resumo.saldo < 0 ? "Déficit" :
+                resumo.saldo > 0 ? "Sobrou dinheiro" :
+                  resumo.saldo < 0 ? "Gastou mais do que ganhou" :
                     "Equilibrado"
               }
+              tooltip="Diferença entre o que você recebeu e o que gastou neste mês."
               icon={<Scale className="h-5 w-5" />}
               trend={resumo.saldo > 0 ? "up" : resumo.saldo < 0 ? "down" : "neutral"}
               delay={2}
@@ -212,11 +227,12 @@ export default function DashboardPage() {
                 comprometimentoReceita === null
                   ? "Sem receita no período"
                   : comprometimentoReceita <= 70
-                    ? "Dentro do ideal"
+                    ? "Dentro do ideal (até 70%)"
                     : comprometimentoReceita <= 100
-                      ? "Atenção"
-                      : "Acima da receita"
+                      ? "Atenção — acima de 70%"
+                      : "Gastando mais do que ganha"
               }
+              tooltip="Quanto da sua renda está sendo gasto. Até 70% é considerado saudável — sobram 30% para poupar."
               icon={<Percent className="h-5 w-5" />}
               trend={
                 comprometimentoReceita === null
