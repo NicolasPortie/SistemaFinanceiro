@@ -43,6 +43,16 @@ public class AjusteLimiteRequest
     public decimal PercentualExtra { get; set; }
 }
 
+public class ResgatarLimiteRequest
+{
+    [Range(0.01, 1_000_000, ErrorMessage = "Valor de resgate deve ser maior que zero.")]
+    public decimal ValorResgate { get; set; }
+
+    /// <summary>Percentual de bônus que foi aplicado na entrada e deve ser removido na saída. Padrão 40%.</summary>
+    [Range(0, 100, ErrorMessage = "Percentual deve estar entre 0 e 100.")]
+    public decimal PercentualBonus { get; set; } = 40;
+}
+
 // ====== Categorias ======
 public class CriarCategoriaRequest
 {

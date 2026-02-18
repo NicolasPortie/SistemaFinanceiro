@@ -134,13 +134,18 @@ public class CartoesController : BaseAuthController
         // 3. Saldo disponível real = acumulado - comprometido
         var saldoDisponivel = saldoAcumulado - totalComprometido;
 
-        if (request.ValorAdicional > saldoDisponivel)
+        // CORREÇÃO CENTAVOS: Ignorar centavos no aporte de garantia, conforme regra de negócio.
+        var valorBase = Math.Floor(request.ValorAdicional);
+        if (valorBase < 1)
+            return BadRequest(new { erro = "O valor mínimo para garantia é R$ 1,00." });
+
+        if (valorBase > saldoDisponivel)
         {
-            var faltam = request.ValorAdicional - saldoDisponivel;
+            var faltam = valorBase - saldoDisponivel;
             return BadRequest(new
             {
                 erro = "Saldo insuficiente para garantia.",
-                mensagem = $"Você solicitou R$ {request.ValorAdicional:N2} de garantia, " +
+                mensagem = $"Você solicitou R$ {valorBase:N0} de garantia, " +
                            $"mas seu saldo disponível é R$ {saldoDisponivel:N2}. " +
                            $"Faltam R$ {faltam:N2}.",
                 detalhe = $"Saldo em conta (receitas - gastos efetivos): R$ {saldoAcumulado:N2}. " +
@@ -152,17 +157,17 @@ public class CartoesController : BaseAuthController
                 saldoAcumulado,
                 totalComprometido,
                 saldoDisponivel,
-                valorSolicitado = request.ValorAdicional
+                valorSolicitado = valorBase
             });
         }
 
-        var valorAcrescimo = request.ValorAdicional * (request.PercentualExtra / 100m);
-        var novoLimiteTotal = cartao.Limite + request.ValorAdicional + valorAcrescimo;
+        var valorAcrescimo = valorBase * (request.PercentualExtra / 100m);
+        var novoLimiteTotal = cartao.Limite + valorBase + valorAcrescimo;
 
         var ajuste = new AjusteLimiteCartao
         {
             CartaoId = cartao.Id,
-            ValorBase = request.ValorAdicional,
+            ValorBase = valorBase,
             Percentual = request.PercentualExtra,
             ValorAcrescimo = valorAcrescimo,
             NovoLimiteTotal = novoLimiteTotal,
@@ -179,15 +184,91 @@ public class CartoesController : BaseAuthController
             mensagem = "Limite extra aplicado! Valor comprometido do seu saldo como garantia.",
             novoLimite = cartao.Limite,
             saldoAcumulado,
-            saldoComprometidoTotal = totalComprometido + request.ValorAdicional,
-            saldoDisponivelRestante = saldoDisponivel - request.ValorAdicional,
+            saldoComprometidoTotal = totalComprometido + valorBase,
+            saldoDisponivelRestante = saldoDisponivel - valorBase,
             detalhes = new
             {
-                ValorBase = request.ValorAdicional,
+                ValorBase = valorBase,
                 Percentual = request.PercentualExtra,
                 ValorExtra = valorAcrescimo,
-                TotalAdicionado = request.ValorAdicional + valorAcrescimo
+                TotalAdicionado = valorBase + valorAcrescimo
             }
+        });
+    }
+
+    [HttpPost("{id}/resgatar-limite")]
+    public async Task<IActionResult> ResgatarLimiteExtra(int id, [FromBody] ResgatarLimiteRequest request)
+    {
+        var cartao = await _cartaoRepo.ObterPorIdAsync(id);
+        if (cartao == null || cartao.UsuarioId != UsuarioId)
+            return NotFound(new { erro = "Cartão não encontrado." });
+
+        // Regra de Negócio: Ignorar centavos no resgate também
+        var valorResgate = Math.Floor(request.ValorResgate);
+        if (valorResgate < 1)
+            return BadRequest(new { erro = "Valor mínimo para resgate é R$ 1,00." });
+
+        // 1. Verificar se user tem essa garantia travada
+        var totalComprometido = await _cartaoRepo.ObterTotalComprometidoAsync(UsuarioId);
+        if (totalComprometido < valorResgate)
+        {
+            return BadRequest(new
+            {
+                erro = "Saldo de garantia insuficiente para resgate.",
+                garantiaAtual = totalComprometido,
+                valorSolicitado = valorResgate
+            });
+        }
+
+        // 2. Calcular quanto de limite TOTAL isso representa (Valor + Bônus)
+        // Se a garantia de R$ 1000 gerou R$ 1400 de limite, ao tirar R$ 1000, perde R$ 1400 de limite.
+        var percentual = request.PercentualBonus / 100m;
+        var reducaoLimiteTotal = valorResgate * (1 + percentual);
+
+        var novoLimite = cartao.Limite - reducaoLimiteTotal;
+
+        // 3. Verificar se o novo limite comporta os gastos atuais
+        var faturas = await _faturaService.ObterFaturasAsync(cartao.Id);
+        var limiteUsado = faturas.Where(f => f.Status != "Paga").Sum(f => f.Total);
+
+        if (novoLimite < limiteUsado)
+        {
+            var maximoResgatavel = (cartao.Limite - limiteUsado) / (1 + percentual);
+            return BadRequest(new
+            {
+                erro = "Não é possível resgatar esse valor pois comprometeria o limite já utilizado.",
+                mensagem = $"Seu limite usado é R$ {limiteUsado:N2}. Ao resgatar R$ {valorResgate:N0}, seu limite cairia para R$ {novoLimite:N2}.",
+                limiteAtual = cartao.Limite,
+                limiteUsado,
+                maximoResgatavelEstimado = Math.Floor(maximoResgatavel)
+            });
+        }
+
+        // 4. Executar resgate (Adicionar Ajuste Negativo)
+        // Isso reduzirá o TotalComprometido (via soma do repositorio) e liberará o saldo acumulado.
+        var ajuste = new AjusteLimiteCartao
+        {
+            CartaoId = cartao.Id,
+            ValorBase = -valorResgate,
+            Percentual = request.PercentualBonus,
+            ValorAcrescimo = -(valorResgate * percentual),
+            NovoLimiteTotal = novoLimite,
+            DataAjuste = DateTime.UtcNow
+        };
+
+        cartao.Limite = novoLimite;
+
+        await _cartaoRepo.AtualizarAsync(cartao);
+        await _cartaoRepo.AdicionarAjusteLimiteAsync(ajuste);
+
+        var novoSaldoDisponivel = (await _resumoService.GerarSaldoAcumuladoAsync(UsuarioId)) - (totalComprometido - valorResgate);
+
+        return Ok(new
+        {
+            mensagem = "Resgate realizado com sucesso! O valor da garantia voltou para seu saldo disponível.",
+            novoLimite = cartao.Limite,
+            valorResgatado = valorResgate,
+            novoSaldoDisponivel
         });
     }
 }
