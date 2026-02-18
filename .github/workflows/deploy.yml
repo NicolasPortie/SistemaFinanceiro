@@ -104,12 +104,12 @@ jobs:
 
     - name: Verificar saúde da API
       run: |
-        curl -sf http://localhost:5000/health || exit 1
+        docker exec controlfinance-api-prod curl -sf http://localhost:5000/health || exit 1
         echo "API está respondendo!"
 
     - name: Verificar saúde do Frontend
       run: |
-        curl -sf -o /dev/null http://localhost:3000 || exit 1
+        docker exec controlfinance-web-prod curl -sf http://localhost:3000 || exit 1
         echo "Frontend está respondendo!"
 
     - name: Resumo do deploy
