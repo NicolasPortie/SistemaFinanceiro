@@ -44,6 +44,7 @@ import {
 } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -264,30 +265,30 @@ export default function ContasFixasPage() {
       ) : isError ? (
         <ErrorState message={error?.message} onRetry={() => refetch()} />
       ) : (
-        <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Total Contas"
+            title="Total de Contas"
             value={stats.count}
             icon={<FileText className="h-5 w-5" />}
             trend="neutral"
             delay={0}
           />
           <StatCard
-            title="Valor Total"
+            title="Custo Mensal Total"
             value={formatCurrency(stats.total)}
             icon={<DollarSign className="h-5 w-5" />}
             trend="neutral"
             delay={0.05}
           />
           <StatCard
-            title="Vencidos"
+            title="Contas Vencidas"
             value={stats.vencidos}
             icon={<AlertCircle className="h-5 w-5" />}
             trend={stats.vencidos > 0 ? "down" : "up"}
             delay={0.1}
           />
           <StatCard
-            title="Próximos"
+            title="Vencem em Breve"
             value={stats.proximos}
             icon={<Clock className="h-5 w-5" />}
             trend={stats.proximos > 0 ? "down" : "neutral"}
@@ -298,8 +299,8 @@ export default function ContasFixasPage() {
 
       {/* ── Toolbar: Search + Filters ── */}
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card-premium">
-        <div className="p-4 flex flex-col lg:flex-row items-start lg:items-center gap-3">
-          <div className="relative flex-1 w-full lg:max-w-sm">
+        <div className="p-4 flex flex-col md:flex-row items-start md:items-center gap-3">
+          <div className="relative flex-1 w-full md:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
             <Input
               placeholder="Buscar lembretes..."
@@ -314,7 +315,7 @@ export default function ContasFixasPage() {
             )}
           </div>
 
-          <Separator orientation="vertical" className="h-6 hidden lg:block" />
+          <Separator orientation="vertical" className="h-6 hidden md:block" />
 
           <div className="flex items-center gap-2 flex-wrap">
             <SlidersHorizontal className="h-4 w-4 text-muted-foreground/60 hidden sm:block" />
@@ -510,7 +511,12 @@ export default function ContasFixasPage() {
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
                   <div className="relative">
                     <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-blue-500/10 text-blue-500">R$</div>
-                    <Input placeholder="0,00" {...createForm.register("valor")} className={cn("h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.valor && "border-red-500")} />
+                    <CurrencyInput
+                      placeholder="0,00"
+                      className={cn("h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.valor && "border-red-500")}
+                      value={createForm.watch("valor")}
+                      onValueChange={(v) => createForm.setValue("valor", v, { shouldValidate: createForm.formState.isSubmitted })}
+                    />
                   </div>
                   {createForm.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.valor.message}</p>}
                 </div>
@@ -743,7 +749,12 @@ export default function ContasFixasPage() {
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input placeholder="0,00" {...editForm.register("valor")} className={cn("h-11 rounded-xl pl-9 tabular-nums", editForm.formState.errors.valor && "border-red-500")} />
+                <CurrencyInput
+                  placeholder="0,00"
+                  className={cn("h-11 rounded-xl pl-9 tabular-nums", editForm.formState.errors.valor && "border-red-500")}
+                  value={editForm.watch("valor") ?? ""}
+                  onValueChange={(v) => editForm.setValue("valor", v, { shouldValidate: editForm.formState.isSubmitted })}
+                />
               </div>
               {editForm.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.valor.message}</p>}
             </div>

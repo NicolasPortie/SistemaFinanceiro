@@ -42,6 +42,7 @@ import {
 } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -208,30 +209,30 @@ export default function MetasPage() {
       {loading ? (
         <CardSkeleton count={4} />
       ) : (
-        <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Ativas"
+            title="Metas Ativas"
             value={ativas.length}
             icon={<Target className="h-5 w-5" />}
             trend="neutral"
             delay={0}
           />
           <StatCard
-            title="Concluídas"
+            title="Metas Concluídas"
             value={concluidas.length}
             icon={<Trophy className="h-5 w-5" />}
             trend="up"
             delay={1}
           />
           <StatCard
-            title="Progresso Médio"
+            title="Progresso Médio Geral"
             value={`${avgProgress}%`}
             icon={<TrendingUp className="h-5 w-5" />}
             trend={avgProgress >= 50 ? "up" : avgProgress > 0 ? "neutral" : "down"}
             delay={2}
           />
           <StatCard
-            title="Total Guardado"
+            title="Total Poupado"
             value={formatCurrency(totalAtual)}
             subtitle={`de ${formatCurrency(totalAlvo)} total`}
             icon={<DollarSign className="h-5 w-5" />}
@@ -245,7 +246,7 @@ export default function MetasPage() {
       {ativas.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">Metas Ativas</h3>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AnimatePresence>
               {ativas.map((meta, i) => (
                 <MetaCard
@@ -267,7 +268,7 @@ export default function MetasPage() {
       {pausadas.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">Pausadas</h3>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {pausadas.map((meta, i) => (
               <MetaCard
                 key={meta.id}
@@ -287,7 +288,7 @@ export default function MetasPage() {
       {concluidas.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">Concluídas</h3>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {concluidas.map((meta, i) => (
               <motion.div key={meta.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="card-premium p-5 group">
                 <div className="flex items-center gap-3">
@@ -402,7 +403,12 @@ export default function MetasPage() {
                     <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor Alvo (R$)</Label>
                     <div className="relative">
                       <div className="absolute left-0 top-0 bottom-0 w-9 sm:w-10 flex items-center justify-center rounded-l-xl text-xs font-bold bg-emerald-500/10 text-emerald-500">R$</div>
-                      <Input placeholder="0,00" {...createForm.register("valorAlvo")} className={`h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all ${createForm.formState.errors.valorAlvo ? 'border-red-500' : ''}`} />
+                      <CurrencyInput
+                        placeholder="0,00"
+                        className={`h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all ${createForm.formState.errors.valorAlvo ? 'border-red-500' : ''}`}
+                        value={createForm.watch("valorAlvo")}
+                        onValueChange={(v) => createForm.setValue("valorAlvo", v, { shouldValidate: createForm.formState.isSubmitted })}
+                      />
                     </div>
                     {createForm.formState.errors.valorAlvo && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.valorAlvo.message}</p>}
                   </div>
@@ -410,7 +416,12 @@ export default function MetasPage() {
                     <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Já guardado (R$)</Label>
                     <div className="relative">
                       <div className="absolute left-0 top-0 bottom-0 w-9 sm:w-10 flex items-center justify-center rounded-l-xl text-xs font-bold bg-blue-500/10 text-blue-500">R$</div>
-                      <Input placeholder="0,00" {...createForm.register("valorAtual")} className="h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" />
+                      <CurrencyInput
+                        placeholder="0,00"
+                        className="h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all"
+                        value={createForm.watch("valorAtual") ?? ""}
+                        onValueChange={(v) => createForm.setValue("valorAtual", v, { shouldValidate: createForm.formState.isSubmitted })}
+                      />
                     </div>
                   </div>
                 </div>

@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -237,30 +238,30 @@ export default function CartoesPage() {
 
       {/* ── Stat Cards ── */}
       {!isLoading && cartoes.length > 0 && (
-        <div className="grid gap-2 sm:gap-4 grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Cartões"
+            title="Total de Cartões"
             value={cartoes.length}
             icon={<CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />}
             trend="neutral"
             delay={0}
           />
           <StatCard
-            title="Limite Total"
+            title="Limite Total (todos)"
             value={formatCurrency(totalLimite)}
             icon={<DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />}
             trend="neutral"
             delay={1}
           />
           <StatCard
-            title="Fatura Atual"
+            title="Fatura Aberta Atual"
             value={formatCurrency(totalUsado)}
             icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
             trend="down"
             delay={2}
           />
           <StatCard
-            title="Disponível"
+            title="Crédito Disponível"
             value={formatCurrency(totalDisponivel)}
             icon={<Wallet className="h-4 w-4 sm:h-5 sm:w-5" />}
             trend="up"
@@ -419,7 +420,12 @@ export default function CartoesPage() {
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Limite (R$)</Label>
                   <div className="relative">
                     <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-violet-500/10 text-violet-500">R$</div>
-                    <Input placeholder="0,00" className="h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" {...form.register("limite")} />
+                    <CurrencyInput
+                      placeholder="0,00"
+                      className="h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all"
+                      value={form.watch("limite")}
+                      onValueChange={(v) => form.setValue("limite", v, { shouldValidate: form.formState.isSubmitted })}
+                    />
                   </div>
                   {form.formState.errors.limite && <p className="text-xs text-red-500 font-medium">{form.formState.errors.limite.message}</p>}
                 </div>
@@ -486,7 +492,11 @@ export default function CartoesPage() {
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Limite (R$)</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input className="h-11 rounded-xl pl-9 tabular-nums font-semibold" {...editFormState.register("limite")} />
+                <CurrencyInput
+                  className="h-11 rounded-xl pl-9 tabular-nums font-semibold"
+                  value={editFormState.watch("limite") ?? ""}
+                  onValueChange={(v) => editFormState.setValue("limite", v, { shouldValidate: editFormState.formState.isSubmitted })}
+                />
               </div>
               {editFormState.formState.errors.limite && <p className="text-xs text-red-500">{editFormState.formState.errors.limite.message}</p>}
             </div>
@@ -595,10 +605,11 @@ export default function CartoesPage() {
                   <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Valor da garantia (R$)</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                    <Input
+                    <CurrencyInput
                       className="h-12 rounded-xl pl-9 tabular-nums font-bold text-lg"
                       placeholder="0,00"
-                      {...ajusteForm.register("valorAdicional", { required: true })}
+                      value={ajusteForm.watch("valorAdicional")}
+                      onValueChange={(v) => ajusteForm.setValue("valorAdicional", v)}
                     />
                   </div>
                   <p className="text-[11px] text-muted-foreground/60">Bônus de {percentualExtraWatch}% será aplicado automaticamente (+{formatCurrency(valorExtraCalculado)}).</p>
@@ -650,10 +661,11 @@ export default function CartoesPage() {
                     </div>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                      <Input
+                      <CurrencyInput
                         className={`h-11 rounded-xl pl-9 tabular-nums font-semibold ${resgateExcedeGarantia && valorResgateBase > 0 ? 'border-red-500 focus-visible:ring-red-500/30' : ''}`}
                         placeholder="0,00"
-                        {...resgateForm.register("valorResgate", { required: true })}
+                        value={resgateForm.watch("valorResgate")}
+                        onValueChange={(v) => resgateForm.setValue("valorResgate", v)}
                       />
                     </div>
                     {resgateExcedeGarantia && valorResgateBase > 0 && (

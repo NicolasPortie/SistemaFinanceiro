@@ -430,7 +430,7 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
         ) : detalhe ? (
           <div className="space-y-5">
             {/* Basic info */}
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               {[
                 { label: "Nome", value: detalhe.nome },
                 { label: "Email", value: detalhe.email },
@@ -451,7 +451,7 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60 mb-3 flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3" />Resumo Financeiro
               </p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[
                   { label: "Receita média", value: detalhe.receitaMedia, color: "text-emerald-500", bg: "bg-emerald-500/10" },
                   { label: "Gasto médio", value: detalhe.gastoMedio, color: "text-red-500", bg: "bg-red-500/10" },

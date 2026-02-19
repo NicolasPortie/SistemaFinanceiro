@@ -39,6 +39,7 @@ import { PageShell, PageHeader, StatCard, EmptyState } from "@/components/shared
 import { ProjectionChart } from "@/components/charts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -152,10 +153,11 @@ export default function SimulacaoPage() {
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                    <Input
+                    <CurrencyInput
                       placeholder="0,00"
                       className={`h-11 rounded-xl pl-9 tabular-nums text-lg font-semibold ${form.formState.errors.valor ? 'border-red-500' : ''}`}
-                      {...form.register("valor")}
+                      value={form.watch("valor")}
+                      onValueChange={(v) => form.setValue("valor", v, { shouldValidate: form.formState.isSubmitted })}
                     />
                   </div>
                   {form.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{form.formState.errors.valor.message}</p>}
@@ -311,21 +313,20 @@ export default function SimulacaoPage() {
                 {/* Metrics */}
                 <div className="grid gap-5 sm:grid-cols-2">
                   <StatCard
-                    title="Pior Mês"
+                    title="Pior Mês Projetado"
                     value={resultado.piorMes}
                     subtitle={`Saldo: ${formatCurrency(resultado.menorSaldoProjetado)}`}
                     icon={<TrendingDown className="h-5 w-5" />}
                     trend="down"
                   />
                   <StatCard
-                    title="Folga Mensal Média"
+                    title="Sobra Mensal Média"
                     value={formatCurrency(resultado.folgaMensalMedia)}
                     icon={<TrendingUp className="h-5 w-5" />}
                     trend={resultado.folgaMensalMedia >= 0 ? "up" : "down"}
                   />
                 </div>
 
-                {/* Alternative Scenarios */}
                 {resultado.cenariosAlternativos && resultado.cenariosAlternativos.length > 0 && (
                   <div className="card-premium p-6">
                     <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground/70 mb-4">
@@ -568,42 +569,42 @@ export default function SimulacaoPage() {
             <>
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 <StatCard
-                  title="Receita Média"
+                  title="Receita Mensal Média"
                   value={formatCurrency(perfil.receitaMensalMedia)}
                   icon={<TrendingUp className="h-5 w-5" />}
                   trend="up"
                   delay={0}
                 />
                 <StatCard
-                  title="Gasto Médio"
+                  title="Gasto Mensal Médio"
                   value={formatCurrency(perfil.gastoMensalMedio)}
                   icon={<TrendingDown className="h-5 w-5" />}
                   trend="down"
                   delay={1}
                 />
                 <StatCard
-                  title="Saldo Médio"
+                  title="Saldo Mensal Médio"
                   value={formatCurrency(perfil.saldoMedioMensal)}
                   icon={<Wallet className="h-5 w-5" />}
                   trend={perfil.saldoMedioMensal >= 0 ? "up" : "down"}
                   delay={2}
                 />
                 <StatCard
-                  title="Parcelas Abertas"
+                  title="Parcelas em Aberto"
                   value={perfil.quantidadeParcelasAbertas.toString()}
                   subtitle={`Total: ${formatCurrency(perfil.totalParcelasAbertas)}`}
                   icon={<CreditCard className="h-5 w-5" />}
                   delay={3}
                 />
                 <StatCard
-                  title="Histórico"
+                  title="Histórico de Dados"
                   value={`${perfil.mesesComDados} meses`}
                   subtitle={`${perfil.diasDeHistorico} dias de dados`}
                   icon={<Calendar className="h-5 w-5" />}
                   delay={4}
                 />
                 <StatCard
-                  title="Confiança"
+                  title="Nível de Confiança"
                   value={perfil.confianca}
                   icon={<Target className="h-5 w-5" />}
                   delay={5}

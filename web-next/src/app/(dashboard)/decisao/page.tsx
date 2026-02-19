@@ -35,6 +35,7 @@ import {
 } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -147,10 +148,11 @@ export default function DecisaoPage() {
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$) *</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <Input
+                <CurrencyInput
                   placeholder="0,00"
                   className={`h-11 rounded-xl pl-9 tabular-nums text-lg font-semibold ${form.formState.errors.valor ? 'border-red-500' : ''}`}
-                  {...form.register("valor")}
+                  value={form.watch("valor")}
+                  onValueChange={(v) => form.setValue("valor", v, { shouldValidate: form.formState.isSubmitted })}
                 />
               </div>
               {form.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{form.formState.errors.valor.message}</p>}

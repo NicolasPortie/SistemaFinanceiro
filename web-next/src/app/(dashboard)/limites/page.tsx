@@ -29,6 +29,7 @@ import {
 } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -161,9 +162,9 @@ export default function LimitesPage() {
         <ErrorState message={error?.message} onRetry={() => refetch()} />
       ) : limites.length > 0 ? (
         <>
-          <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <StatCard
-              title="Limites Ativos"
+              title="Limites Cadastrados"
               value={limites.length}
               icon={<Gauge className="h-5 w-5" />}
               trend="neutral"
@@ -177,14 +178,14 @@ export default function LimitesPage() {
               delay={1}
             />
             <StatCard
-              title="Em Alerta"
+              title="Limites em Alerta"
               value={alertCount}
               icon={<AlertTriangle className="h-5 w-5" />}
               trend={alertCount > 0 ? "down" : "neutral"}
               delay={2}
             />
             <StatCard
-              title="Uso Médio"
+              title="Uso Médio Geral"
               value={`${avgUse}%`}
               icon={<BarChart3 className="h-5 w-5" />}
               trend="neutral"
@@ -193,7 +194,7 @@ export default function LimitesPage() {
           </div>
 
           {/* ── Limits Grid ── */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AnimatePresence>
               {limites.map((l, i) => (
                 <motion.div
@@ -339,7 +340,12 @@ export default function LimitesPage() {
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor Limite (R$)</Label>
                   <div className="relative">
                     <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-amber-500/10 text-amber-500">R$</div>
-                    <Input placeholder="0,00" className={`h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all ${form.formState.errors.valor ? 'border-red-500' : ''}`} {...form.register("valor")} />
+                    <CurrencyInput
+                      placeholder="0,00"
+                      className={`h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all ${form.formState.errors.valor ? 'border-red-500' : ''}`}
+                      value={form.watch("valor")}
+                      onValueChange={(v) => form.setValue("valor", v, { shouldValidate: form.formState.isSubmitted })}
+                    />
                   </div>
                   {form.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{form.formState.errors.valor.message}</p>}
                 </div>

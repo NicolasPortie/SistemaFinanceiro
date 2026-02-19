@@ -139,7 +139,7 @@ export function StatCard({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="h-3 w-3 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors cursor-help shrink-0" />
+                    <Info className="h-3 w-3 text-muted-foreground/70 hover:text-primary/80 transition-colors cursor-help shrink-0" />
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-55 text-xs leading-relaxed font-normal normal-case tracking-normal">
                     {tooltip}

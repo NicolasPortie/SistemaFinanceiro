@@ -365,7 +365,7 @@ export default function AdminConvitesPage() {
 
       {/* ── Create Dialog ── */}
       <Dialog open={showCreate} onOpenChange={(open) => !open && handleCloseCreate()}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg flex flex-col max-h-[92vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2.5 text-lg">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -378,7 +378,7 @@ export default function AdminConvitesPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5 py-1">
+          <div className="space-y-4 py-1 overflow-y-auto flex-1 pr-1">
             {/* Descrição */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -394,7 +394,7 @@ export default function AdminConvitesPage() {
             </div>
 
             {/* ── Tempo de Acesso ao Sistema ── */}
-            <div className="space-y-3 rounded-xl border border-primary/15 bg-primary/3 p-4">
+            <div className="space-y-2.5 rounded-xl border border-primary/15 bg-primary/3 p-3.5">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <ShieldCheck className="h-4 w-4" />
@@ -446,7 +446,7 @@ export default function AdminConvitesPage() {
             </div>
 
             {/* ── Prazo para Ativar o Código ── */}
-            <div className="space-y-3 rounded-xl border border-amber-500/15 bg-amber-500/3 p-4">
+            <div className="space-y-2.5 rounded-xl border border-amber-500/15 bg-amber-500/3 p-3.5">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
                   <Timer className="h-4 w-4" />

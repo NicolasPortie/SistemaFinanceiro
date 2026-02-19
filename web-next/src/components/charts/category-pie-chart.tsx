@@ -2,26 +2,46 @@
 
 import { formatCurrency } from "@/lib/format";
 import type { GastoCategoria } from "@/lib/api";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 const CHART_COLORS = [
-  "oklch(0.696 0.17 162.48)", // emerald
-  "oklch(0.623 0.214 259.815)", // blue
-  "oklch(0.606 0.25 292.717)", // violet
-  "oklch(0.769 0.188 70.08)", // amber
-  "oklch(0.637 0.237 25.331)", // red
-  "oklch(0.715 0.143 215.221)", // cyan
-  "oklch(0.656 0.241 354.308)", // pink
-  "oklch(0.705 0.213 47.604)", // orange
+  "#10b981", // emerald-500
+  "#3b82f6", // blue-500
+  "#8b5cf6", // violet-500
+  "#f59e0b", // amber-500
+  "#ef4444", // red-500
+  "#06b6d4", // cyan-500
+  "#ec4899", // pink-500
+  "#f97316", // orange-500
+  "#6366f1", // indigo-500
+  "#14b8a6", // teal-500
 ];
 
 interface CategoryPieChartProps {
   data: GastoCategoria[];
 }
 
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; payload: { percentual: number } }>;
+}
+
+function CustomTooltip({ active, payload }: CustomTooltipProps) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  return (
+    <div className="rounded-xl border border-border/50 bg-popover px-3.5 py-2.5 shadow-lg text-sm">
+      <p className="font-semibold text-foreground mb-1">{item.name}</p>
+      <p className="tabular-nums text-foreground font-bold">{formatCurrency(item.value)}</p>
+      <p className="text-muted-foreground/70 text-xs mt-0.5">{item.payload.percentual.toFixed(1)}% do total</p>
+    </div>
+  );
+}
+
 export function CategoryPieChart({ data }: CategoryPieChartProps) {
   if (!data || data.length === 0) return null;
 
+  const total = data.reduce((s, g) => s + g.total, 0);
   const chartData = data.map((g, i) => ({
     name: g.categoria,
     value: g.total,
@@ -30,42 +50,33 @@ export function CategoryPieChart({ data }: CategoryPieChartProps) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={chartData}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          innerRadius={60}
-          outerRadius={100}
-          paddingAngle={3}
-          strokeWidth={2}
-          stroke="oklch(var(--card))"
-        >
-          {chartData.map((entry, i) => (
-            <Cell key={i} fill={entry.fill} />
-          ))}
-        </Pie>
-        <Tooltip
-          formatter={(value) => formatCurrency(Number(value))}
-          contentStyle={{
-            backgroundColor: "oklch(var(--popover))",
-            border: "1px solid oklch(var(--border))",
-            borderRadius: "0.75rem",
-            fontSize: "0.875rem",
-            color: "oklch(var(--foreground))",
-          }}
-        />
-        <Legend
-          verticalAlign="bottom"
-          height={36}
-          formatter={(value: string) => (
-            <span style={{ color: "oklch(var(--foreground))", fontSize: "0.75rem" }}>{value}</span>
-          )}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+    <div className="relative">
+      <ResponsiveContainer width="100%" height={220}>
+        <PieChart>
+          <Pie
+            data={chartData}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            innerRadius={68}
+            outerRadius={98}
+            paddingAngle={2}
+            strokeWidth={0}
+          >
+            {chartData.map((entry, i) => (
+              <Cell key={i} fill={entry.fill} opacity={0.92} />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomTooltip />} />
+        </PieChart>
+      </ResponsiveContainer>
+
+      {/* Center label */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Total</p>
+        <p className="text-lg font-extrabold tabular-nums text-foreground leading-tight">{formatCurrency(total)}</p>
+      </div>
+    </div>
   );
 }

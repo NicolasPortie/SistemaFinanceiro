@@ -286,21 +286,21 @@ export default function LancamentosPage() {
       ) : resumo ? (
         <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Receitas"
+            title="Receitas do Mês"
             value={formatCurrency(resumo.totalReceitas)}
             icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
             trend="up"
             delay={0}
           />
           <StatCard
-            title="Despesas"
+            title="Gastos do Mês"
             value={formatCurrency(resumo.totalGastos)}
             icon={<TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />}
             trend="down"
             delay={1}
           />
           <StatCard
-            title="Resultado do Mês"
+            title="Saldo do Mês"
             value={formatCurrency(resumo.saldo)}
             subtitle={resumo.saldo > 0 ? "Superávit" : resumo.saldo < 0 ? "Déficit" : "Equilibrado"}
             icon={<Wallet className="h-4 w-4 sm:h-5 sm:w-5" />}
@@ -308,7 +308,7 @@ export default function LancamentosPage() {
             delay={2}
           />
           <StatCard
-            title="Transações"
+            title="Total de Transações"
             value={lancamentosData?.total ?? 0}
             subtitle="Este mês"
             icon={<Receipt className="h-4 w-4 sm:h-5 sm:w-5" />}
@@ -325,9 +325,9 @@ export default function LancamentosPage() {
         transition={{ delay: 0.2 }}
         className="card-premium"
       >
-        <div className="p-3 sm:p-4 flex flex-col lg:flex-row items-start lg:items-center gap-3">
+        <div className="p-3 sm:p-4 flex flex-col md:flex-row items-start md:items-center gap-3">
           {/* Search */}
-          <div className="relative flex-1 w-full lg:max-w-sm">
+          <div className="relative flex-1 w-full md:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
             <Input
               placeholder="Buscar lançamentos..."
@@ -342,7 +342,7 @@ export default function LancamentosPage() {
             )}
           </div>
 
-          <Separator orientation="vertical" className="h-6 hidden lg:block" />
+          <Separator orientation="vertical" className="h-6 hidden md:block" />
 
           {/* Filter pills */}
           <div className="flex items-center gap-2 flex-wrap flex-1">
@@ -371,7 +371,7 @@ export default function LancamentosPage() {
             </div>
 
             <Select value={filtroCategoria} onValueChange={(v) => { setFiltroCategoria(v); setPagina(1); }}>
-              <SelectTrigger className="w-full sm:w-40 h-8 rounded-lg text-xs border-transparent bg-muted/50 hover:bg-muted">
+              <SelectTrigger className="w-full sm:w-56 h-8 rounded-lg text-xs border-transparent bg-muted/50 hover:bg-muted min-w-0">
                 <Tag className="h-3 w-3 mr-1.5 text-muted-foreground/60" />
                 <SelectValue />
               </SelectTrigger>

@@ -124,7 +124,7 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="flex items-center justify-between"
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">
@@ -142,7 +142,7 @@ export default function DashboardPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {usuario?.telegramVinculado && (
             <Badge variant="secondary" className="gap-1.5 text-xs hidden sm:flex">
               <MessageCircle className="h-3 w-3" />
@@ -180,7 +180,7 @@ export default function DashboardPage() {
         </Button>
         <button
           onClick={reset}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-card border border-border/30 hover:border-primary/25 hover:shadow-md transition-all duration-300 min-w-45 justify-center shadow-sm group"
+          className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-card border border-border/30 hover:border-primary/25 hover:shadow-md transition-all duration-300 min-w-36 sm:min-w-45 justify-center shadow-sm group"
         >
           <CalendarDays className="h-4 w-4 text-primary transition-transform duration-300 group-hover:scale-105" />
           <span className="text-sm font-bold tracking-tight">{label}</span>
@@ -202,7 +202,7 @@ export default function DashboardPage() {
           {/* ── Stat Cards ── */}
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <StatCard
-              title="Receitas"
+              title="Receitas do Mês"
               value={formatCurrency(resumo.totalReceitas)}
               tooltip="Total de dinheiro que entrou neste mês (salário, freelance, etc)."
               icon={<TrendingUp className="h-5 w-5" />}
@@ -210,7 +210,7 @@ export default function DashboardPage() {
               delay={0}
             />
             <StatCard
-              title="Gastos"
+              title="Gastos do Mês"
               value={formatCurrency(resumo.totalGastos)}
               tooltip="Total de despesas registradas neste mês."
               icon={<TrendingDown className="h-5 w-5" />}
@@ -218,7 +218,7 @@ export default function DashboardPage() {
               delay={1}
             />
             <StatCard
-              title="Resultado do Mês"
+              title="Saldo do Mês"
               value={formatCurrency(resumo.saldo)}
               subtitle={
                 resumo.saldo > 0 ? "Sobrou dinheiro" :
@@ -231,7 +231,7 @@ export default function DashboardPage() {
               delay={2}
             />
             <StatCard
-              title="Comprometimento"
+              title="Renda Comprometida"
               value={
                 comprometimentoReceita !== null
                   ? `${comprometimentoReceita}%`

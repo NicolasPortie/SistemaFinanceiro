@@ -10,21 +10,22 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { CategoryPieChart } from "@/components/charts";
 import { EmptyState } from "@/components/shared/page-components";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { GastoCategoria, Lancamento } from "@/lib/api";
 
 const categoryColors = [
-  "bg-emerald-500",
-  "bg-blue-500",
-  "bg-violet-500",
-  "bg-amber-500",
-  "bg-rose-500",
-  "bg-cyan-500",
-  "bg-pink-500",
-  "bg-orange-500",
+  "#10b981", // emerald-500
+  "#3b82f6", // blue-500
+  "#8b5cf6", // violet-500
+  "#f59e0b", // amber-500
+  "#ef4444", // red-500
+  "#06b6d4", // cyan-500
+  "#ec4899", // pink-500
+  "#f97316", // orange-500
+  "#6366f1", // indigo-500
+  "#14b8a6", // teal-500
 ];
 
 interface CategorySpendingCardProps {
@@ -61,7 +62,10 @@ export function CategorySpendingCard({ gastosPorCategoria }: CategorySpendingCar
                 >
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2.5">
-                      <div className={`h-2.5 w-2.5 rounded-full ${categoryColors[i % categoryColors.length]}`} />
+                      <div
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: categoryColors[i % categoryColors.length] }}
+                      />
                       <span className="font-semibold text-[13px]">{g.categoria}</span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -69,7 +73,12 @@ export function CategorySpendingCard({ gastosPorCategoria }: CategorySpendingCar
                       <span className="text-[11px] tabular-nums text-muted-foreground/50 w-10 text-right font-bold">{g.percentual.toFixed(0)}%</span>
                     </div>
                   </div>
-                  <Progress value={g.percentual} className="h-1.5" />
+                  <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${g.percentual}%`, backgroundColor: categoryColors[i % categoryColors.length] }}
+                    />
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
