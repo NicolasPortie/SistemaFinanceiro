@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Users,
-  Shield,
   ShieldOff,
   Crown,
   Ban,
@@ -21,7 +20,6 @@ import {
   LogOut,
   MoreHorizontal,
   Sparkles,
-  CheckCircle2,
   Send,
   Activity,
 } from "lucide-react";

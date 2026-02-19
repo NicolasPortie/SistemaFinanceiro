@@ -31,8 +31,6 @@ export function TelegramOnboarding() {
   const [verificando, setVerificando] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
-  if (!usuario || usuario.telegramVinculado || dismissed) return null;
-
   const handleDismiss = () => {
     setOpen(false);
     setDismissed(true);
@@ -82,6 +80,8 @@ export function TelegramOnboarding() {
     setOpen(true);
     if (!codigo && !gerando) gerarCodigo();
   };
+
+  if (!usuario || usuario.telegramVinculado || dismissed) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">

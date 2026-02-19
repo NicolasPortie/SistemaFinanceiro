@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
-  KeyRound,
   Plus,
   Trash2,
   Copy,

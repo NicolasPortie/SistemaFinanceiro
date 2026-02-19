@@ -108,7 +108,6 @@ export default function DashboardPage() {
   };
 
   const health = resumo ? getFinancialHealth(resumo.totalReceitas, resumo.totalGastos) : null;
-  const saldo = resumo ? resumo.saldo : 0;
   const comprometimentoReceita = resumo && resumo.totalReceitas > 0
     ? Math.round((resumo.totalGastos / resumo.totalReceitas) * 100)
     : null; // null = sem receita
