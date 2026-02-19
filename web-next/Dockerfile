@@ -1,19 +1,16 @@
-# Stage 1: Dependencies
-FROM node:20-alpine AS deps
-WORKDIR /app
-
-# Copiar apenas arquivos de dependências
-COPY package.json package-lock.json* ./
-
-# Instalar dependências
-RUN npm ci --only=production
-
-# Stage 2: Builder
+# Stage 1: Builder
+# Separar COPY do package.json do COPY do código fonte para maximizar cache:
+# se só o código mudar (sem mexer em package.json), o 'npm ci' é reutilizado do cache.
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copiar dependências do stage anterior
-COPY --from=deps /app/node_modules ./node_modules
+# Copiar apenas manifests primeiro — camada cacheada enquanto não mudar package.json
+COPY package.json package-lock.json* ./
+
+# Instalar todas as dependências (dev + prod) para o build do Next.js
+RUN npm ci
+
+# Copiar o restante do código fonte
 COPY . .
 
 # Garantir que a pasta public existe
@@ -23,10 +20,10 @@ RUN mkdir -p /app/public
 ARG API_PROXY_TARGET=http://api:5000
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Instalar todas as dependências (incluindo dev) e fazer build
-RUN npm ci && npm run build
+# Build da aplicação
+RUN npm run build
 
-# Stage 3: Production
+# Stage 2: Production
 FROM node:20-alpine AS production
 WORKDIR /app
 

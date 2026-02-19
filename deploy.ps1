@@ -25,21 +25,34 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
 Write-Host "⏸️  Parando containers antigos..." -ForegroundColor Yellow
 docker compose -f docker-compose.prod.yml down
 
-# Limpar imagens antigas
-Write-Host "🧹 Limpando imagens antigas..." -ForegroundColor Yellow
-docker image prune -f
-
-# Build das novas imagens
+# Build das novas imagens (com cache - só rebuilda o que mudou)
 Write-Host "🔨 Construindo novas imagens..." -ForegroundColor Yellow
-docker compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml build
 
 # Iniciar containers
 Write-Host "🚀 Iniciando containers..." -ForegroundColor Yellow
 docker compose -f docker-compose.prod.yml up -d
 
-# Aguardar inicialização
-Write-Host "⏳ Aguardando inicialização (30s)..." -ForegroundColor Yellow
-Start-Sleep -Seconds 30
+# Aguardar API ficar saudável (healthcheck real, máx 120s)
+Write-Host "⏳ Aguardando containers ficarem saudáveis..." -ForegroundColor Yellow
+$maxWait = 120
+$elapsed = 0
+do {
+    Start-Sleep -Seconds 5
+    $elapsed += 5
+    $apiStatus = docker inspect --format="{{.State.Health.Status}}" controlfinance-api-prod 2>$null
+    Write-Host "   [$elapsed s] API: $apiStatus" -ForegroundColor Gray
+} while ($apiStatus -ne "healthy" -and $elapsed -lt $maxWait)
+
+if ($apiStatus -ne "healthy") {
+    Write-Host "❌ API não ficou saudável em ${maxWait}s" -ForegroundColor Red
+    docker compose -f docker-compose.prod.yml logs api --tail=50
+    exit 1
+}
+
+# Limpar imagens antigas/dangling (depois do build, para não destruir cache)
+Write-Host "🧹 Limpando imagens antigas..." -ForegroundColor Yellow
+docker image prune -f
 
 # Verificar status
 Write-Host "📊 Status dos containers:" -ForegroundColor Yellow
@@ -48,7 +61,7 @@ docker compose -f docker-compose.prod.yml ps
 # Verificar saúde da API
 Write-Host "🏥 Verificando saúde da API..." -ForegroundColor Yellow
 try {
-    $response = Invoke-WebRequest -Uri "http://localhost:5000/api/telegram/health" -TimeoutSec 5 -ErrorAction Stop
+    $response = Invoke-WebRequest -Uri "http://localhost:5000/health" -TimeoutSec 10 -ErrorAction Stop
     Write-Host "✅ API está respondendo!" -ForegroundColor Green
 } catch {
     Write-Host "❌ API não está respondendo" -ForegroundColor Red
@@ -60,7 +73,7 @@ try {
 # Verificar saúde do Web
 Write-Host "🏥 Verificando saúde do Frontend..." -ForegroundColor Yellow
 try {
-    $response = Invoke-WebRequest -Uri "http://localhost:3000" -TimeoutSec 5 -ErrorAction Stop
+    $response = Invoke-WebRequest -Uri "http://localhost:3000" -TimeoutSec 10 -ErrorAction Stop
     Write-Host "✅ Frontend está respondendo!" -ForegroundColor Green
 } catch {
     Write-Host "❌ Frontend não está respondendo" -ForegroundColor Red
