@@ -122,8 +122,8 @@ export default function DecisaoPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Decisão de Gasto"
-        description="Avalie se uma compra cabe no seu orçamento. Analisamos seus gastos, limites e receita para dar a melhor recomendação."
+        title="Consultor de Gastos"
+        description="Informe o valor e receba uma recomendação imediata: pode gastar, com cautela ou melhor segurar — baseado no seu orçamento real."
       />
 
       <div className="grid gap-6 lg:grid-cols-2">

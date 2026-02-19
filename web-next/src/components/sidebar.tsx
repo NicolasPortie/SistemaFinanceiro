@@ -19,7 +19,6 @@ import {
   Moon,
   Sun,
   TrendingUp,
-  Sparkles,
   CalendarClock,
   Brain,
   Shield,
@@ -46,7 +45,7 @@ const navItems = [
   { href: "/cartoes", label: "Cartões", icon: CreditCard },
   { href: "/contas-fixas", label: "Contas Fixas", icon: CalendarClock },
   { href: "/simulacao", label: "Simulação", icon: ShoppingCart },
-  { href: "/decisao", label: "Decisão", icon: Brain },
+  { href: "/decisao", label: "Consultor", icon: Brain },
   { href: "/limites", label: "Limites", icon: Gauge },
   { href: "/metas", label: "Metas", icon: Target },
   { href: "/perfil", label: "Perfil", icon: User },
@@ -131,10 +130,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <h1 className="text-lg font-extrabold tracking-tight">
             Control<span className="text-gradient">Finance</span>
           </h1>
-          <p className="text-[10px] text-muted-foreground/50 -mt-0.5 flex items-center gap-1 font-semibold tracking-wider uppercase">
-            <Sparkles className="h-2.5 w-2.5" />
-            Premium
-          </p>
+          <p className="text-[10px] text-muted-foreground/40 -mt-0.5 font-medium tracking-wide">Controle financeiro</p>
         </div>
       </div>
 

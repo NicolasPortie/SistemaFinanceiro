@@ -61,7 +61,7 @@ export function CategorySpendingCard({ gastosPorCategoria }: CategorySpendingCar
                 >
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2.5">
-                      <div className={`h-2.5 w-2.5 rounded-full ${categoryColors[i % categoryColors.length]} shadow-sm ring-2 ring-offset-1 ring-offset-card`} />
+                      <div className={`h-2.5 w-2.5 rounded-full ${categoryColors[i % categoryColors.length]}`} />
                       <span className="font-semibold text-[13px]">{g.categoria}</span>
                     </div>
                     <div className="flex items-center gap-3">
