@@ -119,6 +119,7 @@ public class AdminService : IAdminService
             Role = u.Role.ToString(),
             TentativasLoginFalhadas = u.TentativasLoginFalhadas,
             BloqueadoAte = u.BloqueadoAte,
+            AcessoExpiraEm = u.AcessoExpiraEm,
             TotalLancamentos = lancamentosCounts.GetValueOrDefault(u.Id, 0),
             TotalCartoes = cartoesCounts.GetValueOrDefault(u.Id, 0),
             TotalMetas = metasCounts.GetValueOrDefault(u.Id, 0)
@@ -168,6 +169,7 @@ public class AdminService : IAdminService
             Role = usuario.Role.ToString(),
             TentativasLoginFalhadas = usuario.TentativasLoginFalhadas,
             BloqueadoAte = usuario.BloqueadoAte,
+            AcessoExpiraEm = usuario.AcessoExpiraEm,
             TotalLancamentos = lancamentos.Count,
             TotalCartoes = cartoes.Count,
             TotalMetas = metas.Count,
@@ -268,7 +270,26 @@ public class AdminService : IAdminService
         _logger.LogInformation("Login resetado para usuário {UserId} pelo admin", usuarioId);
         return null;
     }
+    public async Task<(DateTime? NovaExpiracao, string? Erro)> EstenderAcessoAsync(int usuarioId, EstenderAcessoDto dto)
+    {
+        var usuario = await _usuarioRepo.ObterPorIdAsync(usuarioId);
+        if (usuario == null) return (null, "Usuário não encontrado.");
 
+        // Base: prazo atual se ainda válido, senão hoje
+        var agora = DateTime.UtcNow;
+        var baseData = usuario.AcessoExpiraEm.HasValue && usuario.AcessoExpiraEm.Value > agora
+            ? usuario.AcessoExpiraEm.Value
+            : agora;
+
+        usuario.AcessoExpiraEm = baseData.AddDays(dto.Dias);
+        await _usuarioRepo.AtualizarAsync(usuario);
+
+        _logger.LogInformation(
+            "Acesso do usuário {UserId} estendido por {Dias} dias pelo admin. Nova expiração: {NovaExpiracao}",
+            usuarioId, dto.Dias, usuario.AcessoExpiraEm);
+
+        return (usuario.AcessoExpiraEm, null);
+    }
     // ── Códigos de Convite ─────────────────────────────────
 
     public async Task<List<AdminCodigoConviteDto>> ListarCodigosConviteAsync()

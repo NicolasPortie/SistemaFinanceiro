@@ -40,9 +40,19 @@ public class AdminUsuarioDto
     public string Role { get; set; } = string.Empty;
     public int TentativasLoginFalhadas { get; set; }
     public DateTime? BloqueadoAte { get; set; }
+    public DateTime? AcessoExpiraEm { get; set; }
     public int TotalLancamentos { get; set; }
     public int TotalCartoes { get; set; }
     public int TotalMetas { get; set; }
+}
+
+public class EstenderAcessoDto
+{
+    /// <summary>
+    /// Dias a adicionar ao prazo atual (ou a partir de hoje se expirado/permanente).
+    /// </summary>
+    [Range(1, 3650, ErrorMessage = "Dias deve ser entre 1 e 3650.")]
+    public int Dias { get; set; }
 }
 
 public class AdminUsuarioDetalheDto : AdminUsuarioDto

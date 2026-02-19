@@ -14,6 +14,7 @@ public interface IAdminService
     Task<string?> DesativarUsuarioAsync(int usuarioId);
     Task<string?> ResetarLoginAsync(int usuarioId);
     Task<string?> AlterarRoleAsync(int adminSolicitanteId, int usuarioId, bool promover);
+    Task<(DateTime? NovaExpiracao, string? Erro)> EstenderAcessoAsync(int usuarioId, EstenderAcessoDto dto);
 
     // Códigos de convite
     Task<List<AdminCodigoConviteDto>> ListarCodigosConviteAsync();

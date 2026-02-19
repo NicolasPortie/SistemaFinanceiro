@@ -84,4 +84,12 @@ public class AdminUsuariosController : BaseAuthController
         if (erro != null) return BadRequest(new { error = erro });
         return Ok(new { message = "Usuário rebaixado a usuário comum." });
     }
+
+    [HttpPost("{id}/estender-acesso")]
+    public async Task<IActionResult> EstenderAcesso(int id, [FromBody] ControlFinance.Application.DTOs.EstenderAcessoDto dto)
+    {
+        var (novaExpiracao, erro) = await _adminService.EstenderAcessoAsync(id, dto);
+        if (erro != null) return BadRequest(new { error = erro });
+        return Ok(new { message = $"Acesso estendido com sucesso.", novaExpiracao });
+    }
 }

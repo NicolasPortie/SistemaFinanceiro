@@ -744,6 +744,8 @@ export const api = {
         request<{ message: string }>(`/admin/usuarios/${id}/promover`, { method: "POST" }),
       rebaixar: (id: number) =>
         request<{ message: string }>(`/admin/usuarios/${id}/rebaixar`, { method: "POST" }),
+      estenderAcesso: (id: number, dias: number) =>
+        request<{ message: string; novaExpiracao: string }>(`/admin/usuarios/${id}/estender-acesso`, { method: "POST", body: { dias } }),
     },
 
     convites: {
@@ -805,6 +807,7 @@ export interface AdminUsuario {
   role: string;
   tentativasLoginFalhadas: number;
   bloqueadoAte: string | null;
+  acessoExpiraEm: string | null;
   totalLancamentos: number;
   totalCartoes: number;
   totalMetas: number;
