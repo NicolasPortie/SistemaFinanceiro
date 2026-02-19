@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { api, type CodigoTelegramResponse } from "@/lib/api";
 import {
@@ -40,6 +41,7 @@ import {
   Lock,
   Tag,
   Save,
+  AlertTriangle,
 } from "lucide-react";
 import { PageShell, PageHeader } from "@/components/shared/page-components";
 import {
@@ -75,7 +77,8 @@ import { toast } from "sonner";
 
 export default function PerfilPage() {
   const telegramBotUrl = "https://t.me/facilita_finance_bot";
-  const { usuario, atualizarPerfil: atualizarContexto } = useAuth();
+  const router = useRouter();
+  const { usuario, atualizarPerfil: atualizarContexto, logout } = useAuth();
   const [codigoTelegram, setCodigoTelegram] = useState<CodigoTelegramResponse | null>(null);
   const [gerando, setGerando] = useState(false);
   const [verificando, setVerificando] = useState(false);
@@ -85,6 +88,9 @@ export default function PerfilPage() {
   const [showNovaCategoria, setShowNovaCategoria] = useState(false);
   const [editandoCategoria, setEditandoCategoria] = useState<{ id: number; nome: string } | null>(null);
   const [removendoCategoria, setRemovendoCategoria] = useState<number | null>(null);
+  const [showExcluirConta, setShowExcluirConta] = useState(false);
+  const [excluirTexto, setExcluirTexto] = useState("");
+  const [excluindoConta, setExcluindoConta] = useState(false);
 
   const atualizarPerfilMutation = useAtualizarPerfil();
   const { data: categorias = [] } = useCategorias();
@@ -191,6 +197,20 @@ export default function PerfilPage() {
     });
   };
 
+  const onExcluirConta = async () => {
+    if (excluirTexto !== "EXCLUIR MINHA CONTA") return;
+    setExcluindoConta(true);
+    try {
+      await api.auth.excluirConta();
+      toast.success("Conta excluída permanentemente.");
+      logout();
+      router.push("/login");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir conta.");
+      setExcluindoConta(false);
+    }
+  };
+
   return (
     <PageShell>
       {/* ── Page Header ── */}
@@ -243,6 +263,15 @@ export default function PerfilPage() {
             <Button variant="outline" className="w-full gap-2 rounded-xl" onClick={() => setShowSenha(true)}>
               <Lock className="h-4 w-4" />
               Alterar senha
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full gap-2 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive/50"
+              onClick={() => setShowExcluirConta(true)}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Excluir conta
             </Button>
           </div>
         </motion.div>
@@ -472,6 +501,71 @@ export default function PerfilPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Excluir Conta Dialog */}
+      <Dialog
+        open={showExcluirConta}
+        onOpenChange={(open) => {
+          setShowExcluirConta(open);
+          if (!open) setExcluirTexto("");
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Excluir conta permanentemente
+            </DialogTitle>
+            <DialogDescription>
+              Esta ação é irreversível. Todos os seus dados serão deletados definitivamente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 text-sm text-destructive/80 space-y-1">
+              <p className="font-semibold">Serão excluídos permanentemente:</p>
+              <ul className="list-disc list-inside space-y-0.5 text-xs">
+                <li>Todos os lançamentos e transações</li>
+                <li>Cartões, metas e limites</li>
+                <li>Categorias personalizadas</li>
+                <li>Configurações e integração com Telegram</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Digite <span className="text-foreground font-bold">EXCLUIR MINHA CONTA</span> para confirmar:
+              </Label>
+              <Input
+                value={excluirTexto}
+                onChange={(e) => setExcluirTexto(e.target.value)}
+                placeholder="EXCLUIR MINHA CONTA"
+                className="h-11 rounded-xl font-mono"
+                disabled={excluindoConta}
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => { setShowExcluirConta(false); setExcluirTexto(""); }}
+                disabled={excluindoConta}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 rounded-xl font-bold"
+                disabled={excluirTexto !== "EXCLUIR MINHA CONTA" || excluindoConta}
+                onClick={onExcluirConta}
+              >
+                {excluindoConta ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir definitivamente"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }

@@ -676,6 +676,28 @@ public class TelegramBotService : ITelegramBotService
         // Se a IA identificou verificação de duplicidade ("já lancei?", "já registrei?")
         if (resposta.Intencao == "verificar_duplicidade" && resposta.VerificacaoDuplicidade != null)
         {
+            // GUARD: se a mensagem NÃO tem "?" e contém keywords de afirmação (gasto, despesa, pagamento, etc.)
+            // é provavelmente uma classificação errada — tratar como "registrar"
+            var msgNorm = mensagem.ToLowerInvariant();
+            var ehAfirmacao = !msgNorm.Contains('?')
+                && (msgNorm.StartsWith("gasto") || msgNorm.StartsWith("despesa") || msgNorm.StartsWith("pagamento")
+                    || msgNorm.Contains("gastei") || msgNorm.Contains("paguei") || msgNorm.Contains("comprei"));
+            if (ehAfirmacao && resposta.VerificacaoDuplicidade.Valor > 0)
+            {
+                _logger.LogWarning("Reclassificando 'verificar_duplicidade' como 'registrar' (msg afirmativa): {Msg}", mensagem);
+                var lancamentoRecuperado = new DadosLancamento
+                {
+                    Valor = resposta.VerificacaoDuplicidade.Valor,
+                    Descricao = resposta.VerificacaoDuplicidade.Descricao ?? string.Empty,
+                    Categoria = resposta.VerificacaoDuplicidade.Categoria ?? "Outros",
+                    FormaPagamento = "nao_informado",
+                    Tipo = "gasto",
+                    NumeroParcelas = 1,
+                    Data = DateTime.UtcNow
+                };
+                return await _lancamentoHandler.IniciarFluxoAsync(usuario, lancamentoRecuperado, origem);
+            }
+
             return await ProcessarVerificacaoDuplicidadeIAAsync(usuario, resposta.VerificacaoDuplicidade);
         }
 

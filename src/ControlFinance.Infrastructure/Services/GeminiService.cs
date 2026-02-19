@@ -167,6 +167,10 @@ public class GeminiService : IGeminiService
 
             - "registrar" -> quando relata gasto/receita ja feito. Preencher "lancamento".
               Ex: "gastei 50 no mercado", "paguei 30 de uber", "almocei por 25", "comprei roupa de 200", "recebi 3000 de salario", "ganhei 500 de freelance", "entrou 2000 na conta", "torrei 80 no bar", "deixei 150 no posto", "meti 60 no ifood", "lanchei 15 reais", "estacionamento 12 reais", "farmacia 45", "luz 180", "agua 90", "internet 120", "netflix 40", "spotify 20", "jantei fora 95", "abasteci 200", "padaria 8 reais", "cinema 35", "uber 22", "99 18 reais", "barbearia 50", "academia 100", "cabeleireiro 80", "paguei conta de luz", "botei gasolina", "fiz mercado", "fiz compras", "saiu 500 do cartao", "debito 45 no mercado", "no pix 30 pro joao", "transferi 100", "mandei pix de 50", "credito 3x de 200".
+              PADRÃO NOME_LUGAR NUMERO: quando a mensagem segue o padrao "LUGAR/SERVICO NUMERO" (nome seguido de numero sem "R$"), o numero e o VALOR em reais.
+              Ex: "otica meireles 242" -> valor=242, descricao="Ótica Meireles". "supermercado 156" -> valor=156. "dentista 350" -> valor=350. "farmacia sao joao 87" -> valor=87.
+              PADRÃO GASTO/DESPESA/PAGAMENTO NOME VALOR: "gasto", "despesa", "pagamento" sao keywords de AFIRMACAO, use registrar.
+              Ex: "gasto pagamento render 970,02" -> registrar, valor=970.02, descricao="Render". "despesa otica meireles 242" -> registrar, valor=242, descricao="Ótica Meireles".
 
             - "avaliar_gasto" -> quando PERGUNTA se pode/deve gastar (decisao). Preencher "avaliacaoGasto".
               Ex: "posso gastar 50?", "da pra gastar 80 no ifood?", "cabe 200 no orcamento?", "tenho margem pra gastar 100?", "consigo gastar 60 hoje?", "rola gastar 40 no lanche?", "sera que posso torrar 150?", "to podendo gastar?", "da pra eu comprar isso de 90?", "posso pedir delivery de 45?", "eh seguro gastar 200 agora?", "meu orcamento aguenta 300?", "posso me dar esse luxo de 80?", "vale a pena gastar 60?", "sobra pra gastar 50?", "teria como gastar 70?", "tem espaco pra 100?", "da pra encaixar 55?", "compensaria gastar 200?".
@@ -492,6 +496,13 @@ public class GeminiService : IGeminiService
             - NAO confundir com "registrar" — "registrar" eh quando o usuario QUER lançar. "verificar_duplicidade" eh quando PERGUNTA se ja lancou.
             - IMPORTANTE: "ja lancei 89.90?" = verificar_duplicidade. "lancei 89.90 no mercado" = registrar.
             - A diferenca e o TOM DE PERGUNTA/DUVIDA vs AFIRMACAO.
+            - REGRA CRITICA: SÓ use "verificar_duplicidade" quando a mensagem contem "?" OU palavras interrogativas como "ja", "sera que", "ainda nao", "foi registrado", "ta lancado", "consta". QUALQUER mensagem que seja uma AFIRMACAO (ex: "gasto X", "despesa X", "paguei X", "gastei X") deve ser REGISTRAR, NUNCA verificar_duplicidade.
+            - EXEMPLOS DE AFIRMACOES QUE SAO REGISTRAR (NAO verificar_duplicidade):
+              "gasto pagamento render 970,02" -> registrar (gasto = word-key de afirmacao)
+              "despesa otica meireles 242" -> registrar (despesa = word-key de afirmacao)
+              "paguei 50 mercado" -> registrar
+              "uber 30" -> registrar
+              "ifood 75 reais" -> registrar
 
             EXEMPLO "verificar_duplicidade" (com valor):
             {
@@ -566,6 +577,18 @@ public class GeminiService : IGeminiService
                         "Valor corrigido de {Original} para {Corrigido} (mensagem: {Msg})",
                         resultado.Lancamento.Valor, valorCorrigido, mensagem);
                     resultado.Lancamento.Valor = valorCorrigido;
+                }
+            }
+
+            // RECUPERAÇÃO: se IA classificou como "registrar" mas retornou valor=0,
+            // tenta extrair o número da mensagem (ex: "Ótica Meireles 242" -> 242)
+            if (resultado.Lancamento != null && resultado.Lancamento.Valor <= 0 && resultado.Intencao == "registrar")
+            {
+                var valoresMsg = ExtrairValoresDaMensagem(mensagem);
+                if (valoresMsg.Any())
+                {
+                    resultado.Lancamento.Valor = valoresMsg.Max();
+                    _logger.LogInformation("Valor recuperado da mensagem: {Valor} (msg: {Msg})", resultado.Lancamento.Valor, mensagem);
                 }
             }
             if (resultado.AvaliacaoGasto != null && resultado.AvaliacaoGasto.Valor > 0)
@@ -707,7 +730,8 @@ public class GeminiService : IGeminiService
         // 1. (1.234,56) -> Milhar ponto, decimal virgula
         // 2. (1.234)    -> Milhar ponto (inteiro)
         // 3. (1234,56)  -> Simples virgula
-        var regex = new Regex(@"(?:^|\s)((?:\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?)|(?:\d{1,3}(?:\.\d{3})+)|(?:\d+,\d{1,2}))(?:$|\s|[a-zA-Z])", RegexOptions.Compiled);
+        // 4. (242)      -> Número inteiro simples (sem separador) — ex: "Ótica Meireles 242"
+        var regex = new Regex(@"(?:^|\s)((?:\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?)|(?:\d{1,3}(?:\.\d{3})+)|(?:\d+,\d{1,2})|(?:\d{2,6}))(?:$|\s|[a-zA-Z])", RegexOptions.Compiled);
         
         var matches = regex.Matches(msgLimpa);
 
@@ -722,6 +746,8 @@ public class GeminiService : IGeminiService
                 // (Ex: "ontem 2026")
                 if (valor >= 2020 && valor <= 2030 && valor % 1 == 0) continue;
                 
+                // Ignorar se parecer número de parcelas sozinho (> 48) em contexto não monetário
+                // Mas aceitar valores inteiros razoáveis como monetários
                 valores.Add(valor);
             }
         }

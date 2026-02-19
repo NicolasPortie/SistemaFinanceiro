@@ -153,6 +153,18 @@ public class AuthController : BaseAuthController
         return Ok(response);
     }
 
+    [Authorize]
+    [HttpDelete("conta")]
+    public async Task<IActionResult> ExcluirConta()
+    {
+        var erro = await _authService.ExcluirContaAsync(UsuarioId);
+        if (erro != null)
+            return BadRequest(new { erro });
+
+        LimparCookiesAutenticacao();
+        return Ok(new { mensagem = "Conta excluída permanentemente." });
+    }
+
     [HttpPost("recuperar-senha")]
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> RecuperarSenha([FromBody] RecuperarSenhaDto dto)

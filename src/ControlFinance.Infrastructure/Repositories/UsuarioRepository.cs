@@ -80,4 +80,14 @@ public class UsuarioRepository : IUsuarioRepository
     {
         return await _context.Usuarios.CountAsync(u => u.CriadoEm >= desde);
     }
+
+    public async Task DeletarAsync(int id)
+    {
+        var usuario = await _context.Usuarios.FindAsync(id);
+        if (usuario != null)
+        {
+            _context.Usuarios.Remove(usuario);
+            await _context.SaveChangesAsync();
+        }
+    }
 }

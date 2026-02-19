@@ -15,4 +15,5 @@ public interface IUsuarioRepository
     Task<int> ContarAsync();
     Task<int> ContarAtivosAsync();
     Task<int> ContarNovosAsync(DateTime desde);
+    Task DeletarAsync(int id);
 }

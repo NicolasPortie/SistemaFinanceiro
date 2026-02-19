@@ -600,6 +600,9 @@ export const api = {
       request<CodigoTelegramResponse>("/auth/telegram/gerar-codigo", {
         method: "POST",
       }),
+
+    excluirConta: () =>
+      request("/auth/conta", { method: "DELETE" }),
   },
 
   lancamentos: {

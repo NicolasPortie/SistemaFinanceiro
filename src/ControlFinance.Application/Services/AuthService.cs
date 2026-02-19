@@ -583,4 +583,20 @@ public class AuthService : IAuthService
             return "A senha deve conter pelo menos um número.";
         return null;
     }
+
+    public async Task<string?> ExcluirContaAsync(int usuarioId)
+    {
+        var usuario = await _usuarioRepo.ObterPorIdAsync(usuarioId);
+        if (usuario == null)
+            return "Usuário não encontrado.";
+
+        // Revoke all refresh tokens first
+        await _refreshTokenRepo.RevogarTodosDoUsuarioAsync(usuarioId);
+
+        // Hard-delete the account (cascades to all related data via DB constraints)
+        await _usuarioRepo.DeletarAsync(usuarioId);
+
+        _logger.LogInformation("Conta do usuário {UserId} excluída permanentemente.", usuarioId);
+        return null;
+    }
 }

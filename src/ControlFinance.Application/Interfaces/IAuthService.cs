@@ -15,4 +15,5 @@ public interface IAuthService
     Task<(UsuarioDto? Response, string? Erro)> AtualizarPerfilAsync(int usuarioId, AtualizarPerfilDto dto);
     Task<string?> SolicitarRecuperacaoSenhaAsync(RecuperarSenhaDto dto);
     Task<string?> RedefinirSenhaAsync(RedefinirSenhaDto dto);
+    Task<string?> ExcluirContaAsync(int usuarioId);
 }
