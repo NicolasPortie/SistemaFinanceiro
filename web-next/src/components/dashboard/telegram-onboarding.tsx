@@ -6,7 +6,6 @@ import { api, type CodigoTelegramResponse } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageCircle,
-  X,
   ExternalLink,
   Copy,
   Check,
@@ -17,25 +16,15 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 
-const DISMISSED_KEY = "cf_tg_pill_dismissed";
 const TELEGRAM_BOT_URL = "https://t.me/facilita_finance_bot";
 
 export function TelegramOnboarding() {
   const { usuario, atualizarPerfil } = useAuth();
-  const [dismissed, setDismissed] = useState(() =>
-    typeof window !== "undefined" && !!localStorage.getItem(DISMISSED_KEY)
-  );
   const [open, setOpen] = useState(false);
   const [codigo, setCodigo] = useState<CodigoTelegramResponse | null>(null);
   const [gerando, setGerando] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [copiado, setCopiado] = useState(false);
-
-  const handleDismiss = () => {
-    setOpen(false);
-    setDismissed(true);
-    localStorage.setItem(DISMISSED_KEY, "1");
-  };
 
   const gerarCodigo = useCallback(async () => {
     setGerando(true);
@@ -56,7 +45,6 @@ export function TelegramOnboarding() {
       const stored = localStorage.getItem("cf_user");
       if (stored && JSON.parse(stored).telegramVinculado) {
         toast.success("Telegram vinculado! ");
-        localStorage.setItem(DISMISSED_KEY, "1");
         setOpen(false);
         return;
       }
@@ -81,7 +69,7 @@ export function TelegramOnboarding() {
     if (!codigo && !gerando) gerarCodigo();
   };
 
-  if (!usuario || usuario.telegramVinculado || dismissed) return null;
+  if (!usuario || usuario.telegramVinculado) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
@@ -103,12 +91,6 @@ export function TelegramOnboarding() {
                 </div>
                 <span className="text-sm font-bold">Conectar Telegram</span>
               </div>
-              <button
-                onClick={handleDismiss}
-                className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
             </div>
 
             {/* Body */}
