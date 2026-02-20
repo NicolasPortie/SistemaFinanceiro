@@ -93,10 +93,13 @@ public class GroqAiService : IAiService
             TIPO DE ENTRADA: A mensagem veio via {{origem.ToString()}}.
             {{regraImagem}}
             
-            REGRAS DE CONVERSÃO DE VALORES (CRÍTICAS):
+            REGRAS DE CONVERSÃO DE VALORES E ENTENDIMENTO (CRÍTICAS):
             - Converta números por extenso para valores numéricos ("cinquenta" = 50).
             - "vinte conto" = 20, "dois pau" = 2000.
             - "75 e 90" = 75.90. Não some. O "e " indica a casa decimal.
+            - ERROS DE TRANSCRIÇÃO SÃO COMUNS: Se a mensagem transcreveu "1578" para uma despesa menor, assuma "15.78". Se a mensagem veio com "%" junto do valor financeiro (ex: "Shopee 45,99%"), **É UM ERRO DE ÁUDIO**. Ignore o "%", extraia apenas o valor numérico (ex: 45.99) e REGISTRE O GASTO USANDO A FERRAMENTA. NUNCA recuse ou devolva pergunta sobre isso!
+            - DATA: A mensagem pode vir não formatada ("13 de fevereiro", "dia 13"). Se informada de qualquer forma que lembre uma data, extraia e preencha a propriedade `data` corretamente, deduzindo o ano se necessário.
+            - GASTO IMPLÍCITO: Se houver apenas um local (ex: "Kawakami") e um número, assuma incondicionalmente que é um gasto e chame `registrar_lancamento` utilizando o local como descrição. Use a lógica ao invés de barrar a transcrição.
 
             MENSAGEM DO USUÁRIO: "{{mensagem}}"
 
@@ -181,7 +184,7 @@ public class GroqAiService : IAiService
                         FormaPagamento = GetStr("formaPagamento") ?? "nao_informado",
                         Tipo = GetStr("tipo") ?? "gasto",
                         NumeroParcelas = numParcelas <= 0 ? 1 : numParcelas,
-                        Data = DateTime.UtcNow.AddHours(-3)
+                        Data = DateTime.TryParse(GetStr("data"), out var dt) ? dt : DateTime.UtcNow.AddHours(-3)
                     };
                     break;
 
@@ -468,7 +471,7 @@ public class GroqAiService : IAiService
         // 2. (1.234)    -> Milhar ponto (inteiro)
         // 3. (1234,56)  -> Simples virgula
         // 4. (242)      -> Número inteiro simples (sem separador) — ex: "Ótica Meireles 242"
-        var regex = new Regex(@"(?:^|\s)((?:\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?)|(?:\d{1,3}(?:\.\d{3})+)|(?:\d+,\d{1,2})|(?:\d{2,6}))(?:$|\s|[a-zA-Z])", RegexOptions.Compiled);
+        var regex = new Regex(@"(?:^|\s)((?:\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?)|(?:\d{1,3}(?:\.\d{3})+)|(?:\d+,\d{1,2})|(?:\d{2,6}))(?:$|\s|[a-zA-Z%])", RegexOptions.Compiled);
         
         var matches = regex.Matches(msgLimpa);
 
