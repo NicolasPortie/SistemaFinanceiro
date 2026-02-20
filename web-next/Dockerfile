@@ -8,7 +8,9 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Instalar todas as dependências (dev + prod) para o build do Next.js
-RUN npm ci
+# Usamos cache do BuildKit para não baixar a internet inteira a cada deploy
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # Copiar o restante do código fonte
 COPY . .

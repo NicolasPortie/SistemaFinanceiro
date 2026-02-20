@@ -48,13 +48,13 @@ public class BotNotificationService : BackgroundService
                 var agoraUtc = DateTime.UtcNow;
                 var agoraBrasilia = agoraUtc.AddHours(-3);
 
-                // 0. Resumo Matinal (08h Todo dia) — NOVA funcionalidade
-                if (EstaNoHorario(agoraBrasilia, HoraResumoMatinal))
-                {
-                    await ExecutarNotificacaoAsync("ResumoMatinal", EnviarResumoMatinalAsync, stoppingToken);
-                }
+            // 0. Resumo Matinal (08h Todo dia) — DESATIVADO A PEDIDO DO USUÁRIO
+            // if (EstaNoHorario(agoraBrasilia, HoraResumoMatinal))
+            // {
+            //     await ExecutarNotificacaoAsync("ResumoMatinal", EnviarResumoMatinalAsync, stoppingToken);
+            // }
 
-                // 1. Incentivo de Sexta-feira (18h)
+            // 1. Incentivo de Sexta-feira (18h)
                 if (agoraBrasilia.DayOfWeek == DayOfWeek.Friday && EstaNoHorario(agoraBrasilia, HoraIncentivoSexta))
                 {
                     await ExecutarNotificacaoAsync("IncentivoSexta", EnviarIncentivoSexta, stoppingToken);

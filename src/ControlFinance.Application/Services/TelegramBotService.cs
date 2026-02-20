@@ -21,7 +21,7 @@ public class TelegramBotService : ITelegramBotService
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
     private readonly ICodigoVerificacaoRepository _codigoRepo;
-    private readonly IGeminiService _gemini;
+    private readonly IAiService _aiService;
     private readonly ILancamentoService _lancamentoService;
     private readonly IResumoService _resumoService;
     private readonly IFaturaService _faturaService;
@@ -123,7 +123,7 @@ public class TelegramBotService : ITelegramBotService
         ICategoriaRepository categoriaRepo,
         ICartaoCreditoRepository cartaoRepo,
         ICodigoVerificacaoRepository codigoRepo,
-        IGeminiService gemini,
+        IAiService aiService,
         ILancamentoService lancamentoService,
         IResumoService resumoService,
         IFaturaService faturaService,
@@ -155,7 +155,7 @@ public class TelegramBotService : ITelegramBotService
         _categoriaRepo = categoriaRepo;
         _cartaoRepo = cartaoRepo;
         _codigoRepo = codigoRepo;
-        _gemini = gemini;
+        _aiService = aiService;
         _lancamentoService = lancamentoService;
         _resumoService = resumoService;
         _faturaService = faturaService;
@@ -565,7 +565,7 @@ public class TelegramBotService : ITelegramBotService
 
         try
         {
-            var texto = await _gemini.TranscreverAudioAsync(audioData, mimeType);
+            var texto = await _aiService.TranscreverAudioAsync(audioData, mimeType);
             if (string.IsNullOrWhiteSpace(texto))
                 return "❌ Não consegui entender o áudio. Tente enviar em texto.";
 
@@ -589,7 +589,7 @@ public class TelegramBotService : ITelegramBotService
 
         try
         {
-            var texto = await _gemini.ExtrairTextoImagemAsync(imageData, mimeType);
+            var texto = await _aiService.ExtrairTextoImagemAsync(imageData, mimeType);
             if (string.IsNullOrWhiteSpace(texto))
                 return "❌ Não consegui extrair informações da imagem.";
 
@@ -627,7 +627,7 @@ public class TelegramBotService : ITelegramBotService
         var contexto = await MontarContextoFinanceiroAsync(usuario);
 
         // Uma única chamada ao Gemini que faz tudo
-        var resposta = await _gemini.ProcessarMensagemCompletaAsync(mensagem, contexto);
+        var resposta = await _aiService.ProcessarMensagemCompletaAsync(mensagem, contexto, origem);
 
         _logger.LogInformation("IA Intenção: {Intencao} | Usuário: {Nome}", resposta.Intencao, usuario.Nome);
 
@@ -893,6 +893,20 @@ public class TelegramBotService : ITelegramBotService
             else
             {
                 ctx += "Sem cartões cadastrados. ";
+            }
+
+            // Memória histórica de longo prazo (útil para IA dar conselhos)
+            try 
+            {
+                var historico = await _resumoService.GerarContextoHistoricoGastoAsync(usuario.Id);
+                if (!string.IsNullOrWhiteSpace(historico))
+                {
+                    ctx += historico + " ";
+                }
+            }
+            catch (Exception ex)
+            {
+                 _logger.LogWarning(ex, "Falha ao gerar o contexto histórico para montagem do prompt.");
             }
 
             // Incluir categorias do usuário para a IA usar

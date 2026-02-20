@@ -1,11 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ControlFinance.Domain.Enums;
 
 namespace ControlFinance.Domain.Interfaces;
 
-public interface IGeminiService
+public interface IAiService
 {
-    Task<RespostaIA> ProcessarMensagemCompletaAsync(string mensagem, string contextoFinanceiro);
+    Task<RespostaIA> ProcessarMensagemCompletaAsync(string mensagem, string contextoFinanceiro, OrigemDado origem = OrigemDado.Texto);
     Task<string> TranscreverAudioAsync(byte[] audioData, string mimeType);
     Task<string> ExtrairTextoImagemAsync(byte[] imageData, string mimeType);
 }

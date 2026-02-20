@@ -30,8 +30,13 @@ function getStoredUsuario(): Usuario | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<Usuario | null>(getStoredUsuario);
-  const loading = false;
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setUsuario(getStoredUsuario());
+    setLoading(false);
+  }, []);
   const isAdmin = usuario?.role === "Admin";
   const router = useRouter();
 
@@ -62,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    api.auth.logout().catch(() => {});
+    api.auth.logout().catch(() => { });
     localStorage.removeItem("cf_user");
     setUsuario(null);
   }, []);

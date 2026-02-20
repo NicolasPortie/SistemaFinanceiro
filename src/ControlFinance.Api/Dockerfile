@@ -6,7 +6,9 @@ COPY ["src/ControlFinance.Application/ControlFinance.Application.csproj", "src/C
 COPY ["src/ControlFinance.Domain/ControlFinance.Domain.csproj", "src/ControlFinance.Domain/"]
 COPY ["src/ControlFinance.Infrastructure/ControlFinance.Infrastructure.csproj", "src/ControlFinance.Infrastructure/"]
 
-RUN dotnet restore "src/ControlFinance.Api/ControlFinance.Api.csproj"
+# Fazer restore com cache do BuildKit para não baixar todos os pacotes Nuget do zero a cada vez
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore "src/ControlFinance.Api/ControlFinance.Api.csproj"
 
 COPY src ./src
 

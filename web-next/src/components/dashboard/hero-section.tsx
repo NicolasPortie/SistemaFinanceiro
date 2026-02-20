@@ -52,10 +52,10 @@ export function HeroSection({ usuario, healthLabel, saldo, totalReceitas, totalG
         <div className="absolute bottom-0 left-1/3 w-32 h-px bg-linear-to-r from-transparent via-white/6 to-transparent" />
       </div>
 
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 sm:gap-5">
         <div className="space-y-2.5">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">
+            <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight" suppressHydrationWarning>
               {getGreeting()}, {getFirstName(usuario?.nome ?? "")}
             </h1>
             {usuario?.telegramVinculado && (
@@ -99,7 +99,7 @@ export function HeroSection({ usuario, healthLabel, saldo, totalReceitas, totalG
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap mt-2 sm:mt-0">
           <Link href="/lancamentos">
             <Button size="sm" className="bg-white/12 hover:bg-white/20 text-white border border-white/10 gap-1.5 h-10 backdrop-blur-md shadow-lg shadow-black/8 font-semibold transition-all duration-300 rounded-xl hover:-translate-y-px">
               <Plus className="h-3.5 w-3.5" />

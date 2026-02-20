@@ -49,8 +49,8 @@ public static class DependencyInjection
         // Codigo Verificacao
         services.AddScoped<ICodigoVerificacaoRepository, CodigoVerificacaoRepository>();
 
-        // Gemini Service
-        services.AddHttpClient<IGeminiService, GeminiService>();
+        // AI Service (Groq)
+        services.AddHttpClient<IAiService, GroqAiService>();
 
         // E-mail Service (SMTP Hostinger)
         services.AddScoped<IEmailService, SmtpEmailService>();

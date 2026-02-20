@@ -8,5 +8,6 @@ public interface IResumoService
     Task<ResumoFinanceiroDto> GerarResumoSemanalAsync(int usuarioId);
     Task<ResumoFinanceiroDto> GerarResumoMensalAsync(int usuarioId);
     Task<decimal> GerarSaldoAcumuladoAsync(int usuarioId);
+    Task<string> GerarContextoHistoricoGastoAsync(int usuarioId);
     string FormatarResumo(ResumoFinanceiroDto resumo);
 }

@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginData } from "@/lib/schemas";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   TrendingUp,
   Mail,
@@ -43,8 +43,13 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  useEffect(() => {
+    if (usuario) {
+      router.replace("/dashboard");
+    }
+  }, [usuario, router]);
+
   if (usuario) {
-    router.replace("/dashboard");
     return null;
   }
 
@@ -150,7 +155,7 @@ export default function LoginPage() {
                   transition={{ delay: 0.4 + i * 0.1 }}
                   className="group flex items-center gap-3.5 py-3 px-3.5 -mx-3.5 rounded-2xl hover:bg-white/4 transition-all duration-300 hover:-translate-y-px"
                 >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 border border-white/6 group-hover:bg-white/8 group-hover:border-emerald-400/15 group-hover:shadow-lg group-hover:shadow-emerald-500/5 transition-all duration-300">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 border border-white/6 group-hover:bg-white/8 group-hover:border-emerald-400/15 group-hover:shadow-lg group-hover:shadow-emerald-500/5 transition-all duration-300">
                     <item.icon className="h-4 w-4 text-emerald-400/70 group-hover:text-emerald-300 transition-colors" />
                   </div>
                   <div className="min-w-0">
@@ -259,18 +264,16 @@ export default function LoginPage() {
                   E-mail
                 </label>
                 <div
-                  className={`relative rounded-xl border-2 transition-all duration-300 ${
-                    focusedField === "email"
+                  className={`relative rounded-xl border-2 transition-all duration-300 ${focusedField === "email"
                       ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
                       : errors.email
                         ? "border-red-400/50 ring-4 ring-red-500/5"
                         : "border-border/50 hover:border-border/80"
-                  }`}
+                    }`}
                 >
                   <Mail
-                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
-                      focusedField === "email" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
-                    }`}
+                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${focusedField === "email" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
+                      }`}
                   />
                   <Input
                     id="email"
@@ -309,18 +312,16 @@ export default function LoginPage() {
                   </Link>
                 </div>
                 <div
-                  className={`relative rounded-xl border-2 transition-all duration-300 ${
-                    focusedField === "senha"
+                  className={`relative rounded-xl border-2 transition-all duration-300 ${focusedField === "senha"
                       ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
                       : errors.senha
                         ? "border-red-400/50 ring-4 ring-red-500/5"
                         : "border-border/50 hover:border-border/80"
-                  }`}
+                    }`}
                 >
                   <Lock
-                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
-                      focusedField === "senha" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
-                    }`}
+                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${focusedField === "senha" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
+                      }`}
                   />
                   <Input
                     id="senha"

@@ -226,10 +226,13 @@ var autoMigrate = app.Environment.IsDevelopment()
     if (app.Environment.IsDevelopment())
     {
         var devEmail = "dev@controlfinance.com";
+        var testEmail = "test@test.com";
+        var categoriaRepo = scope.ServiceProvider.GetRequiredService<ControlFinance.Domain.Interfaces.ICategoriaRepository>();
+
         var existingUser = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == devEmail);
         if (existingUser == null)
         {
-            app.Logger.LogInformation("🌱 Criando usuário de desenvolvimento...");
+            app.Logger.LogInformation("🌱 Criando usuário de desenvolvimento (dev@controlfinance.com)...");
             var devUser = new ControlFinance.Domain.Entities.Usuario
             {
                 Email = devEmail,
@@ -243,11 +246,30 @@ var autoMigrate = app.Environment.IsDevelopment()
             db.Usuarios.Add(devUser);
             await db.SaveChangesAsync();
 
-            // Criar categorias padrão para o usuário dev
-            var categoriaRepo = scope.ServiceProvider.GetRequiredService<ControlFinance.Domain.Interfaces.ICategoriaRepository>();
             await categoriaRepo.CriarCategoriasIniciais(devUser.Id);
-
             app.Logger.LogInformation("✅ Usuário dev criado: {Email} / Dev@1234 (Admin)", devEmail);
+        }
+
+        var existingTestUser = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == testEmail);
+        if (existingTestUser == null)
+        {
+            app.Logger.LogInformation("🌱 Criando usuário de teste (test@test.com)...");
+            var testUser = new ControlFinance.Domain.Entities.Usuario
+            {
+                Email = testEmail,
+                Nome = "Usuário de Teste",
+                SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456", 12),
+                EmailConfirmado = true,
+                Ativo = true,
+                Role = ControlFinance.Domain.Enums.RoleUsuario.Usuario,
+                CriadoEm = DateTime.UtcNow,
+                AcessoExpiraEm = DateTime.UtcNow.AddYears(1)
+            };
+            db.Usuarios.Add(testUser);
+            await db.SaveChangesAsync();
+
+            await categoriaRepo.CriarCategoriasIniciais(testUser.Id);
+            app.Logger.LogInformation("✅ Usuário teste criado: {Email} / 123456 (Normal)", testEmail);
         }
     }
 

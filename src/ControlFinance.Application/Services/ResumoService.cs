@@ -101,6 +101,37 @@ public class ResumoService : IResumoService
         return totalReceitas - totalGastos;
     }
 
+    public async Task<string> GerarContextoHistoricoGastoAsync(int usuarioId)
+    {
+        var hoje = DateTime.UtcNow;
+        var inicio = hoje.AddDays(-90);
+        
+        var gastos90Dias = await _lancamentoRepo.ObterPorUsuarioETipoAsync(usuarioId, TipoLancamento.Gasto, inicio, hoje);
+        
+        if (!gastos90Dias.Any())
+            return string.Empty;
+
+        var gastosValidos = gastos90Dias
+            .Where(g => !Categoria.NomeEhCategoriaReceita(g.Categoria?.Nome))
+            .ToList();
+
+        var mediaPorCategoria = gastosValidos
+            .GroupBy(g => g.Categoria?.Nome ?? "Outros")
+            .Select(g => new
+            {
+                Categoria = g.Key,
+                MediaMensal = g.Sum(x => x.Valor) / 3m // 90 dias = 3 meses
+            })
+            .Where(c => c.MediaMensal > 0)
+            .OrderByDescending(c => c.MediaMensal)
+            .ToList();
+
+        if (!mediaPorCategoria.Any())
+            return string.Empty;
+
+        return "Média de gastos (últimos 3 meses): " + string.Join(", ", mediaPorCategoria.Select(c => $"{c.Categoria} (R$ {c.MediaMensal:N2})")) + ".";
+    }
+
     public string FormatarResumo(ResumoFinanceiroDto resumo)
     {
         var saldoEmoji = resumo.Saldo >= 0 ? "✅" : "🔴";

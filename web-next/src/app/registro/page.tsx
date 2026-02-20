@@ -106,8 +106,13 @@ export default function RegistroPage() {
     }
   }, [pendingEmail, resendCooldown, resending, verifyForm]);
 
+  useEffect(() => {
+    if (usuario) {
+      router.replace("/dashboard");
+    }
+  }, [usuario, router]);
+
   if (usuario) {
-    router.replace("/dashboard");
     return null;
   }
 
@@ -157,18 +162,16 @@ export default function RegistroPage() {
         {labelExtra}
       </div>
       <div
-        className={`relative rounded-xl border-2 transition-all duration-300 ${
-          focusedField === id
+        className={`relative rounded-xl border-2 transition-all duration-300 ${focusedField === id
             ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
             : error
               ? "border-red-400/50 ring-4 ring-red-500/5"
               : "border-border/50 hover:border-border/80"
-        }`}
+          }`}
       >
         <div
-          className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${
-            focusedField === id ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
-          }`}
+          className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${focusedField === id ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
+            }`}
         >
           {icon}
         </div>
@@ -399,18 +402,16 @@ export default function RegistroPage() {
                       Código de convite
                     </label>
                     <div
-                      className={`relative rounded-xl border-2 transition-all duration-300 ${
-                        focusedField === "codigoConvite"
+                      className={`relative rounded-xl border-2 transition-all duration-300 ${focusedField === "codigoConvite"
                           ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
                           : errors.codigoConvite
                             ? "border-red-400/50 ring-4 ring-red-500/5"
                             : "border-emerald-500/20 bg-emerald-500/2"
-                      }`}
+                        }`}
                     >
                       <ShieldCheck
-                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
-                          focusedField === "codigoConvite" ? "text-emerald-500 scale-110" : "text-emerald-500/40"
-                        }`}
+                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${focusedField === "codigoConvite" ? "text-emerald-500 scale-110" : "text-emerald-500/40"
+                          }`}
                       />
                       <Input
                         id="codigoConvite"
@@ -480,18 +481,16 @@ export default function RegistroPage() {
                       Senha
                     </label>
                     <div
-                      className={`relative rounded-xl border-2 transition-all duration-300 ${
-                        focusedField === "senha"
+                      className={`relative rounded-xl border-2 transition-all duration-300 ${focusedField === "senha"
                           ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
                           : errors.senha
                             ? "border-red-400/50 ring-4 ring-red-500/5"
                             : "border-border/50 hover:border-border/80"
-                      }`}
+                        }`}
                     >
                       <Lock
-                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
-                          focusedField === "senha" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
-                        }`}
+                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${focusedField === "senha" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
+                          }`}
                       />
                       <Input
                         id="senha"
@@ -527,15 +526,14 @@ export default function RegistroPage() {
                             {[1, 2, 3, 4].map((level) => (
                               <div
                                 key={level}
-                                className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                                  strength >= level
+                                className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${strength >= level
                                     ? strength <= 2
                                       ? "bg-red-400"
                                       : strength === 3
                                         ? "bg-amber-400"
                                         : "bg-emerald-500"
                                     : "bg-muted/40"
-                                }`}
+                                  }`}
                               />
                             ))}
                           </div>
@@ -543,11 +541,10 @@ export default function RegistroPage() {
                             {passedRules.map((rule) => (
                               <div
                                 key={rule.label}
-                                className={`flex items-center gap-1.5 text-[11px] font-medium transition-colors ${
-                                  rule.passed
+                                className={`flex items-center gap-1.5 text-[11px] font-medium transition-colors ${rule.passed
                                     ? "text-emerald-600 dark:text-emerald-400"
                                     : "text-muted-foreground/40"
-                                }`}
+                                  }`}
                               >
                                 {rule.passed ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                                 {rule.label}
@@ -653,18 +650,16 @@ export default function RegistroPage() {
                       Código de verificação
                     </label>
                     <div
-                      className={`relative rounded-xl border-2 transition-all duration-300 ${
-                        focusedField === "codigo"
+                      className={`relative rounded-xl border-2 transition-all duration-300 ${focusedField === "codigo"
                           ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
                           : verifyForm.formState.errors.codigo
                             ? "border-red-400/50 ring-4 ring-red-500/5"
                             : "border-border/50 hover:border-border/80"
-                      }`}
+                        }`}
                     >
                       <KeyRound
-                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
-                          focusedField === "codigo" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
-                        }`}
+                        className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${focusedField === "codigo" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
+                          }`}
                       />
                       <Input
                         id="codigo"

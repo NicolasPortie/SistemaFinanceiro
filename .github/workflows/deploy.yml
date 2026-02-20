@@ -26,11 +26,15 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         dotnet-quality: 'preview'
+        cache: true
+        cache-dependency-path: '**/packages.lock.json'
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: './web-next/package-lock.json'
 
     - name: Restore dependências .NET
       run: dotnet restore src/ControlFinance.Api/ControlFinance.Api.csproj
@@ -85,8 +89,8 @@ jobs:
         
         echo "=== Deploy ${APP_VERSION} ==="
         
-        # Build novos containers com a versão da tag
-        APP_VERSION=${APP_VERSION} docker compose -f docker-compose.prod.yml build --no-cache
+        # Build novos containers com a versão da tag (permitindo uso de layers do cache do Docker)
+        APP_VERSION=${APP_VERSION} docker compose -f docker-compose.prod.yml build
         
         # Parar containers antigos e iniciar novos
         docker compose -f docker-compose.prod.yml down
@@ -99,18 +103,33 @@ jobs:
         echo "=== Status dos containers ==="
         docker compose -f docker-compose.prod.yml ps
 
-    - name: Aguardar inicialização
-      run: sleep 60
-
-    - name: Verificar saúde da API
+    - name: Aguardar e Verificar saúde da API
       run: |
-        curl -sf http://localhost:5000/health || exit 1
-        echo "API está respondendo!"
+        echo "Aguardando inicialização da API..."
+        for i in {1..30}; do
+          if curl -sf http://localhost:5000/health; then
+            echo -e "\nAPI está online!"
+            exit 0
+          fi
+          echo -n "."
+          sleep 2
+        done
+        echo -e "\nFalha: API não respondeu após 60 segundos."
+        exit 1
 
-    - name: Verificar saúde do Frontend
+    - name: Aguardar e Verificar saúde do Frontend
       run: |
-        curl -sf -o /dev/null http://localhost:3000 || exit 1
-        echo "Frontend está respondendo!"
+        echo "Aguardando inicialização do Frontend..."
+        for i in {1..30}; do
+          if curl -sf -o /dev/null http://localhost:3000; then
+            echo -e "\nFrontend está online!"
+            exit 0
+          fi
+          echo -n "."
+          sleep 2
+        done
+        echo -e "\nFalha: Frontend não respondeu após 60 segundos."
+        exit 1
 
     - name: Resumo do deploy
       if: success()

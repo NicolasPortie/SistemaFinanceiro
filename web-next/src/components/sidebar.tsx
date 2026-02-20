@@ -36,7 +36,7 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 const navItems = [
@@ -115,6 +115,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { usuario, logout, isAdmin } = useAuth();
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="flex h-full flex-col">
@@ -178,7 +183,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             onClick={() => setTheme("light")}
             className={cn(
               "flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all duration-300",
-              theme === "light"
+              mounted && theme === "light"
                 ? "bg-card text-foreground shadow-md shadow-black/4"
                 : "text-muted-foreground/55 hover:text-foreground"
             )}
@@ -190,7 +195,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             onClick={() => setTheme("dark")}
             className={cn(
               "flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all duration-300",
-              theme === "dark"
+              mounted && theme === "dark"
                 ? "bg-card text-foreground shadow-md shadow-black/4"
                 : "text-muted-foreground/55 hover:text-foreground"
             )}
