@@ -101,6 +101,19 @@ public class GroqAiService : IAiService
             - DATA: A mensagem pode vir não formatada ("13 de fevereiro", "dia 13"). Se informada de qualquer forma que lembre uma data, extraia e preencha a propriedade `data` corretamente, deduzindo o ano se necessário.
             - GASTO IMPLÍCITO: Se houver apenas um local (ex: "Kawakami") e um número, assuma incondicionalmente que é um gasto e chame `registrar_lancamento` utilizando o local como descrição. Use a lógica ao invés de barrar a transcrição.
 
+            EXEMPLOS DE EXTRAÇÃO (FEW-SHOT) - APRENDA COMO LIDAR COM ERROS:
+            Usuário: "Shopee 13 de fevereiro gasto 45,99%"
+            Ação: Chamar registrar_lancamento(valor=45.99, descricao="Shopee", data="202X-02-13")
+
+            Usuário: "Kawakami 1578"
+            Ação: Chamar registrar_lancamento(valor=15.78, descricao="Kawakami") 
+
+            Usuário: "Mc Donalds 30 e 50"
+            Ação: Chamar registrar_lancamento(valor=30.50, descricao="Mc Donalds")
+
+            Usuário: "gasolina 100 pau credito"
+            Ação: Chamar registrar_lancamento(valor=100.0, descricao="gasolina", formaPagamento="credito")
+
             MENSAGEM DO USUÁRIO: "{{mensagem}}"
 
             INSTRUÇÃO:
