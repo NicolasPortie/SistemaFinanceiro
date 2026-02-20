@@ -27,7 +27,7 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         dotnet-quality: 'preview'
         cache: true
-        cache-dependency-path: '**/packages.lock.json'
+        cache-dependency-path: '**/*.csproj'
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
