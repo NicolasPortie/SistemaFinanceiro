@@ -13,8 +13,6 @@ public class AdminDashboardDto
     public int NovosUltimos30Dias { get; set; }
     public int UsuariosComTelegram { get; set; }
     public int TotalLancamentosMes { get; set; }
-    public decimal VolumeReceitasMes { get; set; }
-    public decimal VolumeGastosMes { get; set; }
     public int TotalCartoes { get; set; }
     public int MetasAtivas { get; set; }
     public int SessoesAtivas { get; set; }
@@ -57,33 +55,7 @@ public class EstenderAcessoDto
 
 public class AdminUsuarioDetalheDto : AdminUsuarioDto
 {
-    public decimal ReceitaMedia { get; set; }
-    public decimal GastoMedio { get; set; }
-    public decimal SaldoAtual { get; set; }
-    public List<AdminCartaoResumoDto> Cartoes { get; set; } = [];
-    public List<AdminLancamentoDto> UltimosLancamentos { get; set; } = [];
-    public List<AdminMetaResumoDto> MetasAtivas { get; set; } = [];
     public int SessoesAtivas { get; set; }
-}
-
-public class AdminCartaoResumoDto
-{
-    public int Id { get; set; }
-    public string Nome { get; set; } = string.Empty;
-    public decimal Limite { get; set; }
-    public int DiaVencimento { get; set; }
-    public bool Ativo { get; set; }
-}
-
-public class AdminMetaResumoDto
-{
-    public int Id { get; set; }
-    public string Nome { get; set; } = string.Empty;
-    public string Tipo { get; set; } = string.Empty;
-    public decimal ValorAlvo { get; set; }
-    public decimal ValorAtual { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public DateTime Prazo { get; set; }
 }
 
 // === Lançamentos ===

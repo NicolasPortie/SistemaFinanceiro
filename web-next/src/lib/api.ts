@@ -765,15 +765,6 @@ export const api = {
       revogarTodas: () =>
         request<{ message: string }>("/admin/seguranca/sessoes/revogar-todas", { method: "POST" }),
     },
-
-    lancamentos: (params?: { usuarioId?: number; pagina?: number; tamanhoPagina?: number }) => {
-      const searchParams = new URLSearchParams();
-      if (params?.usuarioId) searchParams.set("usuarioId", params.usuarioId.toString());
-      if (params?.pagina) searchParams.set("pagina", params.pagina.toString());
-      if (params?.tamanhoPagina) searchParams.set("tamanhoPagina", params.tamanhoPagina.toString());
-      const qs = searchParams.toString();
-      return request<AdminLancamento[]>(`/admin/lancamentos${qs ? `?${qs}` : ""}`);
-    },
   },
 };
 
@@ -788,8 +779,6 @@ export interface AdminDashboardData {
   novosUltimos30Dias: number;
   usuariosComTelegram: number;
   totalLancamentosMes: number;
-  volumeReceitasMes: number;
-  volumeGastosMes: number;
   totalCartoes: number;
   metasAtivas: number;
   sessoesAtivas: number;
@@ -813,45 +802,10 @@ export interface AdminUsuario {
   totalMetas: number;
 }
 
-export interface AdminCartaoResumo {
-  id: number;
-  nome: string;
-  limite: number;
-  diaVencimento: number;
-  ativo: boolean;
-}
 
-export interface AdminMetaResumo {
-  id: number;
-  nome: string;
-  tipo: string;
-  valorAlvo: number;
-  valorAtual: number;
-  status: string;
-  prazo: string;
-}
-
-export interface AdminLancamento {
-  id: number;
-  usuarioNome: string;
-  descricao: string;
-  valor: number;
-  tipo: string;
-  categoria: string;
-  formaPagamento: string;
-  origem: string;
-  data: string;
-  criadoEm: string;
-}
 
 export interface AdminUsuarioDetalhe extends AdminUsuario {
-  receitaMedia: number;
-  gastoMedio: number;
-  saldoAtual: number;
   sessoesAtivas: number;
-  cartoes: AdminCartaoResumo[];
-  ultimosLancamentos: AdminLancamento[];
-  metasAtivas: AdminMetaResumo[];
 }
 
 export interface AdminCodigoConvite {

@@ -218,10 +218,10 @@ export default function AdminUsuariosPage() {
                     )}
                     {u.acessoExpiraEm && new Date(u.acessoExpiraEm) >= new Date() &&
                       (new Date(u.acessoExpiraEm).getTime() - Date.now()) < 7 * 86400_000 && (
-                      <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-500 border-amber-500/20">
-                        <Clock className="h-2.5 w-2.5 mr-1" />Acesso expira em breve
-                      </Badge>
-                    )}
+                        <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-500 border-amber-500/20">
+                          <Clock className="h-2.5 w-2.5 mr-1" />Acesso expira em breve
+                        </Badge>
+                      )}
                   </div>
 
                   {/* Email */}
@@ -512,77 +512,6 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
               ))}
             </div>
 
-            {/* Finance summary */}
-            <div className="border-t pt-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60 mb-3 flex items-center gap-1.5">
-                <Sparkles className="h-3 w-3" />Resumo Financeiro
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[
-                  { label: "Receita média", value: detalhe.receitaMedia, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-                  { label: "Gasto médio", value: detalhe.gastoMedio, color: "text-red-500", bg: "bg-red-500/10" },
-                  { label: "Saldo atual", value: detalhe.saldoAtual, color: detalhe.saldoAtual >= 0 ? "text-emerald-500" : "text-red-500", bg: detalhe.saldoAtual >= 0 ? "bg-emerald-500/10" : "bg-red-500/10" },
-                ].map((f) => (
-                  <div key={f.label} className={cn("rounded-xl p-3 text-center", f.bg)}>
-                    <p className="text-[10px] text-muted-foreground/70 mb-1">{f.label}</p>
-                    <p className={cn("font-extrabold text-sm", f.color)}>{formatCurrency(f.value)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Cards */}
-            {detalhe.cartoes.length > 0 && (
-              <div className="border-t pt-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">Cartões ({detalhe.cartoes.length})</p>
-                <div className="space-y-1.5">
-                  {detalhe.cartoes.map((c) => (
-                    <div key={c.id} className="flex justify-between text-sm py-1.5 border-b border-border/20 last:border-0">
-                      <span className="font-medium">{c.nome}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-muted-foreground/60 text-xs">Limite: {formatCurrency(c.limite)}</span>
-                        {!c.ativo && <Badge variant="secondary" className="text-[10px]">Inativo</Badge>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Goals */}
-            {detalhe.metasAtivas.length > 0 && (
-              <div className="border-t pt-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">Metas ativas ({detalhe.metasAtivas.length})</p>
-                <div className="space-y-1.5">
-                  {detalhe.metasAtivas.map((m) => (
-                    <div key={m.id} className="flex justify-between text-sm py-1.5 border-b border-border/20 last:border-0">
-                      <span className="font-medium">{m.nome}</span>
-                      <span className="text-muted-foreground/60 text-xs">{formatCurrency(m.valorAtual)} / {formatCurrency(m.valorAlvo)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Recent transactions */}
-            {detalhe.ultimosLancamentos.length > 0 && (
-              <div className="border-t pt-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">Últimos lançamentos</p>
-                <div className="space-y-1.5 max-h-44 overflow-y-auto">
-                  {detalhe.ultimosLancamentos.map((l) => (
-                    <div key={l.id} className="flex justify-between text-sm py-1.5 border-b border-border/20 last:border-0">
-                      <div>
-                        <span className="font-medium">{l.descricao}</span>
-                        <span className="text-xs text-muted-foreground/50 ml-2">({l.categoria})</span>
-                      </div>
-                      <span className={cn("font-semibold text-xs", l.tipo === "Receita" ? "text-emerald-500" : "text-red-500")}>
-                        {l.tipo === "Receita" ? "+" : "-"}{formatCurrency(l.valor)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         ) : null}
 

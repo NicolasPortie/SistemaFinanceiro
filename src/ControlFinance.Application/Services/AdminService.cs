@@ -69,9 +69,6 @@ public class AdminService : IAdminService
             NovosUltimos30Dias = usuarios.Count(u => u.CriadoEm >= ultimos30Dias),
             UsuariosComTelegram = usuarios.Count(u => u.TelegramVinculado),
             TotalLancamentosMes = lancamentosMes.Count,
-            VolumeReceitasMes = lancamentosMes.Where(l => l.Tipo == TipoLancamento.Receita).Sum(l => l.Valor),
-            VolumeGastosMes = lancamentosMes.Where(l => l.Tipo == TipoLancamento.Gasto).Sum(l => l.Valor),
-            TotalCartoes = await _context.CartoesCredito.CountAsync(c => c.Ativo),
             MetasAtivas = await _context.MetasFinanceiras.CountAsync(m => m.Status == StatusMeta.Ativa),
             SessoesAtivas = await _context.RefreshTokens.CountAsync(r => !r.Usado && !r.Revogado && r.ExpiraEm > agora),
             CodigosConviteAtivos = await _context.CodigosConvite.CountAsync(c => !c.Usado && (!c.ExpiraEm.HasValue || c.ExpiraEm > agora)),
@@ -134,29 +131,10 @@ public class AdminService : IAdminService
         var agora = DateTime.UtcNow;
         var inicioMes = new DateTime(agora.Year, agora.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        var lancamentos = await _context.Lancamentos
-            .Where(l => l.UsuarioId == usuarioId)
-            .Include(l => l.Categoria)
-            .OrderByDescending(l => l.Data)
-            .ThenByDescending(l => l.CriadoEm)
-            .AsNoTracking()
-            .ToListAsync();
-
-        var cartoes = await _context.CartoesCredito
-            .Where(c => c.UsuarioId == usuarioId)
-            .AsNoTracking()
-            .ToListAsync();
-
-        var metas = await _context.MetasFinanceiras
-            .Where(m => m.UsuarioId == usuarioId && m.Status == StatusMeta.Ativa)
-            .AsNoTracking()
-            .ToListAsync();
-
         var sessoesAtivas = await _context.RefreshTokens
             .CountAsync(r => r.UsuarioId == usuarioId && !r.Usado && !r.Revogado && r.ExpiraEm > agora);
-
-        var receitasMes = lancamentos.Where(l => l.Tipo == TipoLancamento.Receita && l.Data >= inicioMes).Sum(l => l.Valor);
-        var gastosMes = lancamentos.Where(l => l.Tipo == TipoLancamento.Gasto && l.Data >= inicioMes).Sum(l => l.Valor);
+            
+        var totalLancamentos = await _context.Lancamentos.CountAsync(l => l.UsuarioId == usuarioId);
 
         return new AdminUsuarioDetalheDto
         {
@@ -170,46 +148,12 @@ public class AdminService : IAdminService
             TentativasLoginFalhadas = usuario.TentativasLoginFalhadas,
             BloqueadoAte = usuario.BloqueadoAte,
             AcessoExpiraEm = usuario.AcessoExpiraEm,
-            TotalLancamentos = lancamentos.Count,
-            TotalCartoes = cartoes.Count,
-            TotalMetas = metas.Count,
-            ReceitaMedia = receitasMes,
-            GastoMedio = gastosMes,
-            SaldoAtual = receitasMes - gastosMes,
-            SessoesAtivas = sessoesAtivas,
-            Cartoes = cartoes.Select(c => new AdminCartaoResumoDto
-            {
-                Id = c.Id,
-                Nome = c.Nome,
-                Limite = c.Limite,
-                DiaVencimento = c.DiaVencimento,
-                Ativo = c.Ativo
-            }).ToList(),
-            UltimosLancamentos = lancamentos.Take(20).Select(l => new AdminLancamentoDto
-            {
-                Id = l.Id,
-                UsuarioNome = usuario.Nome,
-                Descricao = l.Descricao,
-                Valor = l.Valor,
-                Tipo = l.Tipo.ToString(),
-                Categoria = l.Categoria?.Nome ?? "Sem categoria",
-                FormaPagamento = l.FormaPagamento.ToString(),
-                Origem = l.Origem.ToString(),
-                Data = l.Data,
-                CriadoEm = l.CriadoEm
-            }).ToList(),
-            MetasAtivas = metas.Select(m => new AdminMetaResumoDto
-            {
-                Id = m.Id,
-                Nome = m.Nome,
-                Tipo = m.Tipo.ToString(),
-                ValorAlvo = m.ValorAlvo,
-                ValorAtual = m.ValorAtual,
-                Status = m.Status.ToString(),
-                Prazo = m.Prazo
-            }).ToList()
+            TotalLancamentos = totalLancamentos,
+            SessoesAtivas = sessoesAtivas
         };
     }
+    
+ 
 
     public async Task<string?> BloquearUsuarioAsync(int usuarioId, bool bloquear)
     {
@@ -373,40 +317,6 @@ public class AdminService : IAdminService
         await _codigoConviteRepo.RemoverAsync(id);
         _logger.LogInformation("Código de convite {Id} removido pelo admin", id);
         return null;
-    }
-
-    // ── Lançamentos ────────────────────────────────────────
-
-    public async Task<List<AdminLancamentoDto>> ListarLancamentosAsync(int? usuarioId = null, int pagina = 1, int tamanhoPagina = 50)
-    {
-        var query = _context.Lancamentos
-            .Include(l => l.Usuario)
-            .Include(l => l.Categoria)
-            .AsNoTracking()
-            .AsQueryable();
-
-        if (usuarioId.HasValue)
-            query = query.Where(l => l.UsuarioId == usuarioId.Value);
-
-        return await query
-            .OrderByDescending(l => l.Data)
-            .ThenByDescending(l => l.CriadoEm)
-            .Skip((pagina - 1) * tamanhoPagina)
-            .Take(tamanhoPagina)
-            .Select(l => new AdminLancamentoDto
-            {
-                Id = l.Id,
-                UsuarioNome = l.Usuario!.Nome,
-                Descricao = l.Descricao,
-                Valor = l.Valor,
-                Tipo = l.Tipo.ToString(),
-                Categoria = l.Categoria != null ? l.Categoria.Nome : "Sem categoria",
-                FormaPagamento = l.FormaPagamento.ToString(),
-                Origem = l.Origem.ToString(),
-                Data = l.Data,
-                CriadoEm = l.CriadoEm
-            })
-            .ToListAsync();
     }
 
     // ── Segurança ──────────────────────────────────────────

@@ -21,9 +21,6 @@ public interface IAdminService
     Task<List<AdminCodigoConviteDto>> CriarCodigoConviteAsync(int adminUsuarioId, CriarCodigoConviteDto dto);
     Task<string?> RemoverCodigoConviteAsync(int id);
 
-    // Lançamentos
-    Task<List<AdminLancamentoDto>> ListarLancamentosAsync(int? usuarioId = null, int pagina = 1, int tamanhoPagina = 50);
-
     // Segurança
     Task<AdminSegurancaResumoDto> ObterSegurancaResumoAsync();
     Task RevogarSessaoAsync(int tokenId);

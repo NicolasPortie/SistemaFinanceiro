@@ -105,41 +105,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Volume financeiro da plataforma */}
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-3">Volume Financeiro da Plataforma (mês atual)</p>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="card-premium p-5 flex items-center gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
-              <TrendingUp className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-xl font-extrabold tabular-nums text-emerald-600 dark:text-emerald-400">{formatCurrency(data.volumeReceitasMes)}</p>
-              <p className="text-[11px] text-muted-foreground/60 font-medium">Total de Receitas (todos os usuários)</p>
-            </div>
-          </div>
-          <div className="card-premium p-5 flex items-center gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500/10">
-              <TrendingDown className="h-5 w-5 text-red-500" />
-            </div>
-            <div>
-              <p className="text-xl font-extrabold tabular-nums text-red-500">{formatCurrency(data.volumeGastosMes)}</p>
-              <p className="text-[11px] text-muted-foreground/60 font-medium">Total de Gastos (todos os usuários)</p>
-            </div>
-          </div>
-          <div className="card-premium p-5 flex items-center gap-4">
-            <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", data.volumeReceitasMes - data.volumeGastosMes >= 0 ? "bg-emerald-500/10" : "bg-red-500/10")}>
-              <Receipt className={cn("h-5 w-5", data.volumeReceitasMes - data.volumeGastosMes >= 0 ? "text-emerald-500" : "text-red-500")} />
-            </div>
-            <div>
-              <p className={cn("text-xl font-extrabold tabular-nums", data.volumeReceitasMes - data.volumeGastosMes >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500")}>
-                {formatCurrency(data.volumeReceitasMes - data.volumeGastosMes)}
-              </p>
-              <p className="text-[11px] text-muted-foreground/60 font-medium">Saldo Líquido da Plataforma</p>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {/* Cadastros recentes */}
       {data.cadastrosPorDia.length > 0 && (
