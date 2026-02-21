@@ -641,6 +641,9 @@ export const api = {
 
     remover: (id: number) =>
       request(`/lancamentos/${id}`, { method: "DELETE" }),
+
+    removerEmMassa: (ids: number[]) =>
+      request("/lancamentos/em-massa", { method: "DELETE", body: ids }),
   },
 
   categorias: {

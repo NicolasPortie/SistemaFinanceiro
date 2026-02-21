@@ -9,9 +9,11 @@ import {
   useLancamentos,
   useAtualizarLancamento,
   useRemoverLancamento,
+  useRemoverVariosLancamentos,
   queryKeys,
 } from "@/hooks/use-queries";
 import { formatCurrency, formatDate, formatFormaPagamento } from "@/lib/format";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   lancamentoSchema,
   editarLancamentoSchema,
@@ -129,6 +131,8 @@ export default function LancamentosPage() {
   const [editingItem, setEditingItem] = useState<Lancamento | null>(null);
   const [viewingItem, setViewingItem] = useState<Lancamento | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingMany, setDeletingMany] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
   const [filtroCategoria, setFiltroCategoria] = useState<string>("todas");
   const [busca, setBusca] = useState("");
@@ -141,6 +145,7 @@ export default function LancamentosPage() {
   const criarLancamento = useCriarLancamento();
   const atualizarLancamento = useAtualizarLancamento();
   const removerLancamento = useRemoverLancamento();
+  const removerVariosLancamentos = useRemoverVariosLancamentos();
 
   const listParams = useMemo(
     () => ({
@@ -235,6 +240,33 @@ export default function LancamentosPage() {
     removerLancamento.mutate(deletingId, { onSuccess: () => setDeletingId(null) });
   };
 
+  const onDeleteMany = () => {
+    if (selectedIds.length === 0) return;
+    removerVariosLancamentos.mutate(selectedIds, {
+      onSuccess: () => {
+        setDeletingMany(false);
+        setSelectedIds([]);
+      }
+    });
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (!lancamentosData) return;
+    if (checked) {
+      setSelectedIds(lancamentosData.items.map((l) => l.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const toggleSelectRow = (id: number, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id]);
+    } else {
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
+    }
+  };
+
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.resumo() });
     queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
@@ -277,6 +309,34 @@ export default function LancamentosPage() {
           <span className="sm:hidden">Novo</span>
         </Button>
       </PageHeader>
+
+      {/* ── Bulk Actions Bar ── */}
+      <AnimatePresence>
+        {selectedIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, scale: 0.95 }}
+            animate={{ opacity: 1, height: "auto", scale: 1 }}
+            exit={{ opacity: 0, height: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="mb-4"
+          >
+            <div className="flex items-center justify-between p-3 px-4 rounded-xl border border-primary/20 bg-primary/5 text-primary">
+              <span className="text-sm font-semibold">
+                {selectedIds.length} {selectedIds.length === 1 ? "lançamento selecionado" : "lançamentos selecionados"}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])} className="hover:bg-primary/10">
+                  Cancelar
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => setDeletingMany(true)} className="gap-2 shadow-sm">
+                  <Trash2 className="h-4 w-4" />
+                  Excluir Selecionados
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Stats Overview ── */}
       {loadingResumo ? (
@@ -404,7 +464,14 @@ export default function LancamentosPage() {
         className="card-premium overflow-hidden"
       >
         {/* Table header */}
-        <div className="hidden lg:grid lg:grid-cols-[2.5fr_1fr_1fr_1fr_0.8fr_auto] gap-4 items-center px-6 py-3 border-b border-border/50 bg-muted/30">
+        <div className="hidden lg:grid lg:grid-cols-[auto_2.5fr_1fr_1fr_1fr_0.8fr_auto] gap-4 items-center px-6 py-3 border-b border-border/50 bg-muted/30">
+          <div className="pr-2">
+            <Checkbox
+              checked={!!lancamentosData?.items?.length && selectedIds.length === lancamentosData.items.length}
+              onCheckedChange={(c: boolean) => toggleSelectAll(c)}
+              aria-label="Selecionar todos os lançamentos"
+            />
+          </div>
           <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">Descrição</span>
           <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">Categoria</span>
           <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">Pagamento</span>
@@ -432,9 +499,17 @@ export default function LancamentosPage() {
                   >
                     {/* Desktop row */}
                     <div
-                      className="hidden lg:grid lg:grid-cols-[2.5fr_1fr_1fr_1fr_0.8fr_auto] gap-4 items-center px-6 py-3.5 hover:bg-muted/20 transition-all duration-200 cursor-pointer"
+                      className={`hidden lg:grid lg:grid-cols-[auto_2.5fr_1fr_1fr_1fr_0.8fr_auto] gap-4 items-center px-6 py-3.5 transition-all duration-200 cursor-pointer ${selectedIds.includes(l.id) ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/20"
+                        }`}
                       onClick={() => setViewingItem(l)}
                     >
+                      <div className="pr-2" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.includes(l.id)}
+                          onCheckedChange={(c: boolean) => toggleSelectRow(l.id, c)}
+                          aria-label={`Selecionar lançamento ${l.descricao}`}
+                        />
+                      </div>
                       {/* Description + type indicator */}
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 ${l.tipo === "receita" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}`}>
@@ -491,26 +566,36 @@ export default function LancamentosPage() {
                       </div>
                     </div>
 
-                    {/* Mobile card */}
+                    {/* Mobile card (Premium layout) */}
                     <div
-                      className="lg:hidden flex items-center gap-3 px-4 py-3.5 hover:bg-muted/20 transition-colors cursor-pointer"
+                      className={`lg:hidden flex flex-col gap-3 p-4 sm:p-5 border-b border-border/40 transition-colors cursor-pointer active:scale-[0.99] ${selectedIds.includes(l.id) ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/10"
+                        }`}
                       onClick={() => setViewingItem(l)}
                     >
-                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${l.tipo === "receita" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"}`}>
-                        {l.tipo === "receita" ? <ArrowUpCircle className="h-4.5 w-4.5" /> : <ArrowDownCircle className="h-4.5 w-4.5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold truncate">{l.descricao}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] text-muted-foreground/60 font-medium">{formatDate(l.data)}</span>
-                          <span className="text-[11px] text-muted-foreground/40">·</span>
-                          <span className="text-[11px] text-muted-foreground/60 font-medium">{l.categoria}</span>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 w-full min-w-0">
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedIds.includes(l.id)}
+                              onCheckedChange={(c: boolean) => toggleSelectRow(l.id, c)}
+                              aria-label={`Selecionar lançamento ${l.descricao}`}
+                              className="w-5 h-5 rounded-md"
+                            />
+                          </div>
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br shadow-sm ${l.tipo === "receita" ? "from-emerald-400 to-emerald-500 text-white dark:from-emerald-500/20 dark:to-emerald-500/10 dark:text-emerald-400" : "from-red-400 to-red-500 text-white dark:from-red-500/20 dark:to-red-500/10 dark:text-red-400"}`}>
+                            {l.tipo === "receita" ? <ArrowUpCircle className="h-5 w-5" /> : <ArrowDownCircle className="h-5 w-5" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[14px] font-bold text-foreground truncate">{l.descricao}</p>
+                            <p className="text-[12px] text-muted-foreground/80 font-medium truncate mt-0.5">{l.categoria}</p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className={`text-sm font-bold tabular-nums ${l.tipo === "receita" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
-                          {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
-                        </span>
+                        <div className="text-right shrink-0">
+                          <span className={`block text-[15px] font-extrabold tabular-nums tracking-tight ${l.tipo === "receita" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                            {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
+                          </span>
+                          <span className="block text-[11px] font-semibold text-muted-foreground/60 mt-1">{formatDate(l.data)}</span>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -935,6 +1020,24 @@ export default function LancamentosPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* ── Bulk Delete Confirmation ── */}
+      <AlertDialog open={deletingMany} onOpenChange={setDeletingMany}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover vários lançamentos?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover os <strong>{selectedIds.length}</strong> lançamentos selecionados? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onDeleteMany} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
+              {removerVariosLancamentos.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : `Remover ${selectedIds.length} lançamentos`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </PageShell>
   );
 }

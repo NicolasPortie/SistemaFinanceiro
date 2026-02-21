@@ -15,4 +15,5 @@ public interface ILancamentoRepository
     Task<decimal> ObterTotalPorPeriodoAsync(int usuarioId, TipoLancamento tipo, DateTime de, DateTime ate, bool excluirCredito = false);
     Task AtualizarAsync(Lancamento lancamento);
     Task RemoverAsync(int id);
+    Task RemoverEmMassaAsync(IEnumerable<Lancamento> lancamentos);
 }

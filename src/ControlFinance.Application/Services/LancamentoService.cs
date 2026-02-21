@@ -350,4 +350,26 @@ public class LancamentoService : ILancamentoService
         await _lancamentoRepo.RemoverAsync(lancamentoId);
         _logger.LogInformation("Lançamento {Id} removido pelo usuário {UsuarioId}", lancamentoId, usuarioId);
     }
+    
+    public async Task RemoverEmMassaAsync(IEnumerable<int> lancamentosIds, int usuarioId)
+    {
+        var idsList = lancamentosIds.ToList();
+        if (!idsList.Any()) return;
+        
+        var lancamentos = new List<Lancamento>();
+        foreach(var id in idsList)
+        {
+            var l = await _lancamentoRepo.ObterPorIdAsync(id);
+            if(l != null && l.UsuarioId == usuarioId)
+            {
+                lancamentos.Add(l);
+            }
+        }
+        
+        if (lancamentos.Any())
+        {
+            await _lancamentoRepo.RemoverEmMassaAsync(lancamentos);
+            _logger.LogInformation("{Count} lançamentos removidos pelo usuário {UsuarioId}", lancamentos.Count, usuarioId);
+        }
+    }
 }

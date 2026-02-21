@@ -134,6 +134,21 @@ export function useRemoverLancamento() {
   });
 }
 
+export function useRemoverVariosLancamentos() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: number[]) => api.lancamentos.removerEmMassa(ids),
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["resumo"] });
+      toast.success(`${ids.length} lançamento(s) removido(s)!`);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao remover os lançamentos");
+    },
+  });
+}
+
 export function useCategorias() {
   return useQuery({
     queryKey: queryKeys.categorias,

@@ -163,4 +163,10 @@ public class LancamentoRepository : ILancamentoRepository
     {
         await _context.Lancamentos.Where(l => l.Id == id).ExecuteDeleteAsync();
     }
+
+    public async Task RemoverEmMassaAsync(IEnumerable<Lancamento> lancamentos)
+    {
+        _context.Lancamentos.RemoveRange(lancamentos);
+        await _context.SaveChangesAsync();
+    }
 }

@@ -135,6 +135,27 @@ public class LancamentosController : BaseAuthController
         }
     }
 
+    [HttpDelete("em-massa")]
+    public async Task<IActionResult> RemoverEmMassa([FromBody] List<int> ids)
+    {
+        if (ids == null || !ids.Any())
+        {
+            return BadRequest(new { erro = "Nenhum ID fornecido para exclusão." });
+        }
+
+        try
+        {
+            await _lancamentoService.RemoverEmMassaAsync(ids, UsuarioId);
+            _logger.LogInformation("{Count} lançamentos removidos pelo usuário {UsuarioId}", ids.Count, UsuarioId);
+            return Ok(new { mensagem = $"{ids.Count} lançamento(s) removido(s) com sucesso." });
+        }
+        catch (Exception ex)
+        {
+             _logger.LogError(ex, "Erro ao remover em massa pelo usuário {UsuarioId}", UsuarioId);
+            return StatusCode(500, new { erro = "Erro ao tentar remover lançamentos em massa." });
+        }
+    }
+
     /// <summary>
     /// Mapeia entidade para response DTO (elimina duplicação).
     /// </summary>

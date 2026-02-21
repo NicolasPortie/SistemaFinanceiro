@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import {
   Tooltip,
@@ -178,31 +179,25 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* Footer */}
       <div className="p-4 space-y-3">
         {/* Theme toggle */}
-        <div className="flex items-center gap-1 rounded-xl bg-muted/25 p-1 border border-border/15">
-          <button
-            onClick={() => setTheme("light")}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all duration-300",
-              mounted && theme === "light"
-                ? "bg-card text-foreground shadow-md shadow-black/4"
-                : "text-muted-foreground/55 hover:text-foreground"
+        <div className="flex items-center justify-between rounded-xl bg-muted/25 px-4 py-3 border border-border/15 transition-colors hover:bg-muted/40">
+          <div className="flex items-center gap-2.5">
+            {mounted && theme === "dark" ? (
+              <Moon className="h-4 w-4 text-primary animate-in fade-in zoom-in duration-300" />
+            ) : (
+              <Sun className="h-4 w-4 text-amber-500 animate-in fade-in zoom-in duration-300" />
             )}
-          >
-            <Sun className="h-3.5 w-3.5" />
-            Claro
-          </button>
-          <button
-            onClick={() => setTheme("dark")}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all duration-300",
-              mounted && theme === "dark"
-                ? "bg-card text-foreground shadow-md shadow-black/4"
-                : "text-muted-foreground/55 hover:text-foreground"
-            )}
-          >
-            <Moon className="h-3.5 w-3.5" />
-            Escuro
-          </button>
+            <span className="text-xs font-semibold text-muted-foreground/80">
+              Modo Escuro
+            </span>
+          </div>
+          {mounted && (
+            <Switch
+              checked={theme === "dark"}
+              onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+              aria-label="Alternar modo escuro"
+              className="data-[state=checked]:bg-primary"
+            />
+          )}
         </div>
 
         {/* User card */}
