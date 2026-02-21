@@ -90,7 +90,7 @@ public static class GroqToolsHelper
                     {
                         valor = new { type = "number", description = "O valor total estimado." },
                         descricao = new { type = "string", description = "O que ele está querendo comprar/simular." },
-                        formaPagamento = new { type = "string", @enum = new[] { "credito", "pix" }, description = "A forma planejada." },
+                        formaPagamento = new { type = "string", @enum = new[] { "pix", "debito", "credito", "nao_informado" }, description = "A forma planejada." },
                         numeroParcelas = new { type = "integer", description = "Em quantas vezes pretende parcelar. Use 1 para à vista." }
                     },
                     required = new[] { "valor", "descricao", "formaPagamento", "numeroParcelas" }
@@ -196,7 +196,8 @@ public static class GroqToolsHelper
                         numeroPessoas = new { type = "integer", description = "Em quantas pessoas foi rachada a conta." },
                         descricao = new { type = "string", description = "Do que se tratava a despesa." },
                         categoria = new { type = "string", description = "A categoria financeira alinhada ao gasto." },
-                        formaPagamento = new { type = "string", @enum = new[] { "pix", "debito", "credito", "nao_informado" }, description = "Como foi pago." }
+                        formaPagamento = new { type = "string", @enum = new[] { "pix", "debito", "credito", "nao_informado" }, description = "Como foi pago." },
+                        numeroParcelas = new { type = "integer", description = "Em quantas vezes foi parcelado. Se for à vista ou não falar, use 1." }
                     },
                     required = new[] { "valorTotal", "numeroPessoas", "descricao", "categoria", "formaPagamento" }
                 }

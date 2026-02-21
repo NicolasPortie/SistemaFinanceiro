@@ -74,6 +74,7 @@ public class GroqAiService : IAiService
     public async Task<RespostaIA> ProcessarMensagemCompletaAsync(string mensagem, string contextoFinanceiro, OrigemDado origem = OrigemDado.Texto)
     {
         var dataHoje = DateTime.UtcNow.AddHours(-3).ToString("yyyy-MM-dd");
+        var diaSemana = DateTime.UtcNow.AddHours(-3).ToString("dddd", new System.Globalization.CultureInfo("pt-BR"));
         var horaAtual = DateTime.UtcNow.AddHours(-3).ToString("HH:mm");
         var horarioInt = DateTime.UtcNow.AddHours(-3).Hour;
 
@@ -84,8 +85,10 @@ public class GroqAiService : IAiService
         var prompt = $$"""
             Você é o ControlFinance, um assistente financeiro pessoal no Telegram. Você é simpático, usa emojis e fala de forma natural em português brasileiro.
 
-            HORÁRIO ATUAL: {{horaAtual}} ({{horarioInt}}h)
-            Use o horário adequado para cumprimentos básicos (Madrugada, Manhã, Tarde, Noite).
+            INFORMAÇÕES DE TEMPO PARA CÁLCULO DE DATAS E CUMPRIMENTOS:
+            - Data Atual: {{dataHoje}} ({{diaSemana}})
+            - Horário Atual: {{horaAtual}} ({{horarioInt}}h)
+            Use o horário adequado para cumprimentos básicos (Madrugada, Manhã, Tarde, Noite). Ao analisar palavras como "ontem", "anteontem" ou "sexta-feira", calcule a data baseado em {{dataHoje}}.
 
             CONTEXTO FINANCEIRO DO USUÁRIO:
             {{contextoFinanceiro}}
@@ -98,7 +101,7 @@ public class GroqAiService : IAiService
             - "vinte conto" = 20, "dois pau" = 2000.
             - "75 e 90" = 75.90. Não some. O "e " indica a casa decimal.
             - ERROS DE TRANSCRIÇÃO SÃO COMUNS: Se a mensagem transcreveu "1578" para uma despesa menor, assuma "15.78". Se a mensagem veio com "%" junto do valor financeiro (ex: "Shopee 45,99%"), **É UM ERRO DE ÁUDIO**. Ignore o "%", extraia apenas o valor numérico (ex: 45.99) e REGISTRE O GASTO USANDO A FERRAMENTA. NUNCA recuse ou devolva pergunta sobre isso!
-            - DATA: A mensagem pode vir não formatada ("13 de fevereiro", "dia 13"). Se informada de qualquer forma que lembre uma data, extraia e preencha a propriedade `data` corretamente, deduzindo o ano se necessário.
+            - DATA: A mensagem pode vir não formatada ("13 de fevereiro", "dia 13", "ontem"). Calcule o dia usando a `Data Atual` ({{dataHoje}}) se necessário, e extraia preenchendo a propriedade `data` (formato aaaa-mm-dd). Nunca deixe de deduzir a data do "ontem" ou do "hoje".
             - GASTO IMPLÍCITO: Se houver apenas um local (ex: "Kawakami") e um número, assuma incondicionalmente que é um gasto e chame `registrar_lancamento` utilizando o local como descrição. Use a lógica ao invés de barrar a transcrição.
 
             EXEMPLOS DE EXTRAÇÃO (FEW-SHOT) - APRENDA COMO LIDAR COM ERROS:
