@@ -226,11 +226,35 @@ public static class GroqToolsHelper
                     type = "object",
                     properties = new
                     {
-                        comandoInterno = new { type = "string", description = "O comando que ele quer executar. Ex: listar_faturas, ver_fatura, ver_categorias, consultar_metas, consultar_limites, ver_extrato, exluir_lancamento" },
+                        comandoInterno = new { type = "string", description = "O comando que ele quer executar. Ex: listar_faturas, ver_fatura, ver_categorias, consultar_metas, consultar_limites, ver_extrato, excluir_lancamento, ver_score, ver_perfil, ver_sazonalidade, ver_recorrentes, ver_lembretes, ver_salario" },
                         parametro = new { type = "string", description = "Qualquer entidade textual que precise acompanhar o comando interno (ex: o nome do cartão a ser excluido, a categoria detalhada, a descrição do lancamento excluido)" },
                         resposta = new { type = "string", description = "Resposta contextual que será exibida caso o fluxo de interface não intercepte a exibição." }
                     },
                     required = new[] { "comandoInterno", "resposta" }
+                }
+            }
+        },
+        // 12. Criar Conta Fixa
+        new
+        {
+            type = "function",
+            function = new
+            {
+                name = "criar_conta_fixa",
+                description = "Cadastra uma conta que se repete todo mês (ex: Netflix, Academia, Aluguel, Celular) ou um lembrete de pagamento recorrente.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        descricao = new { type = "string", description = "Breve descrição da conta (ex: Academia, Internet, Aluguel)." },
+                        valor = new { type = "number", description = "O valor da conta fixa. Ocasionalmente o usuário pode não informar, mas tente extrair (use 0 se não tiver)." },
+                        diaVencimento = new { type = "integer", description = "Dia do mês em que vence (1 a 31). Extraia do texto ou aproxime (se for 'amanhã', qual dia do mês é?)." },
+                        categoria = new { type = "string", description = "Categoria financeira (ex: Saúde, Moradia, Lazer, etc)." },
+                        formaPagamento = new { type = "string", @enum = new[] { "pix", "debito", "credito", "dinheiro", "nao_informado" }, description = "Forma de pagamento utilizada nesta conta." },
+                        dataFimRecorrencia = new { type = "string", description = "Data opcional de término da conta. Útil para assinaturas/parcelamentos que o usuário diga limite (ex: 'até dezembro de 2026'). Formato: aaaa-mm-dd." }
+                    },
+                    required = new[] { "descricao", "diaVencimento", "categoria", "formaPagamento" }
                 }
             }
         }

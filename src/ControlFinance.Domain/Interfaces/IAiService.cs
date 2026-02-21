@@ -26,6 +26,17 @@ public class RespostaIA
     public DadosCartaoIA? Cartao { get; set; }
     public DadosDivisaoGastoIA? DivisaoGasto { get; set; }
     public DadosVerificacaoDuplicidadeIA? VerificacaoDuplicidade { get; set; }
+    public DadosContaFixaIA? ContaFixa { get; set; }
+}
+
+public class DadosContaFixaIA
+{
+    public string Descricao { get; set; } = string.Empty;
+    public decimal? Valor { get; set; }
+    public int DiaVencimento { get; set; } = 1;
+    public string Categoria { get; set; } = "Outros";
+    public string FormaPagamento { get; set; } = "credito";
+    public string? DataFimRecorrencia { get; set; }
 }
 
 public class DadosPagamentoFaturaIA

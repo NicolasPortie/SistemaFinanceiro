@@ -655,6 +655,12 @@ public class TelegramBotService : ITelegramBotService
             return await _metaLimiteHandler.ProcessarConfigurarLimiteAsync(usuario, resposta.Limite);
         }
 
+        // Se a IA identificou criação de conta fixa (Lembrete) via Linguagem Natural
+        if (resposta.Intencao == "criar_conta_fixa" && resposta.ContaFixa != null)
+        {
+            return await _lembreteHandler.ProcessarCriarContaFixaIAAsync(usuario, resposta.ContaFixa);
+        }
+
         // Se a IA identificou criação de meta
         if (resposta.Intencao == "criar_meta" && resposta.Meta != null)
         {

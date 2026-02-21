@@ -274,6 +274,112 @@ public class LembreteHandler : ILembreteHandler
                "Lembretes deste ciclo não serão mais enviados.";
     }
 
+    public async Task<string> ProcessarCriarContaFixaIAAsync(Usuario usuario, DadosContaFixaIA dadosIA)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(dadosIA.Descricao))
+                return "❌ Não consegui identificar a descrição da conta.\nTente dizer: \"Conta de luz 150 reais dia 10\".";
+
+            int? categoriaId = null;
+            if (!string.IsNullOrWhiteSpace(dadosIA.Categoria))
+            {
+                var cat = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, dadosIA.Categoria);
+                if (cat == null)
+                {
+                    // Tentar match parcial se não achar o nome exato
+                    var todasCategorias = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
+                    cat = todasCategorias.FirstOrDefault(c => 
+                        c.Nome.Contains(dadosIA.Categoria, StringComparison.OrdinalIgnoreCase) ||
+                        dadosIA.Categoria.Contains(c.Nome, StringComparison.OrdinalIgnoreCase));
+                }
+                
+                // Se ainda assim não existir, pegamos a primeira ou deixamos null (neste caso, "Outros")
+                if (cat == null)
+                {
+                    var todasCategorias = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
+                    cat = todasCategorias.FirstOrDefault(c => c.Nome.Equals("Outros", StringComparison.OrdinalIgnoreCase)) ?? todasCategorias.FirstOrDefault();
+                }
+                categoriaId = cat?.Id;
+            }
+
+            FormaPagamento forma = FormaPagamento.Outro;
+            if (!string.IsNullOrWhiteSpace(dadosIA.FormaPagamento))
+            {
+                forma = dadosIA.FormaPagamento.ToLower() switch
+                {
+                    "pix" => FormaPagamento.PIX,
+                    "debito" or "débito" => FormaPagamento.Debito,
+                    "credito" or "crédito" => FormaPagamento.Credito,
+                    "dinheiro" => FormaPagamento.Dinheiro,
+                    _ => FormaPagamento.Outro
+                };
+            }
+
+            DateTime? dataFim = null;
+            if (!string.IsNullOrWhiteSpace(dadosIA.DataFimRecorrencia))
+            {
+                if (DateTime.TryParseExact(dadosIA.DataFimRecorrencia, new[] { "MM/yyyy", "M/yyyy", "dd/MM/yyyy" },
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
+                {
+                    // Para fim de recorrência mês/ano, joga para o último dia do mês
+                    var isApenasMesAno = !dadosIA.DataFimRecorrencia.Contains("dia") && dadosIA.DataFimRecorrencia.Length <= 7;
+                    if (isApenasMesAno) 
+                    {
+                        var ultimoDia = DateTime.DaysInMonth(parsed.Year, parsed.Month);
+                        dataFim = new DateTime(parsed.Year, parsed.Month, ultimoDia, 23, 59, 59, DateTimeKind.Utc);
+                    }
+                    else
+                    {
+                        dataFim = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
+                    }
+                }
+            }
+
+            var diaVencimento = dadosIA.DiaVencimento < 1 ? 1 : (dadosIA.DiaVencimento > 28 ? 28 : dadosIA.DiaVencimento);
+            var proximoVencimento = BotParseHelper.CalcularProximoVencimentoMensal(diaVencimento, DateTime.UtcNow);
+            var periodKey = $"{TimeZoneInfo.ConvertTimeFromUtc(proximoVencimento, BrasiliaTimeZone):yyyy-MM}";
+
+            var lembrete = new LembretePagamento
+            {
+                UsuarioId = usuario.Id,
+                Descricao = dadosIA.Descricao,
+                Valor = dadosIA.Valor,
+                DataVencimento = proximoVencimento,
+                RecorrenteMensal = true,
+                DiaRecorrente = diaVencimento,
+                Frequencia = FrequenciaLembrete.Mensal,
+                Ativo = true,
+                CategoriaId = categoriaId,
+                FormaPagamento = forma,
+                LembreteTelegramAtivo = true, // Padrão via IA é sempre enviar
+                PeriodKeyAtual = periodKey,
+                DataFimRecorrencia = dataFim,
+                CriadoEm = DateTime.UtcNow,
+                AtualizadoEm = DateTime.UtcNow
+            };
+
+            await _lembreteRepo.CriarAsync(lembrete);
+
+            var fpTexto = forma.ToString();
+            var valorTexto = lembrete.Valor.HasValue ? $"R$ {lembrete.Valor.Value:N2}" : "Valor não informado";
+            var dataFimTexto = lembrete.DataFimRecorrencia.HasValue ? $"\n⏹️ Termina em: {lembrete.DataFimRecorrencia.Value:MM/yyyy}" : "";
+
+            return $"✅ Conta fixa criada!\n\n" +
+                   $"📝 *{lembrete.Descricao}*\n" +
+                   $"💰 {valorTexto}\n" +
+                   $"📅 Todo dia {diaVencimento} (começa em {lembrete.DataVencimento:dd/MM})\n" +
+                   $"💳 Via {fpTexto}{dataFimTexto}\n\n" +
+                   $"Te avisarei 3 dias antes do vencimento!";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao criar conta fixa pela IA para o usuário {Nome}", usuario.Nome);
+            return "❌ Erro ao registrar conta fixa. Tente dizer de uma forma mais simples.";
+        }
+    }
+
     #region Private
 
     private async Task<string> CriarLembreteAPartirTextoAsync(Usuario usuario, string? payload)

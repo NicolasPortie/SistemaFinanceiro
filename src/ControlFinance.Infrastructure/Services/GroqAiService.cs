@@ -122,7 +122,12 @@ public class GroqAiService : IAiService
             INSTRUÇÃO:
             Avalie a mensagem do usuário e ESCOLHA A FERRAMENTA MAIS ADEQUADA. 
             Preencha todos os parâmetros requeridos pela ferramenta com os dados extraídos ou deduzidos da mensagem.
-            Se for uma dúvida genérica, cumprimento, pedir resumo, faturas, etc, use "responder_generico" ou a ferramenta mais aderente.
+            Se for uma dúvida genérica, pedir resumo, faturas, use "responder_generico" ou a ferramenta mais aderente.
+            Se o usuário pedir a sua "nota" ou score financeiro = use 'responder_generico' indicando comandoInterno 'ver_score'.
+            Se o usuário pedir seu "perfil", "jeito de gastar" = use 'responder_generico' indicando comandoInterno 'ver_perfil'.
+            Se o usuário perguntar sobre "eventos", "gastos de meses específicos" = 'responder_generico' indicando comandoInterno 'ver_sazonalidade'.
+            Se ele perguntar sobre "receitas fixas", "salário" ou "recorrentes" = 'responder_generico' indicando comandoInterno 'ver_recorrentes' (ou ver_salario se falar salário).
+            Se ele perguntar sobre assinaturas e contas que vão vencer = 'responder_generico' indicando comandoInterno 'ver_lembretes'.
             """;
 
         try
@@ -285,6 +290,20 @@ public class GroqAiService : IAiService
                         Data = DateTime.UtcNow.AddHours(-3)
                     };
                     break;
+
+                case "criar_conta_fixa":
+                    result.Intencao = "criar_conta_fixa";
+                    result.Resposta = "Vou cadastrar essa conta fixa/recorrente.";
+                    result.ContaFixa = new DadosContaFixaIA
+                    {
+                        Descricao = GetStr("descricao") ?? "Conta Fixa",
+                        Valor = root.TryGetProperty("valor", out var v) && v.TryGetDecimal(out var dv) ? dv : null,
+                        DiaVencimento = GetInt("diaVencimento") > 0 ? GetInt("diaVencimento") : 1,
+                        Categoria = GetStr("categoria") ?? "Outros",
+                        FormaPagamento = GetStr("formaPagamento") ?? "nao_informado",
+                        DataFimRecorrencia = GetStr("dataFimRecorrencia")
+                    };
+                    break;
                     
                 case "ver_resumo":
                     result.Intencao = "ver_resumo";
@@ -313,6 +332,10 @@ public class GroqAiService : IAiService
                     if (comando == "excluir_cartao" && !string.IsNullOrEmpty(parametro))
                     {
                          result.Resposta = parametro;
+                    }
+                    if ((comando == "ver_score" || comando == "ver_perfil" || comando == "ver_lembretes" || comando == "ver_eventos_sazonais" || comando == "ver_recorrentes" || comando == "ver_salario"))
+                    {
+                         // Estes comandos são diretos e não dependem da Resposta String para o TelegramBotService
                     }
 
                     break;
