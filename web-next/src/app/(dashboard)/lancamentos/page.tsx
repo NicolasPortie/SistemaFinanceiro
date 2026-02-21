@@ -38,6 +38,7 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  CalendarDays,
   X,
   CreditCard,
   Banknote,
@@ -126,6 +127,43 @@ function PaymentIcon({ method, className = "h-3.5 w-3.5" }: { method: string; cl
   return <Banknote className={className} />;
 }
 
+// ── Month Selector Hook ──────────────────────────────────────
+const meses = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+function useMonthSelector() {
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+  const mesParam = isCurrentMonth ? undefined : `${year}-${String(month + 1).padStart(2, "0")}`;
+  const label = `${meses[month]} ${year}`;
+
+  const prev = () => {
+    if (month === 0) { setMonth(11); setYear((y) => y - 1); }
+    else setMonth((m) => m - 1);
+  };
+
+  const next = () => {
+    // Optionally allow future months, or block it. Let's allow it for future provisions.
+    if (month === 11) { setMonth(0); setYear((y) => y + 1); }
+    else setMonth((m) => m + 1);
+  };
+
+  const reset = () => { setYear(now.getFullYear()); setMonth(now.getMonth()); };
+
+  // Calculate first and last day for the `de` and `ate` API parameters
+  const firstDay = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+  const lastDay = `${year}-${String(month + 1).padStart(2, "0")}-${lastDayOfMonth}`;
+
+  // Use standard month selector behaviors without isAllTime
+  return { mesParam, label, isCurrentMonth, prev, next, reset, firstDay, lastDay };
+}
+
 export default function LancamentosPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<Lancamento | null>(null);
@@ -139,7 +177,9 @@ export default function LancamentosPage() {
   const [pagina, setPagina] = useState(1);
   const queryClient = useQueryClient();
 
-  const { data: resumo, isLoading: loadingResumo, isError, error } = useResumo();
+  const { label, isCurrentMonth, prev, next, reset, firstDay, lastDay, mesParam } = useMonthSelector();
+
+  const { data: resumo, isLoading: loadingResumo, isError, error } = useResumo(mesParam);
   const { data: categorias = [] } = useCategorias();
   const { data: cartoes = [] } = useCartoes();
   const criarLancamento = useCriarLancamento();
@@ -157,8 +197,10 @@ export default function LancamentosPage() {
       busca: busca.trim() ? busca.trim() : undefined,
       pagina,
       tamanhoPagina: 20,
+      de: firstDay,
+      ate: lastDay,
     }),
-    [filtroTipo, filtroCategoria, busca, pagina, categorias]
+    [filtroTipo, filtroCategoria, busca, pagina, categorias, firstDay, lastDay]
   );
 
   const { data: lancamentosData, isLoading: loadingLancamentos } = useLancamentos(listParams);
@@ -303,12 +345,37 @@ export default function LancamentosPage() {
             <TooltipContent>Atualizar dados</TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-3 sm:px-5 rounded-xl shadow-premium font-semibold">
+        <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-3 sm:px-5 rounded-xl shadow-premium font-semibold bg-emerald-600 hover:bg-emerald-500 text-white">
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">Novo Lançamento</span>
           <span className="sm:hidden">Novo</span>
         </Button>
       </PageHeader>
+
+      {/* ── Month Selector ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08, duration: 0.4 }}
+        className="flex items-center justify-center gap-2.5 mb-4 sm:mb-6"
+      >
+        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/30 shadow-sm hover:shadow-md transition-all duration-300" onClick={prev} aria-label="Mês anterior">
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <button
+          onClick={reset}
+          className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-card border border-border/30 hover:border-primary/25 hover:shadow-md transition-all duration-300 min-w-36 sm:min-w-45 justify-center shadow-sm group"
+        >
+          <CalendarDays className="h-4 w-4 text-primary transition-transform duration-300 group-hover:scale-105" />
+          <span className="text-sm font-bold tracking-tight">{label}</span>
+          {!isCurrentMonth && (
+            <span className="text-[10px] text-primary ml-0.5 font-semibold">(atual)</span>
+          )}
+        </button>
+        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/30 shadow-sm hover:shadow-md transition-all duration-300" onClick={next} disabled={isCurrentMonth} aria-label="Próximo mês">
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </motion.div>
 
       {/* ── Bulk Actions Bar ── */}
       <AnimatePresence>
@@ -344,7 +411,7 @@ export default function LancamentosPage() {
       ) : isError ? (
         <ErrorState message={error?.message} onRetry={handleRefresh} />
       ) : resumo ? (
-        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4 mb-4 sm:mb-6">
           <StatCard
             title="Receitas do Mês"
             value={formatCurrency(resumo.totalReceitas)}
@@ -370,7 +437,7 @@ export default function LancamentosPage() {
           <StatCard
             title="Total de Transações"
             value={lancamentosData?.total ?? 0}
-            subtitle="Este mês"
+            subtitle="Neste mês"
             icon={<Receipt className="h-4 w-4 sm:h-5 sm:w-5" />}
             trend="neutral"
             delay={3}

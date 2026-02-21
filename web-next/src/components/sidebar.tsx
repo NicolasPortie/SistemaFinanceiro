@@ -240,7 +240,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
         <div className="mt-1 text-center">
           <p className="text-[10px] text-muted-foreground/30 font-mono tracking-widest">
-            v1.15.8
+            v1.16.0
           </p>
         </div>
       </div>
