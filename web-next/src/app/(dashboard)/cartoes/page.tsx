@@ -20,7 +20,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Loader2,
   Eye,
   Calendar,
   Wifi,
@@ -43,6 +42,7 @@ import {
   PageHeader,
   StatCard,
   EmptyState,
+  ErrorState,
   CardSkeleton,
 } from "@/components/shared/page-components";
 import {
@@ -98,7 +98,7 @@ export default function CartoesPage() {
   const [garantiaCard, setGarantiaCard] = useState<Cartao | null>(null);
   const [garantiaTab, setGarantiaTab] = useState<string>("adicionar");
 
-  const { data: cartoes = [], isLoading } = useCartoes();
+  const { data: cartoes = [], isLoading, isError, error, refetch } = useCartoes();
   const criarCartao = useCriarCartao();
   const atualizarCartao = useAtualizarCartao();
   const desativarCartao = useDesativarCartao();
@@ -225,6 +225,15 @@ export default function CartoesPage() {
   const totalLimite = cartoes.reduce((s, c) => s + c.limite, 0);
   const totalUsado = cartoes.reduce((s, c) => s + c.limiteUsado, 0);
   const totalDisponivel = cartoes.reduce((s, c) => s + (c.limiteDisponivel ?? c.limite), 0);
+
+  if (isError) {
+    return (
+      <PageShell>
+        <PageHeader title="Cartões de Crédito" description="Gerencie seus cartões e visualize faturas" />
+        <ErrorState message={error?.message ?? "Erro ao carregar cartões"} onRetry={refetch} />
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>
@@ -465,9 +474,9 @@ export default function CartoesPage() {
                 <Button
                   type="submit"
                   className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-linear-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
-                  disabled={criarCartao.isPending}
+                  loading={criarCartao.isPending}
                 >
-                  {criarCartao.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CreditCard className="h-5 w-5" />Criar Cartão</>}
+                  <CreditCard className="h-5 w-5" />Criar Cartão
                 </Button>
               </div>
             </form>
@@ -518,8 +527,8 @@ export default function CartoesPage() {
                 {editFormState.formState.errors.diaVencimento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaVencimento.message}</p>}
               </div>
             </div>
-            <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] shadow-premium btn-premium" disabled={atualizarCartao.isPending}>
-              {atualizarCartao.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : "Salvar alterações"}
+            <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] shadow-premium btn-premium" loading={atualizarCartao.isPending}>
+              Salvar alterações
             </Button>
           </form>
         </DialogContent>
@@ -628,8 +637,8 @@ export default function CartoesPage() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full h-12 rounded-2xl font-bold text-[15px] gap-2 shadow-premium btn-premium" disabled={adicionarLimiteExtra.isPending || valorAdicionalWatch <= 0}>
-                  {adicionarLimiteExtra.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><ArrowUpFromLine className="h-4.5 w-4.5" /> Adicionar Garantia</>}
+                <Button type="submit" className="w-full h-12 rounded-2xl font-bold text-[15px] gap-2 shadow-premium btn-premium" disabled={valorAdicionalWatch <= 0} loading={adicionarLimiteExtra.isPending}>
+                  <ArrowUpFromLine className="h-4.5 w-4.5" /> Adicionar Garantia
                 </Button>
               </form>
             </TabsContent>
@@ -699,9 +708,10 @@ export default function CartoesPage() {
                   <Button
                     type="submit"
                     className="w-full h-12 rounded-2xl font-bold text-[15px] gap-2 shadow-premium bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
-                    disabled={resgatarLimiteExtra.isPending || novoLimiteResgate < 0 || valorResgateBase < 1 || resgateExcedeGarantia}
+                    disabled={novoLimiteResgate < 0 || valorResgateBase < 1 || resgateExcedeGarantia}
+                    loading={resgatarLimiteExtra.isPending}
                   >
-                    {resgatarLimiteExtra.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><ArrowDownToLine className="h-4.5 w-4.5" /> Resgatar Garantia</>}
+                    <ArrowDownToLine className="h-4.5 w-4.5" /> Resgatar Garantia
                   </Button>
                 </form>
               )}
@@ -719,8 +729,8 @@ export default function CartoesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
-              {desativarCartao.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" />Desativar</>}
+            <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2" loading={desativarCartao.isPending}>
+              <Trash2 className="h-4 w-4" />Desativar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

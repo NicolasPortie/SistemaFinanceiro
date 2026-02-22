@@ -26,7 +26,6 @@ import {
   BarChart3,
   ChevronDown,
   ChevronUp,
-  Loader2,
   Target,
   Activity,
   Wallet,
@@ -230,16 +229,10 @@ export default function SimulacaoPage() {
               <Button
                 type="submit"
                 className="w-full sm:w-auto h-12 gap-2.5 font-bold shadow-premium btn-premium rounded-xl"
-                disabled={simularMutation.isPending}
+                loading={simularMutation.isPending}
               >
-                {simularMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4" />
-                    Simular compra
-                  </>
-                )}
+                <Zap className="h-4 w-4" />
+                Simular compra
               </Button>
             </form>
           </motion.div>

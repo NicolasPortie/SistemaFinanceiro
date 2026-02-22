@@ -90,9 +90,11 @@ export function CategorySpendingCard({ gastosPorCategoria }: CategorySpendingCar
           </div>
         </>
       ) : (
-        <div className="py-10 text-center text-sm text-muted-foreground/70">
-          Nenhum gasto registrado neste período
-        </div>
+        <EmptyState
+          icon={<Tag className="h-5 w-5" />}
+          title="Nenhum gasto registrado"
+          description="Registre suas despesas para ver a distribuição por categoria"
+        />
       )}
     </motion.div>
   );

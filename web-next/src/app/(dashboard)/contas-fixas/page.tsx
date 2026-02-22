@@ -78,6 +78,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 import type { LembretePagamento } from "@/lib/api";
 
 const isVencido = (dataVenc: string) => new Date(dataVenc) < new Date(new Date().toISOString().split("T")[0]);
@@ -106,7 +107,8 @@ function getStatusInfo(dataVenc: string) {
 }
 
 export default function ContasFixasPage() {
-  const { data: lembretes = [], isLoading, isError, error, refetch } = useLembretes();
+  const [mostrarInativos, setMostrarInativos] = useState(false);
+  const { data: lembretes = [], isLoading, isError, error, refetch } = useLembretes(mostrarInativos ? false : undefined);
   const { data: categorias = [] } = useCategorias();
   const criarLembrete = useCriarLembrete();
   const atualizarLembrete = useAtualizarLembrete();
@@ -223,12 +225,14 @@ export default function ContasFixasPage() {
   const filtered = useMemo(() => {
     return lembretes.filter((l) => {
       if (busca.trim() && !l.descricao.toLowerCase().includes(busca.toLowerCase())) return false;
+      if (!mostrarInativos && l.ativo === false) return false;
       if (filtroStatus === "vencido" && !isVencido(l.dataVencimento)) return false;
       if (filtroStatus === "proximo" && !isProximo(l.dataVencimento)) return false;
       if (filtroStatus === "emdia" && (isVencido(l.dataVencimento) || isProximo(l.dataVencimento))) return false;
+      if (filtroStatus === "inativos" && l.ativo !== false) return false;
       return true;
     });
-  }, [lembretes, busca, filtroStatus]);
+  }, [lembretes, busca, filtroStatus, mostrarInativos]);
 
   const stats = useMemo(() => {
     const vencidos = lembretes.filter(l => isVencido(l.dataVencimento)).length;
@@ -348,6 +352,19 @@ export default function ContasFixasPage() {
               </button>
             )}
           </div>
+
+          <Separator orientation="vertical" className="h-6 hidden md:block" />
+
+          <div className="flex items-center gap-2">
+            <Switch
+              id="mostrar-inativos"
+              checked={mostrarInativos}
+              onCheckedChange={setMostrarInativos}
+            />
+            <Label htmlFor="mostrar-inativos" className="text-xs font-medium text-muted-foreground cursor-pointer whitespace-nowrap">
+              Mostrar inativos
+            </Label>
+          </div>
         </div>
       </motion.div>
 
@@ -374,7 +391,7 @@ export default function ContasFixasPage() {
                 const status = getStatusInfo(l.dataVencimento);
                 const StatusIcon = status.icon;
                 return (
-                  <motion.div key={l.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ delay: 0.015 * i }} className="group">
+                  <motion.div key={l.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ delay: 0.015 * i }} className={cn("group", !l.ativo && "opacity-50")}>
                     {/* Desktop row */}
                     <div className="hidden lg:grid lg:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center px-6 py-3.5 hover:bg-muted/20 transition-all duration-200">
                       <div className="flex items-center gap-3 min-w-0">
@@ -399,8 +416,8 @@ export default function ContasFixasPage() {
 
                       <span className="text-[13px] text-muted-foreground/80 font-medium tabular-nums">{formatShortDate(l.dataVencimento)}</span>
 
-                      <Badge variant="outline" className={`text-[11px] font-semibold w-fit ${status.badgeClass}`}>
-                        {status.label}
+                      <Badge variant="outline" className={`text-[11px] font-semibold w-fit ${!l.ativo ? "border-muted-foreground/30 text-muted-foreground bg-muted/30" : status.badgeClass}`}>
+                        {!l.ativo ? "Inativo" : status.label}
                       </Badge>
 
                       <div className="flex items-center justify-end gap-0.5 w-20 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
@@ -715,16 +732,10 @@ export default function ContasFixasPage() {
                 <Button
                   type="submit"
                   className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-linear-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
-                  disabled={criarLembrete.isPending}
+                  loading={criarLembrete.isPending}
                 >
-                  {criarLembrete.isPending ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-5 w-5" />
-                      Criar Conta Fixa
-                    </>
-                  )}
+                  <CheckCircle2 className="h-5 w-5" />
+                  Criar Conta Fixa
                 </Button>
               </div>
             </form>
@@ -928,8 +939,8 @@ export default function ContasFixasPage() {
               </div>
             )}
 
-            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold shadow-premium btn-premium" disabled={atualizarLembrete.isPending}>
-              {atualizarLembrete.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar alterações"}
+            <Button type="submit" className="w-full h-12 rounded-xl gap-2 font-bold shadow-premium btn-premium" loading={atualizarLembrete.isPending}>
+              Salvar alterações
             </Button>
           </form>
         </DialogContent>
@@ -944,8 +955,8 @@ export default function ContasFixasPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDesativar} disabled={desativarLembrete.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
-              {desativarLembrete.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" />Desativar</>}
+            <AlertDialogAction onClick={handleDesativar} loading={desativarLembrete.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
+              <Trash2 className="h-4 w-4" />Desativar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

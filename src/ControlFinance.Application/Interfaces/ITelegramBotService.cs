@@ -18,5 +18,6 @@ public interface ITelegramBotService
     /// <summary>
     /// Processa uma imagem enviada no Telegram e retorna a resposta.
     /// </summary>
-    Task<string> ProcessarImagemAsync(long chatId, byte[] imageData, string mimeType, string nomeUsuario);
+    /// <param name="caption">Legenda opcional enviada pelo usuário junto com a foto.</param>
+    Task<string> ProcessarImagemAsync(long chatId, byte[] imageData, string mimeType, string nomeUsuario, string? caption = null);
 }

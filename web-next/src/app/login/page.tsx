@@ -15,7 +15,6 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Loader2,
   Wallet,
   PieChart,
   Bot,
@@ -359,17 +358,11 @@ export default function LoginPage() {
               >
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  loading={isSubmitting}
                   className="w-full h-13 text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group cursor-pointer"
                 >
-                  {isSubmitting ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      Entrar
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                    </>
-                  )}
+                  Entrar
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                 </Button>
               </motion.div>
             </form>

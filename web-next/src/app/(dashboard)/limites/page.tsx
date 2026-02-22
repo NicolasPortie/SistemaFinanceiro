@@ -15,7 +15,6 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Loader2,
   Shield,
   BarChart3,
 } from "lucide-react";
@@ -28,7 +27,6 @@ import {
   CardSkeleton,
 } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -373,16 +371,11 @@ export default function LimitesPage() {
                 <Button
                   type="submit"
                   className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
-                  disabled={definirLimite.isPending || !categoriaWatch}
+                  disabled={!categoriaWatch}
+                  loading={definirLimite.isPending}
                 >
-                  {definirLimite.isPending ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Gauge className="h-5 w-5" />
-                      Salvar Limite
-                    </>
-                  )}
+                  <Gauge className="h-5 w-5" />
+                  Salvar Limite
                 </Button>
               </div>
             </form>
@@ -399,8 +392,8 @@ export default function LimitesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemover} disabled={removerLimite.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
-              {removerLimite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" />Remover</>}
+            <AlertDialogAction onClick={handleRemover} loading={removerLimite.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
+              <Trash2 className="h-4 w-4" />Remover
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

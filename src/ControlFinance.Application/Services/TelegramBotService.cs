@@ -52,8 +52,14 @@ public class TelegramBotService : ITelegramBotService
     private static readonly ConcurrentDictionary<long, DateTime> _desvinculacaoPendente = new();
     // Cache de exclusões pendentes de confirmação
     private static readonly ConcurrentDictionary<long, ExclusaoPendente> _exclusaoPendente = new();
+    // Cache de seleções de exclusão pendentes (lista de lançamentos para o usuário escolher)
+    private static readonly ConcurrentDictionary<long, SelecaoExclusaoPendente> _selecaoExclusaoPendente = new();
     // Semáforos por chat para evitar processamento concorrente que corrompe o estado
     private static readonly ConcurrentDictionary<long, SemaphoreSlim> _chatLocks = new();
+    // Rate limit por usuário: máximo de mensagens por janela de tempo
+    private static readonly ConcurrentDictionary<long, (int Count, DateTime WindowStart)> _rateLimits = new();
+    private const int RateLimitMaxMensagens = 20;
+    private static readonly TimeSpan RateLimitJanela = TimeSpan.FromMinutes(1);
     // Controle: última vez que a limpeza periódica rodou
     private static DateTime _ultimaLimpeza = DateTime.UtcNow;
     private static readonly TimeSpan _intervaloLimpeza = TimeSpan.FromMinutes(30);
@@ -84,16 +90,31 @@ public class TelegramBotService : ITelegramBotService
                 _exclusaoPendente.TryRemove(kv.Key, out _);
         }
 
+        // Limpar seleções de exclusão expiradas
+        foreach (var kv in _selecaoExclusaoPendente)
+        {
+            if (agora - kv.Value.CriadoEm > _ttlPendente)
+                _selecaoExclusaoPendente.TryRemove(kv.Key, out _);
+        }
+
         // Limpar semáforos de chats que não têm pendências ativas e cujo semáforo está livre
         foreach (var kv in _chatLocks)
         {
             if (!_desvinculacaoPendente.ContainsKey(kv.Key) &&
                 !_exclusaoPendente.ContainsKey(kv.Key) &&
+                !_selecaoExclusaoPendente.ContainsKey(kv.Key) &&
                 kv.Value.CurrentCount > 0)
             {
                 if (_chatLocks.TryRemove(kv.Key, out var sem))
                     sem.Dispose();
             }
+        }
+
+        // Limpar rate limits com janela expirada
+        foreach (var kv in _rateLimits)
+        {
+            if (agora - kv.Value.WindowStart > RateLimitJanela)
+                _rateLimits.TryRemove(kv.Key, out _);
         }
     }
 
@@ -104,10 +125,25 @@ public class TelegramBotService : ITelegramBotService
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     }
 
+    /// <summary>Cache de lançamentos apresentados ao usuário para escolha antes da exclusão</summary>
+    private class SelecaoExclusaoPendente
+    {
+        public List<Domain.Entities.Lancamento> Opcoes { get; set; } = new();
+        public int UsuarioId { get; set; }
+        public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+    }
+
     /// <summary>DTO leve para serializar ExclusaoPendente no banco (evita serializar entidade EF inteira)</summary>
     private class ExclusaoPersistencia
     {
         public int LancamentoId { get; set; }
+        public int UsuarioId { get; set; }
+    }
+
+    /// <summary>DTO leve para serializar SelecaoExclusaoPendente no banco</summary>
+    private class SelecaoExclusaoPersistencia
+    {
+        public List<int> LancamentoIds { get; set; } = new();
         public int UsuarioId { get; set; }
     }
 
@@ -190,7 +226,7 @@ public class TelegramBotService : ITelegramBotService
     /// </summary>
     private async Task HidratarEstadoDoDbAsync(long chatId)
     {
-        if (_lancamentoHandler.TemPendente(chatId) || _desvinculacaoPendente.ContainsKey(chatId) || _exclusaoPendente.ContainsKey(chatId))
+        if (_lancamentoHandler.TemPendente(chatId) || _desvinculacaoPendente.ContainsKey(chatId) || _exclusaoPendente.ContainsKey(chatId) || _selecaoExclusaoPendente.ContainsKey(chatId))
             return;
 
         try
@@ -219,6 +255,32 @@ public class TelegramBotService : ITelegramBotService
                             {
                                 Lancamento = lancamento,
                                 UsuarioId = excData.UsuarioId,
+                                CriadoEm = conversa.CriadoEm
+                            };
+                        }
+                        else
+                        {
+                            await _conversaRepo.RemoverPorChatIdAsync(chatId);
+                        }
+                    }
+                    break;
+
+                case "SelecaoExclusao":
+                    var selData = JsonSerializer.Deserialize<SelecaoExclusaoPersistencia>(conversa.DadosJson, _jsonPersistOpts);
+                    if (selData != null && selData.LancamentoIds.Count > 0)
+                    {
+                        var opcoes = new List<Domain.Entities.Lancamento>();
+                        foreach (var lid in selData.LancamentoIds)
+                        {
+                            var l = await _lancamentoRepo.ObterPorIdAsync(lid);
+                            if (l != null) opcoes.Add(l);
+                        }
+                        if (opcoes.Count > 0)
+                        {
+                            _selecaoExclusaoPendente[chatId] = new SelecaoExclusaoPendente
+                            {
+                                Opcoes = opcoes,
+                                UsuarioId = selData.UsuarioId,
                                 CriadoEm = conversa.CriadoEm
                             };
                         }
@@ -292,6 +354,25 @@ public class TelegramBotService : ITelegramBotService
                 return;
             }
 
+            if (_selecaoExclusaoPendente.TryGetValue(chatId, out var selecao))
+            {
+                var selData = new SelecaoExclusaoPersistencia
+                {
+                    LancamentoIds = selecao.Opcoes.Select(l => l.Id).ToList(),
+                    UsuarioId = selecao.UsuarioId
+                };
+                await _conversaRepo.SalvarAsync(new ConversaPendente
+                {
+                    ChatId = chatId,
+                    UsuarioId = selecao.UsuarioId,
+                    Tipo = "SelecaoExclusao",
+                    DadosJson = JsonSerializer.Serialize(selData, _jsonPersistOpts),
+                    Estado = "AguardandoSelecao",
+                    ExpiraEm = DateTime.UtcNow.AddMinutes(30)
+                });
+                return;
+            }
+
             // Nenhum estado pendente — remover do banco se existia
             await _conversaRepo.RemoverPorChatIdAsync(chatId);
         }
@@ -329,8 +410,35 @@ public class TelegramBotService : ITelegramBotService
         return _chatLocks.GetOrAdd(chatId, _ => new SemaphoreSlim(1, 1));
     }
 
+    /// <summary>
+    /// Verifica e incrementa o rate limit por usuário.
+    /// Retorna true se o limite foi excedido (mensagem deve ser rejeitada).
+    /// </summary>
+    private static bool VerificarRateLimit(long chatId)
+    {
+        var agora = DateTime.UtcNow;
+        var atual = _rateLimits.GetOrAdd(chatId, _ => (0, agora));
+
+        // Resetar janela se expirou
+        if (agora - atual.WindowStart > RateLimitJanela)
+        {
+            _rateLimits[chatId] = (1, agora);
+            return false;
+        }
+
+        // Incrementar contador
+        var novoCount = atual.Count + 1;
+        _rateLimits[chatId] = (novoCount, atual.WindowStart);
+
+        return novoCount > RateLimitMaxMensagens;
+    }
+
     public async Task<string> ProcessarMensagemAsync(long chatId, string mensagem, string nomeUsuario)
     {
+        // Rate limit por usuário — protege contra flood e esgotamento de cota IA
+        if (VerificarRateLimit(chatId))
+            return "⏳ Calma! Você está enviando mensagens muito rápido. Aguarde um momento e tente novamente.";
+
         // Limpeza periódica dos caches estáticos (a cada 30 min)
         LimparCachesExpirados();
 
@@ -383,6 +491,11 @@ public class TelegramBotService : ITelegramBotService
         var respostaExclusao = await ProcessarConfirmacaoExclusaoAsync(chatId, usuario, mensagem);
         if (respostaExclusao != null)
             return respostaExclusao;
+
+        // Verificar seleção de lançamento para exclusão pendente
+        var respostaSelecao = await ProcessarSelecaoExclusaoAsync(chatId, usuario, mensagem);
+        if (respostaSelecao != null)
+            return respostaSelecao;
 
         // Verificar se há lançamento pendente em etapas (forma, cartão, categoria, confirmação)
         var respostaEtapa = await _lancamentoHandler.ProcessarEtapaPendenteAsync(chatId, usuario, mensagem);
@@ -472,6 +585,14 @@ public class TelegramBotService : ITelegramBotService
                 "Essa alteração é feita no sistema web.",
                 "Acesse o menu correspondente e conclua por lá. Quando terminar, me envie a ação aqui no bot que eu continuo de onde parou."
             );
+        }
+
+        // Excluir lançamento (fast-path sem IA)
+        if (EhPedidoExclusaoLancamento(msgLower))
+        {
+            _logger.LogInformation("Resposta direta: excluir_lancamento | Usuário: {Nome}", usuario.Nome);
+            var descricaoExtrair = ExtrairDescricaoExclusao(msgLower);
+            return await ProcessarExcluirLancamentoAsync(usuario, descricaoExtrair);
         }
 
         // Agradecimento
@@ -581,7 +702,7 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
-    public async Task<string> ProcessarImagemAsync(long chatId, byte[] imageData, string mimeType, string nomeUsuario)
+    public async Task<string> ProcessarImagemAsync(long chatId, byte[] imageData, string mimeType, string nomeUsuario, string? caption = null)
     {
         var usuario = await ObterUsuarioVinculadoAsync(chatId);
         if (usuario == null)
@@ -592,6 +713,10 @@ public class TelegramBotService : ITelegramBotService
             var texto = await _aiService.ExtrairTextoImagemAsync(imageData, mimeType);
             if (string.IsNullOrWhiteSpace(texto))
                 return "❌ Não consegui extrair informações da imagem.";
+
+            // Enriquecer texto extraído com a legenda do usuário (contexto extra)
+            if (!string.IsNullOrWhiteSpace(caption))
+                texto = $"[Contexto do usuário: {caption}]\n\n{texto}";
 
             // Usar lock do chat para evitar conflito com fluxo pendente
             var chatLock = ObterChatLock(chatId);
@@ -921,6 +1046,22 @@ public class TelegramBotService : ITelegramBotService
             {
                 ctx += "Categorias do usuário: " + string.Join(", ", categorias.Select(c => c.Nome));
                 ctx += ". ";
+            }
+
+            // Memória de categorização: mapeamentos descrição → categoria aprendidos do histórico
+            try
+            {
+                var mapeamentos = await _lancamentoRepo.ObterMapeamentoDescricaoCategoriaAsync(usuario.Id);
+                if (mapeamentos.Count > 0)
+                {
+                    ctx += "Mapeamentos aprendidos (descrição → categoria que o usuário JA USOU): ";
+                    ctx += string.Join(", ", mapeamentos.Select(m => $"{m.Descricao} → {m.Categoria}"));
+                    ctx += ". ";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao gerar mapeamentos de categorização histórica.");
             }
 
             return ctx;
@@ -1289,7 +1430,8 @@ public class TelegramBotService : ITelegramBotService
                 "• \"meu perfil de gastos\"\n" +
                 "• \"já lancei 89.90?\" — duplicidade\n" +
                 "• \"eventos sazonais\"\n\n" +
-                "💡 Fale naturalmente! Aceito texto, áudio e foto de cupom.",
+                "� /cancelar — cancela qualquer operação pendente\n\n" +
+                "💡 Fale naturalmente! Aceito texto, áudio e foto de cupom.\n📸 Envie fotos com legenda para mais contexto!",
             "/simular" => await _previsaoHandler.ProcessarComandoSimularAsync(usuario, partes.Length > 1 ? partes[1] : null)
                          ?? await ProcessarComIAAsync(usuario, mensagem),
             "/posso" => await _previsaoHandler.ProcessarComandoPossoAsync(usuario, partes.Length > 1 ? partes[1] : null)
@@ -1329,6 +1471,7 @@ public class TelegramBotService : ITelegramBotService
             "/gasto" when partes.Length > 1 => await ProcessarComIAAsync(usuario, partes[1]),
             "/receita" when partes.Length > 1 => await ProcessarComIAAsync(usuario, $"recebi {partes[1]}"),
             "/versao" => ObterVersaoSistema(),
+            "/cancelar" => CancelarFluxoPendente(usuario.TelegramChatId!.Value),
             _ => await ProcessarComIAAsync(usuario, mensagem) // Send unknown commands to AI instead of rejecting
         };
     }
@@ -1344,6 +1487,35 @@ public class TelegramBotService : ITelegramBotService
         if (idx > 0) versao = versao[..idx];
 
         return $"📦 *ControlFinance*\n\n🏷️ Versão: `v{versao}`";
+    }
+
+    /// <summary>
+    /// Cancela qualquer fluxo pendente (exclusão, desvinculação, lançamento) para o chat.
+    /// </summary>
+    private string CancelarFluxoPendente(long chatId)
+    {
+        var cancelou = false;
+
+        if (_desvinculacaoPendente.TryRemove(chatId, out _))
+            cancelou = true;
+
+        if (_exclusaoPendente.TryRemove(chatId, out _))
+            cancelou = true;
+
+        if (_selecaoExclusaoPendente.TryRemove(chatId, out _))
+            cancelou = true;
+
+        if (_lancamentoHandler.TemPendente(chatId))
+        {
+            _lancamentoHandler.RemoverPendente(chatId);
+            cancelou = true;
+        }
+
+        BotTecladoHelper.RemoverTeclado(chatId);
+
+        return cancelou
+            ? "✅ Operação cancelada! Pode continuar normalmente."
+            : "ℹ️ Não há nenhuma operação pendente para cancelar.";
     }
 
     private static bool EhMensagemGestaoNoWeb(string msgLower)
@@ -1363,6 +1535,44 @@ public class TelegramBotService : ITelegramBotService
         var temAcao = termosAcao.Any(msgLower.Contains);
         var temEntidade = termosEntidade.Any(msgLower.Contains);
         return temAcao && temEntidade;
+    }
+
+    /// <summary>Detecta se a mensagem é um pedido de exclusão de lançamento (fast-path sem IA)</summary>
+    private static bool EhPedidoExclusaoLancamento(string msgLower)
+    {
+        var termosAcao = new[] { "excluir", "apagar", "remover", "deletar" };
+        var termosEntidade = new[] { "lancamento", "lançamento", "gasto", "despesa", "receita", "ultimo", "último" };
+
+        var temAcao = termosAcao.Any(msgLower.Contains);
+        var temEntidade = termosEntidade.Any(msgLower.Contains);
+        return temAcao && temEntidade;
+    }
+
+    /// <summary>Extrai a descrição do lançamento a excluir, ou keywords especiais como "ultimo"</summary>
+    private static string? ExtrairDescricaoExclusao(string msgLower)
+    {
+        // Detectar "último"/"ultimo"
+        if (msgLower.Contains("ultimo") || msgLower.Contains("último"))
+            return "__ultimo__";
+
+        // Tentar extrair nome após verbo: "excluir riot games" => "riot games"
+        var verbos = new[] { "excluir ", "apagar ", "remover ", "deletar " };
+        foreach (var verbo in verbos)
+        {
+            var idx = msgLower.IndexOf(verbo, StringComparison.Ordinal);
+            if (idx < 0) continue;
+            var resto = msgLower[(idx + verbo.Length)..].Trim();
+            // Remover termos genéricos que não são descrições
+            var ignorar = new[] { "lancamento", "lançamento", "gasto", "despesa", "receita", "o", "a", "um", "uma", "esse", "este", "aquele" };
+            var palavras = resto.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Where(p => !ignorar.Contains(p))
+                .ToArray();
+            var desc = string.Join(' ', palavras).Trim();
+            if (!string.IsNullOrWhiteSpace(desc))
+                return desc;
+        }
+
+        return null; // Sem descrição específica → vai mostrar lista
     }
 
     private string? TentarOrientarCrudNoWeb(Usuario usuario, string? intencao)
@@ -1701,8 +1911,17 @@ public class TelegramBotService : ITelegramBotService
             if (!recentes.Any())
                 return "📭 Você não tem lançamentos registrados.";
 
-            Domain.Entities.Lancamento? lancamento = null;
+            var chatId = usuario.TelegramChatId!.Value;
 
+            // "excluir último" → seleciona o mais recente automaticamente
+            if (descricao == "__ultimo__")
+            {
+                var ultimo = recentes.First();
+                return PedirConfirmacaoExclusao(chatId, usuario.Id, ultimo);
+            }
+
+            // Busca por descrição
+            Domain.Entities.Lancamento? lancamento = null;
             if (!string.IsNullOrWhiteSpace(descricao))
             {
                 lancamento = recentes.FirstOrDefault(l =>
@@ -1710,35 +1929,108 @@ public class TelegramBotService : ITelegramBotService
                     descricao.Contains(l.Descricao, StringComparison.OrdinalIgnoreCase));
             }
 
-            if (lancamento == null)
-            {
-                if (string.IsNullOrWhiteSpace(descricao))
-                    return "❓ Qual lançamento deseja excluir? Diga o nome.\nExemplo: \"excluir mercado\" ou \"apagar ifood\"";
-                return $"🔍 Não encontrei nenhum lançamento com \"{descricao}\".\nTente novamente com outro nome.";
-            }
+            if (lancamento != null)
+                return PedirConfirmacaoExclusao(chatId, usuario.Id, lancamento);
 
-            // Pedir confirmação ao invés de excluir imediatamente
-            var chatId = usuario.TelegramChatId!.Value;
-            _exclusaoPendente[chatId] = new ExclusaoPendente
+            // Não encontrou ou não especificou → mostrar lista dos últimos 5 para o usuário escolher
+            var topN = recentes.Take(5).ToList();
+            _selecaoExclusaoPendente[chatId] = new SelecaoExclusaoPendente
             {
-                Lancamento = lancamento,
+                Opcoes = topN,
                 UsuarioId = usuario.Id
             };
 
-            var emoji = lancamento.Tipo == TipoLancamento.Receita ? "💰" : "💸";
-            DefinirTeclado(chatId,
-                new[] { ("✅ Confirmar exclusão", "sim"), ("❌ Cancelar", "cancelar") }
-            );
-            return $"⚠️ *Confirma a exclusão deste lançamento?*\n\n" +
-                   $"{emoji} {lancamento.Descricao}\n" +
-                   $"💵 R$ {lancamento.Valor:N2}\n" +
-                   $"📅 {lancamento.Data:dd/MM/yyyy}";
+            var texto = string.IsNullOrWhiteSpace(descricao)
+                ? "🗑️ *Qual lançamento deseja excluir?*\n\nEscolha um dos últimos lançamentos:\n\n"
+                : $"🔍 Não encontrei \"{descricao}\". Escolha um dos últimos:\n\n";
+
+            var botoes = new List<(string Label, string Data)>();
+            for (int i = 0; i < topN.Count; i++)
+            {
+                var l = topN[i];
+                var emoji = l.Tipo == TipoLancamento.Receita ? "💰" : "💸";
+                texto += $"{i + 1}️⃣ {emoji} {l.Descricao} — R$ {l.Valor:N2} ({l.Data:dd/MM})\n";
+                botoes.Add(($"{i + 1}️⃣ {l.Descricao}", $"{i + 1}"));
+            }
+
+            botoes.Add(("❌ Cancelar", "cancelar"));
+            texto += "\nEscolha abaixo 👇";
+
+            // Montar teclado com 1 botão por linha
+            var linhas = botoes.Select(b => new[] { b }).ToArray();
+            DefinirTeclado(chatId, linhas);
+
+            return texto;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao excluir lançamento");
             return "❌ Erro ao excluir o lançamento. Tente novamente.";
         }
+    }
+
+    /// <summary>Coloca o lançamento em estado de confirmação de exclusão e retorna a mensagem</summary>
+    private string PedirConfirmacaoExclusao(long chatId, int usuarioId, Domain.Entities.Lancamento lancamento)
+    {
+        _exclusaoPendente[chatId] = new ExclusaoPendente
+        {
+            Lancamento = lancamento,
+            UsuarioId = usuarioId
+        };
+
+        var emoji = lancamento.Tipo == TipoLancamento.Receita ? "💰" : "💸";
+        DefinirTeclado(chatId,
+            new[] { ("✅ Confirmar exclusão", "sim"), ("❌ Cancelar", "cancelar") }
+        );
+        return $"⚠️ *Confirma a exclusão deste lançamento?*\n\n" +
+               $"{emoji} {lancamento.Descricao}\n" +
+               $"💵 R$ {lancamento.Valor:N2}\n" +
+               $"📅 {lancamento.Data:dd/MM/yyyy}";
+    }
+
+    /// <summary>Processa a seleção numerada de um lançamento para exclusão</summary>
+    private async Task<string?> ProcessarSelecaoExclusaoAsync(long chatId, Usuario usuario, string mensagem)
+    {
+        // Limpar expirados
+        foreach (var kv in _selecaoExclusaoPendente)
+        {
+            if ((DateTime.UtcNow - kv.Value.CriadoEm).TotalMinutes > 30)
+                _selecaoExclusaoPendente.TryRemove(kv.Key, out _);
+        }
+
+        if (!_selecaoExclusaoPendente.TryGetValue(chatId, out var selecao))
+            return null;
+
+        var msg = mensagem.Trim().ToLower();
+
+        if (BotParseHelper.EhCancelamento(msg))
+        {
+            _selecaoExclusaoPendente.TryRemove(chatId, out _);
+            return "👍 Exclusão cancelada!";
+        }
+
+        if (int.TryParse(msg, out var idx) && idx >= 1 && idx <= selecao.Opcoes.Count)
+        {
+            var escolhido = selecao.Opcoes[idx - 1];
+            _selecaoExclusaoPendente.TryRemove(chatId, out _);
+            return PedirConfirmacaoExclusao(chatId, selecao.UsuarioId, escolhido);
+        }
+
+        // Não entendeu — re-mostrar
+        var texto = "⚠️ Não entendi. Escolha o número do lançamento:\n\n";
+        var botoes = new List<(string Label, string Data)>();
+        for (int i = 0; i < selecao.Opcoes.Count; i++)
+        {
+            var l = selecao.Opcoes[i];
+            var emoji = l.Tipo == TipoLancamento.Receita ? "💰" : "💸";
+            texto += $"{i + 1}️⃣ {emoji} {l.Descricao} — R$ {l.Valor:N2} ({l.Data:dd/MM})\n";
+            botoes.Add(($"{i + 1}️⃣ {l.Descricao}", $"{i + 1}"));
+        }
+        botoes.Add(("❌ Cancelar", "cancelar"));
+        texto += "\nEscolha abaixo 👇";
+        var linhas = botoes.Select(b => new[] { b }).ToArray();
+        DefinirTeclado(chatId, linhas);
+        return texto;
     }
 
     private async Task<string?> ProcessarConfirmacaoExclusaoAsync(long chatId, Usuario usuario, string mensagem)

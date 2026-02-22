@@ -9,7 +9,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Brain,
-  Loader2,
   CheckCircle2,
   AlertTriangle,
   XCircle,
@@ -201,20 +200,11 @@ export default function DecisaoPage() {
             <div className="flex gap-2.5 pt-2">
               <Button
                 type="submit"
-                disabled={avaliarGasto.isPending}
+                loading={avaliarGasto.isPending}
                 className="flex-1 gap-2 h-12 rounded-xl font-bold shadow-premium btn-premium"
               >
-                {avaliarGasto.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Analisando...
-                  </>
-                ) : (
-                  <>
-                    <Brain className="h-4 w-4" />
-                    Avaliar
-                  </>
-                )}
+                <Brain className="h-4 w-4" />
+                Avaliar
               </Button>
               {resultado && (
                 <Button

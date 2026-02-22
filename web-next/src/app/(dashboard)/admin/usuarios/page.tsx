@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type AdminUsuario } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
-import { formatDate, formatCurrency } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -19,7 +19,6 @@ import {
   UserCheck,
   LogOut,
   MoreHorizontal,
-  Sparkles,
   Send,
   Activity,
   CalendarClock,
@@ -640,20 +639,12 @@ function ExtenderAcessoDialog({
           </Button>
           <Button
             onClick={onConfirm}
-            disabled={isPending || dias < 1}
+            disabled={dias < 1}
+            loading={isPending}
             className="gap-2 rounded-xl font-bold"
           >
-            {isPending ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="h-4 w-4" />
-                Estender Acesso
-              </>
-            )}
+            <ShieldCheck className="h-4 w-4" />
+            Estender Acesso
           </Button>
         </DialogFooter>
       </DialogContent>

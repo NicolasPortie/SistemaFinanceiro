@@ -20,7 +20,6 @@ import {
   EyeOff,
   ArrowRight,
   ArrowLeft,
-  Loader2,
   KeyRound,
   ShieldCheck,
   CheckCircle2,
@@ -340,17 +339,11 @@ export default function RecuperarSenhaPage() {
                   <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
                     <Button
                       type="submit"
-                      disabled={emailForm.formState.isSubmitting}
+                      loading={emailForm.formState.isSubmitting}
                       className="w-full h-13 text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
                     >
-                      {emailForm.formState.isSubmitting ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <>
-                          Enviar código
-                          <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                        </>
-                      )}
+                      Enviar código
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                     </Button>
                   </motion.div>
                 </form>
@@ -541,17 +534,11 @@ export default function RecuperarSenhaPage() {
                   >
                     <Button
                       type="submit"
-                      disabled={codeForm.formState.isSubmitting}
+                      loading={codeForm.formState.isSubmitting}
                       className="w-full h-13 text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
                     >
-                      {codeForm.formState.isSubmitting ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <>
-                          Redefinir senha
-                          <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                        </>
-                      )}
+                      Redefinir senha
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                     </Button>
                   </motion.div>
                 </form>

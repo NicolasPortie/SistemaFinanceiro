@@ -353,7 +353,7 @@ export default function AdminConvitesPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => removingId && remover.mutate(removingId)}
-              disabled={remover.isPending}
+              loading={remover.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <Trash2 className="h-4 w-4 mr-1" />
@@ -556,20 +556,11 @@ export default function AdminConvitesPage() {
             </Button>
             <Button
               onClick={() => criar.mutate()}
-              disabled={criar.isPending}
+              loading={criar.isPending}
               className="gap-2 rounded-xl font-bold shadow-premium btn-premium"
             >
-              {criar.isPending ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  Gerando...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  {quantidade > 1 ? `Gerar ${quantidade} Convites` : "Gerar Convite"}
-                </>
-              )}
+              <Send className="h-4 w-4" />
+              {quantidade > 1 ? `Gerar ${quantidade} Convites` : "Gerar Convite"}
             </Button>
           </DialogFooter>
         </DialogContent>

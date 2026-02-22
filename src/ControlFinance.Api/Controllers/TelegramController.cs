@@ -435,7 +435,10 @@ public class TelegramController : ControllerBase
             var imageData = ms.ToArray();
 
             var mimeType = file.FilePath.EndsWith(".png") ? "image/png" : "image/jpeg";
-            return await botService.ProcessarImagemAsync(chatId, imageData, mimeType, nomeUsuario);
+
+            // Passar caption (legenda) do usuário — fornece contexto extra ao OCR
+            var caption = message.Caption;
+            return await botService.ProcessarImagemAsync(chatId, imageData, mimeType, nomeUsuario, caption);
         }
         catch (Exception ex)
         {

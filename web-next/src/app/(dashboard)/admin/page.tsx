@@ -2,10 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api, type AdminDashboardData } from "@/lib/api";
-import { formatCurrency } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageShell, PageHeader } from "@/components/shared/page-components";
 import { cn } from "@/lib/utils";
 import {
@@ -15,8 +13,6 @@ import {
   Target,
   Shield,
   KeyRound,
-  TrendingUp,
-  TrendingDown,
   UserPlus,
   Activity,
   MessageCircle,

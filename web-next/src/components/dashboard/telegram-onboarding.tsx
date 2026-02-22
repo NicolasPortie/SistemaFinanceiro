@@ -9,7 +9,6 @@ import {
   ExternalLink,
   Copy,
   Check,
-  Loader2,
   RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -115,7 +114,7 @@ export function TelegramOnboarding() {
                 <p className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider">2  Envie o comando</p>
                 {gerando ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     Gerando codigo...
                   </div>
                 ) : codigo ? (
@@ -143,13 +142,10 @@ export function TelegramOnboarding() {
                 size="sm"
                 className="w-full rounded-xl h-9 gap-1.5 text-xs font-semibold btn-premium"
                 onClick={verificar}
-                disabled={verificando || !codigo}
+                disabled={!codigo}
+                loading={verificando}
               >
-                {verificando ? (
-                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Verificando...</>
-                ) : (
-                  <><Check className="h-3.5 w-3.5" /> Ja enviei  confirmar</>
-                )}
+                <Check className="h-3.5 w-3.5" /> Ja enviei  confirmar
               </Button>
             </div>
           </motion.div>

@@ -16,4 +16,12 @@ public interface ILancamentoRepository
     Task AtualizarAsync(Lancamento lancamento);
     Task RemoverAsync(int id);
     Task RemoverEmMassaAsync(IEnumerable<Lancamento> lancamentos);
+
+    /// <summary>
+    /// Retorna os mapeamentos descrição → categoria mais usados pelo usuário
+    /// nos últimos N dias, para alimentar o contexto da IA.
+    /// Cada item: (descricaoNormalizada, nomeCategoria, qtdUsos).
+    /// </summary>
+    Task<List<(string Descricao, string Categoria, int Contagem)>> ObterMapeamentoDescricaoCategoriaAsync(
+        int usuarioId, int dias = 90, int limite = 30);
 }

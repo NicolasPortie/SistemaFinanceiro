@@ -22,6 +22,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
     private readonly ICartaoCreditoRepository _cartaoRepo;
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ILancamentoService _lancamentoService;
+    private readonly ILancamentoRepository _lancamentoRepo;
     private readonly IPerfilFinanceiroService _perfilService;
     private readonly ILimiteCategoriaService _limiteService;
     private readonly IAnomaliaGastoService _anomaliaService;
@@ -44,6 +45,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
         ICartaoCreditoRepository cartaoRepo,
         ICategoriaRepository categoriaRepo,
         ILancamentoService lancamentoService,
+        ILancamentoRepository lancamentoRepo,
         IPerfilFinanceiroService perfilService,
         ILimiteCategoriaService limiteService,
         IAnomaliaGastoService anomaliaService,
@@ -55,6 +57,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
         _cartaoRepo = cartaoRepo;
         _categoriaRepo = categoriaRepo;
         _lancamentoService = lancamentoService;
+        _lancamentoRepo = lancamentoRepo;
         _perfilService = perfilService;
         _limiteService = limiteService;
         _anomaliaService = anomaliaService;
@@ -465,7 +468,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             pendente.CorrigindoCampo = CampoCorrecao.Descricao;
             pendente.CriadoEm = DateTime.UtcNow;
             _pendentes[chatId] = pendente;
-            return "📝 Digite a nova descrição:";
+            return "📝 Digite ou 🎤 envie áudio com a nova descrição:";
         }
 
         if (msg is "2" or "valor" or "preço" or "preco" or "💵")
@@ -474,7 +477,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             pendente.Estado = EstadoPendente.AguardandoNovoValorCorrecao;
             pendente.CorrigindoCampo = CampoCorrecao.Valor;
             _pendentes[chatId] = pendente;
-            return "💵 Digite o novo valor (ex: 45,90):";
+            return "💵 Digite ou 🎤 envie áudio com o novo valor (ex: 45,90):";
         }
 
         if (msg is "3" or "categoria" or "🏷️" or "🏷")
@@ -515,10 +518,31 @@ public class LancamentoFlowHandler : ILancamentoHandler
             pendente.Estado = EstadoPendente.AguardandoNovaDataCorrecao;
             pendente.CorrigindoCampo = CampoCorrecao.Data;
             _pendentes[chatId] = pendente;
-            return "📅 Digite a nova data (dd/MM/yyyy):";
+            return "📅 Digite ou 🎤 envie áudio com a nova data (ex: 15/02/2026):";
         }
 
-        // Se digitou um valor numérico, pode ser correção de valor (atalho direto)
+        // Correção direta por voz: "descrição para Netflix", "valor para 50", "data para 14/02"
+        if (BotParseHelper.TryParseCorrecaoDireta(msg, out var campoDir, out var valorDir))
+        {
+            switch (campoDir)
+            {
+                case "descricao":
+                    return ProcessarEntradaNovaDescricaoCorrecao(chatId, pendente, valorDir);
+                case "valor":
+                    return ProcessarEntradaNovoValorCorrecao(chatId, pendente, valorDir);
+                case "data":
+                    return ProcessarEntradaNovaDataCorrecao(chatId, pendente, valorDir);
+                case "pagamento":
+                    return await ProcessarRespostaFormaPagamentoAsync(chatId, pendente, valorDir);
+                case "categoria":
+                    // Categoria requer classificação via IA — redireciona pro fluxo normal
+                    pendente.Dados.Categoria = "Outros";
+                    pendente.CorrigindoCampo = CampoCorrecao.Categoria;
+                    pendente.CriadoEm = DateTime.UtcNow;
+                    _pendentes[chatId] = pendente;
+                    return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
+            }
+        }
         if (BotParseHelper.TryParseValor(msg, out var novoValor) && novoValor > 0)
         {
             pendente.Dados.Valor = novoValor;
@@ -533,12 +557,9 @@ public class LancamentoFlowHandler : ILancamentoHandler
             return "✅ Valor atualizado!\n\n" + MontarPreviewLancamento(pendente.Dados, nomeCartao);
         }
 
-        // Se digitou uma data (atalho direto)
-        if (DateTime.TryParseExact(msg, new[] { "dd/MM/yyyy", "d/M/yyyy", "dd/MM" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out var novaData))
+        // Se digitou uma data (atalho direto) — suporta formatos naturais de áudio
+        if (BotParseHelper.TryParseDateFlexivel(msg, out var novaData))
         {
-            var agora = DateTime.UtcNow;
-            if (novaData.Year < 2000) novaData = new DateTime(agora.Year, novaData.Month, novaData.Day, agora.Hour, agora.Minute, agora.Second, DateTimeKind.Utc);
-            else novaData = new DateTime(novaData.Year, novaData.Month, novaData.Day, agora.Hour, agora.Minute, agora.Second, DateTimeKind.Utc);
             pendente.Dados.Data = novaData;
             pendente.CriadoEm = DateTime.UtcNow;
             pendente.Estado = EstadoPendente.AguardandoConfirmacao;
@@ -579,6 +600,9 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
     private string ProcessarEntradaNovaDescricaoCorrecao(long chatId, LancamentoPendente pendente, string descricao)
     {
+        // Limpar prefixos conversacionais de áudio (ex: "a nova descrição é Mercado" → "Mercado")
+        descricao = BotParseHelper.LimparPrefixoAudio(descricao);
+
         if (string.IsNullOrWhiteSpace(descricao) || descricao.Length < 2)
         {
             pendente.CriadoEm = DateTime.UtcNow;
@@ -604,11 +628,13 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
     private string ProcessarEntradaNovoValorCorrecao(long chatId, LancamentoPendente pendente, string msg)
     {
-        if (!BotParseHelper.TryParseValor(msg, out var novoValor) || novoValor <= 0)
+        // Limpar prefixos conversacionais de áudio (ex: "o novo valor é 37,95" → "37,95")
+        var limpo = BotParseHelper.LimparPrefixoAudio(msg);
+        if (!BotParseHelper.TryParseValor(limpo, out var novoValor) || novoValor <= 0)
         {
             pendente.CriadoEm = DateTime.UtcNow;
             _pendentes[chatId] = pendente;
-            return "⚠️ Valor inválido. Digite no formato 45,90:";
+            return "⚠️ Valor inválido. Digite ou diga o valor (ex: 45,90):";
         }
 
         pendente.Dados.Valor = novoValor;
@@ -627,18 +653,13 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
     private string ProcessarEntradaNovaDataCorrecao(long chatId, LancamentoPendente pendente, string msg)
     {
-        if (!DateTime.TryParseExact(msg, new[] { "dd/MM/yyyy", "d/M/yyyy", "dd/MM" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out var novaData))
+        // Usar parser flexível que suporta áudio ("14 do 2", "14 de fevereiro", "dia 14", etc.)
+        if (!BotParseHelper.TryParseDateFlexivel(msg, out var novaData))
         {
             pendente.CriadoEm = DateTime.UtcNow;
             _pendentes[chatId] = pendente;
-            return "⚠️ Data inválida. Use dd/MM/yyyy (ex: 15/02/2026):";
+            return "⚠️ Data inválida. Diga a data (ex: 15/02/2026, 14 do 2, dia 14):";
         }
-
-        var agoraCorrecao = DateTime.UtcNow;
-        if (novaData.Year < 2000)
-            novaData = new DateTime(agoraCorrecao.Year, novaData.Month, novaData.Day, agoraCorrecao.Hour, agoraCorrecao.Minute, agoraCorrecao.Second, DateTimeKind.Utc);
-        else
-            novaData = new DateTime(novaData.Year, novaData.Month, novaData.Day, agoraCorrecao.Hour, agoraCorrecao.Minute, agoraCorrecao.Second, DateTimeKind.Utc);
 
         pendente.Dados.Data = novaData;
         pendente.CriadoEm = DateTime.UtcNow;
@@ -872,6 +893,11 @@ public class LancamentoFlowHandler : ILancamentoHandler
                     }
                 }
 
+                // Botões de ação rápida pós-registro
+                BotTecladoHelper.DefinirTeclado(chatId,
+                    new[] { ("📝 Registrar outro", "/gasto "), ("📊 Ver resumo", "/resumo") }
+                );
+
                 return resultado;
             }
             catch (Exception ex)
@@ -885,6 +911,29 @@ public class LancamentoFlowHandler : ILancamentoHandler
         {
             _pendentes.TryRemove(chatId, out _);
             return "❌ Cancelado! O lançamento não foi registrado.";
+        }
+
+        // Correção direta por voz na confirmação: "corrigir descrição para Netflix"
+        if (BotParseHelper.TryParseCorrecaoDireta(msg, out var campoDirConf, out var valorDirConf))
+        {
+            pendente.Estado = EstadoPendente.AguardandoCorrecao;
+            pendente.CriadoEm = DateTime.UtcNow;
+            _pendentes[chatId] = pendente;
+            switch (campoDirConf)
+            {
+                case "descricao":
+                    return ProcessarEntradaNovaDescricaoCorrecao(chatId, pendente, valorDirConf);
+                case "valor":
+                    return ProcessarEntradaNovoValorCorrecao(chatId, pendente, valorDirConf);
+                case "data":
+                    return ProcessarEntradaNovaDataCorrecao(chatId, pendente, valorDirConf);
+                case "pagamento":
+                    return await ProcessarRespostaFormaPagamentoAsync(chatId, pendente, valorDirConf);
+                case "categoria":
+                    pendente.Dados.Categoria = "Outros";
+                    pendente.CorrigindoCampo = CampoCorrecao.Categoria;
+                    return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
+            }
         }
 
         if (msg is "corrigir" or "editar" or "alterar" or "mudar" or "corrige" or "ajustar" or "✏️")
@@ -1043,7 +1092,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             }
             else
             {
-                var sugerida = SugerirCategoria(pendente.Dados.Descricao, categorias);
+                var sugerida = await SugerirCategoriaAsync(pendente.UsuarioId, pendente.Dados.Descricao, categorias);
 
                 pendente.Estado = EstadoPendente.AguardandoCategoria;
                 pendente.CategoriasDisponiveis = categorias;
@@ -1152,13 +1201,48 @@ public class LancamentoFlowHandler : ILancamentoHandler
     }
 
     /// <summary>
-    /// Sugere uma categoria baseada na descrição do lançamento.
+    /// Sugere uma categoria baseada no histórico do usuário (prioridade) e keywords estáticas (fallback).
     /// </summary>
-    public static string? SugerirCategoria(string descricao, List<Categoria> categorias)
+    private async Task<string?> SugerirCategoriaAsync(int usuarioId, string descricao, List<Categoria> categorias)
     {
         if (string.IsNullOrWhiteSpace(descricao)) return null;
 
-        var desc = descricao.ToLower();
+        var desc = descricao.ToLower().Trim();
+
+        // 1º Prioridade: histórico real do usuário (descrição → categoria já usada)
+        try
+        {
+            var mapeamentos = await _lancamentoRepo.ObterMapeamentoDescricaoCategoriaAsync(usuarioId);
+            // Buscar match exato primeiro, depois parcial
+            var exato = mapeamentos.FirstOrDefault(m => m.Descricao == desc);
+            if (exato != default)
+            {
+                var catMatch = categorias.FirstOrDefault(c => c.Nome.Equals(exato.Categoria, StringComparison.OrdinalIgnoreCase));
+                if (catMatch != null) return catMatch.Nome;
+            }
+
+            // Match parcial: descrição contém ou é contida no mapeamento
+            var parcial = mapeamentos.FirstOrDefault(m => desc.Contains(m.Descricao) || m.Descricao.Contains(desc));
+            if (parcial != default)
+            {
+                var catMatch = categorias.FirstOrDefault(c => c.Nome.Equals(parcial.Categoria, StringComparison.OrdinalIgnoreCase));
+                if (catMatch != null) return catMatch.Nome;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao buscar mapeamento histórico de categorias");
+        }
+
+        // 2º Fallback: dicionário de keywords estáticas
+        return SugerirCategoriaPorKeywords(desc, categorias);
+    }
+
+    /// <summary>
+    /// Fallback estático: sugere categoria por keywords na descrição.
+    /// </summary>
+    public static string? SugerirCategoriaPorKeywords(string descLower, List<Categoria> categorias)
+    {
         var mapeamento = new Dictionary<string, string[]>
         {
             ["Alimentação"] = new[] { "mercado", "supermercado", "restaurante", "lanche", "comida", "almoço", "jantar", "café", "padaria", "ifood", "pizza", "hamburger", "açougue", "feira", "hortifruti", "rappi", "mcdonald", "burger", "sushi", "churrasco", "sorvete", "doceria", "confeitaria", "bebida", "cerveja" },
@@ -1173,7 +1257,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
         foreach (var (categoria, palavras) in mapeamento)
         {
-            if (palavras.Any(p => desc.Contains(p)))
+            if (palavras.Any(p => descLower.Contains(p)))
             {
                 var match = categorias.FirstOrDefault(c =>
                     c.Nome.Contains(categoria, StringComparison.OrdinalIgnoreCase) ||

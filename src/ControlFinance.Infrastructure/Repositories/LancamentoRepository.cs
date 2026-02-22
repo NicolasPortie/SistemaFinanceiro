@@ -169,4 +169,24 @@ public class LancamentoRepository : ILancamentoRepository
         _context.Lancamentos.RemoveRange(lancamentos);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<List<(string Descricao, string Categoria, int Contagem)>> ObterMapeamentoDescricaoCategoriaAsync(
+        int usuarioId, int dias = 90, int limite = 30)
+    {
+        var inicio = DateTime.UtcNow.AddDays(-dias);
+
+        var mapeamentos = await _context.Lancamentos
+            .AsNoTracking()
+            .Include(l => l.Categoria)
+            .Where(l => l.UsuarioId == usuarioId && l.Data >= inicio && l.Categoria != null)
+            .GroupBy(l => new { Descricao = l.Descricao.ToLower().Trim(), Categoria = l.Categoria.Nome })
+            .Select(g => new { g.Key.Descricao, g.Key.Categoria, Contagem = g.Count() })
+            .OrderByDescending(x => x.Contagem)
+            .Take(limite)
+            .ToListAsync();
+
+        return mapeamentos
+            .Select(m => (m.Descricao, m.Categoria, m.Contagem))
+            .ToList();
+    }
 }

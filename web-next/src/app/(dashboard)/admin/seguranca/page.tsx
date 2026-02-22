@@ -97,7 +97,7 @@ export default function AdminSegurancaPage() {
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={() => revogarTodas.mutate()}
-                  disabled={revogarTodas.isPending}
+                  loading={revogarTodas.isPending}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   <LogOut className="h-4 w-4 mr-1" />

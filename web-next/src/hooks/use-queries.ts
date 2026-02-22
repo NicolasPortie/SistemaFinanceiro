@@ -42,7 +42,7 @@ export const queryKeys = {
   metas: (status?: string) => ["metas", status ?? "all"] as const,
   historicoSimulacao: ["historico-simulacao"] as const,
   usuario: ["usuario-perfil"] as const,
-  lembretes: ["lembretes"] as const,
+  lembretes: (apenasAtivos?: boolean) => ["lembretes", apenasAtivos ?? true] as const,
 };
 
 // ── Dashboard ──────────────────────────────────────────────
@@ -446,10 +446,10 @@ export function useCriarLancamento() {
 }
 
 // ── Lembretes / Contas Fixas ───────────────────────────────
-export function useLembretes() {
+export function useLembretes(apenasAtivos?: boolean) {
   return useQuery({
-    queryKey: queryKeys.lembretes,
-    queryFn: () => api.lembretes.listar(),
+    queryKey: queryKeys.lembretes(apenasAtivos),
+    queryFn: () => api.lembretes.listar(apenasAtivos),
     staleTime: STALE_2_MIN,
     gcTime: GC_10_MIN,
   });
@@ -460,7 +460,7 @@ export function useCriarLembrete() {
   return useMutation({
     mutationFn: (data: CriarLembreteRequest) => api.lembretes.criar(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lembretes });
+      queryClient.invalidateQueries({ queryKey: ["lembretes"] });
       toast.success("Lembrete criado com sucesso!");
     },
     onError: (err: Error) => {
@@ -475,7 +475,7 @@ export function useAtualizarLembrete() {
     mutationFn: ({ id, data }: { id: number; data: AtualizarLembreteRequest }) =>
       api.lembretes.atualizar(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lembretes });
+      queryClient.invalidateQueries({ queryKey: ["lembretes"] });
       toast.success("Lembrete atualizado!");
     },
     onError: (err: Error) => {
@@ -489,7 +489,7 @@ export function useDesativarLembrete() {
   return useMutation({
     mutationFn: (id: number) => api.lembretes.desativar(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lembretes });
+      queryClient.invalidateQueries({ queryKey: ["lembretes"] });
       toast.success("Lembrete desativado!");
     },
     onError: (err: Error) => {

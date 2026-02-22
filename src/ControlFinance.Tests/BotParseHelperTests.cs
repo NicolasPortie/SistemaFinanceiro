@@ -124,4 +124,199 @@ public class BotParseHelperTests
     }
 
     #endregion
+
+    #region LimparPrefixoAudio
+
+    [Theory]
+    [InlineData("o novo valor é 37,95", "37,95")]
+    [InlineData("o valor é 100", "100")]
+    [InlineData("novo valor 50,00", "50,00")]
+    [InlineData("valor 25", "25")]
+    [InlineData("a nova descrição é Mercado", "Mercado")]
+    [InlineData("nova descrição Uber", "Uber")]
+    [InlineData("mudar para Netflix", "Netflix")]
+    [InlineData("trocar para iFood", "iFood")]
+    [InlineData("a nova data é 15/02/2026", "15/02/2026")]
+    [InlineData("corrigir para Riot Games", "Riot Games")]
+    [InlineData("colocar 89,90", "89,90")]
+    [InlineData("é 45,90", "45,90")]
+    [InlineData("45,90", "45,90")]           // sem prefixo — retorna original
+    [InlineData("Netflix", "Netflix")]       // sem prefixo — retorna original
+    public void LimparPrefixoAudio_RemovePrefixosComuns(string input, string expected)
+    {
+        var resultado = BotParseHelper.LimparPrefixoAudio(input);
+        Assert.Equal(expected, resultado);
+    }
+
+    [Fact]
+    public void LimparPrefixoAudio_PrefixoSozinho_RetornaOriginal()
+    {
+        // Se texto só tem o prefixo e nada depois, retorna original
+        var resultado = BotParseHelper.LimparPrefixoAudio("o novo valor é ");
+        Assert.Equal("o novo valor é", resultado);
+    }
+
+    #endregion
+
+    #region TryParseDateFlexivel
+
+    [Theory]
+    [InlineData("14/02/2026", 14, 2)]
+    [InlineData("14/02", 14, 2)]
+    [InlineData("1/2", 1, 2)]
+    public void TryParseDateFlexivel_FormatoPadrao_Funciona(string input, int diaEsperado, int mesEsperado)
+    {
+        var result = BotParseHelper.TryParseDateFlexivel(input, out var data);
+
+        Assert.True(result);
+        Assert.Equal(diaEsperado, data.Day);
+        Assert.Equal(mesEsperado, data.Month);
+    }
+
+    [Fact]
+    public void TryParseDateFlexivel_DiaDoMes_14Do2()
+    {
+        var result = BotParseHelper.TryParseDateFlexivel("14 do 2", out var data);
+
+        Assert.True(result);
+        Assert.Equal(14, data.Day);
+        Assert.Equal(2, data.Month);
+    }
+
+    [Fact]
+    public void TryParseDateFlexivel_Dia14DoMes02()
+    {
+        var result = BotParseHelper.TryParseDateFlexivel("dia 14 do 02", out var data);
+
+        Assert.True(result);
+        Assert.Equal(14, data.Day);
+        Assert.Equal(2, data.Month);
+    }
+
+    [Fact]
+    public void TryParseDateFlexivel_ApenasNumeroDia()
+    {
+        var result = BotParseHelper.TryParseDateFlexivel("14", out var data);
+
+        Assert.True(result);
+        Assert.Equal(14, data.Day);
+        Assert.Equal(DateTime.UtcNow.Month, data.Month);
+    }
+
+    [Fact]
+    public void TryParseDateFlexivel_Dia14()
+    {
+        var result = BotParseHelper.TryParseDateFlexivel("dia 14", out var data);
+
+        Assert.True(result);
+        Assert.Equal(14, data.Day);
+    }
+
+    [Theory]
+    [InlineData("14 de fevereiro", 14, 2)]
+    [InlineData("1 de março", 1, 3)]
+    [InlineData("25 de dezembro", 25, 12)]
+    [InlineData("dia 10 de jan", 10, 1)]
+    public void TryParseDateFlexivel_NomeMes_Funciona(string input, int diaEsperado, int mesEsperado)
+    {
+        var result = BotParseHelper.TryParseDateFlexivel(input, out var data);
+
+        Assert.True(result);
+        Assert.Equal(diaEsperado, data.Day);
+        Assert.Equal(mesEsperado, data.Month);
+    }
+
+    [Fact]
+    public void TryParseDateFlexivel_ComPrefixoAudio()
+    {
+        var result = BotParseHelper.TryParseDateFlexivel("a nova data é 14/02/2026", out var data);
+
+        Assert.True(result);
+        Assert.Equal(14, data.Day);
+        Assert.Equal(2, data.Month);
+        Assert.Equal(2026, data.Year);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("abc")]
+    [InlineData("nada")]
+    [InlineData("quarenta e dois")]
+    public void TryParseDateFlexivel_Invalidas_RetornaFalse(string input)
+    {
+        var result = BotParseHelper.TryParseDateFlexivel(input, out _);
+        Assert.False(result);
+    }
+
+    #endregion
+
+    #region TryParseCorrecaoDireta
+
+    [Theory]
+    [InlineData("descrição para Riot Games", "descricao", "Riot Games")]
+    [InlineData("descricao para Netflix", "descricao", "Netflix")]
+    [InlineData("nome para Mercado Livre", "descricao", "Mercado Livre")]
+    [InlineData("valor para 37,95", "valor", "37,95")]
+    [InlineData("valor 50", "valor", "50")]
+    [InlineData("preço para 100,00", "valor", "100,00")]
+    [InlineData("data para 14/02/2026", "data", "14/02/2026")]
+    [InlineData("data 15/03", "data", "15/03")]
+    [InlineData("pagamento para pix", "pagamento", "pix")]
+    [InlineData("categoria para alimentação", "categoria", "alimentação")]
+    public void TryParseCorrecaoDireta_CampoParaValor_Funciona(string input, string campoEsperado, string valorEsperado)
+    {
+        var result = BotParseHelper.TryParseCorrecaoDireta(input, out var campo, out var valor);
+
+        Assert.True(result);
+        Assert.Equal(campoEsperado, campo);
+        Assert.Equal(valorEsperado, valor);
+    }
+
+    [Theory]
+    [InlineData("corrigir descrição para Uber", "descricao", "Uber")]
+    [InlineData("mudar valor para 25,50", "valor", "25,50")]
+    [InlineData("alterar data para 10/03", "data", "10/03")]
+    [InlineData("trocar nome pra iFood", "descricao", "iFood")]
+    [InlineData("editar descrição para Spotify", "descricao", "Spotify")]
+    public void TryParseCorrecaoDireta_ComVerbo_Funciona(string input, string campoEsperado, string valorEsperado)
+    {
+        var result = BotParseHelper.TryParseCorrecaoDireta(input, out var campo, out var valor);
+
+        Assert.True(result);
+        Assert.Equal(campoEsperado, campo);
+        Assert.Equal(valorEsperado, valor);
+    }
+
+    [Theory]
+    [InlineData("corrigir a descrição para Mercado", "descricao", "Mercado")]
+    [InlineData("mudar o valor para 99,90", "valor", "99,90")]
+    public void TryParseCorrecaoDireta_ComArtigo_Funciona(string input, string campoEsperado, string valorEsperado)
+    {
+        var result = BotParseHelper.TryParseCorrecaoDireta(input, out var campo, out var valor);
+
+        Assert.True(result);
+        Assert.Equal(campoEsperado, campo);
+        Assert.Equal(valorEsperado, valor);
+    }
+
+    [Theory]
+    [InlineData("sim")]
+    [InlineData("cancelar")]
+    [InlineData("corrigir")]
+    [InlineData("olá")]
+    [InlineData("")]
+    public void TryParseCorrecaoDireta_SemPadrao_RetornaFalse(string input)
+    {
+        var result = BotParseHelper.TryParseCorrecaoDireta(input, out _, out _);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void TryParseCorrecaoDireta_PreservaCase()
+    {
+        BotParseHelper.TryParseCorrecaoDireta("descrição para McDonald's", out _, out var valor);
+        Assert.Equal("McDonald's", valor);
+    }
+
+    #endregion
 }

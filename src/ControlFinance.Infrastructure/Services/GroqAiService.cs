@@ -95,6 +95,9 @@ public class GroqAiService : IAiService
 
             TIPO DE ENTRADA: A mensagem veio via {{origem.ToString()}}.
             {{regraImagem}}
+
+            REGRA DE CATEGORIZAÇÃO (CRÍTICA):
+            No contexto acima há "Mapeamentos aprendidos" com descrição → categoria que o usuário JÁ USOU. Se a descrição do lançamento atual corresponder (parcial ou exatamente) a algum mapeamento, USE a mesma categoria — esse é o padrão do usuário. Se não houver mapeamento correspondente, escolha a melhor categoria da lista "Categorias do usuário". Só use "Outros" se nenhuma categoria se aplicar.
             
             REGRAS DE CONVERSÃO DE VALORES E ENTENDIMENTO (CRÍTICAS):
             - Converta números por extenso para valores numéricos ("cinquenta" = 50).
@@ -325,9 +328,20 @@ public class GroqAiService : IAiService
                     {
                         result.Resposta = parametro; // O TelegramBotService espera a categoria na propriedade Resposta.
                     }
-                    if (comando == "excluir_lancamento" && !string.IsNullOrEmpty(parametro))
+                    if (comando == "excluir_lancamento")
                     {
-                         result.Resposta = parametro;
+                         if (!string.IsNullOrEmpty(parametro))
+                         {
+                             var paramLower = parametro.Trim().ToLowerInvariant();
+                             // AI pode enviar "ultimo", "último", "último lançamento", etc.
+                             result.Resposta = (paramLower.Contains("ultimo") || paramLower.Contains("último"))
+                                 ? "__ultimo__"
+                                 : parametro;
+                         }
+                         else
+                         {
+                             result.Resposta = string.Empty;
+                         }
                     }
                     if (comando == "excluir_cartao" && !string.IsNullOrEmpty(parametro))
                     {

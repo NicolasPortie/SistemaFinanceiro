@@ -914,16 +914,10 @@ export default function LancamentosPage() {
                     ? "bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 text-white"
                     : "bg-linear-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 shadow-lg shadow-red-500/20 hover:shadow-red-500/30 text-white"
                     } active:scale-[0.98]`}
-                  disabled={criarLancamento.isPending}
+                  loading={criarLancamento.isPending}
                 >
-                  {criarLancamento.isPending ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Receipt className="h-5 w-5" />
-                      Registrar Lançamento
-                    </>
-                  )}
+                  <Receipt className="h-5 w-5" />
+                  Registrar Lançamento
                 </Button>
               </div>
             </form>
@@ -977,8 +971,8 @@ export default function LancamentosPage() {
                 <Input type="date" className="h-11 rounded-xl pl-9" {...editForm.register("data")} />
               </div>
             </div>
-            <Button type="submit" className="w-full h-11 rounded-xl gap-2 font-bold shadow-premium" disabled={atualizarLancamento.isPending}>
-              {atualizarLancamento.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar alterações"}
+            <Button type="submit" className="w-full h-11 rounded-xl gap-2 font-bold shadow-premium" loading={atualizarLancamento.isPending}>
+              Salvar alterações
             </Button>
           </form>
         </DialogContent>
@@ -1081,8 +1075,8 @@ export default function LancamentosPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
-              {removerLancamento.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remover"}
+            <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl" loading={removerLancamento.isPending}>
+              Remover
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1098,8 +1092,8 @@ export default function LancamentosPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={onDeleteMany} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl">
-              {removerVariosLancamentos.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : `Remover ${selectedIds.length} lançamentos`}
+            <AlertDialogAction onClick={onDeleteMany} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl" loading={removerVariosLancamentos.isPending}>
+              Remover {selectedIds.length} lançamentos
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -26,7 +26,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Loader2,
   Trophy,
   DollarSign,
   Calendar,
@@ -38,6 +37,7 @@ import {
   PageHeader,
   StatCard,
   EmptyState,
+  ErrorState,
   CardSkeleton,
 } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
@@ -119,7 +119,7 @@ function progressColor(pct: number) {
 }
 
 export default function MetasPage() {
-  const { data: metas = [], isLoading: loading } = useMetas();
+  const { data: metas = [], isLoading: loading, isError, error, refetch } = useMetas();
   const { data: categorias = [] } = useCategorias();
   const criarMeta = useCriarMeta();
   const atualizarMeta = useAtualizarMeta();
@@ -194,6 +194,15 @@ export default function MetasPage() {
   const totalAlvo = ativas.reduce((s, m) => s + m.valorAlvo, 0);
   const totalAtual = ativas.reduce((s, m) => s + m.valorAtual, 0);
   const avgProgress = ativas.length > 0 ? Math.round(ativas.reduce((s, m) => s + m.percentualConcluido, 0) / ativas.length) : 0;
+
+  if (isError) {
+    return (
+      <PageShell>
+        <PageHeader title="Metas Financeiras" description="Defina e acompanhe suas metas de economia e investimento" />
+        <ErrorState message={error?.message ?? "Erro ao carregar metas"} onRetry={refetch} />
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>
@@ -457,9 +466,9 @@ export default function MetasPage() {
                 <Button
                   type="submit"
                   className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
-                  disabled={criarMeta.isPending}
+                  loading={criarMeta.isPending}
                 >
-                  {criarMeta.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Target className="h-5 w-5" />Criar Meta</>}
+                  <Target className="h-5 w-5" />Criar Meta
                 </Button>
               </div>
             </form>
@@ -501,8 +510,8 @@ export default function MetasPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditMeta(null)} className="rounded-xl">Cancelar</Button>
-            <Button onClick={editForm.handleSubmit(handleAtualizar)} disabled={actionLoading === editMeta?.id} className="gap-2 rounded-xl shadow-premium font-semibold">
-              {actionLoading === editMeta?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" /> }
+            <Button onClick={editForm.handleSubmit(handleAtualizar)} loading={actionLoading === editMeta?.id} className="gap-2 rounded-xl shadow-premium font-semibold">
+              <CheckCircle2 className="h-4 w-4" />
               Salvar
             </Button>
           </DialogFooter>
@@ -518,8 +527,8 @@ export default function MetasPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemover} disabled={actionLoading === deleteId} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
-              {actionLoading === deleteId ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" />Remover</>}
+            <AlertDialogAction onClick={handleRemover} loading={actionLoading === deleteId} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
+              <Trash2 className="h-4 w-4" />Remover
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

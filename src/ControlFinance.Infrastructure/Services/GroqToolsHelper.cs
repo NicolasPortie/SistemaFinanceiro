@@ -43,7 +43,7 @@ public static class GroqToolsHelper
                     {
                         valor = new { type = "number", description = "O valor numérico do lançamento." },
                         descricao = new { type = "string", description = "Breve descrição do que foi pago/comprado ou recebido." },
-                        categoria = new { type = "string", description = "A categoria financeira aplicável (ex: Alimentação, Saúde, Lazer, Outros, Salário)." },
+                        categoria = new { type = "string", description = "A categoria financeira. Use o mapeamento aprendido do histórico do usuário se houver correspondência, senão escolha das categorias listadas no contexto." },
                         formaPagamento = new { type = "string", @enum = new[] { "pix", "debito", "credito", "nao_informado" }, description = "Forma de pagamento utilizada." },
                         tipo = new { type = "string", @enum = new[] { "gasto", "receita" }, description = "Se é uma despesa ou uma entrada de dinheiro." },
                         numeroParcelas = new { type = "integer", description = "Quantas vezes a compra foi parcelada. Se não houver, use 1. Se o usuário falar parcelado mas não der o número, use 0." },
@@ -227,7 +227,7 @@ public static class GroqToolsHelper
                     properties = new
                     {
                         comandoInterno = new { type = "string", description = "O comando que ele quer executar. Ex: listar_faturas, ver_fatura, ver_categorias, consultar_metas, consultar_limites, ver_extrato, excluir_lancamento, ver_score, ver_perfil, ver_sazonalidade, ver_recorrentes, ver_lembretes, ver_salario" },
-                        parametro = new { type = "string", description = "Qualquer entidade textual que precise acompanhar o comando interno (ex: o nome do cartão a ser excluido, a categoria detalhada, a descrição do lancamento excluido)" },
+                        parametro = new { type = "string", description = "Qualquer entidade textual que precise acompanhar o comando interno (ex: o nome do cartão a ser excluido, a categoria detalhada, a descrição do lancamento excluido). Para excluir_lancamento: use a descrição do lançamento mencionada pelo usuário. Se o usuário disser 'excluir último' ou 'apagar último lançamento', envie 'ultimo' como parametro. Se não especificou qual, envie vazio." },
                         resposta = new { type = "string", description = "Resposta contextual que será exibida caso o fluxo de interface não intercepte a exibição." }
                     },
                     required = new[] { "comandoInterno", "resposta" }

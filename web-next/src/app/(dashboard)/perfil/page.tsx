@@ -32,7 +32,6 @@ import {
   Check,
   ExternalLink,
   RefreshCw,
-  Loader2,
   Shield,
   Smartphone,
   Pencil,
@@ -317,8 +316,8 @@ export default function PerfilPage() {
                         </div>
                       ))}
                     </div>
-                    <Button onClick={gerarCodigo} disabled={gerando} className="w-full gap-2 h-11 font-semibold shadow-premium">
-                      {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Smartphone className="h-4 w-4" />Gerar código de vinculação</>}
+                    <Button onClick={gerarCodigo} loading={gerando} className="w-full gap-2 h-11 font-semibold shadow-premium">
+                      <Smartphone className="h-4 w-4" />Gerar código de vinculação
                     </Button>
                   </div>
                 ) : (
@@ -333,8 +332,8 @@ export default function PerfilPage() {
                       </div>
                       <p className="text-[11px] text-muted-foreground/60 font-medium">Expira em: {formatDate(codigoTelegram.expiraEm)}</p>
                     </div>
-                    <Button onClick={verificarVinculo} disabled={verificando} className="w-full gap-2 h-11 font-semibold shadow-premium">
-                      {verificando ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4" />Já enviei, verificar</>}
+                    <Button onClick={verificarVinculo} loading={verificando} className="w-full gap-2 h-11 font-semibold shadow-premium">
+                      <RefreshCw className="h-4 w-4" />Já enviei, verificar
                     </Button>
                   </div>
                 )}
@@ -409,8 +408,8 @@ export default function PerfilPage() {
               <Input className="h-11 rounded-xl" {...nomeForm.register("nome")} />
               {nomeForm.formState.errors.nome && <p className="text-xs text-red-500">{nomeForm.formState.errors.nome.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={atualizarPerfilMutation.isPending}>
-              {atualizarPerfilMutation.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><Save className="h-4.5 w-4.5" />Salvar</>}
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" loading={atualizarPerfilMutation.isPending}>
+              <Save className="h-4.5 w-4.5" />Salvar
             </Button>
           </form>
         </DialogContent>
@@ -439,8 +438,8 @@ export default function PerfilPage() {
               <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("confirmarSenha")} />
               {senhaForm.formState.errors.confirmarSenha && <p className="text-xs text-red-500">{senhaForm.formState.errors.confirmarSenha.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={atualizarPerfilMutation.isPending}>
-              {atualizarPerfilMutation.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><Lock className="h-4.5 w-4.5" />Alterar senha</>}
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" loading={atualizarPerfilMutation.isPending}>
+              <Lock className="h-4.5 w-4.5" />Alterar senha
             </Button>
           </form>
         </DialogContent>
@@ -459,8 +458,8 @@ export default function PerfilPage() {
               <Input className="h-11 rounded-xl" placeholder="Ex: Pets, Investimentos..." {...categoriaForm.register("nome")} />
               {categoriaForm.formState.errors.nome && <p className="text-xs text-red-500">{categoriaForm.formState.errors.nome.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" disabled={criarCategoria.isPending}>
-              {criarCategoria.isPending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <><Tag className="h-4.5 w-4.5" />Criar categoria</>}
+            <Button type="submit" className="w-full h-13 rounded-2xl gap-2 font-bold text-[15px] shadow-premium btn-premium" loading={criarCategoria.isPending}>
+              <Tag className="h-4.5 w-4.5" />Criar categoria
             </Button>
           </form>
         </DialogContent>
@@ -479,8 +478,8 @@ export default function PerfilPage() {
               <Input className="h-11 rounded-xl" {...editCategoriaForm.register("nome")} />
               {editCategoriaForm.formState.errors.nome && <p className="text-xs text-red-500">{editCategoriaForm.formState.errors.nome.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] shadow-premium btn-premium" disabled={atualizarCategoria.isPending}>
-              {atualizarCategoria.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+            <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] shadow-premium btn-premium" loading={atualizarCategoria.isPending}>
+              Salvar
             </Button>
           </form>
         </DialogContent>
@@ -495,8 +494,8 @@ export default function PerfilPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={onRemoverCategoria} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
-              {removerCategoria.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4" />Remover</>}
+            <AlertDialogAction onClick={onRemoverCategoria} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2" loading={removerCategoria.isPending}>
+              <Trash2 className="h-4 w-4" />Remover
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -557,10 +556,11 @@ export default function PerfilPage() {
               <Button
                 variant="destructive"
                 className="flex-1 rounded-xl font-bold"
-                disabled={excluirTexto !== "EXCLUIR MINHA CONTA" || excluindoConta}
+                disabled={excluirTexto !== "EXCLUIR MINHA CONTA"}
+                loading={excluindoConta}
                 onClick={onExcluirConta}
               >
-                {excluindoConta ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir definitivamente"}
+                Excluir definitivamente
               </Button>
             </div>
           </div>
