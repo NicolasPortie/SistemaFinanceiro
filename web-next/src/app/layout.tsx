@@ -23,6 +23,14 @@ export const metadata: Metadata = {
     description: "Gerencie suas finanças pessoais de forma inteligente com IA.",
     type: "website",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "ControlFinance",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({
@@ -32,6 +40,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <meta name="theme-color" content="#10b981" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.svg" />
+      </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
       </body>

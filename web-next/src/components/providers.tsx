@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "@/components/ui/sonner";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -38,6 +39,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AuthProvider>
           {children}
           <Toaster richColors position="top-right" />
+          <ServiceWorkerRegister />
         </AuthProvider>
       </NextThemesProvider>
       <ReactQueryDevtools initialIsOpen={false} />
