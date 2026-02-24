@@ -244,41 +244,41 @@ public class LembretePagamentoBackgroundService : BackgroundService
 
     private static string FormatarMensagemDMenos(LembretePagamento l, int dias)
     {
-        var valor = l.Valor.HasValue ? $"\n💰 Valor: R$ {l.Valor.Value:N2}" : "";
-        var cat = l.Categoria != null ? $"\n📂 Categoria: {l.Categoria.Nome}" : "";
+        var valor = l.Valor.HasValue ? $"\nValor: R$ {l.Valor.Value:N2}" : "";
+        var cat = l.Categoria != null ? $"\nCategoria: {l.Categoria.Nome}" : "";
         return $"🔔 *Lembrete: {l.Descricao}*\n\n" +
-               $"📅 Vence em {dias} dia(s) ({l.DataVencimento:dd/MM/yyyy})" +
+               $"Vence em {dias} dia(s) ({l.DataVencimento:dd/MM/yyyy})" +
                valor + cat +
                $"\n\nJá pagou? Use: /lembrete pago {l.Id}";
     }
 
     private static string FormatarMensagemDMenos1(LembretePagamento l)
     {
-        var valor = l.Valor.HasValue ? $"\n💰 Valor: R$ {l.Valor.Value:N2}" : "";
-        return $"⚠️ *Amanhã vence: {l.Descricao}!*\n\n" +
-               $"📅 Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
+        var valor = l.Valor.HasValue ? $"\nValor: R$ {l.Valor.Value:N2}" : "";
+        return $"⚠️ *Amanhã vence: {l.Descricao}*\n\n" +
+               $"Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\n✅ Já pagou? /lembrete pago {l.Id}";
+               $"\n\nJá pagou? /lembrete pago {l.Id}";
     }
 
     private static string FormatarMensagemD0(LembretePagamento l)
     {
-        var valor = l.Valor.HasValue ? $"\n💰 Valor: R$ {l.Valor.Value:N2}" : "";
-        return $"🚨 *HOJE vence: {l.Descricao}!*\n\n" +
-               $"📅 {l.DataVencimento:dd/MM/yyyy}" +
+        var valor = l.Valor.HasValue ? $"\nValor: R$ {l.Valor.Value:N2}" : "";
+        return $"🚨 *HOJE vence: {l.Descricao}*\n\n" +
+               $"{l.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\n✅ Marcar como pago: /lembrete pago {l.Id}";
+               $"\n\nMarcar como pago: /lembrete pago {l.Id}";
     }
 
     private static string FormatarMensagemAtraso(LembretePagamento l, int diasAtraso)
     {
-        var valor = l.Valor.HasValue ? $"\n💰 Valor: R$ {l.Valor.Value:N2}" : "";
+        var valor = l.Valor.HasValue ? $"\nValor: R$ {l.Valor.Value:N2}" : "";
         var sufixo = diasAtraso == 1 ? "ontem" : $"há {diasAtraso} dias";
         return $"❗ *Conta vencida {sufixo}: {l.Descricao}*\n\n" +
-               $"📅 Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
+               $"Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\n✅ Se já pagou: /lembrete pago {l.Id}" +
-               "\n⚠️ Se não pagou, fique atento a multas e juros!";
+               $"\n\nSe já pagou: /lembrete pago {l.Id}" +
+               "\n⚠️ Se não pagou, fique atento a multas e juros.";
     }
 
     // ===== Ciclo =====

@@ -46,4 +46,13 @@ public class PagamentoCicloRepository : IPagamentoCicloRepository
         return await _context.PagamentosCiclo
             .AnyAsync(p => p.LembretePagamentoId == lembreteId && p.PeriodKey == periodKey && p.Pago);
     }
+
+    public async Task<HashSet<int>> ObterIdsComCiclosPagoAsync(List<int> lembreteIds, string periodKey)
+    {
+        var ids = await _context.PagamentosCiclo
+            .Where(p => lembreteIds.Contains(p.LembretePagamentoId) && p.PeriodKey == periodKey && p.Pago)
+            .Select(p => p.LembretePagamentoId)
+            .ToListAsync();
+        return ids.ToHashSet();
+    }
 }

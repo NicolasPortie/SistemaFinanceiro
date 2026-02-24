@@ -83,7 +83,7 @@ public class GroqAiService : IAiService
             : "";
 
         var prompt = $$"""
-            Você é o ControlFinance, um assistente financeiro pessoal no Telegram. Você é simpático, usa emojis e fala de forma natural em português brasileiro.
+            Você é o ControlFinance, um assistente financeiro pessoal no Telegram. Seja direto, profissional e objetivo. Use no máximo 1 ou 2 emojis por mensagem (apenas quando fizer sentido funcional, como ✅ para confirmação ou ⚠️ para alerta). Nunca encha a mensagem de emojis. Fale em português brasileiro de forma clara e natural.
 
             INFORMAÇÕES DE TEMPO PARA CÁLCULO DE DATAS E CUMPRIMENTOS:
             - Data Atual: {{dataHoje}} ({{diaSemana}})

@@ -476,11 +476,17 @@ public class TelegramBotService : ITelegramBotService
 
         var usuario = await ObterUsuarioVinculadoAsync(chatId);
         if (usuario == null)
-            return "🔒 Você ainda não tem conta vinculada!\n\n" +
-                   "1️⃣ Crie sua conta em finance.nicolasportie.com\n" +
-                   "2️⃣ No seu perfil, gere um código de vinculação\n" +
-                   "3️⃣ Envie aqui o código, por exemplo: vincular ABC123\n\n" +
-                   "É rápido e seguro! 🚀";
+        {
+            // Tentar vincular automaticamente se a mensagem parecer um código de vinculação (somente dígitos, 6 caracteres)
+            var msgTrimmed = mensagem.Trim();
+            if (msgTrimmed.Length == 6 && msgTrimmed.All(char.IsDigit))
+                return await ProcessarVinculacaoAsync(chatId, $"vincular {msgTrimmed}", nomeUsuario);
+
+            return "Você ainda não tem conta vinculada.\n\n" +
+                   "1. Crie sua conta em finance.nicolasportie.com\n" +
+                   "2. No seu perfil, gere um código de vinculação\n" +
+                   "3. Envie aqui o código de 6 dígitos";
+        }
 
         // Verificar confirmação de desvinculação pendente
         var respostaDesvinc = await ProcessarConfirmacaoDesvinculacaoAsync(chatId, usuario, mensagem);
@@ -524,7 +530,7 @@ public class TelegramBotService : ITelegramBotService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao processar mensagem via IA para usuário {Nome}", usuario.Nome);
-            return "⚠️ Estou com dificuldades para processar sua mensagem agora. " +
+            return "Estou com dificuldades para processar sua mensagem agora. " +
                    "Tente novamente em alguns instantes ou use um comando direto como /resumo, /fatura, /ajuda.";
         }
     }
@@ -545,35 +551,35 @@ public class TelegramBotService : ITelegramBotService
                 >= 12 and < 18 => "Boa tarde",
                 _ => "Boa noite"
             };
-            return $"👋 {saudacao}, {usuario.Nome}!\n\n" +
+            return $"{saudacao}, {usuario.Nome}!\n\n" +
                    "Como posso te ajudar? Alguns exemplos:\n" +
-                   "💰 \"Gastei 50 no mercado\"\n" +
-                   "📊 \"Resumo financeiro\"\n" +
-                   "💳 \"Fatura do cartão\"\n" +
-                   "🤔 \"Posso gastar 200 em roupas?\"\n\n" +
-                   "Ou digite /ajuda para ver todos os comandos!";
+                   "\"Gastei 50 no mercado\"\n" +
+                   "\"Resumo financeiro\"\n" +
+                   "\"Fatura do cartão\"\n" +
+                   "\"Posso gastar 200 em roupas?\"\n\n" +
+                   "Ou digite /ajuda para ver todos os comandos.";
         }
 
         // Ajuda
         if (msgLower is "ajuda" or "help" or "socorro" or "comandos" or "menu"
             or "o que voce faz" or "o que você faz" or "como funciona")
         {
-            return "📋 *O que posso fazer por você:*\n\n" +
-                   "💰 *Lançamentos* — Me diga seus gastos ou receitas em linguagem natural\n" +
+            return "*O que posso fazer por você:*\n\n" +
+                   "*Lançamentos* — Me diga seus gastos ou receitas em linguagem natural\n" +
                    "   Ex: \"Gastei 30 no almoço\" ou \"Recebi 1500 de salário\"\n\n" +
-                   "📊 *Resumo* — \"Resumo financeiro\" ou /resumo\n" +
-                   "💳 *Fatura* — \"Fatura do cartão\" ou /fatura\n" +
-                   "📂 *Categorias* — \"Ver categorias\" ou /categorias\n" +
-                   "🎯 *Metas* — \"Ver metas\" ou /metas\n" +
-                   "⚠️ *Limites* — \"Ver limites\" ou /limites\n" +
-                   "🤔 *Decisão* — \"Posso gastar X em Y?\"\n" +
-                   "🔮 *Previsão* — \"Quero comprar X de R$ Y em Z parcelas\"\n" +
-                   "💳 *Cartões* — consulta de faturas no bot; cadastro/edição no site\n" +
-                   "🔔 *Lembretes* — /lembrete criar Internet;15/03/2026;99,90;mensal\n" +
-                   "💵 *Salário médio* — /salario_mensal\n" +
-                   "🎤 *Áudio* — Envie áudio que eu transcrevo!\n" +
-                   "📷 *Imagem* — Envie foto de nota fiscal!\n\n" +
-                   "Digite qualquer coisa e eu entendo! 🚀";
+                   "*Resumo* — \"Resumo financeiro\" ou /resumo\n" +
+                   "*Fatura* — \"Fatura do cartão\" ou /fatura\n" +
+                   "*Categorias* — \"Ver categorias\" ou /categorias\n" +
+                   "*Metas* — \"Ver metas\" ou /metas\n" +
+                   "*Limites* — \"Ver limites\" ou /limites\n" +
+                   "*Decisão* — \"Posso gastar X em Y?\"\n" +
+                   "*Previsão* — \"Quero comprar X de R$ Y em Z parcelas\"\n" +
+                   "*Cartões* — consulta de faturas no bot; cadastro/edição no site\n" +
+                   "*Lembretes* — /lembrete criar Internet;15/03/2026;99,90;mensal\n" +
+                   "*Salário médio* — /salario_mensal\n" +
+                   "*Áudio* — Envie áudio que eu transcrevo\n" +
+                   "*Imagem* — Envie foto de nota fiscal\n\n" +
+                   "Digite qualquer coisa e eu entendo.";
         }
 
         // Intentos de gestão no estilo cadastro/edição/exclusão devem ir para o Web
@@ -599,7 +605,7 @@ public class TelegramBotService : ITelegramBotService
         if (msgLower is "obrigado" or "obrigada" or "valeu" or "vlw" or "thanks" or "brigado" or "brigada"
             or "obg" or "muito obrigado" or "muito obrigada")
         {
-            return "😊 Por nada! Estou aqui sempre que precisar. 💙";
+            return "Por nada! Estou aqui quando precisar.";
         }
 
         // Consultas diretas que não precisam de IA
@@ -682,23 +688,23 @@ public class TelegramBotService : ITelegramBotService
     {
         var usuario = await ObterUsuarioVinculadoAsync(chatId);
         if (usuario == null)
-            return "🔒 Vincule sua conta primeiro! Acesse finance.nicolasportie.com e envie \"vincular CODIGO\" aqui no bot.";
+            return "Vincule sua conta primeiro. Acesse finance.nicolasportie.com, gere o código de vinculação e envie aqui no bot.";
 
         try
         {
             var texto = await _aiService.TranscreverAudioAsync(audioData, mimeType);
             if (string.IsNullOrWhiteSpace(texto))
-                return "❌ Não consegui entender o áudio. Tente enviar em texto.";
+                return "Não foi possível entender o áudio. Tente enviar em texto.";
 
             // Usar o mesmo fluxo de texto para que áudio passe pelo state machine
             // (pendentes, confirmações, respostas diretas, etc.)
             var resultado = await ProcessarMensagemAsync(chatId, texto, nomeUsuario);
-            return $"🎤 Transcrição: \"{texto}\"\n\n{resultado}";
+            return $"Transcrição: \"{texto}\"\n\n{resultado}";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao processar áudio");
-            return "❌ Erro ao processar o áudio. Tente novamente.";
+            return "Erro ao processar o áudio. Tente novamente.";
         }
     }
 
@@ -706,13 +712,13 @@ public class TelegramBotService : ITelegramBotService
     {
         var usuario = await ObterUsuarioVinculadoAsync(chatId);
         if (usuario == null)
-            return "🔒 Vincule sua conta primeiro! Acesse finance.nicolasportie.com e envie \"vincular CODIGO\" aqui no bot.";
+            return "Vincule sua conta primeiro. Acesse finance.nicolasportie.com, gere o código de vinculação e envie aqui no bot.";
 
         try
         {
             var texto = await _aiService.ExtrairTextoImagemAsync(imageData, mimeType);
             if (string.IsNullOrWhiteSpace(texto))
-                return "❌ Não consegui extrair informações da imagem.";
+                return "Não foi possível extrair informações da imagem.";
 
             // Enriquecer texto extraído com a legenda do usuário (contexto extra)
             if (!string.IsNullOrWhiteSpace(caption))
@@ -727,7 +733,7 @@ public class TelegramBotService : ITelegramBotService
                 try
                 {
                     var resultado = await ProcessarComIAAsync(usuario, texto, OrigemDado.Imagem);
-                    return $"📷 Imagem processada!\n\n{resultado}";
+                    return $"Imagem processada.\n\n{resultado}";
                 }
                 finally
                 {
@@ -742,7 +748,7 @@ public class TelegramBotService : ITelegramBotService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao processar imagem");
-            return "❌ Erro ao processar a imagem. Tente novamente.";
+            return "Erro ao processar a imagem. Tente novamente.";
         }
     }
 
@@ -936,7 +942,7 @@ public class TelegramBotService : ITelegramBotService
                 {
                     // Perguntar qual cartão
                     var nomes = string.Join(", ", cartoes.Select(c => c.Nome));
-                    return $"💳 Qual cartão você pagou? Tenho estes: {nomes}. Tente dizer: 'Paguei fatura do Nubank'.";
+                    return $"Qual cartão você pagou? Tenho estes: {nomes}. Diga por exemplo: 'Paguei fatura do Nubank'.";
                 }
             }
 
@@ -957,7 +963,7 @@ public class TelegramBotService : ITelegramBotService
             }
 
             if (faturaPagar == null)
-                return $"✅ Não encontrei faturas pendentes para o cartão *{cartao.Nome}*.";
+                return $"Não há faturas pendentes para o cartão *{cartao.Nome}*.";
 
             // 3. Pagar a fatura (Regime de Competência — modelo Mobills/Organizze)
             //
@@ -975,7 +981,7 @@ public class TelegramBotService : ITelegramBotService
             if (dados.Valor.HasValue && dados.Valor.Value > 0 && dados.Valor.Value < valorFatura * 0.95m)
             {
                 // Pagamento parcial — apenas informar, não marca como paga
-                return $"⚠️ Você informou R$ {dados.Valor.Value:N2}, mas a fatura do *{cartao.Nome}* é R$ {valorFatura:N2}.\n\n" +
+                return $"Você informou R$ {dados.Valor.Value:N2}, mas a fatura do *{cartao.Nome}* é R$ {valorFatura:N2}.\n\n" +
                        $"Para pagar a fatura completa, diga: \"Paguei a fatura do {cartao.Nome}\".";
             }
 
@@ -983,17 +989,17 @@ public class TelegramBotService : ITelegramBotService
             await _faturaService.PagarFaturaAsync(faturaPagar.Id);
             await _perfilService.InvalidarAsync(usuario.Id);
 
-            return $"✅ *Fatura Paga com Sucesso!*\n\n" +
-                   $"💳 Cartão: {cartao.Nome}\n" +
-                   $"📅 Mês: {faturaPagar.MesReferencia:MM/yyyy}\n" +
-                   $"💸 Valor: R$ {valorFatura:N2}\n\n" +
-                   $"O limite do seu cartão foi restaurado!\n" +
-                   $"ℹ️ _O gasto já foi contabilizado quando você fez a compra (regime de competência)._";
+            return $"*Fatura Paga com Sucesso*\n\n" +
+                   $"Cartão: {cartao.Nome}\n" +
+                   $"Mês: {faturaPagar.MesReferencia:MM/yyyy}\n" +
+                   $"Valor: R$ {valorFatura:N2}\n\n" +
+                   $"O limite do seu cartão foi restaurado.\n" +
+                   $"_O gasto já foi contabilizado quando você fez a compra (regime de competência)._";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao processar pagamento de fatura");
-            return "❌ Ocorreu um erro ao processar o pagamento da fatura.";
+            return "Erro ao processar o pagamento da fatura.";
         }
     }
 
@@ -1122,7 +1128,7 @@ public class TelegramBotService : ITelegramBotService
 
             if (!pendentes.Any())
             {
-                resultado += $"💳 {cartao.Nome}: Sem fatura pendente.\n\n";
+                resultado += $"{cartao.Nome}: Sem fatura pendente.\n\n";
                 continue;
             }
 
@@ -1134,7 +1140,7 @@ public class TelegramBotService : ITelegramBotService
 
                 if (faturaSelecionada == null)
                 {
-                    resultado += $"💳 {cartao.Nome}: Sem fatura pendente para {referenciaNormalizada}.\n\n";
+                    resultado += $"{cartao.Nome}: Sem fatura pendente para {referenciaNormalizada}.\n\n";
                     continue;
                 }
             }
@@ -1161,7 +1167,7 @@ public class TelegramBotService : ITelegramBotService
                 if (outras.Any())
                 {
                     var totalOutras = outras.Sum(f => f.Total);
-                    resultado += $"⚠️ Você também tem {outras.Count} outra(s) fatura(s) pendente(s) totalizando R$ {totalOutras:N2}.\nUse /faturas para ver todas.\n\n";
+                    resultado += $"Você também tem {outras.Count} outra(s) fatura(s) pendente(s) totalizando R$ {totalOutras:N2}.\nUse /faturas para ver todas.\n\n";
                 }
             }
         }
@@ -1257,7 +1263,7 @@ public class TelegramBotService : ITelegramBotService
         }
 
         if (!temFatura)
-            return "✅ Nenhuma fatura pendente! Tudo em dia.";
+            return "Nenhuma fatura pendente. Tudo em dia.";
 
         return resultado.TrimEnd();
     }
@@ -1271,7 +1277,7 @@ public class TelegramBotService : ITelegramBotService
         // Extrair nome da categoria da resposta da IA (ex: "Alimentação" ou qualquer texto)
         var nomeCategoria = respostaIA?.Trim();
         if (string.IsNullOrWhiteSpace(nomeCategoria))
-            return "❌ Me diga qual categoria quer detalhar. Ex: \"detalhar Alimentação\"";
+            return "Informe qual categoria deseja detalhar. Ex: \"detalhar Alimentação\"";
 
         // Buscar categoria
         var categoria = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, nomeCategoria);
@@ -1321,22 +1327,22 @@ public class TelegramBotService : ITelegramBotService
                 FormaPagamento.Credito => "Crédito",
                 _ => ""
             };
-            texto += $"📅 {l.Data:dd/MM} — {l.Descricao} — R$ {l.Valor:N2} ({pagInfo})\n";
+            texto += $"{l.Data:dd/MM} — {l.Descricao} — R$ {l.Valor:N2} ({pagInfo})\n";
         }
 
-        texto += $"\n💰 *Subtotal: R$ {total:N2}*";
+        texto += $"\n*Subtotal: R$ {total:N2}*";
         return texto;
     }
 
     private async Task<string> ListarCategorias(Usuario usuario)
     {
         var categorias = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
-        if (!categorias.Any()) return "📁 Nenhuma categoria encontrada.";
+        if (!categorias.Any()) return "Nenhuma categoria encontrada.";
 
-        var texto = "🏷️ Suas Categorias:\n";
+        var texto = "*Suas Categorias:*\n";
         foreach (var cat in categorias)
         {
-            var ico = cat.Padrao ? "📌" : "📝";
+            var ico = cat.Padrao ? "●" : "○";
             texto += $"\n{ico} {cat.Nome}";
         }
         return texto;
@@ -1354,17 +1360,16 @@ public class TelegramBotService : ITelegramBotService
                 .ToList();
 
             if (!recentes.Any())
-                return "📭 Nenhum lançamento registrado ainda.";
+                return "Nenhum lançamento registrado ainda.";
 
-            var texto = "📋 *Extrato — Últimos lançamentos*\n\n";
+            var texto = "*Extrato — Últimos lançamentos*\n\n";
             var totalReceita = 0m;
             var totalDespesa = 0m;
 
             foreach (var l in recentes)
             {
-                var emoji = l.Tipo == TipoLancamento.Receita ? "💰" : "💸";
                 var sinal = l.Tipo == TipoLancamento.Receita ? "+" : "-";
-                texto += $"{emoji} {l.Data:dd/MM} | {sinal} R$ {l.Valor:N2} | {l.Descricao}\n";
+                texto += $"{l.Data:dd/MM} | {sinal} R$ {l.Valor:N2} | {l.Descricao}\n";
 
                 if (l.Tipo == TipoLancamento.Receita)
                     totalReceita += l.Valor;
@@ -1372,10 +1377,10 @@ public class TelegramBotService : ITelegramBotService
                     totalDespesa += l.Valor;
             }
 
-            texto += $"\n📊 *Neste extrato:*\n";
-            texto += $"💰 Receitas: R$ {totalReceita:N2}\n";
-            texto += $"💸 Despesas: R$ {totalDespesa:N2}\n";
-            texto += $"📈 Saldo: R$ {(totalReceita - totalDespesa):N2}";
+            texto += $"\n*Neste extrato:*\n";
+            texto += $"Receitas: R$ {totalReceita:N2}\n";
+            texto += $"Despesas: R$ {totalDespesa:N2}\n";
+            texto += $"Saldo: R$ {(totalReceita - totalDespesa):N2}";
 
             return texto;
         }
@@ -1393,45 +1398,45 @@ public class TelegramBotService : ITelegramBotService
 
         return comando switch
         {
-            "/start" => $"👋 Oi, {usuario.Nome}! Eu sou o ControlFinance!\n\nFala comigo naturalmente:\n💸 \"paguei 45 no mercado\"\n💰 \"recebi 5000 de salário\"\n❓ \"posso gastar 50 num lanche?\"\n🔍 \"se eu comprar uma TV de 3000 em 10x?\"\n📊 \"limitar alimentação em 800\"\n🎯 \"quero juntar 10 mil até dezembro\"\n\nPode mandar texto, áudio ou foto de cupom! 🚀",
-            "/ajuda" or "/help" => "📖 *O que posso fazer por você:*\n\n" +
-                "💸 *Lançamentos*\n" +
+            "/start" => $"Olá, {usuario.Nome}! Sou o ControlFinance, seu assistente financeiro.\n\nFale naturalmente:\n• \"paguei 45 no mercado\"\n• \"recebi 5000 de salário\"\n• \"posso gastar 50 num lanche?\"\n• \"se eu comprar uma TV de 3000 em 10x?\"\n• \"limitar alimentação em 800\"\n• \"quero juntar 10 mil até dezembro\"\n\nAceito texto, áudio e foto de cupom.",
+            "/ajuda" or "/help" => "*Comandos disponíveis:*\n\n" +
+                "*Lançamentos*\n" +
                 "• \"gastei 50 no mercado\"\n" +
                 "• \"recebi 3000 de salário\"\n" +
                 "• \"ifood 89,90 no crédito 3x\"\n" +
                 "• \"excluir mercado\"\n" +
                 "• \"dividi 100 com 2 amigos\"\n" +
                 "• \"meu extrato\" — últimos lançamentos\n\n" +
-                "💳 *Cartões e Faturas*\n" +
+                "*Cartões e Faturas*\n" +
                 "• \"minha fatura\" ou \"fatura do Nubank\"\n" +
                 "• \"todas as faturas\"\n" +
                 "• \"fatura detalhada\"\n" +
                 "• \"paguei a fatura do Nubank\"\n\n" +
-                "📊 *Análises*\n" +
+                "*Análises*\n" +
                 "• \"como estou esse mês?\" — resumo\n" +
                 "• \"detalha alimentação\" — por categoria\n" +
                 "• \"compara com mês passado\"\n" +
                 "• \"minhas receitas recorrentes\"\n" +
                 "• \"posso gastar 80 no iFood?\"\n" +
                 "• \"se eu comprar TV de 3000 em 12x?\"\n\n" +
-                "🎯 *Metas e Limites*\n" +
+                "*Metas e Limites*\n" +
                 "• \"limitar alimentação em 800\"\n" +
                 "• \"meus limites\"\n" +
                 "• \"quero juntar 5000 pra viagem até junho\"\n" +
                 "• \"minhas metas\"\n" +
                 "• \"depositar 200 na meta viagem\"\n\n" +
-                "📅 *Lembretes e Contas*\n" +
+                "*Lembretes e Contas*\n" +
                 "• \"meus lembretes\" — contas a pagar\n" +
                 "• \"qual meu salário?\"\n" +
                 "• \"minhas categorias\"\n" +
                 "• \"criar categoria Roupas\"\n\n" +
-                "🧠 *Inteligência Financeira*\n" +
+                "*Inteligência Financeira*\n" +
                 "• \"meu score financeiro\"\n" +
                 "• \"meu perfil de gastos\"\n" +
                 "• \"já lancei 89.90?\" — duplicidade\n" +
                 "• \"eventos sazonais\"\n\n" +
-                "� /cancelar — cancela qualquer operação pendente\n\n" +
-                "💡 Fale naturalmente! Aceito texto, áudio e foto de cupom.\n📸 Envie fotos com legenda para mais contexto!",
+                "/cancelar — cancela qualquer operação pendente\n\n" +
+                "Fale naturalmente. Aceito texto, áudio e foto de cupom.",
             "/simular" => await _previsaoHandler.ProcessarComandoSimularAsync(usuario, partes.Length > 1 ? partes[1] : null)
                          ?? await ProcessarComIAAsync(usuario, mensagem),
             "/posso" => await _previsaoHandler.ProcessarComandoPossoAsync(usuario, partes.Length > 1 ? partes[1] : null)
@@ -1514,8 +1519,8 @@ public class TelegramBotService : ITelegramBotService
         BotTecladoHelper.RemoverTeclado(chatId);
 
         return cancelou
-            ? "✅ Operação cancelada! Pode continuar normalmente."
-            : "ℹ️ Não há nenhuma operação pendente para cancelar.";
+            ? "Operação cancelada."
+            : "Não há operação pendente para cancelar.";
     }
 
     private static bool EhMensagemGestaoNoWeb(string msgLower)
@@ -1633,7 +1638,7 @@ public class TelegramBotService : ITelegramBotService
         DefinirTeclado(chatId,
             new[] { ("✅ Sim, desvincular", "sim"), ("❌ Cancelar", "cancelar") }
         );
-        return "⚠️ *Tem certeza que deseja desvincular?*\n\n" +
+        return "*Tem certeza que deseja desvincular?*\n\n" +
                "Você perderá o acesso ao bot pelo Telegram.\n" +
                "Seus dados na conta web continuarão salvos.";
     }
@@ -1659,7 +1664,7 @@ public class TelegramBotService : ITelegramBotService
             usuario.TelegramVinculado = false;
             await _usuarioRepo.AtualizarAsync(usuario);
             _logger.LogInformation("Telegram desvinculado: {Email} | ChatId {ChatId}", usuario.Email, chatId);
-            return "✅ Telegram desvinculado com sucesso!\n\n" +
+            return "Telegram desvinculado.\n\n" +
                    "Sua conta web continua ativa.\n" +
                    "Para vincular novamente, gere um novo código em finance.nicolasportie.com";
         }
@@ -1667,14 +1672,14 @@ public class TelegramBotService : ITelegramBotService
         if (BotParseHelper.EhCancelamento(msg))
         {
             _desvinculacaoPendente.TryRemove(chatId, out _);
-            return "👍 Cancelado! Seu Telegram continua vinculado.";
+            return "Cancelado. Seu Telegram continua vinculado.";
         }
 
         // Não reconheceu — re-perguntar ao invés de cancelar silenciosamente
         DefinirTeclado(chatId,
             new[] { ("✅ Sim, desvincular", "sim"), ("❌ Cancelar", "cancelar") }
         );
-        return "⚠️ Não entendi. Deseja confirmar a desvinculação ou cancelar?\n\nEscolha abaixo 👇";
+        return "⚠️ Não entendi. Deseja confirmar a desvinculação ou cancelar?";
     }
 
     private async Task<string> ProcessarPrevisaoCompraAsync(Usuario usuario, DadosSimulacaoIA simulacao)
@@ -1941,8 +1946,8 @@ public class TelegramBotService : ITelegramBotService
             };
 
             var texto = string.IsNullOrWhiteSpace(descricao)
-                ? "🗑️ *Qual lançamento deseja excluir?*\n\nEscolha um dos últimos lançamentos:\n\n"
-                : $"🔍 Não encontrei \"{descricao}\". Escolha um dos últimos:\n\n";
+                ? "*Qual lançamento deseja excluir?*\n\nEscolha um dos últimos lançamentos:\n\n"
+                : $"Não encontrei \"{descricao}\". Escolha um dos últimos:\n\n";
 
             var botoes = new List<(string Label, string Data)>();
             for (int i = 0; i < topN.Count; i++)
@@ -1954,7 +1959,6 @@ public class TelegramBotService : ITelegramBotService
             }
 
             botoes.Add(("❌ Cancelar", "cancelar"));
-            texto += "\nEscolha abaixo 👇";
 
             // Montar teclado com 1 botão por linha
             var linhas = botoes.Select(b => new[] { b }).ToArray();
@@ -1982,10 +1986,10 @@ public class TelegramBotService : ITelegramBotService
         DefinirTeclado(chatId,
             new[] { ("✅ Confirmar exclusão", "sim"), ("❌ Cancelar", "cancelar") }
         );
-        return $"⚠️ *Confirma a exclusão deste lançamento?*\n\n" +
+        return $"*Confirma a exclusão deste lançamento?*\n\n" +
                $"{emoji} {lancamento.Descricao}\n" +
-               $"💵 R$ {lancamento.Valor:N2}\n" +
-               $"📅 {lancamento.Data:dd/MM/yyyy}";
+               $"R$ {lancamento.Valor:N2}\n" +
+               $"{lancamento.Data:dd/MM/yyyy}";
     }
 
     /// <summary>Processa a seleção numerada de um lançamento para exclusão</summary>
@@ -2006,7 +2010,7 @@ public class TelegramBotService : ITelegramBotService
         if (BotParseHelper.EhCancelamento(msg))
         {
             _selecaoExclusaoPendente.TryRemove(chatId, out _);
-            return "👍 Exclusão cancelada!";
+            return "Exclusão cancelada.";
         }
 
         if (int.TryParse(msg, out var idx) && idx >= 1 && idx <= selecao.Opcoes.Count)
@@ -2027,7 +2031,6 @@ public class TelegramBotService : ITelegramBotService
             botoes.Add(($"{i + 1}️⃣ {l.Descricao}", $"{i + 1}"));
         }
         botoes.Add(("❌ Cancelar", "cancelar"));
-        texto += "\nEscolha abaixo 👇";
         var linhas = botoes.Select(b => new[] { b }).ToArray();
         DefinirTeclado(chatId, linhas);
         return texto;
@@ -2056,7 +2059,7 @@ public class TelegramBotService : ITelegramBotService
                 await _perfilService.InvalidarAsync(pendente.UsuarioId);
 
                 var emoji = pendente.Lancamento.Tipo == TipoLancamento.Receita ? "💰" : "💸";
-                return $"🗑️ Lançamento excluído!\n\n{emoji} {pendente.Lancamento.Descricao}\n💵 R$ {pendente.Lancamento.Valor:N2}\n📅 {pendente.Lancamento.Data:dd/MM/yyyy}";
+                return $"Lançamento excluído.\n\n{emoji} {pendente.Lancamento.Descricao}\nR$ {pendente.Lancamento.Valor:N2}\n{pendente.Lancamento.Data:dd/MM/yyyy}";
             }
             catch (Exception ex)
             {
@@ -2068,14 +2071,14 @@ public class TelegramBotService : ITelegramBotService
         if (BotParseHelper.EhCancelamento(msg))
         {
             _exclusaoPendente.TryRemove(chatId, out _);
-            return "👍 Exclusão cancelada! O lançamento foi mantido.";
+            return "Exclusão cancelada. O lançamento foi mantido.";
         }
 
         // Não reconheceu — re-perguntar
         DefinirTeclado(chatId,
             new[] { ("✅ Confirmar exclusão", "sim"), ("❌ Cancelar", "cancelar") }
         );
-        return "⚠️ Não entendi. Deseja confirmar a exclusão ou cancelar?\n\nEscolha abaixo 👇";
+        return "⚠️ Não entendi. Deseja confirmar a exclusão ou cancelar?";
     }
 
     private async Task<string> ProcessarComandoPossoAsync(Usuario usuario, string? parametros)
@@ -2450,7 +2453,7 @@ public class TelegramBotService : ITelegramBotService
 
         var partes = mensagem.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (partes.Length < 2)
-            return "❌ Envie o código de vinculação!\n\nExemplo: vincular ABC123\n\nGere o código no seu perfil em finance.nicolasportie.com";
+            return "❌ Envie o código de vinculação!\n\nBasta enviar o código de 6 dígitos gerado no seu perfil em finance.nicolasportie.com";
 
         var codigo = partes[1].Trim();
 
@@ -2474,12 +2477,13 @@ public class TelegramBotService : ITelegramBotService
 
         _logger.LogInformation("Telegram vinculado: {Email} → ChatId {ChatId}", usuario.Email, chatId);
 
-        return $"🎉 Vinculado com sucesso!\n\n" +
-               $"Olá, {usuario.Nome}! Agora você pode usar o bot.\n\n" +
-               $"💸 \"gastei 50 no mercado\"\n" +
-               $"💰 \"recebi 3000 de salário\"\n" +
-               $"📊 \"quanto gastei esse mês?\"\n\n" +
-               $"Pode mandar texto, áudio ou foto de cupom! 🚀";
+        return $"✅ Vinculado com sucesso!\n\n" +
+               $"Olá, {usuario.Nome}. Agora você pode usar o bot.\n\n" +
+               $"Exemplos:\n" +
+               $"• \"gastei 50 no mercado\"\n" +
+               $"• \"recebi 3000 de salário\"\n" +
+               $"• \"quanto gastei esse mês?\"\n\n" +
+               $"Aceito texto, áudio e foto de cupom.";
     }
 
     private async Task<(Usuario, CodigoVerificacao)?> BuscarUsuarioPorCodigoAsync(string codigo)
@@ -2520,9 +2524,9 @@ public class TelegramBotService : ITelegramBotService
             var emoji = aporte.Valor >= 0 ? "💰" : "💸";
             var diff = Math.Abs(aporte.Valor);
 
-            return $"{emoji} {acao} na meta *{resultado.Nome}*!\n\n" +
-                   $"💵 Valor: R$ {diff:N2}\n" +
-                   $"🎯 Progresso: R$ {resultado.ValorAtual:N2} / R$ {resultado.ValorAlvo:N2} ({resultado.PercentualConcluido:N0}%)";
+            return $"{emoji} {acao} na meta *{resultado.Nome}*\n\n" +
+                   $"Valor: R$ {diff:N2}\n" +
+                   $"Progresso: R$ {resultado.ValorAtual:N2} / R$ {resultado.ValorAlvo:N2} ({resultado.PercentualConcluido:N0}%)";
         }
         catch (Exception ex)
         {
@@ -2565,7 +2569,7 @@ public class TelegramBotService : ITelegramBotService
             await _lancamentoRepo.AtualizarAsync(ultimo);
             await _perfilService.InvalidarAsync(usuario.Id);
 
-            return $"✅ Categoria alterada para *{cat.Nome}*!\n\n📝 {ultimo.Descricao}\n💵 R$ {ultimo.Valor:N2}\n📅 {ultimo.Data:dd/MM/yyyy}";
+            return $"✅ Categoria alterada para *{cat.Nome}*\n\n{ultimo.Descricao}\nR$ {ultimo.Valor:N2}\n{ultimo.Data:dd/MM/yyyy}";
         }
         catch (Exception ex)
         {
@@ -2602,7 +2606,7 @@ public class TelegramBotService : ITelegramBotService
                 Padrao = false
             });
 
-            return $"✅ Categoria *{nome}* criada com sucesso!\n\nAgora você pode usá-la ao registrar lançamentos.";
+            return $"✅ Categoria *{nome}* criada.\n\nDisponível para uso nos próximos lançamentos.";
         }
         catch (Exception ex)
         {
@@ -2621,18 +2625,18 @@ public class TelegramBotService : ITelegramBotService
             var recorrentes = await _receitaRecorrenteService.DetectarRecorrentesAsync(usuario.Id);
 
             if (!recorrentes.Any())
-                return "📊 *Receitas Recorrentes*\n\n" +
-                       "Ainda não detectei receitas recorrentes.\n" +
-                       "Preciso de pelo menos 3 meses de histórico com receitas similares " +
-                       "(mesma descrição, valor com variação < 20%).";
+                return "*Receitas Recorrentes*\n\n" +
+                       "Nenhuma receita recorrente detectada.\n" +
+                       "São necessários pelo menos 3 meses de histórico com receitas similares " +
+                       "(mesma descrição, variação < 20%).";
 
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("📊 *Receitas Recorrentes Detectadas*\n");
+            sb.AppendLine("*Receitas Recorrentes Detectadas*\n");
 
             foreach (var rec in recorrentes)
             {
-                var status = rec.ProvavelmenteChegaEsteMes ? "⏳ Aguardando este mês" : "✅ Já recebido este mês";
-                sb.AppendLine($"💰 *{rec.Descricao}*");
+                var status = rec.ProvavelmenteChegaEsteMes ? "Aguardando este mês" : "Já recebido";
+                sb.AppendLine($"*{rec.Descricao}*");
                 sb.AppendLine($"   Valor médio: R$ {rec.ValorMedio:N2}");
                 if (rec.ValorMinimo != rec.ValorMaximo)
                     sb.AppendLine($"   Faixa: R$ {rec.ValorMinimo:N2} — R$ {rec.ValorMaximo:N2}");
@@ -2643,7 +2647,7 @@ public class TelegramBotService : ITelegramBotService
             }
 
             var totalMensal = recorrentes.Sum(r => r.ValorMedio);
-            sb.AppendLine($"📈 *Receita recorrente estimada: R$ {totalMensal:N2}/mês*");
+            sb.AppendLine($"*Receita recorrente estimada: R$ {totalMensal:N2}/mês*");
 
             return sb.ToString();
         }
@@ -2676,20 +2680,20 @@ public class TelegramBotService : ITelegramBotService
         {
             var perfil = await _perfilComportamentalService.ObterOuCalcularAsync(usuario.Id);
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("🧠 *Perfil Comportamental*\n");
-            sb.AppendLine($"🎯 Impulsividade: *{perfil.NivelImpulsividade}*");
-            sb.AppendLine($"📊 Frequência de dúvida de gasto: *{perfil.FrequenciaDuvidaGasto}* (30d)");
-            sb.AppendLine($"⚖️ Tolerância a risco: *{perfil.ToleranciaRisco}*");
-            sb.AppendLine($"📈 Tendência de gastos: *{perfil.TendenciaCrescimentoGastos:N1}%*");
-            sb.AppendLine($"🔄 Estabilidade: *{perfil.ScoreEstabilidade:N0}/100*");
+            sb.AppendLine("*Perfil Comportamental*\n");
+            sb.AppendLine($"Impulsividade: *{perfil.NivelImpulsividade}*");
+            sb.AppendLine($"Frequência de dúvida de gasto: *{perfil.FrequenciaDuvidaGasto}* (30d)");
+            sb.AppendLine($"Tolerância a risco: *{perfil.ToleranciaRisco}*");
+            sb.AppendLine($"Tendência de gastos: *{perfil.TendenciaCrescimentoGastos:N1}%*");
+            sb.AppendLine($"Estabilidade: *{perfil.ScoreEstabilidade:N0}/100*");
             if (!string.IsNullOrEmpty(perfil.CategoriaMaisFrequente))
-                sb.AppendLine($"🏷️ Categoria mais frequente: *{perfil.CategoriaMaisFrequente}*");
+                sb.AppendLine($"Categoria mais frequente: *{perfil.CategoriaMaisFrequente}*");
             if (!string.IsNullOrEmpty(perfil.FormaPagamentoPreferida))
-                sb.AppendLine($"💳 Forma de pagamento preferida: *{perfil.FormaPagamentoPreferida}*");
+                sb.AppendLine($"Forma de pagamento preferida: *{perfil.FormaPagamentoPreferida}*");
             if (perfil.ComprometimentoRendaPercentual > 0)
-                sb.AppendLine($"📉 Comprometimento da renda: *{perfil.ComprometimentoRendaPercentual:N0}%*");
+                sb.AppendLine($"Comprometimento da renda: *{perfil.ComprometimentoRendaPercentual:N0}%*");
             if (perfil.ScoreSaudeFinanceira > 0)
-                sb.AppendLine($"\n💚 Score de saúde financeira: *{perfil.ScoreSaudeFinanceira:N0}/100*");
+                sb.AppendLine($"\nScore de saúde financeira: *{perfil.ScoreSaudeFinanceira:N0}/100*");
 
             sb.AppendLine("\n_Use /score para ver os fatores detalhados._");
             return sb.ToString();
@@ -2712,8 +2716,8 @@ public class TelegramBotService : ITelegramBotService
             // Se a IA não extraiu valor nem categoria/descrição, retorna orientação
             if (valor == 0 && categoria == null && string.IsNullOrWhiteSpace(dados.Descricao))
             {
-                return "🔍 Não consegui identificar o que verificar.\n\n" +
-                       "Me diga, por exemplo:\n" +
+                return "Não consegui identificar o que verificar.\n\n" +
+                       "Exemplos:\n" +
                        "• \"já lancei 89.90?\"\n" +
                        "• \"já registrei o mercado?\"\n" +
                        "• \"será que já paguei a conta de luz?\"";
@@ -2738,16 +2742,16 @@ public class TelegramBotService : ITelegramBotService
             {
                 var eventos = await _eventoSazonalService.ListarAsync(usuario.Id);
                 if (!eventos.Any())
-                    return "📅 *Eventos Sazonais*\n\nNenhum evento cadastrado.\n\n" +
+                    return "*Eventos Sazonais*\n\nNenhum evento cadastrado.\n\n" +
                            "Use `/sazonalidade detectar` para detecção automática\n" +
                            "Ou `/sazonalidade criar Descricao;Mes;Valor;sim/nao(anual);sim/nao(receita)`";
 
                 var sb = new System.Text.StringBuilder();
-                sb.AppendLine("📅 *Eventos Sazonais*\n");
+                sb.AppendLine("*Eventos Sazonais*\n");
                 foreach (var e in eventos)
                 {
-                    var tipo = e.EhReceita ? "💰" : "💸";
-                    var auto = e.DetectadoAutomaticamente ? " 🤖" : "";
+                    var tipo = e.EhReceita ? "[R]" : "[G]";
+                    var auto = e.DetectadoAutomaticamente ? " (auto)" : "";
                     sb.AppendLine($"{tipo} #{e.Id} — *{e.Descricao}* — Mês {e.MesOcorrencia} — R$ {e.ValorMedio:N2}{auto}");
                 }
                 sb.AppendLine("\nComandos: detectar, criar, remover ID");
@@ -2762,13 +2766,13 @@ public class TelegramBotService : ITelegramBotService
             {
                 var detectados = await _eventoSazonalService.DetectarAutomaticamenteAsync(usuario.Id);
                 if (!detectados.Any())
-                    return "📅 Nenhum novo evento sazonal detectado automaticamente.\nPreciso de pelo menos 2 anos de dados.";
+                    return "Nenhum novo evento sazonal detectado.\nSão necessários pelo menos 2 anos de dados.";
 
                 var sb = new System.Text.StringBuilder();
-                sb.AppendLine($"📅 *{detectados.Count} evento(s) sazonal(is) detectado(s):*\n");
+                sb.AppendLine($"*{detectados.Count} evento(s) sazonal(is) detectado(s):*\n");
                 foreach (var e in detectados)
                 {
-                    var tipo = e.EhReceita ? "💰" : "💸";
+                    var tipo = e.EhReceita ? "[R]" : "[G]";
                     sb.AppendLine($"{tipo} *{e.Descricao}* — Mês {e.MesOcorrencia} — R$ {e.ValorMedio:N2}");
                 }
                 return sb.ToString();
@@ -2795,7 +2799,7 @@ public class TelegramBotService : ITelegramBotService
                 };
 
                 var criado = await _eventoSazonalService.CriarAsync(usuario.Id, dto);
-                return $"✅ Evento sazonal criado: *{criado.Descricao}* — Mês {criado.MesOcorrencia} — R$ {criado.ValorMedio:N2}";
+                return $"Evento sazonal criado: *{criado.Descricao}* — Mês {criado.MesOcorrencia} — R$ {criado.ValorMedio:N2}";
             }
 
             if (cmd is "remover" or "excluir" or "deletar" && int.TryParse(resto, out var id))
@@ -2804,7 +2808,7 @@ public class TelegramBotService : ITelegramBotService
                 return ok ? $"✅ Evento #{id} removido." : $"❌ Evento #{id} não encontrado.";
             }
 
-            return "📅 Comandos: listar, detectar, criar, remover ID";
+            return "Comandos: listar, detectar, criar, remover ID";
         }
         catch (Exception ex)
         {

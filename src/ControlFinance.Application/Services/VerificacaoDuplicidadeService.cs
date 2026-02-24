@@ -62,10 +62,10 @@ public class VerificacaoDuplicidadeService : IVerificacaoDuplicidadeService
             .ToList();
 
         var resumo = similares.Any()
-            ? $"⚠️ Encontrei {similares.Count} lançamento(s) similar(es) de R$ {valor:N2}:\n\n" +
+            ? $"Encontrados {similares.Count} lançamento(s) similar(es) de R$ {valor:N2}:\n\n" +
               string.Join("\n", similares.Select(s =>
                   $"• {s.Data:dd/MM/yyyy} — {s.Tipo} — {s.Categoria} — R$ {s.Valor:N2} — {s.Descricao}"))
-            : $"✅ Nenhum lançamento similar de R$ {valor:N2} encontrado no período.";
+            : $"Nenhum lançamento similar de R$ {valor:N2} encontrado no período.";
 
         return new VerificacaoDuplicidadeDto
         {

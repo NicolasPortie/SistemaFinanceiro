@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -9,28 +9,21 @@ import { loginSchema, type LoginData } from "@/lib/schemas";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import {
-  TrendingUp,
   Mail,
   Lock,
   Eye,
   EyeOff,
-  ArrowRight,
+  LogIn,
   Wallet,
-  PieChart,
-  Bot,
-  Target,
-  CreditCard,
   Shield,
   Zap,
-  Sparkles,
+  MoreHorizontal,
+  ShieldCheck,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const { login, usuario } = useAuth();
   const router = useRouter();
 
@@ -55,368 +48,270 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginData) => {
     try {
       await login(data.email, data.senha);
-      router.push("/dashboard");
+      toast.success("Login realizado com sucesso!");
+      router.replace("/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao fazer login");
     }
   };
 
   return (
-    <div className="flex min-h-svh bg-background">
-      {/* ════════════════════════════════════════════
-          LEFT PANEL — Desktop only
-         ════════════════════════════════════════════ */}
-      <div className="hidden lg:flex lg:w-[44%] xl:w-[42%] relative overflow-hidden">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-linear-to-br from-emerald-950 via-teal-900 to-cyan-950" />
+    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased h-screen overflow-hidden relative">
+      {/* Background blurs */}
+      <div className="absolute top-[-10%] left-[-10%] w-150 h-150 bg-emerald-500/20 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-125 h-125 bg-teal-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)`,
-            backgroundSize: "48px 48px",
-          }}
-        />
-
-        {/* Animated floating orbs */}
-        <motion.div
-          className="absolute top-[12%] right-[15%] w-72 h-72 rounded-full bg-emerald-400/8 blur-3xl"
-          animate={{ y: [0, -30, 0], x: [0, 15, 0], scale: [1, 1.1, 1] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute bottom-[18%] left-[8%] w-56 h-56 rounded-full bg-teal-400/6 blur-3xl"
-          animate={{ y: [0, 20, 0], x: [0, -10, 0], scale: [1, 1.15, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        />
-        <motion.div
-          className="absolute top-[48%] left-[45%] w-40 h-40 rounded-full bg-cyan-400/5 blur-3xl"
-          animate={{ y: [0, -15, 0], x: [0, 20, 0] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 4 }}
-        />
-
-        {/* Geometric accent lines */}
-        <div className="absolute top-[18%] right-10 w-px h-36 bg-linear-to-b from-transparent via-emerald-400/25 to-transparent" />
-        <div className="absolute bottom-[28%] left-14 w-24 h-px bg-linear-to-r from-transparent via-teal-400/25 to-transparent" />
-        <div className="absolute top-[55%] right-20 w-16 h-px bg-linear-to-r from-transparent via-cyan-400/15 to-transparent" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-linear-to-bl from-emerald-400/8 to-transparent rounded-bl-full" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-linear-to-tr from-cyan-400/6 to-transparent rounded-tr-full" />
-
-        <div className="relative flex flex-col justify-between p-10 xl:p-14 text-white w-full z-10">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/8 border border-white/10 backdrop-blur-sm shadow-lg shadow-black/10">
-              <TrendingUp className="h-5 w-5 text-emerald-300" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight leading-none">ControlFinance</span>
-              <span className="text-[10px] text-emerald-300/50 font-medium tracking-[0.15em] uppercase mt-0.5">Financial Platform</span>
-            </div>
+      <div className="relative z-10 h-full w-full flex flex-col p-6 sm:p-8 lg:p-12">
+        {/* Header / Logo */}
+        <header className="flex items-center gap-3 text-white/90">
+          <div className="size-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-lg shadow-black/10">
+            <Wallet className="h-5 w-5 text-white" />
           </div>
+          <h2 className="text-white text-xl font-bold tracking-tight">
+            Control Finance
+          </h2>
+        </header>
 
-          {/* Hero content */}
-          <div className="space-y-10">
-            <motion.div
+        {/* Main content */}
+        <main className="flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16 xl:gap-24 w-full max-w-6xl mx-auto">
+          {/* ── Left: Hero text (desktop) ── */}
+          <div className="w-full lg:w-120 xl:w-135 shrink-0 text-center lg:text-left pt-8 lg:pt-0">
+            <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.7 }}
+              transition={{ duration: 0.6 }}
+              className="text-white text-4xl sm:text-5xl lg:text-7xl font-black leading-tight tracking-[-0.03em] mb-6 lg:mb-8"
             >
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-400/8 border border-emerald-400/15 mb-7">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[11px] text-emerald-300/80 font-semibold tracking-wide">Plataforma ativa</span>
-              </div>
-
-              <h2 className="text-[2rem] xl:text-[2.5rem] font-extrabold leading-[1.1] tracking-tight">
-                Suas finanças no
-                <br />
-                <span className="bg-linear-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent">
-                  controle total.
-                </span>
-              </h2>
-              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-85">
-                Gestão inteligente com dashboards em tempo real, IA integrada e análises que impulsionam suas decisões financeiras.
-              </p>
-            </motion.div>
-
-            {/* Feature cards */}
-            <div className="space-y-2">
-              {[
-                { icon: PieChart, label: "Dashboard completo", detail: "Gráficos e métricas em tempo real" },
-                { icon: Bot, label: "IA no Telegram", detail: "Registre gastos por voz ou texto" },
-                { icon: Target, label: "Metas inteligentes", detail: "Acompanhe progresso automaticamente" },
-                { icon: CreditCard, label: "Cartões e faturas", detail: "Controle total de múltiplos cartões" },
-              ].map((item, i) => (
-                <motion.div
-                  key={item.label}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + i * 0.1 }}
-                  className="group flex items-center gap-3.5 py-3 px-3.5 -mx-3.5 rounded-2xl hover:bg-white/4 transition-all duration-300 hover:-translate-y-px"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 border border-white/6 group-hover:bg-white/8 group-hover:border-emerald-400/15 group-hover:shadow-lg group-hover:shadow-emerald-500/5 transition-all duration-300">
-                    <item.icon className="h-4 w-4 text-emerald-400/70 group-hover:text-emerald-300 transition-colors" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-white/85">{item.label}</p>
-                    <p className="text-[11px] text-white/30">{item.detail}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+              Suas <span className="whitespace-nowrap">finanças no</span> <br />
+              <span className="text-emerald-300">controle total</span>
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.15 }}
+              className="text-emerald-100 text-base sm:text-lg lg:text-xl font-normal opacity-80 max-w-lg mx-auto lg:mx-0"
+            >
+              Dashboard e Metas em um só lugar. Acompanhe seu progresso com
+              interfaces modernas e intuitivas.
+            </motion.p>
           </div>
 
-          {/* Footer */}
-          <div className="pt-4 border-t border-white/6">
-            <p className="text-[11px] text-white/20">© {new Date().getFullYear()} ControlFinance</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ════════════════════════════════════════════
-          RIGHT PANEL — Form
-         ════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col relative overflow-hidden">
-        {/* Subtle background blobs */}
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-emerald-500/3 dark:bg-emerald-500/5 blur-[100px] pointer-events-none" />
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-teal-500/3 dark:bg-teal-500/5 blur-[100px] pointer-events-none" />
-
-        {/* ── Mobile Hero Header ── */}
-        <div className="lg:hidden relative overflow-hidden">
-          <div className="bg-linear-to-br from-emerald-950 via-teal-900 to-cyan-950 px-6 pt-safe-top relative">
-            <div className="pt-8 pb-10">
-              {/* Mobile orbs */}
-              <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-emerald-400/10 blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-teal-400/8 blur-3xl" />
-
-              <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 border border-white/10 backdrop-blur-sm">
-                    <TrendingUp className="h-5 w-5 text-emerald-300" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-base font-bold text-white tracking-tight leading-none">ControlFinance</span>
-                    <span className="text-[9px] text-emerald-300/50 font-medium tracking-[0.15em] uppercase mt-0.5">Financial Platform</span>
-                  </div>
-                </div>
-                <h2 className="text-xl font-bold text-white/90 tracking-tight">
+          {/* ── Right: Login card ── */}
+          <div className="w-full lg:w-auto flex justify-center items-center py-8 lg:py-12">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="w-full max-w-110 login-glass-card p-7 sm:p-8 lg:p-10 rounded-3xl shadow-2xl relative overflow-hidden"
+            >
+              {/* Card header */}
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
                   Bem-vindo de volta
                 </h2>
-                <p className="text-[13px] text-white/35 mt-1.5 max-w-xs">
-                  Acesse sua conta e gerencie suas finanças
+                <p className="text-slate-500 dark:text-slate-400 mt-2">
+                  Acesse sua conta para gerenciar suas finanças.
                 </p>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                {/* Email */}
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-0.5"
+                    htmlFor="email"
+                  >
+                    Email
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
+                    </div>
+                    <input
+                      className="block w-full pl-11 pr-4 h-12 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400"
+                      id="email"
+                      placeholder="exemplo@email.com"
+                      type="email"
+                      autoComplete="email"
+                      {...register("email")}
+                    />
+                  </div>
+                  {errors.email && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-xs text-red-500 pl-1 font-medium"
+                    >
+                      {errors.email.message}
+                    </motion.p>
+                  )}
+                </div>
+
+                {/* Password */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center px-0.5">
+                    <label
+                      className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                      htmlFor="senha"
+                    >
+                      Senha
+                    </label>
+                    <Link
+                      href="/recuperar-senha"
+                      className="text-xs font-semibold text-emerald-600 hover:underline"
+                    >
+                      Esqueceu sua senha?
+                    </Link>
+                  </div>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
+                    </div>
+                    <input
+                      className="block w-full pl-11 pr-12 h-12 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400"
+                      id="senha"
+                      placeholder="••••••••"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      {...register("senha")}
+                    />
+                    <button
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      tabIndex={-1}
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.senha && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-xs text-red-500 pl-1 font-medium"
+                    >
+                      {errors.senha.message}
+                    </motion.p>
+                  )}
+                </div>
+
+                {/* Submit */}
+                <button
+                  className="w-full h-12 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-600/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-2 shadow-lg shadow-emerald-600/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  type="submit"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      Entrar
+                      <LogIn className="h-5 w-5" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Register link */}
+              <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-center gap-2 text-sm">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Não possui uma conta?
+                  </span>
+                  <Link
+                    className="font-bold text-emerald-600 hover:underline"
+                    href="/registro"
+                  >
+                    Criar conta gratuita
+                  </Link>
+                </div>
+              </div>
+
+              {/* Trust badges */}
+              <div className="mt-8 flex items-center justify-center gap-6">
+                <div className="flex items-center gap-1 grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all cursor-default">
+                  <Shield className="h-4 w-4 text-emerald-600" />
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                    Seguro
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all cursor-default">
+                  <Zap className="h-4 w-4 text-emerald-600" />
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                    Rápido
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="mt-auto flex flex-col lg:flex-row items-end justify-between gap-8 pb-4 max-w-6xl mx-auto w-full">
+          {/* Preview cards (desktop only) */}
+          <div className="hidden lg:flex flex-row gap-6 w-full lg:w-2/3 auth-subtle-preview">
+            {/* Dashboard preview */}
+            <div className="auth-glass-card rounded-t-2xl p-5 flex-1 flex flex-col justify-between min-h-35 opacity-40 hover:opacity-100 transition-opacity duration-500">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-white font-semibold text-xs">
+                  Dashboard Mensal
+                </span>
+                <MoreHorizontal className="h-4 w-4 text-white/70" />
+              </div>
+              <div className="flex items-end gap-2 h-12">
+                <div className="flex-1 bg-white/20 rounded-t-sm h-[40%]" />
+                <div className="flex-1 bg-white/40 rounded-t-sm h-[70%]" />
+                <div className="flex-1 bg-emerald-600/60 rounded-t-sm h-[90%] border-t border-white/30" />
+                <div className="flex-1 bg-white/20 rounded-t-sm h-[55%]" />
+                <div className="flex-1 bg-white/30 rounded-t-sm h-[30%]" />
+              </div>
+            </div>
+
+            {/* Goals & Investment previews */}
+            <div className="flex-1 flex flex-row gap-4">
+              <div className="auth-glass-card rounded-t-2xl p-4 flex items-center gap-4 flex-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
+                <div className="size-10 rounded-full border-2 border-emerald-600 border-t-white/20 flex items-center justify-center">
+                  <span className="text-[9px] text-white font-bold">85%</span>
+                </div>
+                <div>
+                  <p className="text-white/60 text-[9px] uppercase font-bold tracking-wider">
+                    Metas
+                  </p>
+                  <p className="text-white text-xs font-semibold">Reserva</p>
+                </div>
+              </div>
+              <div className="auth-glass-card rounded-t-2xl p-4 flex items-center gap-4 flex-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
+                <div className="size-10 rounded-full border-2 border-green-400 border-t-white/20 flex items-center justify-center">
+                  <span className="text-[9px] text-white font-bold">42%</span>
+                </div>
+                <div>
+                  <p className="text-white/60 text-[9px] uppercase font-bold tracking-wider">
+                    Investimento
+                  </p>
+                  <p className="text-white text-xs font-semibold">Ações</p>
+                </div>
               </div>
             </div>
           </div>
-          {/* Curved bottom edge */}
-          <div className="h-5 bg-background relative -mt-5 rounded-t-[1.5rem]" />
-        </div>
 
-        {/* ── Form Area ── */}
-        <div className="flex flex-1 items-center justify-center px-5 py-6 sm:px-8 lg:px-12 lg:py-0">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="w-full max-w-105"
-          >
-            {/* Desktop header */}
-            <div className="hidden lg:block mb-10">
-              <motion.h1
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="text-[1.85rem] font-extrabold tracking-tight text-foreground"
-              >
-                Acessar conta
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="mt-2 text-[14px] text-muted-foreground/70"
-              >
-                Informe suas credenciais para continuar
-              </motion.p>
-            </div>
-
-            {/* Mobile header (below gradient strip) */}
-            <div className="lg:hidden mb-6">
-              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-                Entrar na conta
-              </h1>
-              <p className="mt-1.5 text-[13px] text-muted-foreground/70">
-                Informe suas credenciais para continuar
-              </p>
-            </div>
-
-            {/* ── Form ── */}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              {/* Email */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="space-y-2"
-              >
-                <label htmlFor="email" className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.12em]">
-                  E-mail
-                </label>
-                <div
-                  className={`relative rounded-xl border-2 transition-all duration-300 ${focusedField === "email"
-                      ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
-                      : errors.email
-                        ? "border-red-400/50 ring-4 ring-red-500/5"
-                        : "border-border/50 hover:border-border/80"
-                    }`}
-                >
-                  <Mail
-                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${focusedField === "email" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
-                      }`}
-                  />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="nome@exemplo.com"
-                    className="pl-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
-                    autoComplete="email"
-                    {...register("email")}
-                    onFocus={() => setFocusedField("email")}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                </div>
-                {errors.email && (
-                  <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-red-500 pl-1 font-medium">
-                    {errors.email.message}
-                  </motion.p>
-                )}
-              </motion.div>
-
-              {/* Password */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-                className="space-y-2"
-              >
-                <div className="flex items-center justify-between">
-                  <label htmlFor="senha" className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.12em]">
-                    Senha
-                  </label>
-                  <Link
-                    href="/recuperar-senha"
-                    className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-semibold transition-colors"
-                  >
-                    Esqueceu a senha?
-                  </Link>
-                </div>
-                <div
-                  className={`relative rounded-xl border-2 transition-all duration-300 ${focusedField === "senha"
-                      ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
-                      : errors.senha
-                        ? "border-red-400/50 ring-4 ring-red-500/5"
-                        : "border-border/50 hover:border-border/80"
-                    }`}
-                >
-                  <Lock
-                    className={`absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${focusedField === "senha" ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
-                      }`}
-                  />
-                  <Input
-                    id="senha"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    className="pl-12 pr-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
-                    autoComplete="current-password"
-                    {...register("senha")}
-                    onFocus={() => setFocusedField("senha")}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-foreground/60 transition-colors p-1"
-                    tabIndex={-1}
-                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {errors.senha && (
-                  <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-red-500 pl-1 font-medium">
-                    {errors.senha.message}
-                  </motion.p>
-                )}
-              </motion.div>
-
-              {/* Submit */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="pt-1"
-              >
-                <Button
-                  type="submit"
-                  loading={isSubmitting}
-                  className="w-full h-13 text-[15px] font-bold rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/25 hover:shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group cursor-pointer"
-                >
-                  Entrar
-                  <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                </Button>
-              </motion.div>
-            </form>
-
-            {/* Divider */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="my-8 flex items-center gap-4"
-            >
-              <div className="flex-1 h-px bg-linear-to-r from-transparent via-border/60 to-transparent" />
-              <span className="text-[11px] text-muted-foreground/40 font-semibold">Não tem conta?</span>
-              <div className="flex-1 h-px bg-linear-to-r from-transparent via-border/60 to-transparent" />
-            </motion.div>
-
-            {/* Register link */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
-              <Link href="/registro">
-                <Button
-                  variant="outline"
-                  className="w-full h-12 rounded-2xl text-sm font-semibold border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/3 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 gap-2 cursor-pointer"
-                >
-                  <Wallet className="h-4 w-4" />
-                  Criar conta com convite
-                </Button>
-              </Link>
-            </motion.div>
-
-            {/* Trust indicators */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="mt-8 flex items-center justify-center gap-3 sm:gap-4 flex-wrap"
-            >
-              {[
-                { icon: Shield, text: "SSL Seguro" },
-                { icon: Zap, text: "Login rápido" },
-                { icon: Sparkles, text: "IA integrada" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/40 font-medium">
-                  <item.icon className="h-3 w-3" />
-                  <span>{item.text}</span>
-                </div>
-              ))}
-            </motion.div>
-
-            {/* Footer */}
-            <p className="mt-6 text-center text-[10px] text-muted-foreground/35">
-              Ao entrar, você concorda com os termos de uso da plataforma.
+          {/* Copyright */}
+          <div className="w-full lg:w-1/3 flex flex-col items-center lg:items-end justify-center h-full">
+            <p className="text-white/30 text-[10px] tracking-wide mb-2 uppercase">
+              © {new Date().getFullYear()} Control Finance Inc. Todos os
+              direitos reservados.
             </p>
-          </motion.div>
-        </div>
+            <p className="text-white/40 text-[10px] flex items-center gap-1">
+              <ShieldCheck className="h-3 w-3" />
+              Sua conexão é segura e criptografada ponta-a-ponta.
+            </p>
+          </div>
+        </footer>
       </div>
     </div>
   );

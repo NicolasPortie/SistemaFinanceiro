@@ -76,7 +76,7 @@ public class CartoesController : BaseAuthController
     }
 
     [HttpGet("{cartaoId}/fatura")]
-    public async Task<IActionResult> ObterFaturas(int cartaoId)
+    public async Task<IActionResult> ObterFaturas(int cartaoId, [FromQuery] string? mes = null)
     {
         // Verificar se o cartão pertence ao usuário autenticado
         var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(UsuarioId);
@@ -84,12 +84,38 @@ public class CartoesController : BaseAuthController
             return NotFound(new { erro = "Cartão não encontrado." });
 
         var todasFaturas = await _faturaService.ObterFaturasAsync(cartaoId);
-        var faturasPendentes = todasFaturas
-            .Where(f => f.Status != "Paga")
-            .OrderBy(f => f.DataVencimento)
-            .ToList();
 
-        return Ok(faturasPendentes);
+        List<FaturaResumoDto> resultado;
+
+        if (!string.IsNullOrEmpty(mes))
+        {
+            // mes vem como "YYYY-MM", converter para "MM/yyyy" para comparar com o DTO
+            var parts = mes.Split('-');
+            if (parts.Length == 2)
+            {
+                var mesRef = $"{parts[1]}/{parts[0]}";
+                resultado = todasFaturas
+                    .Where(f => f.MesReferencia == mesRef)
+                    .OrderBy(f => f.DataVencimento)
+                    .ToList();
+            }
+            else
+            {
+                resultado = todasFaturas
+                    .Where(f => f.Status != "Paga")
+                    .OrderBy(f => f.DataVencimento)
+                    .ToList();
+            }
+        }
+        else
+        {
+            resultado = todasFaturas
+                .Where(f => f.Status != "Paga")
+                .OrderBy(f => f.DataVencimento)
+                .ToList();
+        }
+
+        return Ok(resultado);
     }
 
     [HttpPut("{id}")]

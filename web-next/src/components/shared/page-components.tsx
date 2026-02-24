@@ -93,7 +93,7 @@ export function StatCard({
     neutral: {
       icon: "bg-primary/8 text-primary shadow-lg shadow-primary/8",
       value: "",
-      glow: "shadow-colored-blue",
+      glow: "shadow-colored-emerald",
       accent: "from-primary/5 via-primary/2 to-transparent",
       border: "group-hover:border-primary/18",
       ring: "bg-linear-to-r from-primary to-primary/80",
@@ -328,7 +328,7 @@ export function CardSkeleton({ count = 3 }: { count?: number }) {
               <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-muted/30" />
             </div>
           </div>
-          <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/8 dark:via-white/2 to-transparent animate-shimmer" />
+          <div className="absolute inset-0 bg-linear-to-r from-transparent via-emerald-500/[0.06] dark:via-emerald-400/[0.03] to-transparent animate-shimmer" />
         </div>
       ))}
     </div>
@@ -341,7 +341,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <div className="space-y-2.5">
       <div className="relative h-10 overflow-hidden rounded-xl bg-muted/25">
-        <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/15 dark:via-white/3 to-transparent animate-shimmer" />
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-emerald-500/[0.08] dark:via-emerald-400/[0.04] to-transparent animate-shimmer" />
       </div>
       {Array.from({ length: rows }).map((_, i) => (
         <div
@@ -349,7 +349,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
           className="relative h-14 overflow-hidden rounded-xl border border-border/20 bg-muted/15"
           style={{ animationDelay: `${i * 80}ms` }}
         >
-          <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/15 dark:via-white/3 to-transparent animate-shimmer" />
+          <div className="absolute inset-0 bg-linear-to-r from-transparent via-emerald-500/[0.08] dark:via-emerald-400/[0.04] to-transparent animate-shimmer" />
         </div>
       ))}
     </div>

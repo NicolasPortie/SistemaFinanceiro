@@ -171,6 +171,8 @@ public class LancamentosController : BaseAuthController
         categoriaId = l.CategoriaId,
         l.NumeroParcelas,
         l.Parcelado,
-        l.CriadoEm
+        l.CriadoEm,
+        contaBancariaId = l.ContaBancariaId,
+        contaBancariaNome = l.ContaBancaria?.Nome
     };
 }

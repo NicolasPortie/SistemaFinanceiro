@@ -57,7 +57,7 @@ export function TelegramOnboarding() {
 
   const copiar = () => {
     if (!codigo) return;
-    navigator.clipboard.writeText(`/vincular ${codigo.codigo}`);
+    navigator.clipboard.writeText(codigo.codigo);
     setCopiado(true);
     toast.success("Copiado!");
     setTimeout(() => setCopiado(false), 2000);
@@ -85,7 +85,7 @@ export function TelegramOnboarding() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3.5 border-b border-border/30 bg-muted/20">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
                   <MessageCircle className="h-3.5 w-3.5" />
                 </div>
                 <span className="text-sm font-bold">Conectar Telegram</span>
@@ -111,7 +111,7 @@ export function TelegramOnboarding() {
 
               {/* Step 2 */}
               <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider">2  Envie o comando</p>
+                <p className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider">2  Envie o código</p>
                 {gerando ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -121,7 +121,7 @@ export function TelegramOnboarding() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-1.5">
                       <code className="flex-1 rounded-lg bg-muted px-2.5 py-2 text-xs font-mono font-bold select-all truncate">
-                        /vincular {codigo.codigo}
+                        {codigo.codigo}
                       </code>
                       <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-lg" onClick={copiar}>
                         {copiado ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
@@ -155,7 +155,7 @@ export function TelegramOnboarding() {
       {/* Floating pill trigger */}
       <motion.button
         onClick={() => (open ? setOpen(false) : handleOpen())}
-        className="flex items-center gap-2.5 rounded-full bg-blue-500 pl-3.5 pr-4 py-2.5 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-600 transition-all duration-300 hover:shadow-blue-500/40 hover:shadow-xl group"
+        className="flex items-center gap-2.5 rounded-full bg-emerald-500 pl-3.5 pr-4 py-2.5 text-white shadow-lg shadow-emerald-500/30 hover:bg-blue-600 transition-all duration-300 hover:shadow-emerald-500/40 hover:shadow-xl group"
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
         initial={{ opacity: 0, y: 16 }}

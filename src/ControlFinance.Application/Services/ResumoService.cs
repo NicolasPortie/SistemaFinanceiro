@@ -68,8 +68,10 @@ public class ResumoService : IResumoService
     public async Task<ResumoFinanceiroDto> GerarResumoSemanalAsync(int usuarioId)
     {
         var hoje = DateTime.UtcNow.Date;
-        var inicioSemana = DateTime.SpecifyKind(hoje.AddDays(-(int)hoje.DayOfWeek), DateTimeKind.Utc);
-        var fimSemana = DateTime.SpecifyKind(inicioSemana.AddDays(7), DateTimeKind.Utc);
+        // ISO week: Monday–Sunday. DayOfWeek.Sunday == 0, so go back 6; otherwise go back (DayOfWeek - 1).
+        int diasDesdeSegunda = hoje.DayOfWeek == DayOfWeek.Sunday ? 6 : (int)hoje.DayOfWeek - 1;
+        var inicioSemana = DateTime.SpecifyKind(hoje.AddDays(-diasDesdeSegunda), DateTimeKind.Utc);
+        var fimSemana = DateTime.SpecifyKind(hoje.AddDays(1), DateTimeKind.Utc); // inclusive of today
 
         return await GerarResumoAsync(usuarioId, inicioSemana, fimSemana);
     }
@@ -134,15 +136,15 @@ public class ResumoService : IResumoService
 
     public string FormatarResumo(ResumoFinanceiroDto resumo)
     {
-        var saldoEmoji = resumo.Saldo >= 0 ? "✅" : "🔴";
+        var saldoEmoji = resumo.Saldo >= 0 ? "[+]" : "[-]";
         var saldoLabel = resumo.Saldo > 0 ? "Superávit" : resumo.Saldo < 0 ? "Déficit" : "Equilibrado";
 
         var texto = $"""
-            📊 *Resumo Financeiro*
-            📅 {resumo.De:dd/MM} a {resumo.Ate:dd/MM/yyyy}
+            *Resumo Financeiro*
+            Período: {resumo.De:dd/MM} a {resumo.Ate:dd/MM/yyyy}
 
-            💰 Receitas: R$ {resumo.TotalReceitas:N2}
-            💸 Gastos: R$ {resumo.TotalGastos:N2}
+            Receitas: R$ {resumo.TotalReceitas:N2}
+            Gastos: R$ {resumo.TotalGastos:N2}
             {saldoEmoji} *Resultado: R$ {resumo.Saldo:N2}* ({saldoLabel})
             """;
 
@@ -150,13 +152,13 @@ public class ResumoService : IResumoService
         if (resumo.TotalReceitas > 0)
         {
             var pct = resumo.TotalGastos / resumo.TotalReceitas * 100;
-            var pctEmoji = pct <= 70 ? "🟢" : pct <= 90 ? "🟡" : "🔴";
-            texto += $"\n{pctEmoji} Você gastou *{pct:N0}%* da receita";
+            var pctEmoji = pct <= 70 ? "" : pct <= 90 ? "Atenção: " : "Alerta: ";
+            texto += $"\n{pctEmoji}Você gastou *{pct:N0}%* da receita";
         }
 
         if (resumo.GastosPorCategoria.Any())
         {
-            texto += "\n\n🏷️ *Onde você mais gastou:*";
+            texto += "\n\n*Onde você mais gastou:*";
             foreach (var cat in resumo.GastosPorCategoria.Take(8))
             {
                 texto += $"\n  • {cat.Categoria}: R$ {cat.Total:N2} ({cat.Percentual}%)";
@@ -165,9 +167,9 @@ public class ResumoService : IResumoService
 
         // Diagnóstico amigável
         if (resumo.Saldo > 0)
-            texto += "\n\n💚 Ótimo! Você está gastando menos do que ganha. Continue assim!";
+            texto += "\n\nÓtimo! Você está gastando menos do que ganha. Continue assim.";
         else if (resumo.Saldo < 0)
-            texto += $"\n\n⚠️ Atenção: seus gastos superaram a receita em *R$ {Math.Abs(resumo.Saldo):N2}*. Revise os maiores gastos acima.";
+            texto += $"\n\nAtenção: seus gastos superaram a receita em *R$ {Math.Abs(resumo.Saldo):N2}*. Revise os maiores gastos acima.";
 
         // Posição Global de Caixa (se tiver dados)
         if (resumo.SaldoAcumulado.HasValue)
@@ -176,13 +178,13 @@ public class ResumoService : IResumoService
             var comprometido = resumo.TotalComprometido ?? 0;
             var disponivel = resumo.SaldoDisponivelGlobal ?? saldoAcum;
 
-            texto += "\n\n🏦 *Posição Geral da Conta:*";
-            texto += $"\n  💵 Saldo em conta: R$ {saldoAcum:N2}";
+            texto += "\n\n*Posição Geral da Conta:*";
+            texto += $"\n  Saldo em conta: R$ {saldoAcum:N2}";
             if (comprometido > 0)
             {
-                texto += $"\n  🔒 Garantia (limites cartão): R$ {comprometido:N2}";
-                var dispEmoji = disponivel >= 0 ? "✅" : "⚠️";
-                texto += $"\n  {dispEmoji} Disponível: R$ {disponivel:N2}";
+                texto += $"\n  Garantia (limites cartão): R$ {comprometido:N2}";
+                var dispEmoji = disponivel >= 0 ? "" : "Aviso: ";
+                texto += $"\n  {dispEmoji}Disponível: R$ {disponivel:N2}";
             }
         }
 

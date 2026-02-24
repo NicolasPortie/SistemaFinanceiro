@@ -1,6 +1,8 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQueries } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import {
   useCartoes,
   useCriarCartao,
@@ -30,6 +32,13 @@ import {
   ArrowUpFromLine,
   Shield,
   Info,
+  RefreshCw,
+  MoreVertical,
+  CheckCircle,
+  Receipt,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
 } from "lucide-react";
 import {
   Tabs,
@@ -38,9 +47,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import {
-  PageShell,
-  PageHeader,
-  StatCard,
   EmptyState,
   ErrorState,
   CardSkeleton,
@@ -58,6 +64,12 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -80,15 +92,46 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { FaturaView } from "@/components/cartoes/fatura-view";
+import { FaturaMesSection } from "@/components/cartoes/fatura-mes-section";
+import { cn } from "@/lib/utils";
 
-const cardGradients = [
-  "from-violet-600 to-purple-700",
-  "from-blue-600 to-indigo-700",
-  "from-emerald-600 to-teal-700",
-  "from-rose-600 to-pink-700",
-  "from-amber-600 to-orange-700",
-  "from-cyan-600 to-sky-700",
+const cardStyles = [
+  { bg: "bg-gradient-to-br from-[#1e3a8a] to-[#172554]", accent: "text-blue-200", titleClass: "text-white", numberClass: "text-blue-100" },
+  { bg: "bg-gradient-to-br from-[#94a3b8] to-[#475569]", accent: "text-slate-300", titleClass: "text-slate-100", numberClass: "text-slate-200" },
+  { bg: "bg-gradient-to-br from-[#18181b] to-[#09090b]", accent: "text-gray-400", titleClass: "text-gray-200", numberClass: "text-gray-400" },
 ];
+
+// ── Month Selector Hook ──────────────────────────────────────
+const meses = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+function useMonthSelector() {
+  const now = new Date();
+  // Default to next month: we spend in the current month and pay next month's bill
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const [year, setYear] = useState(nextMonth.getFullYear());
+  const [month, setMonth] = useState(nextMonth.getMonth());
+
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+  const mesParam = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const label = `${meses[month]} ${year}`;
+
+  const prev = () => {
+    if (month === 0) { setMonth(11); setYear((y) => y - 1); }
+    else setMonth((m) => m - 1);
+  };
+
+  const next = () => {
+    if (month === 11) { setMonth(0); setYear((y) => y + 1); }
+    else setMonth((m) => m + 1);
+  };
+
+  const reset = () => { setYear(nextMonth.getFullYear()); setMonth(nextMonth.getMonth()); };
+
+  return { mesParam, label, isCurrentMonth, prev, next, reset };
+}
 
 export default function CartoesPage() {
   const [showForm, setShowForm] = useState(false);
@@ -97,6 +140,8 @@ export default function CartoesPage() {
   const [viewingFaturaId, setViewingFaturaId] = useState<{ id: number; nome: string } | null>(null);
   const [garantiaCard, setGarantiaCard] = useState<Cartao | null>(null);
   const [garantiaTab, setGarantiaTab] = useState<string>("adicionar");
+
+  const { mesParam, label: mesLabel, isCurrentMonth, prev, next, reset } = useMonthSelector();
 
   const { data: cartoes = [], isLoading, isError, error, refetch } = useCartoes();
   const criarCartao = useCriarCartao();
@@ -115,7 +160,7 @@ export default function CartoesPage() {
   });
 
   const ajusteForm = useForm<{ valorAdicional: string; percentualExtra: string }>({
-    defaultValues: { valorAdicional: "", percentualExtra: "40" }
+    defaultValues: { valorAdicional: "", percentualExtra: "40" },
   });
 
   const valorAdicionalWatch = parseFloat(ajusteForm.watch("valorAdicional")?.replace(",", ".") || "0");
@@ -123,11 +168,10 @@ export default function CartoesPage() {
   const valorExtraCalculado = valorAdicionalWatch * (percentualExtraWatch / 100);
   const novoLimiteCalculado = (garantiaCard?.limite || 0) + valorAdicionalWatch + valorExtraCalculado;
 
-  // ── Resgate form ──
   const resgateForm = useForm<{ valorResgate: string }>({ defaultValues: { valorResgate: "" } });
   const PERCENTUAL_BONUS_FIXO = 40;
   const valorResgateRaw = parseFloat(resgateForm.watch("valorResgate")?.replace(",", ".") || "0");
-  const valorResgateBase = Math.floor(valorResgateRaw);  // Backend usa Math.Floor
+  const valorResgateBase = Math.floor(valorResgateRaw);
   const garantiaDisponivel = garantiaCard?.garantia || 0;
   const resgateExcedeGarantia = valorResgateBase > garantiaDisponivel;
   const reducaoLimite = valorResgateBase * (1 + PERCENTUAL_BONUS_FIXO / 100);
@@ -199,9 +243,7 @@ export default function CartoesPage() {
           percentualExtra: parseFloat(data.percentualExtra.replace(",", ".")),
         },
       },
-      {
-        onSuccess: () => setGarantiaCard(null),
-      }
+      { onSuccess: () => setGarantiaCard(null) }
     );
   };
 
@@ -216,195 +258,328 @@ export default function CartoesPage() {
           percentualBonus: PERCENTUAL_BONUS_FIXO,
         },
       },
-      {
-        onSuccess: () => setGarantiaCard(null),
-      }
+      { onSuccess: () => setGarantiaCard(null) }
     );
   };
 
   const totalLimite = cartoes.reduce((s, c) => s + c.limite, 0);
   const totalUsado = cartoes.reduce((s, c) => s + c.limiteUsado, 0);
   const totalDisponivel = cartoes.reduce((s, c) => s + (c.limiteDisponivel ?? c.limite), 0);
+  const usagePercent = totalLimite > 0 ? Math.round((totalUsado / totalLimite) * 100) : 0;
+
+  // Fetch faturas for all cards to show monthly total in stat card
+  const faturaQueries = useQueries({
+    queries: cartoes.map((c) => ({
+      queryKey: ["fatura", c.id, mesParam] as const,
+      queryFn: () => api.cartoes.faturas(c.id, mesParam),
+      staleTime: 2 * 60 * 1000,
+      retry: false,
+    })),
+  });
+
+  const faturaTotalMes = useMemo(() => {
+    let total = 0;
+    faturaQueries.forEach((q) => {
+      if (!q.data) return;
+      const fatura = q.data[0];
+      if (fatura) total += fatura.total;
+    });
+    return total;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faturaQueries.map((q) => q.dataUpdatedAt).join(",")]);
+
+  const faturaPercent = totalLimite > 0 ? Math.round((faturaTotalMes / totalLimite) * 100) : 0;
 
   if (isError) {
     return (
-      <PageShell>
-        <PageHeader title="Cartões de Crédito" description="Gerencie seus cartões e visualize faturas" />
+      <div className="space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/50 dark:border-slate-700/30 rounded-2xl p-4 lg:p-5 shadow-sm"
+        >
+          <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Cartões</h2>
+        </motion.div>
         <ErrorState message={error?.message ?? "Erro ao carregar cartões"} onRetry={refetch} />
-      </PageShell>
+      </div>
     );
   }
 
   return (
-    <PageShell>
-      {/* ── Page Header ── */}
-      <PageHeader title="Cartões de Crédito" description="Gerencie seus cartões e visualize faturas">
-        <Button onClick={() => setShowForm(true)} className="gap-2 h-10 px-5 rounded-xl shadow-premium font-semibold">
-          <Plus className="h-4 w-4" />
-          Novo Cartão
-        </Button>
-      </PageHeader>
-
-      {/* ── Stat Cards ── */}
-      {!isLoading && cartoes.length > 0 && (
-        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total de Cartões"
-            value={cartoes.length}
-            icon={<CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />}
-            trend="neutral"
-            delay={0}
-          />
-          <StatCard
-            title="Limite Total (todos)"
-            value={formatCurrency(totalLimite)}
-            icon={<DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />}
-            trend="neutral"
-            delay={1}
-          />
-          <StatCard
-            title="Fatura Aberta Atual"
-            value={formatCurrency(totalUsado)}
-            icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
-            trend="down"
-            delay={2}
-          />
-          <StatCard
-            title="Crédito Disponível"
-            value={formatCurrency(totalDisponivel)}
-            icon={<Wallet className="h-4 w-4 sm:h-5 sm:w-5" />}
-            trend="up"
-            delay={3}
-          />
+    <div className="space-y-6">
+      {/* ═══ Action Bar ═══ */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/50 dark:border-slate-700/30 rounded-2xl p-4 lg:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm"
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="size-10 flex items-center justify-center bg-emerald-600/10 rounded-xl">
+              <CreditCard className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
+                Cartões
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Gerencie seus cartões e visualize faturas
+              </p>
+            </div>
+          </div>
+          <div className="hidden sm:block h-8 w-px bg-slate-300 dark:bg-slate-600" />
+          {/* Month selector */}
+          <div className="flex items-center gap-2 bg-white/70 dark:bg-slate-700/70 px-3 py-1.5 rounded-xl border border-white/60 dark:border-slate-600/60 shadow-sm">
+            <button onClick={prev} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg transition-colors cursor-pointer">
+              <ChevronLeft className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+            </button>
+            <button onClick={reset} className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 min-w-28 justify-center select-none cursor-pointer hover:text-emerald-600 transition-colors">
+              <CalendarDays className="h-4 w-4 text-emerald-600" />
+              {mesLabel}
+            </button>
+            <button onClick={next} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg transition-colors cursor-pointer">
+              <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+            </button>
+          </div>
         </div>
-      )}
+        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => refetch()} className="p-2.5 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-xl transition-colors cursor-pointer">
+                  <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Atualizar dados</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar Cartão
+          </button>
+        </div>
+      </motion.div>
 
-      {
-        isLoading ? (
-          <CardSkeleton count={3} />
-        ) : cartoes.length > 0 ? (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {/* ═══ Stat Cards ═══ */}
+      {isLoading ? (
+        <CardSkeleton count={3} />
+      ) : cartoes.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
+            {/* Total de Cartões */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300">
+              <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
+              <div className="flex justify-between items-start z-10">
+                <div>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Total de Cartões</p>
+                  <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">{cartoes.length} {cartoes.length === 1 ? "Ativo" : "Ativos"}</h3>
+                </div>
+                <div className="size-10 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-xl text-emerald-600">
+                  <CreditCard className="h-5 w-5" />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Limite Disponível Total */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300">
+              <div className="absolute -right-6 -bottom-6 bg-green-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-green-500/15 transition-all" />
+              <div className="flex justify-between items-start z-10">
+                <div>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Limite Disponível Total</p>
+                  <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">{formatCurrency(totalDisponivel)}</h3>
+                </div>
+                <div className="size-10 flex items-center justify-center bg-green-100 dark:bg-green-500/15 rounded-xl text-green-600 dark:text-green-400">
+                  <CheckCircle className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="w-full bg-slate-100 dark:bg-slate-700/40 rounded-full h-1.5 mt-auto z-10">
+                <div className="bg-green-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${totalLimite > 0 ? Math.round((totalDisponivel / totalLimite) * 100) : 0}%` }} />
+              </div>
+            </motion.div>
+
+            {/* Fatura Total do Mês */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300 ring-1 ring-emerald-600/20 bg-white/90 dark:bg-slate-800/90">
+              <div className="absolute -right-6 -bottom-6 bg-emerald-600/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-600/15 transition-all" />
+              <div className="flex justify-between items-start z-10">
+                <div>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Fatura Total do Mês</p>
+                  <h3 className="text-2xl font-bold text-emerald-600 tracking-tight">{formatCurrency(faturaTotalMes)}</h3>
+                </div>
+                <div className="size-10 flex items-center justify-center bg-red-100 dark:bg-red-500/15 rounded-xl text-red-600 dark:text-red-400">
+                  <Receipt className="h-5 w-5" />
+                </div>
+              </div>
+              {faturaPercent > 0 && (
+                <div className="flex items-center gap-1 text-xs font-medium mt-auto z-10 text-red-500">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  {faturaPercent}% do limite utilizado
+                </div>
+              )}
+            </motion.div>
+          </div>
+
+          {/* ═══ Card Grid ═══ */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <AnimatePresence>
-              {cartoes.map((cartao, i) => (
-                <motion.div
-                  key={cartao.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * i }}
-                  className="group relative"
-                >
-                  {/* Card visual */}
-                  <div className={`rounded-2xl bg-linear-to-br ${cardGradients[i % cardGradients.length]} p-6 text-white shadow-xl shadow-black/20 dark:shadow-black/40 relative overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:scale-[1.01] noise-overlay`}>
-                    {/* Background pattern */}
-                    <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-white/4 -translate-y-1/2 translate-x-1/2" />
-                    <div className="absolute bottom-0 left-0 w-28 h-28 rounded-full bg-white/4 translate-y-1/2 -translate-x-1/2" />
-                    {/* Holographic shimmer overlay */}
-                    <div className="absolute inset-0 holographic opacity-0 group-hover:opacity-100 transition-opacity duration-700 mix-blend-overlay" />
-                    {/* Subtle line pattern */}
-                    <div className="absolute top-0 left-1/4 w-px h-full bg-linear-to-b from-transparent via-white/6 to-transparent" />
-                    <div className="absolute top-0 right-1/3 w-px h-full bg-linear-to-b from-transparent via-white/4 to-transparent" />
+              {cartoes.map((cartao, i) => {
+                const style = cardStyles[i % cardStyles.length];
+                return (
+                  <motion.div
+                    key={cartao.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 * i }}
+                    className="glass-panel p-6 rounded-3xl flex flex-col gap-6 hover:shadow-lg transition-all duration-300"
+                  >
+                    {/* ── Credit Card Visual ── */}
+                    <div className={cn(style.bg, "rounded-2xl p-6 text-white relative overflow-hidden shadow-lg h-52 flex flex-col justify-between group")}>
+                      <div className="absolute -right-10 -top-10 bg-white/10 w-40 h-40 rounded-full blur-3xl" />
+                      <div className="absolute -left-10 -bottom-10 bg-black/20 w-40 h-40 rounded-full blur-3xl" />
 
-                    <div className="relative z-10 space-y-5">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          {/* Chip pattern */}
-                          <div className="chip-pattern" />
-                          <Wifi className="h-5 w-5 opacity-50 rotate-90" />
-                        </div>
-                        <TooltipProvider>
-                          <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => setViewingFaturaId({ id: cartao.id, nome: cartao.nome })}>
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Ver fatura</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-white hover:bg-white/15 backdrop-blur-sm" onClick={() => openEdit(cartao)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Editar</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-emerald-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => openGarantia(cartao)}>
-                                  <Shield className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Garantia</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 text-white/70 hover:text-red-300 hover:bg-white/15 backdrop-blur-sm" onClick={() => setDeletingId(cartao.id)}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Desativar</TooltipContent>
-                            </Tooltip>
-                          </div>
-                        </TooltipProvider>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.15em] opacity-50 font-semibold">Limite disponível</p>
-                        <p className="text-2xl font-extrabold tabular-nums mt-1 tracking-tight">{formatCurrency(cartao.limiteDisponivel ?? cartao.limite)}</p>
-                        <div className="mt-2">
-                          <div className="flex justify-between text-[10px] opacity-60 mb-1">
-                            <span>Usado: {formatCurrency(cartao.limiteUsado)}</span>
-                            <span>de {formatCurrency(cartao.limite)}</span>
-                          </div>
-                          <div className="h-1 rounded-full bg-white/20 overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-white/70 transition-all duration-500"
-                              style={{ width: `${Math.min((cartao.limiteUsado / cartao.limite) * 100, 100)}%` }}
-                            />
-                          </div>
+                      {/* Top: brand + actions */}
+                      <div className="flex justify-between items-start z-10">
+                        <span className={cn("font-bold text-lg tracking-wider", style.titleClass)}>Control Finance</span>
+                        <div className="flex items-center gap-1">
+                          <Wifi className="h-4 w-4 text-white/40 rotate-90" />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="size-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer">
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-40">
+                              <DropdownMenuItem onClick={() => openEdit(cartao)} className="gap-2 cursor-pointer">
+                                <Pencil className="h-3.5 w-3.5" /> Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setDeletingId(cartao.id)} className="gap-2 text-red-600 focus:text-red-600 cursor-pointer">
+                                <Trash2 className="h-3.5 w-3.5" /> Desativar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-1">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold tracking-tight truncate">{cartao.nome}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-[10px] opacity-40 font-medium">Fecha dia {cartao.diaFechamento} · Vence dia {cartao.diaVencimento}</p>
+                      {/* Chip + contactless */}
+                      <div className="z-10 flex items-center gap-3">
+                        <div className="w-10 h-7 bg-linear-to-br from-yellow-400 to-yellow-600 rounded-md border border-yellow-600/50 shadow-inner" />
+                      </div>
+
+                      {/* Bottom: titular + number */}
+                      <div className="z-10">
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <p className={cn("text-xs uppercase tracking-wider mb-1", style.accent)}>Titular</p>
+                            <p className={cn("font-medium tracking-wide", style.titleClass)}>{cartao.nome.toUpperCase()}</p>
                           </div>
                         </div>
-                        {cartao.garantia > 0 && (
-                          <div className="flex items-center gap-1 bg-emerald-500/20 rounded-lg px-2 py-1 backdrop-blur-sm shrink-0">
-                            <Shield className="h-3 w-3 text-emerald-300" />
-                            <span className="text-[10px] font-semibold text-emerald-300 tabular-nums">{formatCurrency(cartao.garantia)}</span>
-                          </div>
-                        )}
+                        <div className={cn("mt-2 text-sm tracking-[0.15em] font-mono", style.numberClass)}>•••• •••• •••• ••••</div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+
+                    {/* ── Card Info ── */}
+                    <div className="space-y-4">
+                      {/* Limite + Garantia */}
+                      <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-700/30">
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase">Limite Disponível</p>
+                          <p className="text-lg font-bold text-slate-800 dark:text-white">{formatCurrency(cartao.limiteDisponivel ?? cartao.limite)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase">Garantia</p>
+                          <p className={cn("text-sm font-bold", cartao.garantia > 0 ? "text-green-600 dark:text-green-400" : "text-slate-400 dark:text-slate-500")}>
+                            {cartao.garantia > 0 ? `+ ${formatCurrency(cartao.garantia)}` : formatCurrency(0)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Fechamento / Vencimento */}
+                      <div className="flex justify-between items-center text-sm">
+                        <div className="flex flex-col">
+                          <span className="text-slate-500 dark:text-slate-400 text-xs">Fechamento</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-200">Dia {cartao.diaFechamento}</span>
+                        </div>
+                        <div className="flex flex-col text-right">
+                          <span className="text-slate-500 dark:text-slate-400 text-xs">Vencimento</span>
+                          <span className="font-semibold text-red-500">Dia {cartao.diaVencimento}</span>
+                        </div>
+                      </div>
+
+                      {/* Usage bar */}
+                      <div>
+                        <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 mb-1">
+                          <span>Usado: {formatCurrency(cartao.limiteUsado)}</span>
+                          <span>de {formatCurrency(cartao.limite)}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700/40 overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all duration-500", cartao.limiteUsado / cartao.limite > 0.8 ? "bg-red-500" : cartao.limiteUsado / cartao.limite > 0.5 ? "bg-amber-500" : "bg-emerald-600")}
+                            style={{ width: `${Math.min((cartao.limiteUsado / cartao.limite) * 100, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => setViewingFaturaId({ id: cartao.id, nome: cartao.nome })}
+                          className="flex-1 py-2 text-xs font-semibold bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Fatura
+                        </button>
+                        <button
+                          onClick={() => openGarantia(cartao, "adicionar")}
+                          className="flex-1 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-700/40 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <ArrowUpFromLine className="h-3.5 w-3.5" />
+                          Garantia
+                        </button>
+                        <button
+                          onClick={() => openGarantia(cartao, "resgatar")}
+                          disabled={cartao.garantia <= 0}
+                          className="py-2 px-3 text-xs font-semibold bg-slate-100 dark:bg-slate-700/40 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Resgatar Garantia"
+                        >
+                          <ArrowDownToLine className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
-        ) : (
+
+          {/* ═══ Fatura do Mês (inline) ═══ */}
+          <FaturaMesSection cartoes={cartoes} mesParam={mesParam} mesLabel={mesLabel} />
+        </>
+      ) : (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-panel rounded-2xl p-12">
           <EmptyState
             icon={<CreditCard className="h-6 w-6" />}
             title="Nenhum cartão"
             description="Adicione um cartão de crédito para começar a rastrear suas faturas"
-            action={<Button onClick={() => setShowForm(true)} className="gap-2 rounded-xl font-semibold shadow-premium btn-premium"><Plus className="h-4 w-4" />Adicionar cartão</Button>}
+            action={
+              <button onClick={() => setShowForm(true)} className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm">
+                <Plus className="h-4 w-4" />
+                Adicionar cartão
+              </button>
+            }
           />
-        )}
+        </motion.div>
+      )}
 
-      {/* Create Sheet */}
+      {/* ═══ Create Sheet ═══ */}
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
-          {/* Accent line */}
-          <div className="h-1 w-full shrink-0 bg-linear-to-r from-violet-400 via-purple-500 to-indigo-500" />
+          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
 
-          {/* Header */}
           <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-violet-500/10 text-violet-500 transition-all duration-500">
+            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/[0.08] bg-emerald-600/[0.03] p-3.5 sm:p-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10 transition-all duration-500">
                 <CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
@@ -414,11 +589,9 @@ export default function CartoesPage() {
             </div>
           </SheetHeader>
 
-          {/* Scrollable form body */}
           <div className="flex-1 overflow-y-auto overscroll-contain">
             <form onSubmit={form.handleSubmit(onSubmitCreate)} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
-              {/* Main fields */}
-              <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+              <div className="space-y-4 rounded-2xl border border-emerald-600/[0.08] dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Nome do cartão</Label>
                   <Input placeholder="Ex: Nubank, Inter..." className="h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all" {...form.register("nome")} />
@@ -428,7 +601,7 @@ export default function CartoesPage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Limite (R$)</Label>
                   <div className="relative">
-                    <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-violet-500/10 text-violet-500">R$</div>
+                    <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-emerald-600/10 text-emerald-600">R$</div>
                     <CurrencyInput
                       placeholder="0,00"
                       className="h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all"
@@ -461,22 +634,21 @@ export default function CartoesPage() {
                 </div>
               </div>
 
-              {/* Info card */}
-              <div className="rounded-2xl border border-border/40 bg-muted/15 p-4 sm:p-5">
+              <div className="rounded-2xl border border-emerald-600/[0.08] bg-emerald-600/[0.03] p-4 sm:p-5">
                 <p className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  <Calendar className="h-3.5 w-3.5 shrink-0 text-emerald-600/50" />
                   <span><strong>Fechamento:</strong> dia em que a fatura fecha. Compras após essa data entram na fatura seguinte.</span>
                 </p>
               </div>
 
-              {/* Submit */}
               <div className="pt-2 sm:pt-3 pb-safe">
                 <Button
                   type="submit"
-                  className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-linear-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
+                  className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-emerald-600 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 text-white transition-all duration-300 cursor-pointer active:scale-[0.98]"
                   loading={criarCartao.isPending}
                 >
-                  <CreditCard className="h-5 w-5" />Criar Cartão
+                  <CreditCard className="h-5 w-5" />
+                  Criar Cartão
                 </Button>
               </div>
             </form>
@@ -484,7 +656,7 @@ export default function CartoesPage() {
         </SheetContent>
       </Sheet>
 
-      {/* Edit Dialog */}
+      {/* ═══ Edit Dialog ═══ */}
       <Dialog open={editingCard !== null} onOpenChange={() => setEditingCard(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -527,14 +699,14 @@ export default function CartoesPage() {
                 {editFormState.formState.errors.diaVencimento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaVencimento.message}</p>}
               </div>
             </div>
-            <Button type="submit" className="w-full h-13 rounded-2xl font-bold text-[15px] shadow-premium btn-premium" loading={atualizarCartao.isPending}>
+            <Button type="submit" className="w-full h-11 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20" loading={atualizarCartao.isPending}>
               Salvar alterações
             </Button>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Fatura Dialog */}
+      {/* ═══ Fatura Dialog ═══ */}
       <Dialog open={viewingFaturaId !== null} onOpenChange={() => setViewingFaturaId(null)}>
         <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="px-5 pt-5 pb-0">
@@ -545,17 +717,14 @@ export default function CartoesPage() {
             <DialogDescription>Faturas pendentes</DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto flex-1 px-5 pb-5 pt-2">
-            {viewingFaturaId && (
-              <FaturaView cartaoId={viewingFaturaId.id} />
-            )}
+            {viewingFaturaId && <FaturaView cartaoId={viewingFaturaId.id} />}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Garantia / Limite Extra — Dialog unificado */}
+      {/* ═══ Garantia Dialog ═══ */}
       <Dialog open={garantiaCard !== null} onOpenChange={() => setGarantiaCard(null)}>
         <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
-          {/* Header com infos do cartão */}
           <div className="px-6 pt-6 pb-4 space-y-3">
             <DialogHeader className="space-y-1">
               <DialogTitle className="text-lg font-bold tracking-tight flex items-center gap-2">
@@ -567,19 +736,17 @@ export default function CartoesPage() {
               </DialogDescription>
             </DialogHeader>
 
-            {/* Explicação da Garantia */}
-            <div className="rounded-xl bg-blue-500/8 border border-blue-500/15 p-3.5 space-y-1.5">
-              <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+            <div className="rounded-xl bg-emerald-500/8 border border-emerald-500/15 p-3.5 space-y-1.5">
+              <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                 <Info className="h-3.5 w-3.5 shrink-0" />
                 Como funciona?
               </p>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                A garantia é um valor que você deposita para aumentar o limite do cartão. O banco concede um bônus de {PERCENTUAL_BONUS_FIXO}% sobre o valor depositado. 
+                A garantia é um valor que você deposita para aumentar o limite do cartão. O banco concede um bônus de {PERCENTUAL_BONUS_FIXO}% sobre o valor depositado.
                 Exemplo: depositar R$ 1.000 aumenta seu limite em R$ 1.400 (R$ 1.000 + 40% de bônus).
               </p>
             </div>
 
-            {/* Resumo compacto */}
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-muted/20 border border-border/30 p-3 text-center">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold">Limite Atual</p>
@@ -592,7 +759,6 @@ export default function CartoesPage() {
             </div>
           </div>
 
-          {/* Tabs */}
           <Tabs value={garantiaTab} onValueChange={(v) => setGarantiaTab(v)} className="gap-0">
             <div className="px-6">
               <TabsList className="w-full">
@@ -607,7 +773,6 @@ export default function CartoesPage() {
               </TabsList>
             </div>
 
-            {/* ── Tab: Adicionar ── */}
             <TabsContent value="adicionar" className="px-6 pb-6 pt-4">
               <form onSubmit={ajusteForm.handleSubmit(onSubmitAjuste)} className="space-y-5">
                 <div className="space-y-1.5">
@@ -624,7 +789,6 @@ export default function CartoesPage() {
                   <p className="text-[11px] text-muted-foreground/60">Bônus de {percentualExtraWatch}% será aplicado automaticamente (+{formatCurrency(valorExtraCalculado)}).</p>
                 </div>
 
-                {/* Preview */}
                 <div className="rounded-xl bg-muted/20 p-4 space-y-2.5 border border-border/30">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground/70 font-medium">Aumento no limite (×{(1 + percentualExtraWatch / 100).toFixed(1)}):</span>
@@ -637,13 +801,17 @@ export default function CartoesPage() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full h-12 rounded-2xl font-bold text-[15px] gap-2 shadow-premium btn-premium" disabled={valorAdicionalWatch <= 0} loading={adicionarLimiteExtra.isPending}>
+                <Button
+                  type="submit"
+                  className="w-full h-12 rounded-2xl font-bold text-[15px] gap-2 bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                  disabled={valorAdicionalWatch <= 0}
+                  loading={adicionarLimiteExtra.isPending}
+                >
                   <ArrowUpFromLine className="h-4.5 w-4.5" /> Adicionar Garantia
                 </Button>
               </form>
             </TabsContent>
 
-            {/* ── Tab: Resgatar ── */}
             <TabsContent value="resgatar" className="px-6 pb-6 pt-4">
               {garantiaDisponivel <= 0 ? (
                 <div className="text-center py-8 space-y-3">
@@ -671,7 +839,10 @@ export default function CartoesPage() {
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                       <CurrencyInput
-                        className={`h-11 rounded-xl pl-9 tabular-nums font-semibold ${resgateExcedeGarantia && valorResgateBase > 0 ? 'border-red-500 focus-visible:ring-red-500/30' : ''}`}
+                        className={cn(
+                          "h-11 rounded-xl pl-9 tabular-nums font-semibold",
+                          resgateExcedeGarantia && valorResgateBase > 0 && "border-red-500 focus-visible:ring-red-500/30"
+                        )}
                         placeholder="0,00"
                         value={resgateForm.watch("valorResgate")}
                         onValueChange={(v) => resgateForm.setValue("valorResgate", v)}
@@ -682,7 +853,6 @@ export default function CartoesPage() {
                     )}
                   </div>
 
-                  {/* Preview */}
                   <div className="rounded-xl bg-muted/20 p-4 space-y-2.5 border border-border/30">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground/70 font-medium">Valor devolvido:</span>
@@ -695,7 +865,7 @@ export default function CartoesPage() {
                     <div className="h-px bg-border/30" />
                     <div className="flex justify-between items-center">
                       <span className="font-extrabold text-foreground text-sm">Novo Limite:</span>
-                      <span className={`font-extrabold tabular-nums text-base ${novoLimiteResgate >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>{formatCurrency(novoLimiteResgate)}</span>
+                      <span className={cn("font-extrabold tabular-nums text-base", novoLimiteResgate >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500")}>{formatCurrency(novoLimiteResgate)}</span>
                     </div>
                   </div>
 
@@ -707,7 +877,7 @@ export default function CartoesPage() {
 
                   <Button
                     type="submit"
-                    className="w-full h-12 rounded-2xl font-bold text-[15px] gap-2 shadow-premium bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
+                    className="w-full h-12 rounded-2xl font-bold text-[15px] gap-2 bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg shadow-amber-500/20"
                     disabled={novoLimiteResgate < 0 || valorResgateBase < 1 || resgateExcedeGarantia}
                     loading={resgatarLimiteExtra.isPending}
                   >
@@ -720,7 +890,7 @@ export default function CartoesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* ═══ Delete Confirmation ═══ */}
       <AlertDialog open={deletingId !== null} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -730,11 +900,12 @@ export default function CartoesPage() {
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2" loading={desativarCartao.isPending}>
-              <Trash2 className="h-4 w-4" />Desativar
+              <Trash2 className="h-4 w-4" />
+              Desativar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </PageShell>
+    </div>
   );
 }

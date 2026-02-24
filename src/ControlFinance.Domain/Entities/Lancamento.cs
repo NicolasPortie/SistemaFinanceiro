@@ -17,10 +17,12 @@ public class Lancamento
 
     public int UsuarioId { get; set; }
     public int CategoriaId { get; set; }
+    public int? ContaBancariaId { get; set; }
 
     // Navegação
     public Usuario Usuario { get; set; } = null!;
     public Categoria Categoria { get; set; } = null!;
+    public ContaBancaria? ContaBancaria { get; set; }
     public ICollection<Parcela> Parcelas { get; set; } = new List<Parcela>();
     public ICollection<TagLancamento> Tags { get; set; } = new List<TagLancamento>();
 }

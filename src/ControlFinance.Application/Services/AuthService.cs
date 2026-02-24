@@ -370,7 +370,7 @@ public class AuthService : IAuthService
         {
             Codigo = codigo,
             ExpiraEm = expiraEm,
-            Instrucoes = $"Envie \"vincular {codigo}\" para o bot @facilita_finance_bot no Telegram. O código expira em 10 minutos."
+            Instrucoes = $"Envie o código {codigo} para o bot @facilita_finance_bot no Telegram. O código expira em 10 minutos."
         }, null);
     }
 
@@ -381,7 +381,8 @@ public class AuthService : IAuthService
         Email = usuario.Email,
         TelegramVinculado = usuario.TelegramVinculado,
         CriadoEm = usuario.CriadoEm,
-        Role = usuario.Role.ToString()
+        Role = usuario.Role.ToString(),
+        RendaMensal = usuario.RendaMensal
     };
 
     public async Task<UsuarioDto?> ObterPerfilAsync(int usuarioId)
@@ -398,6 +399,10 @@ public class AuthService : IAuthService
 
         if (!string.IsNullOrWhiteSpace(dto.Nome))
             usuario.Nome = SanitizarTexto(dto.Nome);
+
+        // Atualizar renda mensal (null = manter, 0 = limpar, >0 = novo valor)
+        if (dto.RendaMensal.HasValue)
+            usuario.RendaMensal = dto.RendaMensal.Value == 0 ? null : dto.RendaMensal.Value;
 
         if (!string.IsNullOrWhiteSpace(dto.NovaSenha))
         {

@@ -102,7 +102,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
         {
             pendente.Estado = EstadoPendente.AguardandoDescricao;
             _pendentes[chatId] = pendente;
-            return $"📝 Qual a descrição deste lançamento de R$ {dados.Valor:N2}?\n\nExemplo: Mercado, Uber, Netflix, etc.";
+            return $"Qual a descrição deste lançamento de R$ {dados.Valor:N2}?\n\nExemplo: Mercado, Uber, Netflix, etc.";
         }
 
         var ehReceita = dados.Tipo?.ToLower() == "receita";
@@ -125,23 +125,22 @@ public class LancamentoFlowHandler : ILancamentoHandler
             pendente.Estado = EstadoPendente.AguardandoFormaPagamento;
             _pendentes[chatId] = pendente;
 
-            var texto = $"💰 Registrar: *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n" +
-                        "💳 Qual a forma de pagamento?\n\n" +
-                        "1️⃣ PIX\n" +
-                        "2️⃣ Débito\n";
+            var texto = $"Registrar: *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n" +
+                        "Qual a forma de pagamento?\n\n" +
+                        "1. PIX\n" +
+                        "2. Débito\n";
 
             var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
             if (cartoes.Any())
             {
                 var nomes = string.Join(", ", cartoes.Select(c => c.Nome));
-                texto += $"3️⃣ Crédito ({nomes})\n";
+                texto += $"3. Crédito ({nomes})\n";
             }
             else
             {
-                texto += "3️⃣ Crédito\n";
+                texto += "3. Crédito\n";
             }
 
-            texto += "\nEscolha abaixo 👇";
             BotTecladoHelper.DefinirTeclado(chatId,
                 new[] { ("1️⃣ PIX", "pix"), ("2️⃣ Débito", "debito"), ("3️⃣ Crédito", "credito") },
                 new[] { ("❌ Cancelar", "cancelar") }
@@ -170,7 +169,6 @@ public class LancamentoFlowHandler : ILancamentoHandler
                 var texto = $"💰 Registrar: *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n💳 Qual cartão?\n";
                 for (int i = 0; i < cartoes.Count; i++)
                     texto += $"\n{i + 1}️⃣ {cartoes[i].Nome}";
-                texto += "\n\nEscolha abaixo 👇";
                 var botoesCard = cartoes.Select((c, i) => new (string, string)[] { ($"💳 {c.Nome}", (i + 1).ToString()) })
                     .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
                 BotTecladoHelper.DefinirTeclado(chatId, botoesCard);
@@ -316,7 +314,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
         await ExtrairESalvarTagsAsync(lancamento.Id, usuario.Id, dados.Descricao);
 
-        var emoji = tipo == TipoLancamento.Receita ? "💰" : "💸";
+        var emoji = tipo == TipoLancamento.Receita ? "[+]" : "[-]";
         var parcelaInfo = dto.NumeroParcelas > 1 ? $" em {dto.NumeroParcelas}x" : "";
         var pagInfo = formaPag switch
         {
@@ -326,7 +324,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             _ => ""
         };
 
-        var mensagem = $"{emoji} Registrado com sucesso!\n\n📝 {dto.Descricao}\n💵 R$ {dto.Valor:N2}{parcelaInfo}\n🏷️ {dto.Categoria}\n💳 {pagInfo}\n📅 {dto.Data:dd/MM/yyyy}";
+        var mensagem = $"✅ Registrado\n\n{dto.Descricao}\nR$ {dto.Valor:N2}{parcelaInfo}\n{dto.Categoria}\n{pagInfo}\n{dto.Data:dd/MM/yyyy}";
 
         if (tipo == TipoLancamento.Gasto)
         {
@@ -362,9 +360,9 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
         var resultado = await IniciarFluxoAsync(usuario, dadosLancamento, origem);
 
-        var resumo = $"👥 Conta dividida por *{dados.NumeroPessoas} pessoas*\n" +
-                     $"💰 Total: R$ {dados.ValorTotal:N2}\n" +
-                     $"👤 Sua parte: R$ {suaParte:N2}\n\n";
+        var resumo = $"Conta dividida por *{dados.NumeroPessoas} pessoas*\n" +
+                     $"Total: R$ {dados.ValorTotal:N2}\n" +
+                     $"Sua parte: R$ {suaParte:N2}\n\n";
 
         return resumo + resultado;
     }
@@ -448,7 +446,6 @@ public class LancamentoFlowHandler : ILancamentoHandler
             {
                 texto += "3️⃣ Crédito\n";
             }
-            texto += "\nEscolha abaixo 👇";
             BotTecladoHelper.DefinirTeclado(chatId,
                 new[] { ("1️⃣ PIX", "pix"), ("2️⃣ Débito", "debito"), ("3️⃣ Crédito", "credito") },
                 new[] { ("❌ Cancelar", "cancelar") }
@@ -468,7 +465,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             pendente.CorrigindoCampo = CampoCorrecao.Descricao;
             pendente.CriadoEm = DateTime.UtcNow;
             _pendentes[chatId] = pendente;
-            return "📝 Digite ou 🎤 envie áudio com a nova descrição:";
+            return "Digite ou envie áudio com a nova descrição:";
         }
 
         if (msg is "2" or "valor" or "preço" or "preco" or "💵")
@@ -477,7 +474,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             pendente.Estado = EstadoPendente.AguardandoNovoValorCorrecao;
             pendente.CorrigindoCampo = CampoCorrecao.Valor;
             _pendentes[chatId] = pendente;
-            return "💵 Digite ou 🎤 envie áudio com o novo valor (ex: 45,90):";
+            return "Digite ou envie áudio com o novo valor (ex: 45,90):";
         }
 
         if (msg is "3" or "categoria" or "🏷️" or "🏷")
@@ -504,7 +501,6 @@ public class LancamentoFlowHandler : ILancamentoHandler
                 texto += $"3️⃣ Crédito ({nomes})\n";
             }
             else texto += "3️⃣ Crédito\n";
-            texto += "\nEscolha abaixo 👇";
             BotTecladoHelper.DefinirTeclado(chatId,
                 new[] { ("1️⃣ PIX", "pix"), ("2️⃣ Débito", "debito"), ("3️⃣ Crédito", "credito") },
                 new[] { ("❌ Cancelar", "cancelar") }
@@ -595,7 +591,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             new[] { ("🏷️ Categoria", "categoria"), ("💳 Pagamento", "pagamento") },
             new[] { ("📅 Data", "data"), ("❌ Cancelar", "cancelar") }
         );
-        return "⚠️ Não entendi. O que deseja corrigir?\n\n1️⃣ Descrição\n2️⃣ Valor\n3️⃣ Categoria\n4️⃣ Pagamento\n5️⃣ Data\n\nEscolha abaixo 👇";
+        return "⚠️ Não entendi. O que deseja corrigir?\n\n1. Descrição\n2. Valor\n3. Categoria\n4. Pagamento\n5. Data";
     }
 
     private string ProcessarEntradaNovaDescricaoCorrecao(long chatId, LancamentoPendente pendente, string descricao)
@@ -686,7 +682,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
                 new[] { ("1️⃣ PIX", "pix"), ("2️⃣ Débito", "debito"), ("3️⃣ Crédito", "credito") },
                 new[] { ("❌ Cancelar", "cancelar") }
             );
-            return "⚠️ Não entendi a forma de pagamento. Escolha uma opção:\n\n1️⃣ PIX\n2️⃣ Débito\n3️⃣ Crédito\n\nEscolha abaixo 👇";
+            return "⚠️ Não entendi a forma de pagamento. Escolha:\n\n1. PIX\n2. Débito\n3. Crédito";
         }
 
         pendente.Dados.FormaPagamento = formaPag;
@@ -714,13 +710,13 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
             pendente.Estado = EstadoPendente.AguardandoCartao;
             pendente.CartoesDisponiveis = cartoes;
-            var texto = "💳 Qual cartão?\n";
+            var texto = "Qual cartão?\n";
             for (int i = 0; i < cartoes.Count; i++)
             {
-                texto += $"\n{i + 1}️⃣ {cartoes[i].Nome}";
+                texto += $"\n{i + 1}. {cartoes[i].Nome}";
             }
-            texto += "\n\nEscolha abaixo 👇";
-            var botoesCartao = cartoes.Select((c, i) => new (string, string)[] { ($"💳 {c.Nome}", (i + 1).ToString()) })
+            texto += "";
+            var botoesCartao = cartoes.Select((c, i) => new (string, string)[] { ($"{c.Nome}", (i + 1).ToString()) })
                 .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
             BotTecladoHelper.DefinirTeclado(chatId, botoesCartao);
             return texto;
@@ -754,9 +750,9 @@ public class LancamentoFlowHandler : ILancamentoHandler
             pendente.CriadoEm = DateTime.UtcNow;
             var texto = "⚠️ Não entendi. Escolha um cartão:\n";
             for (int i = 0; i < pendente.CartoesDisponiveis.Count; i++)
-                texto += $"\n{i + 1}️⃣ {pendente.CartoesDisponiveis[i].Nome}";
+                texto += $"\n{i + 1}. {pendente.CartoesDisponiveis[i].Nome}";
             texto += "\n\nOu digite *cancelar* para cancelar.";
-            var botoesCard = pendente.CartoesDisponiveis.Select((c, i) => new (string, string)[] { ($"💳 {c.Nome}", (i + 1).ToString()) })
+            var botoesCard = pendente.CartoesDisponiveis.Select((c, i) => new (string, string)[] { ($"{c.Nome}", (i + 1).ToString()) })
                 .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
             BotTecladoHelper.DefinirTeclado(chatId, botoesCard);
             return texto;
@@ -792,7 +788,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             new[] { ("🔟 10x", "10"), ("1️⃣1️⃣ 11x", "11"), ("1️⃣2️⃣ 12x", "12") },
             new[] { ("❌ Cancelar", "cancelar") }
         );
-        return "⚠️ Não entendi. Em quantas parcelas foi? Escolha ou digite o número (ex: 3, 6x, 10):";
+            return "⚠️ Não entendi. Em quantas parcelas foi? Escolha ou digite o número (ex: 3, 6x, 10):";
     }
 
     private async Task<string?> ProcessarRespostaCategoriaAsync(long chatId, LancamentoPendente pendente, Usuario usuario, string msg, string mensagemOriginal)
@@ -895,7 +891,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
                 // Botões de ação rápida pós-registro
                 BotTecladoHelper.DefinirTeclado(chatId,
-                    new[] { ("📝 Registrar outro", "/gasto "), ("📊 Ver resumo", "/resumo") }
+                    new[] { ("Registrar outro", "/gasto "), ("Ver resumo", "/resumo") }
                 );
 
                 return resultado;
@@ -947,7 +943,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
                 new[] { ("🏷️ Categoria", "categoria"), ("💳 Pagamento", "pagamento") },
                 new[] { ("📅 Data", "data"), ("❌ Cancelar", "cancelar") }
             );
-            return "✏️ O que deseja corrigir?\n\n1️⃣ Descrição\n2️⃣ Valor\n3️⃣ Categoria\n4️⃣ Forma de Pagamento\n5️⃣ Data\n\nEscolha abaixo 👇";
+            return "O que deseja corrigir?\n\n1. Descrição\n2. Valor\n3. Categoria\n4. Forma de Pagamento\n5. Data";
         }
 
         // Atalhos: correção direta sem dizer "corrigir" primeiro
@@ -993,7 +989,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
         BotTecladoHelper.DefinirTeclado(chatId,
             new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
         );
-        return "⚠️ Não entendi. Deseja confirmar, corrigir ou cancelar?\n\nEscolha abaixo 👇";
+        return "⚠️ Não entendi. Deseja confirmar, corrigir ou cancelar?";
     }
 
     private async Task<string> RecuperarCorrecaoAsync(long chatId, LancamentoPendente pendente, Usuario usuario, string msg)
@@ -1034,7 +1030,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
                 BotTecladoHelper.DefinirTeclado(chatId,
                     new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
                 );
-                return "⚠️ Não entendi. Deseja confirmar, corrigir ou cancelar?\n\nEscolha abaixo 👇";
+                return "⚠️ Não entendi. Deseja confirmar, corrigir ou cancelar?";
         }
     }
 
@@ -1057,7 +1053,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
                     new[] { ("🔟 10x", "10"), ("1️⃣1️⃣ 11x", "11"), ("1️⃣2️⃣ 12x", "12") },
                     new[] { ("❌ Cancelar", "cancelar") }
                 );
-                return $"💳 Compra parcelada de {valorStr}\n\n🔢 Em quantas parcelas foi?\n\nEscolha abaixo ou digite o número 👇";
+                return $"Compra parcelada de {valorStr}\n\nEm quantas parcelas foi?";
             }
             else
             {
@@ -1098,21 +1094,19 @@ public class LancamentoFlowHandler : ILancamentoHandler
                 pendente.CategoriasDisponiveis = categorias;
                 pendente.CriadoEm = DateTime.UtcNow;
 
-                var texto = "🏷️ Qual a categoria deste lançamento?\n";
+                var texto = "Qual a categoria deste lançamento?\n";
                 for (int i = 0; i < categorias.Count; i++)
                 {
-                    var marcador = categorias[i].Nome.Equals(sugerida, StringComparison.OrdinalIgnoreCase) ? " ⭐" : "";
-                    texto += $"\n{i + 1}️⃣ {categorias[i].Nome}{marcador}";
+                    var marcador = categorias[i].Nome.Equals(sugerida, StringComparison.OrdinalIgnoreCase) ? " *" : "";
+                    texto += $"\n{i + 1}. {categorias[i].Nome}{marcador}";
                 }
 
                 if (!string.IsNullOrEmpty(sugerida))
-                    texto += $"\n\n💡 Sugiro: *{sugerida}*";
+                    texto += $"\n\nSugestão: *{sugerida}*";
                 else
-                    texto += "\n\n💡 Ou *digite o nome* para criar uma nova categoria";
+                    texto += "\n\nOu *digite o nome* para criar uma nova categoria";
 
-                texto += "\n\nEscolha abaixo 👇";
-
-                var linhasCat = categorias.Select((c, i) => new (string, string)[] { ($"🏷️ {c.Nome}", (i + 1).ToString()) })
+                var linhasCat = categorias.Select((c, i) => new (string, string)[] { ($"{c.Nome}", (i + 1).ToString()) })
                     .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
                 BotTecladoHelper.DefinirTeclado(chatId, linhasCat);
                 return texto;
@@ -1125,7 +1119,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             new[] { ("✅ Confirmar", "sim"), ("✏️ Corrigir", "corrigir"), ("❌ Cancelar", "cancelar") }
         );
         var nomeCartaoPreview2 = pendente.CartoesDisponiveis?.FirstOrDefault()?.Nome;
-        return MontarPreviewLancamento(pendente.Dados, nomeCartaoPreview2) + "\n\nEscolha abaixo 👇";
+        return MontarPreviewLancamento(pendente.Dados, nomeCartaoPreview2);
     }
 
     #endregion
@@ -1142,10 +1136,10 @@ public class LancamentoFlowHandler : ILancamentoHandler
     {
         if (chatId.HasValue)
         {
-            BotTecladoHelper.DefinirTeclado(chatId.Value, new[] { ("🌐 Acessar sistema web", $"url:{_sistemaWebUrl}") });
+            BotTecladoHelper.DefinirTeclado(chatId.Value, new[] { ("Acessar sistema web", $"url:{_sistemaWebUrl}") });
         }
 
-        return $"🌐 {cabecalho}\n\n{complemento}\n\nLink: *{_sistemaWebUrl}*";
+        return $"{cabecalho}\n\n{complemento}\n\nLink: *{_sistemaWebUrl}*";
     }
 
     private static string MontarPreviewLancamento(DadosLancamento dados, string? nomeCartao = null)
@@ -1165,19 +1159,19 @@ public class LancamentoFlowHandler : ILancamentoHandler
         {
             parcelaInfo = $" em {dados.NumeroParcelas}x";
             var valorParcela = dados.Valor / dados.NumeroParcelas;
-            linhaParcelaDetalhe = $"🔢 {dados.NumeroParcelas}x de R$ {valorParcela:N2}\n";
+            linhaParcelaDetalhe = $"{dados.NumeroParcelas}x de R$ {valorParcela:N2}\n";
         }
         var data = dados.Data?.ToString("dd/MM/yyyy") ?? DateTime.UtcNow.ToString("dd/MM/yyyy");
 
-        var linhaFormaPag = tipo == "Receita" ? "" : $"💳 {formaPag}\n";
-        return $"📋 *Confirma este lançamento?*\n\n" +
-               $"{emoji} *{tipo}*\n" +
-               $"📝 {dados.Descricao}\n" +
-               $"💵 R$ {dados.Valor:N2}{parcelaInfo}\n" +
+        var linhaFormaPag = tipo == "Receita" ? "" : $"{formaPag}\n";
+        return $"*Confirma este lançamento?*\n\n" +
+               $"*{tipo}*\n" +
+               $"{dados.Descricao}\n" +
+               $"R$ {dados.Valor:N2}{parcelaInfo}\n" +
                linhaParcelaDetalhe +
-               $"🏷️ {dados.Categoria}\n" +
+               $"{dados.Categoria}\n" +
                linhaFormaPag +
-               $"📅 {data}";
+               $"{data}";
     }
 
     /// <summary>

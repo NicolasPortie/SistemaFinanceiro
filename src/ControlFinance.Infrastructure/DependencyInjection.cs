@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ICategoriaRepository, CategoriaRepository>();
         services.AddScoped<ILancamentoRepository, LancamentoRepository>();
         services.AddScoped<ICartaoCreditoRepository, CartaoCreditoRepository>();
+        services.AddScoped<IContaBancariaRepository, ContaBancariaRepository>();
         services.AddScoped<IFaturaRepository, FaturaRepository>();
         services.AddScoped<IParcelaRepository, ParcelaRepository>();
 

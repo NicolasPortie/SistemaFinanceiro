@@ -27,6 +27,7 @@ public class LancamentoRepository : ILancamentoRepository
         return await _context.Lancamentos
             .Include(l => l.Categoria)
             .Include(l => l.Parcelas)
+            .Include(l => l.ContaBancaria)
             .FirstOrDefaultAsync(l => l.Id == id);
     }
 
@@ -129,6 +130,7 @@ public class LancamentoRepository : ILancamentoRepository
         var query = _context.Lancamentos
             .AsNoTracking()
             .Include(l => l.Categoria)
+            .Include(l => l.ContaBancaria)
             .Where(l => l.UsuarioId == usuarioId);
 
         if (tipo.HasValue)

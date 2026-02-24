@@ -188,23 +188,23 @@ public class BotNotificationService : BackgroundService
                 var vencemHoje = lembretes.Where(l =>
                     l.DataVencimento.Date == agoraBrasilia.Date).ToList();
 
-                var msg = $"â˜€ï¸ *{saudacao}, {user.Nome}!*\n\n" +
-                          $"ðŸ“Š *Resumo do mÃªs ({agoraBrasilia:MMMM}):*\n" +
-                          $"ðŸ’° Receitas: R$ {resumo.TotalReceitas:N2}\n" +
-                          $"ðŸ’¸ Gastos: R$ {resumo.TotalGastos:N2}\n" +
-                          $"ðŸ“ˆ Saldo: R$ {resumo.Saldo:N2}\n";
+                var msg = $"*{saudacao}, {user.Nome}!*\n\n" +
+                          $"*Resumo do mês ({agoraBrasilia:MMMM}):*\n" +
+                          $"Receitas: R$ {resumo.TotalReceitas:N2}\n" +
+                          $"Gastos: R$ {resumo.TotalGastos:N2}\n" +
+                          $"Saldo: R$ {resumo.Saldo:N2}\n";
 
                 if (vencemHoje.Any())
                 {
-                    msg += "\nðŸ”” *Vence hoje:*\n";
+                    msg += "\n🔔 *Vence hoje:*\n";
                     foreach (var l in vencemHoje)
                     {
-                        var valor = l.Valor.HasValue ? $" â€” R$ {l.Valor.Value:N2}" : "";
-                        msg += $"  â€¢ {l.Descricao}{valor}\n";
+                        var valor = l.Valor.HasValue ? $" — R$ {l.Valor.Value:N2}" : "";
+                        msg += $"  • {l.Descricao}{valor}\n";
                     }
                 }
 
-                msg += "\nBom dia e boas finanÃ§as! ðŸ’™";
+                msg += "\nBom dia e boas finanças!";
 
                 await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
             }
@@ -236,16 +236,16 @@ public class BotNotificationService : BackgroundService
 
                 if (disponivel > 50)
                 {
-                    var msg = $"ðŸŽ‰ *Sextou, {user.Nome}!* ðŸ»\n\n" +
-                              $"VocÃª ainda tem *R$ {disponivel:N2}* livres no seu orÃ§amento de Lazer.\n" +
-                              "Aproveite o fim de semana sem culpa! ðŸ˜‰";
+                    var msg = $"*Sextou, {user.Nome}!*\n\n" +
+                              $"Você ainda tem *R$ {disponivel:N2}* livres no orçamento de Lazer.\n" +
+                              "Aproveite o fim de semana com tranquilidade.";
                     await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                 }
                 else if (disponivel > 0)
                 {
-                    var msg = $"ðŸ‘€ *Sextou, {user.Nome}!* ðŸ»\n\n" +
-                              $"Fica ligado: sÃ³ restam *R$ {disponivel:N2}* pra Lazer esse mÃªs.\n" +
-                              "Curta com moderaÃ§Ã£o! ðŸ˜…";
+                    var msg = $"*Sextou, {user.Nome}!*\n\n" +
+                              $"Atenção: restam apenas *R$ {disponivel:N2}* para Lazer este mês.\n" +
+                              "Aproveite com moderação.";
                     await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                 }
             }
@@ -270,10 +270,10 @@ public class BotNotificationService : BackgroundService
             {
                 var resumo = await resumoService.GerarResumoSemanalAsync(user.Id);
                 var categoriaMaiorGasto = resumo.GastosPorCategoria.FirstOrDefault()?.Categoria ?? "Sem gastos";
-                var msg = "ðŸ“… *Resumo da Semana* ðŸ“Š\n\n" +
+                var msg = "*Resumo da Semana*\n\n" +
                           $"Gastos: R$ {resumo.TotalGastos:N2}\n" +
                           $"Maior categoria: {categoriaMaiorGasto}\n\n" +
-                          "Prepare-se para a prÃ³xima semana! ðŸ’ª";
+                          "Planeje bem a próxima semana.";
                 
                 await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
             }
@@ -297,9 +297,9 @@ public class BotNotificationService : BackgroundService
         {
             try
             {
-                var msg = $"ðŸ—“ï¸ *O mÃªs de {mesAtual:MMMM} estÃ¡ acabando!* ðŸ\n\n" +
-                          "NÃ£o esqueÃ§a de checar se todas as contas foram pagas.\n" +
-                          "AmanhÃ£ comeÃ§a um novo ciclo! ðŸš€";
+                var msg = $"*O mês de {mesAtual:MMMM} está acabando.*\n\n" +
+                          "Não esqueça de checar se todas as contas foram pagas.\n" +
+                          "Amanhã começa um novo ciclo.";
 
                 await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
             }
@@ -334,15 +334,15 @@ public class BotNotificationService : BackgroundService
 
                     if (percentualUsado >= 0.8m && percentualUsado < 1.0m)
                     {
-                        var msg = $"âš ï¸ *Alerta de Limite: {cat.Nome}*\n" +
-                                  $"VocÃª jÃ¡ usou {percentualUsado:P0} do seu orÃ§amento.\n" +
+                        var msg = $"⚠️ *Alerta de Limite: {cat.Nome}*\n" +
+                                  $"Você já usou {percentualUsado:P0} do seu orçamento.\n" +
                                   $"Resta: R$ {disponivel:N2}";
                         await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                     }
                     else if (percentualUsado >= 1.0m)
                     {
-                        var msg = $"ðŸš¨ *Limite Estourado: {cat.Nome}*\n" +
-                                  $"VocÃª ultrapassou seu orÃ§amento em R$ {Math.Abs(disponivel):N2}!";
+                        var msg = $"🚨 *Limite Estourado: {cat.Nome}*\n" +
+                                  $"Você ultrapassou seu orçamento em R$ {Math.Abs(disponivel):N2}!";
                         await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                     }
                 }
@@ -399,7 +399,7 @@ public class BotNotificationService : BackgroundService
                         : 0;
                     if (crescimento > 10)
                     {
-                        alertas.Add($"📈 Seus gastos vêm *aumentando* nos últimos meses (+{crescimento:N0}%). Pode ser hora de revisar onde está gastando mais.");
+                        alertas.Add($"Seus gastos vêm *aumentando* nos últimos meses (+{crescimento:N0}%). Pode ser hora de revisar onde está gastando mais.");
                     }
                 }
 
@@ -412,7 +412,7 @@ public class BotNotificationService : BackgroundService
                     var gastoProjetado = gastosMesAtual / diasPassados * diasNoMes;
                     if (gastoProjetado > perfil.GastoMensalMedio * 1.3m)
                     {
-                        alertas.Add($"📊 Nesse ritmo, você vai gastar *R$ {gastoProjetado:N2}* este mês. Sua média é R$ {perfil.GastoMensalMedio:N2}. Tente desacelerar!");
+                        alertas.Add($"Nesse ritmo, você vai gastar *R$ {gastoProjetado:N2}* este mês. Sua média é R$ {perfil.GastoMensalMedio:N2}. Considere desacelerar.");
                     }
                 }
 
@@ -422,7 +422,7 @@ public class BotNotificationService : BackgroundService
                     var score = await scoreService.ObterScoreAtualAsync(user.Id);
                     if (score > 0 && score < 40)
                     {
-                        alertas.Add($"🏥 Sua saúde financeira está em *{score:N0}/100*. Use /score para ver dicas de como melhorar.");
+                        alertas.Add($"Sua saúde financeira está em *{score:N0}/100*. Use /score para ver dicas de como melhorar.");
                     }
                 }
                 catch { /* Score não disponível */ }
@@ -439,11 +439,11 @@ public class BotNotificationService : BackgroundService
                     if (comprometimento > 1.0m)
                     {
                         var excesso = gastosMesAtual - perfil.ReceitaMensalMedia;
-                        alertas.Add($"🔴 Você já gastou *R$ {gastosMesAtual:N2}* este mês, que é *R$ {excesso:N2} a mais* do que sua receita média. Tente segurar os gastos nos próximos {diasRestantes} dias.");
+                        alertas.Add($"⚠️ Você já gastou *R$ {gastosMesAtual:N2}* este mês — *R$ {excesso:N2} acima* da sua receita média. Segure os gastos nos próximos {diasRestantes} dias.");
                     }
                     else if (comprometimento > 0.8m && percentualMes < 0.65m)
                     {
-                        alertas.Add($"⚠️ Você já gastou *R$ {gastosMesAtual:N2}* (de uma receita média de R$ {perfil.ReceitaMensalMedia:N2}) e ainda faltam *{diasRestantes} dias*. Tente reduzir o ritmo.");
+                        alertas.Add($"Você já gastou *R$ {gastosMesAtual:N2}* (de uma receita média de R$ {perfil.ReceitaMensalMedia:N2}) e ainda faltam *{diasRestantes} dias*. Reduza o ritmo.");
                     }
                 }
 
@@ -469,7 +469,7 @@ public class BotNotificationService : BackgroundService
 
                     foreach (var r in recorrentes)
                     {
-                        alertas.Add($"💡 Percebi que você paga \"{r.Desc}\" todo mês (média R$ {r.Valor:N2}). Que tal cadastrar como conta fixa? Use /conta\\_fixa");
+                        alertas.Add($"Percebi que você paga \"{r.Desc}\" todo mês (média R$ {r.Valor:N2}). Considere cadastrar como conta fixa via /conta\\_fixa");
                     }
                 }
                 catch { /* Falha ao detectar recorrentes */ }
@@ -477,9 +477,9 @@ public class BotNotificationService : BackgroundService
                 // Enviar alertas se houver
                 if (alertas.Any())
                 {
-                    var msg = "💡 *Dicas do seu assistente financeiro*\n\n" +
+                    var msg = "*Alertas financeiros*\n\n" +
                               string.Join("\n\n", alertas) +
-                              "\n\n_Use /score para ver um diagnóstico completo._";
+                              "\n\n_Use /score para um diagnóstico completo._";
 
                     await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                 }

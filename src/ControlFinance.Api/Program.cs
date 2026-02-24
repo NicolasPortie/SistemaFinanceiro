@@ -149,7 +149,12 @@ if (telegramConfigurado)
 }
 
 // === Controllers ===
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // === HttpClient para webhook e chamadas externas ===
 builder.Services.AddHttpClient();
@@ -222,33 +227,48 @@ var autoMigrate = app.Environment.IsDevelopment()
         app.Logger.LogInformation("Auto-migrate desativado. Execute migrations manualmente ou defina Database:AutoMigrate=true.");
     }
 
-    // === Seed de usuário dev (somente em Development) ===
-    if (app.Environment.IsDevelopment())
+    // === Seed de admin (config-driven — funciona em qualquer ambiente) ===
+    var seedEmail = builder.Configuration["Seed:AdminEmail"];
+    var seedPassword = builder.Configuration["Seed:AdminPassword"];
+    var seedNome = builder.Configuration["Seed:AdminNome"] ?? "Administrador";
+
+    if (!string.IsNullOrWhiteSpace(seedEmail) && !string.IsNullOrWhiteSpace(seedPassword))
     {
-        var devEmail = "dev@controlfinance.com";
-        var testEmail = "test@test.com";
         var categoriaRepo = scope.ServiceProvider.GetRequiredService<ControlFinance.Domain.Interfaces.ICategoriaRepository>();
 
-        var existingUser = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == devEmail);
-        if (existingUser == null)
+        var existingAdmin = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == seedEmail.ToLowerInvariant());
+        if (existingAdmin == null)
         {
-            app.Logger.LogInformation("🌱 Criando usuário de desenvolvimento (dev@controlfinance.com)...");
-            var devUser = new ControlFinance.Domain.Entities.Usuario
+            app.Logger.LogInformation("🌱 Criando admin seed ({Email})...", seedEmail);
+            var adminUser = new ControlFinance.Domain.Entities.Usuario
             {
-                Email = devEmail,
-                Nome = "Dev Admin",
-                SenhaHash = BCrypt.Net.BCrypt.HashPassword("Dev@1234", 12),
+                Email = seedEmail.ToLowerInvariant(),
+                Nome = seedNome,
+                SenhaHash = BCrypt.Net.BCrypt.HashPassword(seedPassword, 12),
                 EmailConfirmado = true,
                 Ativo = true,
                 Role = ControlFinance.Domain.Enums.RoleUsuario.Admin,
                 CriadoEm = DateTime.UtcNow,
             };
-            db.Usuarios.Add(devUser);
+            db.Usuarios.Add(adminUser);
             await db.SaveChangesAsync();
-
-            await categoriaRepo.CriarCategoriasIniciais(devUser.Id);
-            app.Logger.LogInformation("✅ Usuário dev criado: {Email} / Dev@1234 (Admin)", devEmail);
+            await categoriaRepo.CriarCategoriasIniciais(adminUser.Id);
+            app.Logger.LogInformation("✅ Admin seed criado: {Email} (Admin)", seedEmail);
         }
+        else if (existingAdmin.Role != ControlFinance.Domain.Enums.RoleUsuario.Admin)
+        {
+            // Se o user já existe mas não é admin, promove
+            existingAdmin.Role = ControlFinance.Domain.Enums.RoleUsuario.Admin;
+            await db.SaveChangesAsync();
+            app.Logger.LogInformation("✅ Usuário {Email} promovido a Admin via seed", seedEmail);
+        }
+    }
+
+    // === Seed de usuário de teste (somente em Development) ===
+    if (app.Environment.IsDevelopment())
+    {
+        var testEmail = "test@test.com";
+        var categoriaRepo2 = scope.ServiceProvider.GetRequiredService<ControlFinance.Domain.Interfaces.ICategoriaRepository>();
 
         var existingTestUser = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == testEmail);
         if (existingTestUser == null)
@@ -267,8 +287,7 @@ var autoMigrate = app.Environment.IsDevelopment()
             };
             db.Usuarios.Add(testUser);
             await db.SaveChangesAsync();
-
-            await categoriaRepo.CriarCategoriasIniciais(testUser.Id);
+            await categoriaRepo2.CriarCategoriasIniciais(testUser.Id);
             app.Logger.LogInformation("✅ Usuário teste criado: {Email} / 123456 (Normal)", testEmail);
         }
     }

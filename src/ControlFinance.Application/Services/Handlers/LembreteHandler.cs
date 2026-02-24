@@ -102,7 +102,7 @@ public class LembreteHandler : ILembreteHandler
     public async Task<string> ProcessarComandoContaFixaAsync(Usuario usuario, string? parametros)
     {
         if (string.IsNullOrWhiteSpace(parametros))
-            return "📋 *Cadastro de Conta Fixa*\n\n" +
+            return "*Cadastro de Conta Fixa*\n\n" +
                    "Formato: /conta_fixa descricao;valor;dia;categoria;forma_pagamento;lembrete_telegram\n\n" +
                    "Campos obrigatórios: descricao, valor, dia, categoria, forma_pagamento, lembrete_telegram\n" +
                    "Forma de pagamento: pix/debito/credito/dinheiro/outro\n\n" +
@@ -198,34 +198,34 @@ public class LembreteHandler : ILembreteHandler
         var telegramTexto = lembreteTelegram.Value ? "Ativo ✅" : "Desativado ❌";
 
         return $"✅ Conta fixa cadastrada!\n\n" +
-               $"🆔 ID: {lembrete.Id}\n" +
-               $"📝 {lembrete.Descricao}\n" +
-               $"💰 R$ {lembrete.Valor:N2}\n" +
-               $"📅 Dia {dia} de cada mês\n" +
-               $"📂 Categoria: {catTexto}\n" +
-               $"💳 Forma: {fpTexto}\n" +
-               $"🔔 Lembrete Telegram: {telegramTexto}\n" +
-               $"📆 Próximo: {lembrete.DataVencimento:dd/MM/yyyy}\n" +
-               $"🔑 Ciclo: {periodKey}";
+               $"ID: {lembrete.Id}\n" +
+               $"{lembrete.Descricao}\n" +
+               $"R$ {lembrete.Valor:N2}\n" +
+               $"Dia {dia} de cada mês\n" +
+               $"Categoria: {catTexto}\n" +
+               $"Forma: {fpTexto}\n" +
+               $"Lembrete Telegram: {telegramTexto}\n" +
+               $"Próximo: {lembrete.DataVencimento:dd/MM/yyyy}\n" +
+               $"Ciclo: {periodKey}";
     }
 
     public async Task<string> ListarLembretesFormatadoAsync(Usuario usuario)
     {
         var lembretes = await _lembreteRepo.ObterPorUsuarioAsync(usuario.Id, apenasAtivos: true);
         if (!lembretes.Any())
-            return "🔔 Nenhum lembrete ativo.\n\n" +
+            return "Nenhum lembrete ativo.\n\n" +
                    "Use /lembrete criar descricao;dd/MM/yyyy;valor;mensal\n" +
                    "Ou /conta_fixa para cadastrar conta fixa";
 
-        var texto = "🔔 *Seus lembretes ativos:*\n";
+        var texto = "*Seus lembretes ativos:*\n";
         foreach (var lembrete in lembretes)
         {
             var valorTexto = lembrete.Valor.HasValue ? $" — R$ {lembrete.Valor.Value:N2}" : string.Empty;
             var recorrenciaTexto = lembrete.RecorrenteMensal
-                ? $" 🔄 dia {lembrete.DiaRecorrente ?? lembrete.DataVencimento.Day}"
+                ? $" (mensal dia {lembrete.DiaRecorrente ?? lembrete.DataVencimento.Day})"
                 : "";
-            var catTexto = lembrete.Categoria != null ? $" 📂{lembrete.Categoria.Nome}" : "";
-            var telegramIcon = lembrete.LembreteTelegramAtivo ? "🔔" : "🔇";
+            var catTexto = lembrete.Categoria != null ? $" [{lembrete.Categoria.Nome}]" : "";
+            var telegramIcon = lembrete.LembreteTelegramAtivo ? "✅" : "❌";
             var periodKey = !string.IsNullOrEmpty(lembrete.PeriodKeyAtual) ? $" [{lembrete.PeriodKeyAtual}]" : "";
 
             texto += $"\n{telegramIcon} #{lembrete.Id} — {lembrete.Descricao} — {lembrete.DataVencimento:dd/MM/yyyy}{valorTexto}{recorrenciaTexto}{catTexto}{periodKey}";
@@ -269,8 +269,8 @@ public class LembreteHandler : ILembreteHandler
         _logger.LogInformation("Pagamento ciclo {PeriodKey} marcado para lembrete {Id}", periodKey, lembreteId);
 
         return $"✅ Conta \"{lembrete.Descricao}\" marcada como paga!\n" +
-               $"📆 Ciclo: {periodKey}\n" +
-               (lembrete.Valor.HasValue ? $"💰 Valor: R$ {lembrete.Valor.Value:N2}\n" : "") +
+               $"Ciclo: {periodKey}\n" +
+               (lembrete.Valor.HasValue ? $"Valor: R$ {lembrete.Valor.Value:N2}\n" : "") +
                "Lembretes deste ciclo não serão mais enviados.";
     }
 
@@ -364,14 +364,14 @@ public class LembreteHandler : ILembreteHandler
 
             var fpTexto = forma.ToString();
             var valorTexto = lembrete.Valor.HasValue ? $"R$ {lembrete.Valor.Value:N2}" : "Valor não informado";
-            var dataFimTexto = lembrete.DataFimRecorrencia.HasValue ? $"\n⏹️ Termina em: {lembrete.DataFimRecorrencia.Value:MM/yyyy}" : "";
+            var dataFimTexto = lembrete.DataFimRecorrencia.HasValue ? $"\nTermina em: {lembrete.DataFimRecorrencia.Value:MM/yyyy}" : "";
 
             return $"✅ Conta fixa criada!\n\n" +
-                   $"📝 *{lembrete.Descricao}*\n" +
-                   $"💰 {valorTexto}\n" +
-                   $"📅 Todo dia {diaVencimento} (começa em {lembrete.DataVencimento:dd/MM})\n" +
-                   $"💳 Via {fpTexto}{dataFimTexto}\n\n" +
-                   $"Te avisarei 3 dias antes do vencimento!";
+                   $"*{lembrete.Descricao}*\n" +
+                   $"{valorTexto}\n" +
+                   $"Todo dia {diaVencimento} (começa em {lembrete.DataVencimento:dd/MM})\n" +
+                   $"Via {fpTexto}{dataFimTexto}\n\n" +
+                   $"Te avisarei 3 dias antes do vencimento.";
         }
         catch (Exception ex)
         {

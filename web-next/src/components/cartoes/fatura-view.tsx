@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useFaturas } from "@/hooks/use-queries";
@@ -25,7 +25,7 @@ export function FaturaSection({ fatura, defaultOpen }: FaturaSectionProps) {
     ? "text-red-600 dark:text-red-400 font-bold"
     : fatura.status === "Aberta"
       ? "text-amber-600 dark:text-amber-400 font-medium"
-      : "text-blue-600 dark:text-blue-400 font-medium";
+      : "text-emerald-600 dark:text-emerald-400 font-medium";
   const iconBg = vencida
     ? "bg-red-100 dark:bg-red-900/30"
     : "bg-violet-100 dark:bg-violet-900/30";

@@ -73,8 +73,8 @@ public class ImpactoMetaService : IImpactoMetaService
                     ValorMensalNecessarioDepois = valorMensalDepois,
                     ReservaAbaixoMinimo = reservaAbaixo,
                     Descricao = reservaAbaixo
-                        ? $"⚠️ A compra de R$ {valorCompra:N2} consumiria mais que sua folga mensal, impactando a reserva \"{meta.Nome}\"."
-                        : $"✅ A meta \"{meta.Nome}\" não seria impactada diretamente."
+                        ? $"A compra de R$ {valorCompra:N2} consumiria mais que sua folga mensal, impactando a reserva \"{meta.Nome}\"."
+                        : $"A meta \"{meta.Nome}\" não seria impactada diretamente."
                 });
             }
             else // TipoMeta.JuntarValor, TipoMeta.ReduzirGasto
@@ -107,15 +107,15 @@ public class ImpactoMetaService : IImpactoMetaService
                 string descricao;
                 if (mesesAtraso == 0)
                 {
-                    descricao = $"✅ Meta \"{meta.Nome}\" — sem impacto significativo.";
+                    descricao = $"Meta \"{meta.Nome}\" — sem impacto significativo.";
                 }
                 else if (mesesAtraso == 1)
                 {
-                    descricao = $"⚠️ Meta \"{meta.Nome}\" — atrasa ~1 mês (de R$ {valorMensalAntes:N2}/mês para R$ {valorMensalDepois:N2}/mês).";
+                    descricao = $"Meta \"{meta.Nome}\" — atrasa ~1 mês (de R$ {valorMensalAntes:N2}/mês para R$ {valorMensalDepois:N2}/mês).";
                 }
                 else
                 {
-                    descricao = $"🔴 Meta \"{meta.Nome}\" — atrasa ~{mesesAtraso} meses. Valor mensal necessário sobe de R$ {valorMensalAntes:N2} para R$ {valorMensalDepois:N2}.";
+                    descricao = $"Meta \"{meta.Nome}\" — atrasa ~{mesesAtraso} meses. Valor mensal necessário sobe de R$ {valorMensalAntes:N2} para R$ {valorMensalDepois:N2}.";
                 }
 
                 impactos.Add(new ImpactoMetaDto

@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useForm } from "react-hook-form";
@@ -13,604 +13,746 @@ import {
 } from "@/lib/schemas";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  TrendingUp,
+  Wallet,
   Mail,
+  MailCheck,
+  KeyRound,
   Lock,
   Eye,
   EyeOff,
   ArrowRight,
   ArrowLeft,
-  KeyRound,
-  ShieldCheck,
   CheckCircle2,
+  ShieldCheck,
   Shield,
+  MoreHorizontal,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
-type Step = "email" | "code" | "done";
+type Step = "email" | "verify" | "reset" | "done";
 
 export default function RecuperarSenhaPage() {
   const [step, setStep] = useState<Step>("email");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfPassword, setShowConfPassword] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [pendingEmail, setPendingEmail] = useState("");
+  const [resendTimer, setResendTimer] = useState(0);
 
+  // Verify step: 6 digit inputs
+  const [verifyDigits, setVerifyDigits] = useState(["", "", "", "", "", ""]);
+  const verifyRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Reset step: 6 digit inputs (pre-filled from verify)
+  const [resetDigits, setResetDigits] = useState(["", "", "", "", "", ""]);
+  const resetRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Forms
   const emailForm = useForm<RecuperarSenhaData>({
     resolver: zodResolver(recuperarSenhaSchema),
     defaultValues: { email: "" },
   });
 
-  const codeForm = useForm<RedefinirSenhaData>({
+  const resetForm = useForm<RedefinirSenhaData>({
     resolver: zodResolver(redefinirSenhaSchema),
     defaultValues: { email: "", codigo: "", novaSenha: "", confirmarSenha: "" },
   });
 
+  // Resend timer
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const t = setInterval(() => setResendTimer((prev) => prev - 1), 1000);
+    return () => clearInterval(t);
+  }, [resendTimer]);
+
+  // Password match
+  const novaSenha = resetForm.watch("novaSenha");
+  const confirmarSenha = resetForm.watch("confirmarSenha");
+  const passwordsMatch =
+    novaSenha && confirmarSenha && novaSenha === confirmarSenha;
+
+  // ── Verify digit handlers ──
+  const handleVerifyDigit = (index: number, value: string) => {
+    if (!/^\d?$/.test(value)) return;
+    const next = [...verifyDigits];
+    next[index] = value;
+    setVerifyDigits(next);
+    if (value && index < 5) verifyRefs.current[index + 1]?.focus();
+  };
+
+  const handleVerifyKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !verifyDigits[index] && index > 0) {
+      verifyRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerifyPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    if (!pasted) return;
+    const next = Array(6).fill("");
+    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
+    setVerifyDigits(next);
+    verifyRefs.current[Math.min(pasted.length, 5)]?.focus();
+  };
+
+  // ── Reset code digit handlers ──
+  const handleResetDigit = (index: number, value: string) => {
+    if (!/^\d?$/.test(value)) return;
+    const next = [...resetDigits];
+    next[index] = value;
+    setResetDigits(next);
+    resetForm.setValue("codigo", next.join(""));
+    if (value && index < 5) resetRefs.current[index + 1]?.focus();
+  };
+
+  const handleResetKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !resetDigits[index] && index > 0) {
+      resetRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // ── Step 1: Send recovery email ──
   const onEmailSubmit = async (data: RecuperarSenhaData) => {
     try {
       await api.auth.recuperarSenha(data);
       setPendingEmail(data.email);
-      codeForm.setValue("email", data.email);
-      setStep("code");
+      setResendTimer(59);
+      setStep("verify");
       toast.success("Código de recuperação enviado!");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao enviar código");
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao enviar código",
+      );
     }
   };
 
-  const onCodeSubmit = async (data: RedefinirSenhaData) => {
+  // ── Step 2: Verify code (local) ──
+  const onVerifySubmit = () => {
+    const code = verifyDigits.join("");
+    if (code.length !== 6) {
+      toast.error("Preencha todos os 6 dígitos");
+      return;
+    }
+    // Pre-fill reset step
+    setResetDigits(code.split(""));
+    resetForm.setValue("email", pendingEmail);
+    resetForm.setValue("codigo", code);
+    setStep("reset");
+  };
+
+  // ── Step 3: Reset password ──
+  const onResetSubmit = async (data: RedefinirSenhaData) => {
+    const code = resetDigits.join("");
+    if (code.length !== 6) {
+      toast.error("Código de verificação incompleto");
+      return;
+    }
     try {
-      await api.auth.redefinirSenha(data);
+      await api.auth.redefinirSenha({
+        email: pendingEmail,
+        codigo: code,
+        novaSenha: data.novaSenha,
+      });
       setStep("done");
       toast.success("Senha redefinida com sucesso!");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao redefinir senha");
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao redefinir senha",
+      );
     }
   };
 
-  // ── Shared field wrapper ──
-  const fieldWrap = (id: string, hasError: boolean) =>
-    `relative rounded-xl border-2 transition-all duration-300 ${
-      focusedField === id
-        ? "border-emerald-500/50 ring-4 ring-emerald-500/8 shadow-lg shadow-emerald-500/5"
-        : hasError
-          ? "border-red-400/50 ring-4 ring-red-500/5"
-          : "border-border/50 hover:border-border/80"
-    }`;
-
-  const iconCls = (id: string) =>
-    `absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 transition-all duration-300 ${
-      focusedField === id ? "text-emerald-500 scale-110" : "text-muted-foreground/40"
-    }`;
-
-  const stepLabels: Record<Step, { title: string; desc: string }> = {
-    email: {
-      title: "Recuperar senha",
-      desc: "Informe o e-mail da sua conta para receber o código",
-    },
-    code: {
-      title: "Nova senha",
-      desc: "Insira o código recebido e defina sua nova senha",
-    },
-    done: {
-      title: "Tudo certo!",
-      desc: "Sua senha foi redefinida com sucesso",
-    },
+  // ── Resend code ──
+  const handleResend = async () => {
+    if (resendTimer > 0) return;
+    try {
+      await api.auth.recuperarSenha({ email: pendingEmail });
+      setResendTimer(59);
+      toast.success("Código reenviado!");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao reenviar código",
+      );
+    }
   };
 
   return (
-    <div className="flex min-h-svh bg-background">
-      {/* ════════════════════════════════════════════
-          LEFT PANEL — Desktop only
-         ════════════════════════════════════════════ */}
-      <div className="hidden lg:flex lg:w-[44%] xl:w-[42%] relative overflow-hidden">
-        <div className="absolute inset-0 bg-linear-to-br from-emerald-950 via-teal-900 to-cyan-950" />
+    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased h-screen overflow-hidden relative">
+      {/* Background blurs */}
+      <div className="absolute top-[-10%] left-[-5%] w-200 h-200 bg-emerald-600/30 rounded-full blur-[160px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-150 h-150 bg-teal-500/15 rounded-full blur-[140px] pointer-events-none" />
 
-        {/* Grid */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)`,
-            backgroundSize: "48px 48px",
-          }}
-        />
-
-        {/* Orbs */}
-        <motion.div
-          className="absolute top-[15%] right-[18%] w-72 h-72 rounded-full bg-emerald-400/8 blur-3xl"
-          animate={{ y: [0, -25, 0], x: [0, 12, 0], scale: [1, 1.08, 1] }}
-          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute bottom-[22%] left-[10%] w-52 h-52 rounded-full bg-teal-400/6 blur-3xl"
-          animate={{ y: [0, 18, 0], x: [0, -8, 0], scale: [1, 1.12, 1] }}
-          transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 3 }}
-        />
-        <motion.div
-          className="absolute top-[50%] left-[45%] w-36 h-36 rounded-full bg-cyan-400/5 blur-3xl"
-          animate={{ y: [0, -10, 0], x: [0, 15, 0] }}
-          transition={{ duration: 13, repeat: Infinity, ease: "easeInOut", delay: 5 }}
-        />
-
-        {/* Accents */}
-        <div className="absolute top-[16%] right-10 w-px h-32 bg-linear-to-b from-transparent via-emerald-400/25 to-transparent" />
-        <div className="absolute bottom-[30%] left-12 w-20 h-px bg-linear-to-r from-transparent via-teal-400/25 to-transparent" />
-        <div className="absolute top-0 right-0 w-80 h-80 bg-linear-to-bl from-emerald-400/8 to-transparent rounded-bl-full" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-linear-to-tr from-cyan-400/6 to-transparent rounded-tr-full" />
-
-        <div className="relative flex flex-col justify-between p-10 xl:p-14 text-white w-full z-10">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/8 border border-white/10 backdrop-blur-sm shadow-lg shadow-black/10">
-              <TrendingUp className="h-5 w-5 text-emerald-300" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight leading-none">ControlFinance</span>
-              <span className="text-[10px] text-emerald-300/50 font-medium tracking-[0.15em] uppercase mt-0.5">Financial Platform</span>
-            </div>
+      <div className="relative z-10 h-full w-full flex flex-col p-6 sm:p-8 lg:p-12">
+        {/* Header / Logo */}
+        <header className="flex items-center gap-3 text-white/90">
+          <div className="size-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-lg shadow-black/10">
+            <Wallet className="h-5 w-5 text-white" />
           </div>
+          <h2 className="text-white text-xl font-bold tracking-tight">
+            Control Finance
+          </h2>
+        </header>
 
-          {/* Hero */}
-          <div className="space-y-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.7 }}
-            >
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-400/8 border border-emerald-400/15 mb-7">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-300/80" />
-                <span className="text-[11px] text-emerald-300/80 font-semibold tracking-wide">Recuperação segura</span>
-              </div>
-
-              <h2 className="text-[2rem] xl:text-[2.4rem] font-extrabold leading-[1.1] tracking-tight">
-                Sem preocupações,
-                <br />
-                <span className="bg-linear-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent">
-                  nós ajudamos.
-                </span>
-              </h2>
-              <p className="mt-5 text-[14px] text-white/35 leading-relaxed max-w-85">
-                Redefina sua senha de forma rápida e segura. Basta verificar seu e-mail e criar uma nova senha.
-              </p>
-            </motion.div>
-
-            {/* Steps preview */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="rounded-2xl bg-white/3 border border-white/6 p-5 space-y-4"
-            >
-              <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Etapas do processo</p>
-              {[
-                { icon: Mail, text: "Informe seu e-mail cadastrado", active: step === "email" },
-                { icon: KeyRound, text: "Insira o código e nova senha", active: step === "code" },
-                { icon: CheckCircle2, text: "Pronto! Acesse sua conta", active: step === "done" },
-              ].map((item, i) => (
-                <motion.div
-                  key={item.text}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.55 + i * 0.08 }}
-                  className="flex items-center gap-3"
-                >
-                  <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all ${
-                      item.active
-                        ? "bg-emerald-400/15 border border-emerald-400/30"
-                        : "bg-white/4"
-                    }`}
-                  >
-                    <item.icon className={`h-3.5 w-3.5 ${item.active ? "text-emerald-300" : "text-white/30"}`} />
-                  </div>
-                  <span className={`text-[13px] font-medium ${item.active ? "text-white/80" : "text-white/35"}`}>
-                    {item.text}
-                  </span>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] text-white/25">© {new Date().getFullYear()} ControlFinance</p>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1 h-1 rounded-full bg-emerald-400/40" />
-              <div className="w-1 h-1 rounded-full bg-teal-400/40" />
-              <div className="w-1 h-1 rounded-full bg-cyan-400/40" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ════════════════════════════════════════════
-          RIGHT PANEL — Form
-         ════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col relative overflow-hidden">
-        {/* Background blobs */}
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-emerald-500/3 dark:bg-emerald-500/5 blur-[100px] pointer-events-none" />
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-teal-500/3 dark:bg-teal-500/5 blur-[100px] pointer-events-none" />
-
-        {/* ── Mobile Hero Header ── */}
-        <div className="lg:hidden relative overflow-hidden">
-          <div className="bg-linear-to-br from-emerald-950 via-teal-900 to-cyan-950 px-6 pt-safe-top relative">
-            <div className="pt-8 pb-10">
-              <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-emerald-400/10 blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-teal-400/8 blur-3xl" />
-
-              <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 border border-white/10 backdrop-blur-sm">
-                    <TrendingUp className="h-5 w-5 text-emerald-300" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-base font-bold text-white tracking-tight leading-none">ControlFinance</span>
-                    <span className="text-[9px] text-emerald-300/50 font-medium tracking-[0.15em] uppercase mt-0.5">Financial Platform</span>
-                  </div>
-                </div>
-                <h2 className="text-xl font-bold text-white/90 tracking-tight">
-                  {stepLabels[step].title}
-                </h2>
-                <p className="text-[13px] text-white/35 mt-1.5 max-w-xs">
-                  {stepLabels[step].desc}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="h-5 bg-background relative -mt-5 rounded-t-[1.5rem]" />
-        </div>
-
-        {/* ── Form Area ── */}
-        <div className="flex flex-1 items-center justify-center px-5 py-8 sm:px-8 lg:px-12 lg:py-0">
-          <AnimatePresence mode="wait">
-            {/* ── Step 1: Email ── */}
-            {step === "email" && (
+        {/* Main */}
+        <main className="flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16 xl:gap-24 w-full max-w-6xl mx-auto">
+          {/* ── Hero text ── */}
+          <div className="w-full lg:w-120 xl:w-135 shrink-0 text-center lg:text-left pt-8 lg:pt-0">
+            <AnimatePresence mode="wait">
               <motion.div
-                key="email"
-                initial={{ opacity: 0, y: 16 }}
+                key={step}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                transition={{ duration: 0.35 }}
-                className="w-full max-w-105"
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
               >
-                {/* Desktop header */}
-                <div className="hidden lg:block mb-8">
-                  <motion.h1
+                {step === "email" || step === "reset" ? (
+                  <>
+                    <h1 className="text-white text-4xl sm:text-5xl lg:text-7xl font-black leading-tight tracking-[-0.03em] mb-6 lg:mb-8">
+                      Recupere seu <br />
+                      <span className="text-emerald-300">acesso seguro</span>
+                    </h1>
+                    <p className="text-emerald-100 text-base sm:text-lg lg:text-xl font-normal opacity-70 max-w-lg mx-auto lg:mx-0 leading-relaxed">
+                      Sua segurança é nossa prioridade. Redefina sua senha em
+                      poucos passos e volte ao controle total.
+                    </p>
+                    <div className="mt-12 hidden lg:flex items-center gap-8">
+                      <div className="flex flex-col">
+                        <span className="text-white text-3xl font-bold">
+                          256-bit
+                        </span>
+                        <span className="text-emerald-200/50 text-xs uppercase tracking-widest font-bold">
+                          Criptografia
+                        </span>
+                      </div>
+                      <div className="w-px h-12 bg-white/10" />
+                      <div className="flex flex-col">
+                        <span className="text-white text-3xl font-bold">
+                          MFA
+                        </span>
+                        <span className="text-emerald-200/50 text-xs uppercase tracking-widest font-bold">
+                          Proteção Ativa
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h1 className="text-white text-4xl sm:text-5xl lg:text-7xl font-black leading-tight tracking-[-0.03em] mb-6 lg:mb-8">
+                      Suas <span className="whitespace-nowrap">finanças no</span> <br />
+                      <span className="text-emerald-300">controle total</span>
+                    </h1>
+                    <p className="text-emerald-100 text-base sm:text-lg lg:text-xl font-normal opacity-80 max-w-lg mx-auto lg:mx-0">
+                      Dashboard e Metas em um só lugar. Acompanhe seu progresso
+                      com interfaces modernas e intuitivas.
+                    </p>
+                  </>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* ── Card area ── */}
+          <div className="w-full lg:w-auto flex justify-center items-center py-8 lg:py-12">
+            <AnimatePresence mode="wait">
+              {/* ═══════════ STEP: EMAIL ═══════════ */}
+              {step === "email" && (
+                <motion.div
+                  key="email"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full max-w-115 recovery-glass-card p-7 sm:p-8 lg:p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden"
+                >
+                  <div className="mb-8">
+                    <div className="size-14 bg-emerald-600/10 rounded-2xl flex items-center justify-center mb-5">
+                      <Mail className="h-7 w-7 text-emerald-600" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                      Recuperar acesso
+                    </h2>
+                    <p className="text-slate-500 dark:text-slate-400 mt-2 text-base leading-relaxed">
+                      Informe o e-mail da sua conta para receber o código de
+                      verificação
+                    </p>
+                  </div>
+
+                  <form
+                    onSubmit={emailForm.handleSubmit(onEmailSubmit)}
+                    className="space-y-6"
+                  >
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1"
+                        htmlFor="email"
+                      >
+                        E-mail
+                      </label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
+                        </div>
+                        <input
+                          className="block w-full pl-11 pr-4 h-14 bg-white dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-4 focus:ring-emerald-600/10 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400"
+                          id="email"
+                          placeholder="exemplo@email.com"
+                          type="email"
+                          autoComplete="email"
+                          autoFocus
+                          {...emailForm.register("email")}
+                        />
+                      </div>
+                      {emailForm.formState.errors.email && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-xs text-red-500 pl-1 font-medium"
+                        >
+                          {emailForm.formState.errors.email.message}
+                        </motion.p>
+                      )}
+                    </div>
+
+                    <button
+                      className="w-full h-14 bg-emerald-600 text-white text-lg font-bold rounded-2xl hover:bg-emerald-600/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-600/30 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                      type="submit"
+                      disabled={emailForm.formState.isSubmitting}
+                    >
+                      {emailForm.formState.isSubmitting ? (
+                        <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          Enviar código
+                          <ArrowRight className="h-5 w-5" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="mt-8 flex items-center justify-center">
+                    <Link
+                      href="/login"
+                      className="flex items-center gap-2 text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-emerald-600 transition-colors"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Voltar para o login
+                    </Link>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ═══════════ STEP: VERIFY CODE ═══════════ */}
+              {step === "verify" && (
+                <motion.div
+                  key="verify"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full max-w-115 login-glass-card p-7 sm:p-8 lg:p-12 rounded-[2.5rem] shadow-2xl relative overflow-hidden text-center"
+                >
+                  <div className="mb-10">
+                    <div className="size-16 bg-emerald-600/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <MailCheck className="h-8 w-8 text-emerald-600" />
+                    </div>
+                    <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                      Verifique seu e-mail
+                    </h2>
+                    <p className="text-slate-500 dark:text-slate-400 mt-3 text-base leading-relaxed">
+                      Enviamos um código de 6 dígitos para seu e-mail
+                    </p>
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      onVerifySubmit();
+                    }}
+                    className="space-y-8"
+                  >
+                    <div className="flex justify-between gap-2 lg:gap-3">
+                      {verifyDigits.map((digit, i) => (
+                        <input
+                          key={i}
+                          ref={(el) => {
+                            verifyRefs.current[i] = el;
+                          }}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) =>
+                            handleVerifyDigit(i, e.target.value)
+                          }
+                          onKeyDown={(e) => handleVerifyKeyDown(i, e)}
+                          onPaste={i === 0 ? handleVerifyPaste : undefined}
+                          autoComplete={i === 0 ? "one-time-code" : "off"}
+                          autoFocus={i === 0}
+                          className="w-12 h-14 lg:w-14 lg:h-16 text-center text-2xl font-bold bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-4 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all"
+                        />
+                      ))}
+                    </div>
+
+                    <button
+                      className="w-full h-14 bg-emerald-600 text-white text-lg font-bold rounded-2xl hover:bg-emerald-600/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-600/30 cursor-pointer"
+                      type="submit"
+                    >
+                      Confirmar
+                      <ArrowRight className="h-5 w-5" />
+                    </button>
+                  </form>
+
+                  <div className="mt-8">
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-slate-500 dark:text-slate-400 text-sm">
+                        Não recebeu o código?
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleResend}
+                        disabled={resendTimer > 0}
+                        className="font-bold text-emerald-600 hover:text-emerald-600/80 transition-colors flex items-center gap-2 disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        Reenviar código
+                        {resendTimer > 0 && (
+                          <span className="text-slate-400 font-medium text-xs tabular-nums">
+                            (Reenviar em 0:
+                            {resendTimer.toString().padStart(2, "0")})
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ═══════════ STEP: RESET PASSWORD ═══════════ */}
+              {step === "reset" && (
+                <motion.div
+                  key="reset"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -24 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full max-w-120 recovery-glass-card p-7 sm:p-8 lg:p-12 rounded-[2.5rem] shadow-2xl relative overflow-hidden"
+                >
+                  <div className="mb-10">
+                    <div className="inline-flex items-center justify-center size-12 bg-emerald-600/10 rounded-2xl mb-6">
+                      <KeyRound className="h-7 w-7 text-emerald-600" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+                      Defina sua nova senha
+                    </h2>
+                    <p className="text-slate-500 dark:text-slate-400 mt-3 text-lg">
+                      Passo 2 de 2: Verificação e Alteração
+                    </p>
+                  </div>
+
+                  <form
+                    onSubmit={resetForm.handleSubmit(onResetSubmit)}
+                    className="space-y-6"
+                  >
+                    {/* Verification Code */}
+                    <div className="space-y-3">
+                      <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Código de Verificação
+                      </label>
+                      <div className="grid grid-cols-6 gap-2">
+                        {resetDigits.map((digit, i) => (
+                          <input
+                            key={i}
+                            ref={(el) => {
+                              resetRefs.current[i] = el;
+                            }}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) =>
+                              handleResetDigit(i, e.target.value)
+                            }
+                            onKeyDown={(e) => handleResetKeyDown(i, e)}
+                            className="h-14 w-full text-center text-xl font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 outline-none transition-all"
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* New Password */}
+                    <div className="space-y-3">
+                      <label
+                        className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1"
+                        htmlFor="novaSenha"
+                      >
+                        Nova Senha
+                      </label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <KeyRound className="h-5 w-5 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
+                        </div>
+                        <input
+                          className="block w-full pl-11 pr-12 h-14 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-4 focus:ring-emerald-600/10 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400"
+                          id="novaSenha"
+                          placeholder="Mínimo 8 caracteres"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="new-password"
+                          {...resetForm.register("novaSenha")}
+                        />
+                        <button
+                          className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          tabIndex={-1}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                      {resetForm.formState.errors.novaSenha && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-xs text-red-500 pl-1 font-medium"
+                        >
+                          {resetForm.formState.errors.novaSenha.message}
+                        </motion.p>
+                      )}
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div className="space-y-3">
+                      <label
+                        className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1"
+                        htmlFor="confirmarSenha"
+                      >
+                        Confirmar Nova Senha
+                      </label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Lock
+                            className={`h-5 w-5 transition-colors ${
+                              passwordsMatch
+                                ? "text-green-500"
+                                : "text-slate-400 group-focus-within:text-emerald-600"
+                            }`}
+                          />
+                        </div>
+                        <input
+                          className={`block w-full pl-11 pr-12 h-14 bg-white dark:bg-slate-800 border-2 rounded-xl text-slate-900 dark:text-white focus:ring-4 focus:ring-emerald-600/10 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400 ${
+                            passwordsMatch
+                              ? "border-green-500/50"
+                              : "border-slate-200 dark:border-slate-700"
+                          }`}
+                          id="confirmarSenha"
+                          placeholder="Repita a nova senha"
+                          type={showConfPassword ? "text" : "password"}
+                          autoComplete="new-password"
+                          {...resetForm.register("confirmarSenha")}
+                        />
+                        {passwordsMatch ? (
+                          <div className="absolute inset-y-0 right-0 pr-4 flex items-center text-green-500">
+                            <CheckCircle2 className="h-5 w-5" />
+                          </div>
+                        ) : (
+                          <button
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                            type="button"
+                            onClick={() =>
+                              setShowConfPassword(!showConfPassword)
+                            }
+                            tabIndex={-1}
+                          >
+                            {showConfPassword ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                      {passwordsMatch && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-[11px] text-green-600 dark:text-green-400 font-semibold flex items-center gap-1 ml-1"
+                        >
+                          <CheckCircle2 className="h-3 w-3" />
+                          As senhas coincidem perfeitamente.
+                        </motion.p>
+                      )}
+                      {resetForm.formState.errors.confirmarSenha && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-xs text-red-500 pl-1 font-medium"
+                        >
+                          {resetForm.formState.errors.confirmarSenha.message}
+                        </motion.p>
+                      )}
+                    </div>
+
+                    <button
+                      className="w-full h-14 bg-emerald-600 text-white text-lg font-bold rounded-2xl hover:bg-emerald-600/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4 shadow-xl shadow-emerald-600/30 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                      type="submit"
+                      disabled={resetForm.formState.isSubmitting}
+                    >
+                      {resetForm.formState.isSubmitting ? (
+                        <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          Redefinir Senha
+                          <ArrowRight className="h-6 w-6" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="mt-8 flex items-center justify-center">
+                    <Link
+                      href="/login"
+                      className="flex items-center gap-2 text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-emerald-600 transition-colors"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Voltar para o login
+                    </Link>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ═══════════ STEP: DONE ═══════════ */}
+              {step === "done" && (
+                <motion.div
+                  key="done"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full max-w-110 login-glass-card p-7 sm:p-8 lg:p-12 rounded-[2.5rem] shadow-2xl relative overflow-hidden text-center"
+                >
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{
+                      delay: 0.15,
+                      type: "spring",
+                      stiffness: 200,
+                    }}
+                    className="size-20 bg-green-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6"
+                  >
+                    <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
+                  </motion.div>
+
+                  <motion.h2
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-[1.85rem] font-extrabold tracking-tight text-foreground"
+                    transition={{ delay: 0.3 }}
+                    className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight"
                   >
-                    Recuperar senha
-                  </motion.h1>
+                    Senha redefinida!
+                  </motion.h2>
                   <motion.p
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 }}
-                    className="mt-2 text-[14px] text-muted-foreground/70"
-                  >
-                    Informe o e-mail da sua conta para receber o código
-                  </motion.p>
-                </div>
-
-                {/* Mobile header */}
-                <div className="lg:hidden mb-5">
-                  <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-                    Recuperar senha
-                  </h1>
-                  <p className="mt-1 text-[13px] text-muted-foreground/70">
-                    Informe seu e-mail cadastrado
-                  </p>
-                </div>
-
-                <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-5">
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="space-y-2"
-                  >
-                    <label htmlFor="email" className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.12em]">
-                      E-mail
-                    </label>
-                    <div className={fieldWrap("email", !!emailForm.formState.errors.email)}>
-                      <Mail className={iconCls("email")} />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="nome@exemplo.com"
-                        className="pl-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
-                        autoComplete="email"
-                        autoFocus
-                        {...emailForm.register("email")}
-                        onFocus={() => setFocusedField("email")}
-                        onBlur={() => setFocusedField(null)}
-                      />
-                    </div>
-                    {emailForm.formState.errors.email && (
-                      <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-red-500 pl-1 font-medium">
-                        {emailForm.formState.errors.email.message}
-                      </motion.p>
-                    )}
-                  </motion.div>
-
-                  <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
-                    <Button
-                      type="submit"
-                      loading={emailForm.formState.isSubmitting}
-                      className="w-full h-13 text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
-                    >
-                      Enviar código
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                    </Button>
-                  </motion.div>
-                </form>
-
-                {/* Back to login */}
-                <div className="my-8 flex items-center gap-4">
-                  <div className="flex-1 h-px bg-linear-to-r from-transparent via-border/60 to-transparent" />
-                  <span className="text-[11px] text-muted-foreground/40 font-semibold">Lembrou a senha?</span>
-                  <div className="flex-1 h-px bg-linear-to-r from-transparent via-border/60 to-transparent" />
-                </div>
-
-                <Link href="/login">
-                  <Button
-                    variant="outline"
-                    className="w-full h-12 rounded-xl text-sm font-semibold gap-2 border-border/40 hover:border-emerald-500/30 hover:bg-emerald-500/3 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Voltar ao login
-                  </Button>
-                </Link>
-
-                {/* Trust */}
-                <div className="mt-8 flex items-center justify-center gap-4 text-[10px] text-muted-foreground/40">
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <Shield className="h-3 w-3" />
-                    <span>SSL Seguro</span>
-                  </div>
-                  <div className="w-px h-3 bg-border/30" />
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <ShieldCheck className="h-3 w-3" />
-                    <span>Dados protegidos</span>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── Step 2: Code + New Password ── */}
-            {step === "code" && (
-              <motion.div
-                key="code"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                transition={{ duration: 0.35 }}
-                className="w-full max-w-105"
-              >
-                {/* Desktop header */}
-                <div className="hidden lg:block mb-8">
-                  <h1 className="text-[1.85rem] font-extrabold tracking-tight text-foreground">
-                    Redefinir senha
-                  </h1>
-                  <p className="mt-2 text-[14px] text-muted-foreground/70">
-                    Código enviado para <span className="font-bold text-foreground">{pendingEmail}</span>
-                  </p>
-                </div>
-
-                {/* Mobile header */}
-                <div className="lg:hidden mb-5">
-                  <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-                    Redefinir senha
-                  </h1>
-                  <p className="mt-1 text-[13px] text-muted-foreground/70">
-                    Código enviado para <span className="font-semibold text-foreground">{pendingEmail}</span>
-                  </p>
-                </div>
-
-                <form onSubmit={codeForm.handleSubmit(onCodeSubmit)} className="space-y-4">
-                  {/* Code */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="space-y-2"
-                  >
-                    <label htmlFor="codigo" className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.12em]">
-                      Código de verificação
-                    </label>
-                    <div className={fieldWrap("codigo", !!codeForm.formState.errors.codigo)}>
-                      <KeyRound className={iconCls("codigo")} />
-                      <Input
-                        id="codigo"
-                        placeholder="000000"
-                        className="pl-12 h-14 border-0 bg-transparent shadow-none focus-visible:ring-0 text-xl font-mono tracking-[0.4em] placeholder:text-muted-foreground/20 placeholder:tracking-[0.4em] font-bold"
-                        maxLength={6}
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        autoFocus
-                        {...codeForm.register("codigo")}
-                        onFocus={() => setFocusedField("codigo")}
-                        onBlur={() => setFocusedField(null)}
-                      />
-                    </div>
-                    {codeForm.formState.errors.codigo && (
-                      <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-red-500 pl-1 font-medium">
-                        {codeForm.formState.errors.codigo.message}
-                      </motion.p>
-                    )}
-                  </motion.div>
-
-                  {/* Separator */}
-                  <div className="flex items-center gap-3 py-1">
-                    <div className="flex-1 h-px bg-linear-to-r from-transparent via-border/50 to-transparent" />
-                    <span className="text-[10px] text-muted-foreground/35 uppercase tracking-widest font-bold">Nova senha</span>
-                    <div className="flex-1 h-px bg-linear-to-r from-transparent via-border/50 to-transparent" />
-                  </div>
-
-                  {/* New Password */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35 }}
-                    className="space-y-2"
+                    className="text-slate-500 dark:text-slate-400 mt-3 text-base max-w-xs mx-auto"
                   >
-                    <label htmlFor="novaSenha" className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.12em]">
-                      Nova senha
-                    </label>
-                    <div className={fieldWrap("novaSenha", !!codeForm.formState.errors.novaSenha)}>
-                      <Lock className={iconCls("novaSenha")} />
-                      <Input
-                        id="novaSenha"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        className="pl-12 pr-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
-                        autoComplete="new-password"
-                        {...codeForm.register("novaSenha")}
-                        onFocus={() => setFocusedField("novaSenha")}
-                        onBlur={() => setFocusedField(null)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-foreground/60 transition-colors p-1"
-                        tabIndex={-1}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    {codeForm.formState.errors.novaSenha && (
-                      <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-red-500 pl-1 font-medium">
-                        {codeForm.formState.errors.novaSenha.message}
-                      </motion.p>
-                    )}
-                  </motion.div>
-
-                  {/* Confirm Password */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="space-y-2"
-                  >
-                    <label htmlFor="confirmarSenha" className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.12em]">
-                      Confirmar senha
-                    </label>
-                    <div className={fieldWrap("confirmarSenha", !!codeForm.formState.errors.confirmarSenha)}>
-                      <Lock className={iconCls("confirmarSenha")} />
-                      <Input
-                        id="confirmarSenha"
-                        type={showConfPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        className="pl-12 pr-12 h-13 border-0 bg-transparent shadow-none focus-visible:ring-0 text-[15px] placeholder:text-muted-foreground/30 font-medium"
-                        autoComplete="new-password"
-                        {...codeForm.register("confirmarSenha")}
-                        onFocus={() => setFocusedField("confirmarSenha")}
-                        onBlur={() => setFocusedField(null)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfPassword(!showConfPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-foreground/60 transition-colors p-1"
-                        tabIndex={-1}
-                      >
-                        {showConfPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    {codeForm.formState.errors.confirmarSenha && (
-                      <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-red-500 pl-1 font-medium">
-                        {codeForm.formState.errors.confirmarSenha.message}
-                      </motion.p>
-                    )}
-                  </motion.div>
+                    Sua senha foi alterada com sucesso. Agora você pode acessar
+                    sua conta.
+                  </motion.p>
 
                   <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.45 }}
-                    className="pt-1"
+                    className="mt-8"
                   >
-                    <Button
-                      type="submit"
-                      loading={codeForm.formState.isSubmitting}
-                      className="w-full h-13 text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
-                    >
-                      Redefinir senha
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                    </Button>
+                    <Link href="/login">
+                      <button
+                        className="w-full h-14 bg-emerald-600 text-white text-lg font-bold rounded-2xl hover:bg-emerald-600/90 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-600/30 cursor-pointer"
+                        type="button"
+                      >
+                        Ir para o login
+                        <ArrowRight className="h-5 w-5" />
+                      </button>
+                    </Link>
                   </motion.div>
-                </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </main>
 
-                {/* Back */}
-                <div className="mt-6">
-                  <button
-                    type="button"
-                    onClick={() => setStep("email")}
-                    className="flex items-center justify-center gap-1.5 mx-auto text-[13px] text-muted-foreground/60 hover:text-foreground transition-colors font-medium"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    Usar outro e-mail
-                  </button>
+        {/* Footer */}
+        <footer className="mt-auto flex flex-col lg:flex-row items-end justify-between gap-8 pb-4 max-w-6xl mx-auto w-full">
+          {/* Preview cards (desktop only) */}
+          <div className="hidden lg:flex flex-row gap-6 w-full lg:w-[60%] auth-subtle-preview">
+            {/* Dashboard preview */}
+            <div className="auth-glass-card rounded-t-3xl p-6 flex-1 flex flex-col justify-between min-h-40 opacity-40 hover:opacity-100 transition-opacity duration-500">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-white font-bold text-xs uppercase tracking-widest">
+                  Dashboard Mensal
+                </span>
+                <div className="flex gap-1">
+                  <div className="size-1.5 rounded-full bg-white/30" />
+                  <div className="size-1.5 rounded-full bg-white/30" />
                 </div>
-              </motion.div>
-            )}
+              </div>
+              <div className="flex items-end gap-3 h-20">
+                <div className="flex-1 bg-white/10 rounded-t-sm h-[40%]" />
+                <div className="flex-1 bg-white/20 rounded-t-sm h-[70%]" />
+                <div className="flex-1 bg-emerald-600/40 rounded-t-sm h-[95%] border-t-2 border-white/30" />
+                <div className="flex-1 bg-white/15 rounded-t-sm h-[55%]" />
+                <div className="flex-1 bg-white/25 rounded-t-sm h-[30%]" />
+                <div className="flex-1 bg-white/10 rounded-t-sm h-[60%]" />
+              </div>
+            </div>
 
-            {/* ── Step 3: Done ── */}
-            {step === "done" && (
-              <motion.div
-                key="done"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4 }}
-                className="w-full max-w-105 text-center"
-              >
-                <motion.div
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.15, type: "spring", stiffness: 200 }}
-                  className="flex h-20 w-20 items-center justify-center mx-auto rounded-3xl bg-emerald-500/10 dark:bg-emerald-400/10 mb-6"
-                >
-                  <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
-                </motion.div>
+            {/* Goals & Investment previews */}
+            <div className="flex-1 flex flex-row gap-4">
+              <div className="auth-glass-card rounded-t-3xl p-6 flex items-center gap-4 flex-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
+                <div className="size-14 rounded-full border-4 border-emerald-600 border-t-white/10 flex items-center justify-center">
+                  <span className="text-xs text-white font-black">85%</span>
+                </div>
+                <div>
+                  <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">
+                    Metas
+                  </p>
+                  <p className="text-white text-sm font-bold">
+                    Reserva de Emergência
+                  </p>
+                </div>
+              </div>
+              <div className="auth-glass-card rounded-t-3xl p-6 flex items-center gap-4 flex-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
+                <div className="size-14 rounded-full border-4 border-green-400 border-t-white/10 flex items-center justify-center">
+                  <span className="text-xs text-white font-black">42%</span>
+                </div>
+                <div>
+                  <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">
+                    Investimentos
+                  </p>
+                  <p className="text-white text-sm font-bold">Ações Globais</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-                <motion.h1
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-[1.85rem] font-extrabold tracking-tight text-foreground"
-                >
-                  Senha redefinida!
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35 }}
-                  className="mt-3 text-[14px] text-muted-foreground/70 max-w-xs mx-auto"
-                >
-                  Sua senha foi alterada com sucesso. Agora você pode acessar sua conta.
-                </motion.p>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.45 }}
-                  className="mt-8"
-                >
-                  <Link href="/login">
-                    <Button
-                      className="w-full h-13 text-[15px] font-bold rounded-xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:via-teal-500 hover:to-emerald-500 text-white shadow-lg shadow-emerald-600/20 hover:shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-0 gap-2.5 group"
-                    >
-                      Ir para o login
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                    </Button>
-                  </Link>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+          {/* Copyright */}
+          <div className="w-full lg:w-1/3 flex flex-col items-center lg:items-end justify-center ml-auto">
+            <p className="text-white/20 text-[10px] tracking-widest mb-2 uppercase font-bold">
+              © {new Date().getFullYear()} Control Finance Inc.
+            </p>
+            <p className="text-white/40 text-[10px] flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+              <Shield className="h-3.5 w-3.5" />
+              Conexão Criptografada
+            </p>
+          </div>
+        </footer>
       </div>
     </div>
   );

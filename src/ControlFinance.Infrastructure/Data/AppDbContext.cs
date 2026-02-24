@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
 
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<CartaoCredito> CartoesCredito => Set<CartaoCredito>();
+    public DbSet<ContaBancaria> ContasBancarias => Set<ContaBancaria>();
     public DbSet<Fatura> Faturas => Set<Fatura>();
     public DbSet<Lancamento> Lancamentos => Set<Lancamento>();
     public DbSet<Parcela> Parcelas => Set<Parcela>();
@@ -71,6 +72,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.TentativasLoginFalhadas).HasColumnName("tentativas_login_falhadas").HasDefaultValue(0);
             entity.Property(e => e.BloqueadoAte).HasColumnName("bloqueado_ate");
             entity.Property(e => e.AcessoExpiraEm).HasColumnName("acesso_expira_em").IsRequired(false);
+            entity.Property(e => e.RendaMensal).HasColumnName("renda_mensal").HasColumnType("numeric(18,2)").IsRequired(false);
             entity.Property(e => e.Role).HasColumnName("role").HasDefaultValue(Domain.Enums.RoleUsuario.Usuario);
 
             entity.HasIndex(e => e.Email).IsUnique();
@@ -165,6 +167,25 @@ public class AppDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // === ContaBancaria ===
+        modelBuilder.Entity<ContaBancaria>(entity =>
+        {
+            entity.ToTable("contas_bancarias");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Nome).HasColumnName("nome").HasMaxLength(100);
+            entity.Property(e => e.Tipo).HasColumnName("tipo");
+            entity.Property(e => e.Saldo).HasColumnName("saldo").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Ativo).HasColumnName("ativo");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+
+            entity.HasOne(e => e.Usuario)
+                  .WithMany(u => u.ContasBancarias)
+                  .HasForeignKey(e => e.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // === Fatura ===
         modelBuilder.Entity<Fatura>(entity =>
         {
@@ -202,6 +223,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
             entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
             entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
+            entity.Property(e => e.ContaBancariaId).HasColumnName("conta_bancaria_id").IsRequired(false);
 
             entity.Ignore(e => e.Parcelado);
 
@@ -214,6 +236,11 @@ public class AppDbContext : DbContext
                   .WithMany(c => c.Lancamentos)
                   .HasForeignKey(e => e.CategoriaId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.ContaBancaria)
+                  .WithMany(c => c.Lancamentos)
+                  .HasForeignKey(e => e.ContaBancariaId)
+                  .OnDelete(DeleteBehavior.SetNull);
 
             // Índices para performance — cobrem as queries mais frequentes
             entity.HasIndex(e => new { e.UsuarioId, e.Tipo, e.Data })

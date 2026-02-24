@@ -69,6 +69,7 @@ public class AdminService : IAdminService
             NovosUltimos30Dias = usuarios.Count(u => u.CriadoEm >= ultimos30Dias),
             UsuariosComTelegram = usuarios.Count(u => u.TelegramVinculado),
             TotalLancamentosMes = lancamentosMes.Count,
+            TotalCartoes = await _context.CartoesCredito.CountAsync(),
             MetasAtivas = await _context.MetasFinanceiras.CountAsync(m => m.Status == StatusMeta.Ativa),
             SessoesAtivas = await _context.RefreshTokens.CountAsync(r => !r.Usado && !r.Revogado && r.ExpiraEm > agora),
             CodigosConviteAtivos = await _context.CodigosConvite.CountAsync(c => !c.Usado && (!c.ExpiraEm.HasValue || c.ExpiraEm > agora)),

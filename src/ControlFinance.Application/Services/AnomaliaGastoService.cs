@@ -64,7 +64,7 @@ public class AnomaliaGastoService : IAnomaliaGastoService
                 "Anomalia detectada: gasto R${Valor} em {Categoria} é {Fator:N1}x a média de R${Media:N2}",
                 valor, nomeCategoria, fatorReal, media);
 
-            return $"\n\n⚠️ *Alerta:* Este gasto é *{fatorReal:N1}x maior* que sua média " +
+            return $"\n\n*Alerta:* Este gasto é *{fatorReal:N1}x maior* que sua média " +
                    $"em {nomeCategoria} (R$ {media:N2}/lançamento nos últimos {MesesHistorico} meses).";
         }
         catch (Exception ex)

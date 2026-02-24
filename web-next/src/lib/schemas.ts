@@ -100,6 +100,7 @@ export const lancamentoSchema = z.object({
   tipo: z.enum(["despesa", "receita"]),
   categoria: z.string().optional(),
   cartaoId: z.string().optional(),
+  contaId: z.string().optional(),
   formaPagamento: z.string().optional(),
   numeroParcelas: z.string().optional(),
   data: z.string().optional(),
@@ -124,6 +125,15 @@ export const categoriaSchema = z.object({
 
 export const atualizarPerfilSchema = z.object({
   nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
+});
+
+export const rendaMensalSchema = z.object({
+  rendaMensal: z.string()
+    .refine((v) => {
+      if (!v || v === "0,00" || v === "0") return true; // Permitir limpar
+      const num = parseFloat(v.replace(/\./g, "").replace(",", "."));
+      return !isNaN(num) && num >= 0 && num <= 999999.99;
+    }, "Valor deve ser entre R$ 0 e R$ 999.999,99"),
 });
 
 export const alterarSenhaSchema = z
@@ -246,6 +256,7 @@ export type LancamentoData = z.infer<typeof lancamentoSchema>;
 export type EditarLancamentoData = z.infer<typeof editarLancamentoSchema>;
 export type CategoriaData = z.infer<typeof categoriaSchema>;
 export type AtualizarPerfilData = z.infer<typeof atualizarPerfilSchema>;
+export type RendaMensalData = z.infer<typeof rendaMensalSchema>;
 export type AlterarSenhaData = z.infer<typeof alterarSenhaSchema>;
 export type RecuperarSenhaData = z.infer<typeof recuperarSenhaSchema>;
 export type RedefinirSenhaData = z.infer<typeof redefinirSenhaSchema>;

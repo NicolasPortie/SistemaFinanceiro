@@ -31,8 +31,15 @@ public class Usuario
     /// </summary>
     public DateTime? AcessoExpiraEm { get; set; }
 
+    /// <summary>
+    /// Renda mensal informada pelo usuário. Usado como piso para projeções financeiras.
+    /// Null = não informado (usa apenas média calculada dos lançamentos).
+    /// </summary>
+    public decimal? RendaMensal { get; set; }
+
     // Navegação
     public ICollection<CartaoCredito> Cartoes { get; set; } = new List<CartaoCredito>();
+    public ICollection<ContaBancaria> ContasBancarias { get; set; } = new List<ContaBancaria>();
     public ICollection<Lancamento> Lancamentos { get; set; } = new List<Lancamento>();
     public ICollection<Categoria> Categorias { get; set; } = new List<Categoria>();
     public ICollection<CodigoVerificacao> CodigosVerificacao { get; set; } = new List<CodigoVerificacao>();

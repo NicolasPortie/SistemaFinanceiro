@@ -16,7 +16,10 @@ import {
   type AtualizarPerfilRequest,
   type CriarLembreteRequest,
   type AtualizarLembreteRequest,
+  type PagarContaFixaRequest,
   type AvaliarGastoRequest,
+  type CriarContaBancariaRequest,
+  type AtualizarContaBancariaRequest,
 } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -43,6 +46,7 @@ export const queryKeys = {
   historicoSimulacao: ["historico-simulacao"] as const,
   usuario: ["usuario-perfil"] as const,
   lembretes: (apenasAtivos?: boolean) => ["lembretes", apenasAtivos ?? true] as const,
+  contasBancarias: ["contas-bancarias"] as const,
 };
 
 // ── Dashboard ──────────────────────────────────────────────
@@ -498,6 +502,74 @@ export function useDesativarLembrete() {
   });
 }
 
+export function usePagarContaFixa() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: PagarContaFixaRequest }) =>
+      api.lembretes.pagar(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lembretes"] });
+      queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["resumo"] });
+      toast.success("Pagamento registrado com sucesso!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao registrar pagamento");
+    },
+  });
+}
+// ── Contas Bancárias ────────────────────────────────────────
+export function useContasBancarias() {
+  return useQuery({
+    queryKey: queryKeys.contasBancarias,
+    queryFn: () => api.contasBancarias.listar(),
+    staleTime: STALE_5_MIN,
+    gcTime: GC_15_MIN,
+  });
+}
+
+export function useCriarContaBancaria() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CriarContaBancariaRequest) => api.contasBancarias.criar(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.contasBancarias });
+      toast.success("Conta criada com sucesso!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao criar conta");
+    },
+  });
+}
+
+export function useAtualizarContaBancaria() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: AtualizarContaBancariaRequest }) =>
+      api.contasBancarias.atualizar(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.contasBancarias });
+      toast.success("Conta atualizada!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao atualizar conta");
+    },
+  });
+}
+
+export function useDesativarContaBancaria() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.contasBancarias.desativar(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.contasBancarias });
+      toast.success("Conta desativada!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao desativar conta");
+    },
+  });
+}
 // ── Decisão de Gasto ───────────────────────────────────────
 export function useAvaliarGasto() {
   return useMutation({

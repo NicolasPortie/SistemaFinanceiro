@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ControlFinance.Domain.Enums;
 
 namespace ControlFinance.Application.DTOs;
 
@@ -59,6 +60,29 @@ public class CriarCategoriaRequest
     [Required(ErrorMessage = "Nome da categoria é obrigatório.")]
     [StringLength(50, MinimumLength = 2, ErrorMessage = "Nome deve ter entre 2 e 50 caracteres.")]
     public string Nome { get; set; } = string.Empty;
+}
+
+// ====== Contas Bancárias ======
+public class CriarContaBancariaRequest
+{
+    [Required(ErrorMessage = "Nome da conta é obrigatório.")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Nome deve ter entre 2 e 100 caracteres.")]
+    public string Nome { get; set; } = string.Empty;
+
+    public TipoContaBancaria Tipo { get; set; } = TipoContaBancaria.Corrente;
+
+    [Range(0, 999_999_999.99, ErrorMessage = "Saldo não pode ser negativo além do limite.")]
+    public decimal Saldo { get; set; } = 0;
+}
+
+public class AtualizarContaBancariaRequest
+{
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Nome deve ter entre 2 e 100 caracteres.")]
+    public string? Nome { get; set; }
+
+    public TipoContaBancaria? Tipo { get; set; }
+
+    public decimal? Saldo { get; set; }
 }
 
 // ====== Decisão de Gasto ======

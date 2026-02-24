@@ -64,17 +64,16 @@ public class ConsultaHandler : IConsultaHandler
                 .ToList();
 
             if (!recentes.Any())
-                return "📭 Nenhum lançamento registrado ainda. Que tal começar? Ex: \"Gastei 30 no almoço\"";
+                return "Nenhum lançamento registrado ainda. Que tal começar? Ex: \"Gastei 30 no almoço\"";
 
-            var texto = "📋 *Seus últimos lançamentos*\n\n";
+            var texto = "*Seus últimos lançamentos*\n\n";
             var totalReceita = 0m;
             var totalDespesa = 0m;
 
             foreach (var l in recentes)
             {
-                var emoji = l.Tipo == TipoLancamento.Receita ? "💰" : "💸";
                 var sinal = l.Tipo == TipoLancamento.Receita ? "+" : "-";
-                texto += $"{emoji} {l.Data:dd/MM} | {sinal} R$ {l.Valor:N2} | {l.Descricao}\n";
+                texto += $"{l.Data:dd/MM} | {sinal} R$ {l.Valor:N2} | {l.Descricao}\n";
 
                 if (l.Tipo == TipoLancamento.Receita)
                     totalReceita += l.Valor;
@@ -83,12 +82,12 @@ public class ConsultaHandler : IConsultaHandler
             }
 
             var saldoExtrato = totalReceita - totalDespesa;
-            var saldoEmoji = saldoExtrato >= 0 ? "✅" : "🔴";
+            var saldoEmoji = saldoExtrato >= 0 ? "✅" : "❌";
 
             texto += $"\n{saldoEmoji} *Resumo desses lançamentos:*\n";
-            texto += $"  💰 Entradas: R$ {totalReceita:N2}\n";
-            texto += $"  💸 Saídas: R$ {totalDespesa:N2}\n";
-            texto += $"  📊 Saldo: R$ {saldoExtrato:N2}";
+            texto += $"  Entradas: R$ {totalReceita:N2}\n";
+            texto += $"  Saídas: R$ {totalDespesa:N2}\n";
+            texto += $"  Saldo: R$ {saldoExtrato:N2}";
             texto += "\n\n_Use /resumo para ver o mês completo._";
 
             return texto;
@@ -108,7 +107,7 @@ public class ConsultaHandler : IConsultaHandler
     {
         var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
         if (!cartoes.Any())
-            return "🌐 Você ainda não tem cartão cadastrado para consultar fatura.\n\nAcesse o menu *Cartões* no sistema web.";
+            return "Você ainda não tem cartão cadastrado para consultar fatura.\n\nAcesse o menu *Cartões* no sistema web.";
 
         string? referenciaNormalizada = null;
         if (!string.IsNullOrWhiteSpace(referenciaMes))
@@ -139,7 +138,7 @@ public class ConsultaHandler : IConsultaHandler
 
             if (!pendentes.Any())
             {
-                resultado += $"💳 {cartao.Nome}: Sem fatura pendente.\n\n";
+                resultado += $"{cartao.Nome}: Sem fatura pendente.\n\n";
                 continue;
             }
 
@@ -151,7 +150,7 @@ public class ConsultaHandler : IConsultaHandler
 
                 if (faturaSelecionada == null)
                 {
-                    resultado += $"💳 {cartao.Nome}: Sem fatura pendente para {referenciaNormalizada}.\n\n";
+                    resultado += $"{cartao.Nome}: Sem fatura pendente para {referenciaNormalizada}.\n\n";
                     continue;
                 }
             }
@@ -187,9 +186,9 @@ public class ConsultaHandler : IConsultaHandler
     {
         var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
         if (!cartoes.Any())
-            return "🌐 Você ainda não tem cartão cadastrado para listar faturas.\n\nAcesse o menu *Cartões* no sistema web.";
+            return "Você ainda não tem cartão cadastrado para listar faturas.\n\nAcesse o menu *Cartões* no sistema web.";
 
-        var resultado = "📋 *Todas as faturas pendentes:*\n\n";
+        var resultado = "*Todas as faturas pendentes:*\n\n";
         var temFatura = false;
 
         foreach (var cartao in cartoes)
@@ -209,18 +208,18 @@ public class ConsultaHandler : IConsultaHandler
             }
         }
 
-        return temFatura ? resultado.TrimEnd() : "✅ Nenhuma fatura pendente! Tudo em dia.";
+        return temFatura ? resultado.TrimEnd() : "✅ Nenhuma fatura pendente. Tudo em dia.";
     }
 
     public async Task<string> ListarCategoriasAsync(Usuario usuario)
     {
         var categorias = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
-        if (!categorias.Any()) return "📁 Nenhuma categoria encontrada.";
+        if (!categorias.Any()) return "Nenhuma categoria encontrada.";
 
-        var texto = "🏷️ Suas Categorias:\n";
+        var texto = "*Suas categorias:*\n";
         foreach (var cat in categorias)
         {
-            var ico = cat.Padrao ? "📌" : "📝";
+            var ico = cat.Padrao ? "•" : "•";
             texto += $"\n{ico} {cat.Nome}";
         }
         return texto;
@@ -254,8 +253,7 @@ public class ConsultaHandler : IConsultaHandler
             .ToList();
 
         if (!salarios.Any())
-            return "💰 Não encontrei receitas de salário nos últimos 6 meses.\n\n" +
-                   "Registre com algo como: \"recebi 3500 de salário\".";
+            return "Não encontrei receitas de salário nos últimos 6 meses.\n\nRegistre com algo como: \"recebi 3500 de salário\".";
 
         var porMes = salarios
             .GroupBy(l => new DateTime(l.Data.Year, l.Data.Month, 1, 0, 0, 0, DateTimeKind.Utc))
@@ -268,18 +266,18 @@ public class ConsultaHandler : IConsultaHandler
             .Where(x => x.Mes.Year == hoje.Year && x.Mes.Month == hoje.Month)
             .Sum(x => x.Total);
 
-        var texto = "💰 *Sua receita de salário*\n\n";
-        texto += $"📊 Média mensal: *R$ {media:N2}*\n";
-        texto += $"📅 Este mês ({hoje:MM/yyyy}): *R$ {totalAtual:N2}*\n\n";
-        texto += "📋 *Histórico:*";
+        var texto = "*Sua receita de salário*\n\n";
+        texto += $"Média mensal: *R$ {media:N2}*\n";
+        texto += $"Este mês ({hoje:MM/yyyy}): *R$ {totalAtual:N2}*\n\n";
+        texto += "*Histórico:*";
 
         foreach (var item in porMes)
             texto += $"\n  • {item.Mes:MMM/yyyy}: R$ {item.Total:N2}";
 
         if (totalAtual > 0 && totalAtual > media * 1.05m)
-            texto += "\n\n🎉 Este mês você recebeu acima da média!";
+            texto += "\n\nEste mês você recebeu acima da média.";
         else if (totalAtual > 0 && totalAtual < media * 0.95m)
-            texto += "\n\n📉 Este mês ficou um pouco abaixo da média.";
+            texto += "\n\nEste mês ficou um pouco abaixo da média.";
 
         return texto;
     }
@@ -321,10 +319,10 @@ public class ConsultaHandler : IConsultaHandler
             .ToList();
 
         if (!lancamentosCat.Any())
-            return $"🏷️ *{categoria.Nome}*\n\nSem gastos nesta categoria em {hoje:MM/yyyy}.";
+            return $"*{categoria.Nome}*\n\nSem gastos nesta categoria em {hoje:MM/yyyy}.";
 
         var total = lancamentosCat.Sum(l => l.Valor);
-        var texto = $"🏷️ *Detalhes — {categoria.Nome}*\n📅 {inicioMes:MM/yyyy}\n\n";
+        var texto = $"*Detalhes — {categoria.Nome}*\n{inicioMes:MM/yyyy}\n\n";
 
         foreach (var l in lancamentosCat)
         {
@@ -335,10 +333,10 @@ public class ConsultaHandler : IConsultaHandler
                 FormaPagamento.Credito => "Crédito",
                 _ => ""
             };
-            texto += $"📅 {l.Data:dd/MM} — {l.Descricao} — R$ {l.Valor:N2} ({pagInfo})\n";
+            texto += $"{l.Data:dd/MM} — {l.Descricao} — R$ {l.Valor:N2} ({pagInfo})\n";
         }
 
-        texto += $"\n💰 *Subtotal: R$ {total:N2}*\n📊 *{lancamentosCat.Count} lançamento(s)*";
+        texto += $"\n*Subtotal: R$ {total:N2}*\n*{lancamentosCat.Count} lançamento(s)*";
         return texto;
     }
 
@@ -361,43 +359,40 @@ public class ConsultaHandler : IConsultaHandler
             var diffGastos = resumoAtual.TotalGastos - resumoAnterior.TotalGastos;
             var diffReceitas = resumoAtual.TotalReceitas - resumoAnterior.TotalReceitas;
 
-            var emojiGasto = diffGastos > 0 ? "📈" : diffGastos < 0 ? "📉" : "➡️";
-            var emojiReceita = diffReceitas > 0 ? "📈" : diffReceitas < 0 ? "📉" : "➡️";
-
             var percentualGasto = resumoAnterior.TotalGastos > 0
                 ? (diffGastos / resumoAnterior.TotalGastos * 100)
                 : 0;
 
-            var texto = $"📊 *Comparando seus meses*\n";
-            texto += $"📅 {inicioMesAnterior:MMMM} vs {inicioMesAtual:MMMM}\n\n";
+            var texto = $"*Comparativo mensal*\n";
+            texto += $"{inicioMesAnterior:MMMM} vs {inicioMesAtual:MMMM}\n\n";
 
             // Gastos
             if (diffGastos > 0)
-                texto += $"💸 Você gastou *R$ {Math.Abs(diffGastos):N2} a mais* este mês ({percentualGasto:+0;-0}%)\n";
+                texto += $"Você gastou *R$ {Math.Abs(diffGastos):N2} a mais* este mês ({percentualGasto:+0;-0}%)\n";
             else if (diffGastos < 0)
-                texto += $"💸 Você gastou *R$ {Math.Abs(diffGastos):N2} a menos* este mês ({percentualGasto:+0;-0}%) ✅\n";
+                texto += $"Você gastou *R$ {Math.Abs(diffGastos):N2} a menos* este mês ({percentualGasto:+0;-0}%) ✅\n";
             else
-                texto += "💸 Gastos iguais nos dois meses\n";
+                texto += "Gastos iguais nos dois meses\n";
             texto += $"  {inicioMesAnterior:MMM}: R$ {resumoAnterior.TotalGastos:N2} → {inicioMesAtual:MMM}: R$ {resumoAtual.TotalGastos:N2}\n\n";
 
             // Receitas
             if (diffReceitas > 0)
-                texto += $"💰 Receita *aumentou R$ {Math.Abs(diffReceitas):N2}*\n";
+                texto += $"Receita *aumentou R$ {Math.Abs(diffReceitas):N2}*\n";
             else if (diffReceitas < 0)
-                texto += $"💰 Receita *diminuiu R$ {Math.Abs(diffReceitas):N2}*\n";
+                texto += $"Receita *diminuiu R$ {Math.Abs(diffReceitas):N2}*\n";
             else
-                texto += "💰 Receita igual nos dois meses\n";
+                texto += "Receita igual nos dois meses\n";
             texto += $"  {inicioMesAnterior:MMM}: R$ {resumoAnterior.TotalReceitas:N2} → {inicioMesAtual:MMM}: R$ {resumoAtual.TotalReceitas:N2}\n\n";
 
             // Saldo
-            var saldoEmoji = resumoAtual.Saldo >= 0 ? "✅" : "🔴";
+            var saldoEmoji = resumoAtual.Saldo >= 0 ? "✅" : "❌";
             texto += $"{saldoEmoji} *Resultado do mês:* R$ {resumoAtual.Saldo:N2}\n";
             texto += $"  (Mês passado foi R$ {resumoAnterior.Saldo:N2})\n\n";
 
             // Categorias que mais mudaram
             if (resumoAtual.GastosPorCategoria.Any() && resumoAnterior.GastosPorCategoria.Any())
             {
-                texto += "🏷️ *O que mais mudou:*\n";
+                texto += "*O que mais mudou:*\n";
 
                 var todasCategorias = resumoAtual.GastosPorCategoria
                     .Select(c => c.Categoria)
@@ -417,21 +412,20 @@ public class ConsultaHandler : IConsultaHandler
 
                 foreach (var v in variações)
                 {
-                    var emojiV = v.Diff > 0 ? "🔺" : "🔻";
                     var direcao = v.Diff > 0 ? "subiu" : "caiu";
-                    texto += $"  {emojiV} {v.Categoria}: {direcao} R$ {Math.Abs(v.Diff):N2}\n";
+                    texto += $"  • {v.Categoria}: {direcao} R$ {Math.Abs(v.Diff):N2}\n";
                 }
             }
 
             // Diagnóstico final
             if (diffGastos < 0 && resumoAtual.Saldo >= 0)
-                texto += "\n🎉 *Parabéns!* Você está no caminho certo — gastou menos e está no positivo!";
+                texto += "\n✅ Você está no caminho certo — gastou menos e está no positivo.";
             else if (diffGastos < 0)
-                texto += "\n✅ Bom progresso! Seus gastos diminuíram. Continue assim!";
+                texto += "\n✅ Bom progresso. Seus gastos diminuíram.";
             else if (percentualGasto > 20)
-                texto += "\n⚠️ Gastos cresceram bastante. Revise as categorias acima para entender onde cortou.";
+                texto += "\n⚠️ Gastos cresceram bastante. Revise as categorias acima.";
             else if (diffGastos > 0)
-                texto += "\n💡 Gastos aumentaram um pouco. Fique atento nas próximas semanas.";
+                texto += "\nGastos aumentaram um pouco. Fique atento nas próximas semanas.";
 
             return texto;
         }
@@ -454,27 +448,27 @@ public class ConsultaHandler : IConsultaHandler
             {
                 var todasTags = await _tagRepo.ObterTagsDoUsuarioAsync(usuario.Id);
                 if (!todasTags.Any())
-                    return "🏷️ Você ainda não tem tags. Adicione com: \"tag #reembolso\" após um lançamento.";
+                    return "Você ainda não tem tags. Adicione com: \"tag #reembolso\" após um lançamento.";
 
-                return "🏷️ *Suas tags:*\n\n" +
+                return "*Suas tags:*\n\n" +
                        string.Join("\n", todasTags.Select(t => $"  #{t}"));
             }
 
             var lancamentosTag = await _tagRepo.ObterPorUsuarioETagAsync(usuario.Id, tagNormalizada);
             if (!lancamentosTag.Any())
-                return $"🏷️ Nenhum lançamento com a tag *#{tagNormalizada}*.";
+                return $"Nenhum lançamento com a tag *#{tagNormalizada}*.";
 
             var total = lancamentosTag.Sum(t => t.Lancamento.Valor);
-            var texto = $"🏷️ *Lançamentos com #{tagNormalizada}*\n\n";
+            var texto = $"*Lançamentos com #{tagNormalizada}*\n\n";
 
             foreach (var t in lancamentosTag.Take(15))
             {
                 var l = t.Lancamento;
-                var emoji = l.Tipo == TipoLancamento.Receita ? "💰" : "💸";
-                texto += $"{emoji} {l.Data:dd/MM} — {l.Descricao} — R$ {l.Valor:N2}\n";
+                var sinal = l.Tipo == TipoLancamento.Receita ? "+" : "-";
+                texto += $"{l.Data:dd/MM} — {l.Descricao} — {sinal} R$ {l.Valor:N2}\n";
             }
 
-            texto += $"\n💰 *Total: R$ {total:N2}*\n📊 *{lancamentosTag.Count} lançamento(s)*";
+            texto += $"\n*Total: R$ {total:N2}*\n*{lancamentosTag.Count} lançamento(s)*";
             return texto;
         }
         catch (Exception ex)

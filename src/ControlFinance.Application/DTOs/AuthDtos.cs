@@ -57,6 +57,7 @@ public class UsuarioDto
     public bool TelegramVinculado { get; set; }
     public DateTime CriadoEm { get; set; }
     public string Role { get; set; } = "Usuario";
+    public decimal? RendaMensal { get; set; }
 }
 
 public class GerarCodigoTelegramDto
@@ -83,6 +84,12 @@ public class AtualizarPerfilDto
     [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$",
         ErrorMessage = "Senha deve conter pelo menos uma letra maiúscula, uma minúscula e um número")]
     public string? NovaSenha { get; set; }
+
+    /// <summary>
+    /// Renda mensal informada pelo usuário. Null = manter valor atual. 0 = limpar.
+    /// </summary>
+    [Range(0, 999999.99, ErrorMessage = "Renda deve ser entre R$ 0 e R$ 999.999,99")]
+    public decimal? RendaMensal { get; set; }
 }
 
 public class RecuperarSenhaDto

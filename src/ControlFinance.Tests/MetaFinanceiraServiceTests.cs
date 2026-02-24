@@ -440,7 +440,6 @@ public class MetaFinanceiraServiceTests
 
         var resultado = _service.FormatarMetasBot(metas);
 
-        Assert.Contains("🎉", resultado);
         Assert.Contains("Parabéns", resultado);
     }
 

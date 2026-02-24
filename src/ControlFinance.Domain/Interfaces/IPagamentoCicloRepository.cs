@@ -9,4 +9,5 @@ public interface IPagamentoCicloRepository
     Task AtualizarAsync(PagamentoCiclo pagamento);
     Task<List<PagamentoCiclo>> ObterPorLembreteAsync(int lembreteId);
     Task<bool> JaPagouCicloAsync(int lembreteId, string periodKey);
+    Task<HashSet<int>> ObterIdsComCiclosPagoAsync(List<int> lembreteIds, string periodKey);
 }

@@ -30,6 +30,7 @@ public class RegistrarLancamentoDto
     public int NumeroParcelas { get; set; } = 1;
 
     public int? CartaoCreditoId { get; set; }
+    public int? ContaBancariaId { get; set; }
 }
 
 public class AtualizarLancamentoDto

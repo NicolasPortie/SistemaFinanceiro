@@ -169,11 +169,11 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
 
         var classificacaoEmoji = scoreTotal switch
         {
-            >= 80 => "🏆",
-            >= 60 => "👍",
-            >= 40 => "⚠️",
-            >= 20 => "🔶",
-            _ => "🚨"
+            >= 80 => "[Excelente]",
+            >= 60 => "[Bom]",
+            >= 40 => "[Regular]",
+            >= 20 => "[Preocupante]",
+            _ => "[Crítico]"
         };
 
         // Persistir no perfil comportamental
@@ -202,9 +202,9 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
         else if (comprometimento <= 0.9m)
             pontosAtencao.Add($"Você está gastando *{comprometimento * 100:N0}%* do que ganha. Tente reduzir para abaixo de 50%.");
         else if (comprometimento <= 1.0m)
-            pontosAtencao.Add($"⚠️ Você gasta *quase tudo* que ganha ({comprometimento * 100:N0}%). Sobra muito pouco.");
+            pontosAtencao.Add($"Você gasta *quase tudo* que ganha ({comprometimento * 100:N0}%). Sobra muito pouco.");
         else
-            pontosAtencao.Add($"🚨 Você está gastando *mais do que ganha* ({comprometimento * 100:N0}%)! Urgente revisar os gastos.");
+            pontosAtencao.Add($"URGENTE: Você está gastando *mais do que ganha* ({comprometimento * 100:N0}%)! Revise os gastos imediatamente.");
 
         // 2. Volatilidade — linguagem clara
         if (volatilidade <= 0.1m)
@@ -224,7 +224,7 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
 
         // 4. Meses negativos
         if (mesesNeg == 0)
-            pontosPositivos.Add("Nos últimos 6 meses, você *sempre* fechou no positivo! 🎉");
+            pontosPositivos.Add("Nos últimos 6 meses, você *sempre* fechou no positivo!");
         else if (mesesNeg == 1)
             pontosAtencao.Add("Você fechou *1 mês* no vermelho nos últimos 6 meses. Fique atento.");
         else
@@ -240,35 +240,35 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
 
         // 6. Tendência
         if (tendencia <= 0)
-            pontosPositivos.Add("Seus gastos estão em queda ou estáveis — bom sinal! 📉");
+            pontosPositivos.Add("Seus gastos estão em queda ou estáveis — bom sinal.");
         else if (tendencia <= 0.1m)
             pontosAtencao.Add($"Seus gastos estão subindo *{tendencia * 100:N1}% por mês*. Fique de olho.");
         else
-            pontosAtencao.Add($"🚨 Seus gastos estão crescendo rápido (*{tendencia * 100:N1}% por mês*). Revise urgente!");
+            pontosAtencao.Add($"URGENTE: Seus gastos estão crescendo rápido (*{tendencia * 100:N1}% por mês*). Revisão urgente necessária.");
 
         // Montar mensagem final
         if (pontosPositivos.Any())
         {
-            resumo += "✅ *O que está indo bem:*\n";
+            resumo += "*O que está indo bem:*\n";
             foreach (var p in pontosPositivos)
                 resumo += $"  • {p}\n";
         }
 
         if (pontosAtencao.Any())
         {
-            resumo += $"\n🔍 *Pontos de atenção:*\n";
+            resumo += $"\n*Pontos de atenção:*\n";
             foreach (var p in pontosAtencao)
                 resumo += $"  • {p}\n";
         }
 
         if (scoreTotal >= 80)
-            resumo += "\n💚 Parabéns! Suas finanças estão saudáveis. Continue assim!";
+            resumo += "\nParabéns! Suas finanças estão saudáveis. Continue assim.";
         else if (scoreTotal >= 60)
-            resumo += "\n💛 Está no caminho certo! Com pequenos ajustes você chega no excelente.";
+            resumo += "\nVocê está no caminho certo. Com pequenos ajustes, pode alcançar o nível excelente.";
         else if (scoreTotal >= 40)
-            resumo += "\n🧡 Atenção com os gastos. Revise os pontos acima para melhorar seu score.";
+            resumo += "\nAtenção com os gastos. Revise os pontos acima para melhorar seu score.";
         else
-            resumo += "\n❤️ Situação delicada. Foque em gastar menos do que ganha e quitar dívidas.";
+            resumo += "\nSituação delicada. Priorize gastar menos do que ganha e quitar dívidas.";
 
         return new ScoreSaudeFinanceiraDto
         {
@@ -333,8 +333,6 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
         var preenchidos = (int)Math.Round(score / 100m * totalBlocos);
         preenchidos = Math.Clamp(preenchidos, 0, totalBlocos);
 
-        var corBloco = score >= 60 ? "🟩" : score >= 40 ? "🟨" : "🟥";
-        return string.Concat(Enumerable.Repeat(corBloco, preenchidos))
-             + string.Concat(Enumerable.Repeat("⬜", totalBlocos - preenchidos));
+        return "[" + new string('#', preenchidos) + new string('.', totalBlocos - preenchidos) + "]";
     }
 }

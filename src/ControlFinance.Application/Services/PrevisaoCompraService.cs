@@ -20,6 +20,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
     private readonly IParcelaRepository _parcelaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
     private readonly ILancamentoRepository _lancamentoRepo;
+    private readonly IUsuarioRepository _usuarioRepo;
     private readonly IEventoSazonalService _eventoSazonalService;
     private readonly IScoreSaudeFinanceiraService _scoreService;
     private readonly IImpactoMetaService _impactoMetaService;
@@ -34,6 +35,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         IParcelaRepository parcelaRepo,
         ICartaoCreditoRepository cartaoRepo,
         ILancamentoRepository lancamentoRepo,
+        IUsuarioRepository usuarioRepo,
         IEventoSazonalService eventoSazonalService,
         IScoreSaudeFinanceiraService scoreService,
         IImpactoMetaService impactoMetaService,
@@ -45,6 +47,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         _parcelaRepo = parcelaRepo;
         _cartaoRepo = cartaoRepo;
         _lancamentoRepo = lancamentoRepo;
+        _usuarioRepo = usuarioRepo;
         _eventoSazonalService = eventoSazonalService;
         _scoreService = scoreService;
         _impactoMetaService = impactoMetaService;
@@ -64,9 +67,12 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         var formaPag = ParseFormaPagamento(request.FormaPagamento);
         var parcelas = request.NumeroParcelas < 1 ? 1 : request.NumeroParcelas;
 
+        // === Renda efetiva: max(RendaMensal informada, ReceitaMensalMedia calculada) ===
+        var receitaEfetiva = await ObterReceitaEfetivaAsync(usuarioId, perfil.ReceitaMensalMedia);
+
         // Calcular projeção mês a mês
         var mesesProjetados = await CalcularProjecaoMensalAsync(
-            usuarioId, perfil, request.Valor, formaPag, parcelas, dataPrevista, request.CartaoCreditoId);
+            usuarioId, perfil, receitaEfetiva, request.Valor, formaPag, parcelas, dataPrevista, request.CartaoCreditoId);
 
         // Resultados globais
         var menorSaldo = mesesProjetados.Min(m => m.SaldoComCompra);
@@ -74,9 +80,9 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         var folgaMedia = mesesProjetados.Average(m => m.SaldoComCompra);
 
         // Classificação de risco (com volatilidade e confiança)
-        var risco = ClassificarRisco(menorSaldo, perfil.ReceitaMensalMedia,
+        var risco = ClassificarRisco(menorSaldo, receitaEfetiva,
             perfil.VolatilidadeGastos, perfil.Confianca);
-        var recomendacao = GerarRecomendacao(risco, parcelas, request.Valor, perfil);
+        var recomendacao = GerarRecomendacao(risco, parcelas, request.Valor, receitaEfetiva);
 
         // Persistir simulação
         var simulacao = new SimulacaoCompra
@@ -116,21 +122,21 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         if (formaPag == FormaPagamento.Credito && parcelas > 1)
         {
             cenarios = await GerarCenariosAlternativosAsync(
-                usuarioId, perfil, request.Valor, request.CartaoCreditoId, dataPrevista);
+                usuarioId, perfil, receitaEfetiva, request.Valor, request.CartaoCreditoId, dataPrevista);
         }
 
         // === Camadas avançadas ===
 
         // 4-level risk classification
-        var classificacaoRisco = ClassificarRisco4Niveis(menorSaldo, perfil.ReceitaMensalMedia,
+        var classificacaoRisco = ClassificarRisco4Niveis(menorSaldo, receitaEfetiva,
             perfil.VolatilidadeGastos, perfil.Confianca);
 
         // Probabilidade de mês negativo
         var mesesNegativos = mesesProjetados.Count(m => m.SaldoComCompra < 0);
         var probabilidadeMesNegativo = Math.Round((decimal)mesesNegativos / mesesProjetados.Count * 100, 1);
 
-        // Impacto na reserva mínima (20% da receita média)
-        var reservaMinima = perfil.ReceitaMensalMedia * 0.20m;
+        // Impacto na reserva mínima (20% da receita efetiva)
+        var reservaMinima = receitaEfetiva * 0.20m;
         var impactoReservaMinima = Math.Round(menorSaldo - reservaMinima, 2);
 
         // Score de saúde financeira
@@ -253,8 +259,27 @@ public class PrevisaoCompraService : IPrevisaoCompraService
 
     // ======================= Métodos Privados =======================
 
+    /// <summary>
+    /// Retorna a receita efetiva para projeções: max(RendaMensal informada, ReceitaMensalMedia calculada).
+    /// Se o usuário informou RendaMensal no perfil, usa como piso de segurança.
+    /// </summary>
+    private async Task<decimal> ObterReceitaEfetivaAsync(int usuarioId, decimal receitaMensalMedia)
+    {
+        var usuario = await _usuarioRepo.ObterPorIdAsync(usuarioId);
+        if (usuario?.RendaMensal is > 0)
+        {
+            var efetiva = Math.Max(usuario.RendaMensal.Value, receitaMensalMedia);
+            _logger.LogInformation(
+                "Projeção usuário {UserId}: RendaMensal={Renda}, ReceitaMedia={Media}, receitaEfetiva={Efetiva}",
+                usuarioId, usuario.RendaMensal, receitaMensalMedia, efetiva);
+            return efetiva;
+        }
+
+        return receitaMensalMedia;
+    }
+
     private async Task<List<SimulacaoMesDto>> CalcularProjecaoMensalAsync(
-        int usuarioId, PerfilFinanceiro perfil, decimal valorCompra,
+        int usuarioId, PerfilFinanceiro perfil, decimal receitaEfetiva, decimal valorCompra,
         FormaPagamento formaPag, int parcelas, DateTime dataPrevista, int? cartaoId)
     {
         var resultado = new List<SimulacaoMesDto>();
@@ -272,8 +297,8 @@ public class PrevisaoCompraService : IPrevisaoCompraService
             var mes = mesInicio.AddMonths(i);
             var mesStr = mes.ToString("MM/yyyy");
 
-            // Receita prevista = média mensal
-            var receitaPrevista = perfil.ReceitaMensalMedia;
+            // Receita prevista = maior entre renda informada e média calculada
+            var receitaPrevista = receitaEfetiva;
 
             // Gasto previsto = média de gastos (fixos + variáveis)
             var gastoPrevisto = perfil.GastoMensalMedio;
@@ -421,21 +446,21 @@ public class PrevisaoCompraService : IPrevisaoCompraService
     }
 
     private static RecomendacaoCompra GerarRecomendacao(
-        NivelRisco risco, int parcelas, decimal valor, PerfilFinanceiro perfil)
+        NivelRisco risco, int parcelas, decimal valor, decimal receitaEfetiva)
     {
         return risco switch
         {
             NivelRisco.Baixo => RecomendacaoCompra.Seguir,
             NivelRisco.Medio when parcelas > 1 => RecomendacaoCompra.AjustarParcelas,
             NivelRisco.Medio => RecomendacaoCompra.Adiar,
-            NivelRisco.Alto when valor > perfil.ReceitaMensalMedia => RecomendacaoCompra.ReduzirValor,
+            NivelRisco.Alto when valor > receitaEfetiva => RecomendacaoCompra.ReduzirValor,
             NivelRisco.Alto => RecomendacaoCompra.Adiar,
             _ => RecomendacaoCompra.Adiar
         };
     }
 
     private async Task<List<CenarioAlternativoDto>> GerarCenariosAlternativosAsync(
-        int usuarioId, PerfilFinanceiro perfil, decimal valor, int? cartaoId, DateTime dataPrevista)
+        int usuarioId, PerfilFinanceiro perfil, decimal receitaEfetiva, decimal valor, int? cartaoId, DateTime dataPrevista)
     {
         var cenarios = new List<CenarioAlternativoDto>();
         var opcoesParcelasPossiveis = new[] { 2, 3, 4, 6, 8, 10, 12 };
@@ -460,7 +485,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
                 compromissos.TryGetValue(mesStr, out var comp);
                 impactoPorMes.TryGetValue(mesStr, out var impacto);
 
-                var saldo = perfil.ReceitaMensalMedia - perfil.GastoMensalMedio - comp - impacto;
+                var saldo = receitaEfetiva - perfil.GastoMensalMedio - comp - impacto;
 
                 if (saldo < menorSaldo)
                 {
@@ -469,7 +494,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
                 }
             }
 
-            var risco = ClassificarRisco(menorSaldo, perfil.ReceitaMensalMedia,
+            var risco = ClassificarRisco(menorSaldo, receitaEfetiva,
                 perfil.VolatilidadeGastos, perfil.Confianca);
 
             cenarios.Add(new CenarioAlternativoDto
@@ -537,10 +562,10 @@ public class PrevisaoCompraService : IPrevisaoCompraService
     {
         return rec switch
         {
-            RecomendacaoCompra.Seguir => "✅ Pode seguir com a compra!",
-            RecomendacaoCompra.AjustarParcelas => "⚠️ Considere ajustar o parcelamento",
-            RecomendacaoCompra.Adiar => "🟡 Melhor adiar se possível",
-            RecomendacaoCompra.ReduzirValor => "🔴 Valor muito alto — considere uma opção mais barata",
+            RecomendacaoCompra.Seguir => "Pode seguir com a compra.",
+            RecomendacaoCompra.AjustarParcelas => "Considere ajustar o parcelamento.",
+            RecomendacaoCompra.Adiar => "Recomendável adiar se possível.",
+            RecomendacaoCompra.ReduzirValor => "Valor elevado — considere uma opção mais acessível.",
             _ => "Avaliar"
         };
     }
@@ -556,50 +581,50 @@ public class PrevisaoCompraService : IPrevisaoCompraService
     {
         var riscoEmoji = classificacaoRisco switch
         {
-            "Seguro" => "🟢 Seguro",
-            "Moderado" => "🟡 Moderado",
-            "Arriscado" => "🟠 Arriscado",
-            "Crítico" => "🔴 Crítico",
-            _ => "❓"
+            "Seguro" => "Seguro",
+            "Moderado" => "Moderado",
+            "Arriscado" => "Arriscado",
+            "Crítico" => "Crítico",
+            _ => "Indefinido"
         };
 
         var confiancaEmoji = confianca switch
         {
-            NivelConfianca.Baixa => $"⚠️ Baixa ({perfil.DiasDeHistorico} dias de histórico)",
-            NivelConfianca.Media => $"📊 Média ({perfil.DiasDeHistorico} dias de histórico)",
-            NivelConfianca.Alta => $"✅ Alta ({perfil.DiasDeHistorico} dias de histórico)",
-            _ => "❓"
+            NivelConfianca.Baixa => $"Baixa ({perfil.DiasDeHistorico} dias de histórico)",
+            NivelConfianca.Media => $"Média ({perfil.DiasDeHistorico} dias de histórico)",
+            NivelConfianca.Alta => $"Alta ({perfil.DiasDeHistorico} dias de histórico)",
+            _ => "Indefinida"
         };
 
         var parcelaInfo = request.NumeroParcelas > 1
             ? $" em {request.NumeroParcelas}x de R$ {request.Valor / request.NumeroParcelas:N2}"
             : " à vista";
 
-        var texto = $"📊 *Análise de Compra*\n\n" +
-                   $"🛒 {request.Descricao}\n" +
-                   $"💵 R$ {request.Valor:N2}{parcelaInfo}\n\n" +
-                   $"📉 Pior mês projetado: *{piorMes}* (saldo de R$ {menorSaldo:N2})\n" +
-                   $"📈 Folga média mensal: R$ {folgaMedia:N2}\n" +
-                   $"⚡ Classificação: *{riscoEmoji}*\n" +
-                   $"🎯 Confiança: {confiancaEmoji}\n";
+        var texto = $"*Análise de Compra*\n\n" +
+                   $"Item: {request.Descricao}\n" +
+                   $"Valor: R$ {request.Valor:N2}{parcelaInfo}\n\n" +
+                   $"Pior mês projetado: *{piorMes}* (saldo de R$ {menorSaldo:N2})\n" +
+                   $"Folga média mensal: R$ {folgaMedia:N2}\n" +
+                   $"Classificação: *{riscoEmoji}*\n" +
+                   $"Confiança: {confiancaEmoji}\n";
 
         // Score de saúde
         if (scoreSaude > 0)
-            texto += $"🏥 Score saúde financeira: {scoreSaude:N0}/100\n";
+            texto += $"Score de saúde financeira: {scoreSaude:N0}/100\n";
 
         // Probabilidade de mês negativo
         if (probabilidadeMesNegativo > 0)
-            texto += $"📉 Probabilidade mês negativo: {probabilidadeMesNegativo:N1}%\n";
+            texto += $"Probabilidade de mês negativo: {probabilidadeMesNegativo:N1}%\n";
 
-        texto += $"\n💡 *{FormatarRecomendacao(recomendacao)}*";
+        texto += $"\n*{FormatarRecomendacao(recomendacao)}*";
 
         // Eventos sazonais no horizonte
         if (eventosSazonais?.Any() == true)
         {
-            texto += "\n\n📅 *Eventos sazonais no período:*\n";
+            texto += "\n\n*Eventos sazonais no período:*\n";
             foreach (var e in eventosSazonais.Take(5))
             {
-                var tipo = e.EhReceita ? "📈" : "📉";
+                var tipo = e.EhReceita ? "+" : "-";
                 texto += $"  {tipo} {e.Descricao} — {NomeMes(e.MesOcorrencia)} — R$ {e.ValorMedio:N2}\n";
             }
         }
@@ -607,7 +632,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         // Impacto em metas
         if (impactoMetas?.Any(m => m.MesesAtraso > 0) == true)
         {
-            texto += "\n🎯 *Impacto nas metas:*\n";
+            texto += "\n*Impacto nas metas:*\n";
             foreach (var m in impactoMetas.Where(m => m.MesesAtraso > 0))
             {
                 texto += $"  {m.Descricao}\n";
@@ -616,7 +641,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
 
         if (confianca == NivelConfianca.Baixa)
         {
-            texto += "\n\n⚠️ _Previsão preliminar — com mais dados a precisão melhora._";
+            texto += "\n\n_Previsão preliminar — com mais dados a precisão melhora._";
         }
 
         // Adicionar cenários alternativos se existirem
@@ -625,7 +650,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
             var melhorCenario = cenarios.OrderByDescending(c => c.MenorSaldoProjetado).First();
             if (melhorCenario.NumeroParcelas != request.NumeroParcelas)
             {
-                texto += $"\n\n💡 *Opção melhor:* {melhorCenario.NumeroParcelas}x de R$ {melhorCenario.ValorParcela:N2}" +
+                texto += $"\n\n*Opção mais favorável:* {melhorCenario.NumeroParcelas}x de R$ {melhorCenario.ValorParcela:N2}" +
                          $" (risco {melhorCenario.Risco}, saldo mínimo R$ {melhorCenario.MenorSaldoProjetado:N2})";
             }
         }

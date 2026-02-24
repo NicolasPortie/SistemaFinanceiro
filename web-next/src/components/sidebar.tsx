@@ -1,15 +1,15 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { useAdminMode } from "@/contexts/admin-context";
 import { cn } from "@/lib/utils";
-import { getInitials } from "@/lib/format";
 import {
   LayoutDashboard,
   Receipt,
   CreditCard,
-  ShoppingCart,
+  Landmark,
   Gauge,
   Target,
   User,
@@ -18,17 +18,17 @@ import {
   X,
   Moon,
   Sun,
-  TrendingUp,
   CalendarClock,
   Brain,
+  Wallet,
+  Bell,
   Shield,
   Users,
   KeyRound,
-  Lock,
+  ShieldAlert,
+  ArrowLeftRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import {
   Tooltip,
@@ -37,252 +37,405 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
-const navItems = [
+const userNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/lancamentos", label: "Lançamentos", icon: Receipt },
   { href: "/cartoes", label: "Cartões", icon: CreditCard },
+  { href: "/contas-bancarias", label: "Contas", icon: Landmark },
   { href: "/contas-fixas", label: "Contas Fixas", icon: CalendarClock },
-  { href: "/simulacao", label: "Simulação", icon: ShoppingCart },
-  { href: "/decisao", label: "Consultor", icon: Brain },
+  { href: "/simulacao", label: "Consultor IA", icon: Brain },
   { href: "/limites", label: "Limites", icon: Gauge },
   { href: "/metas", label: "Metas", icon: Target },
   { href: "/perfil", label: "Perfil", icon: User },
 ];
 
 const adminNavItems = [
-  { href: "/admin", label: "Painel Admin", icon: Shield },
+  { href: "/admin", label: "Painel", icon: LayoutDashboard, exact: true },
   { href: "/admin/usuarios", label: "Usuários", icon: Users },
   { href: "/admin/convites", label: "Convites", icon: KeyRound },
-  { href: "/admin/seguranca", label: "Segurança", icon: Lock },
+  { href: "/admin/seguranca", label: "Segurança", icon: ShieldAlert },
 ];
 
-function NavLink({
-  href,
-  label,
-  icon: Icon,
-  isActive,
-  onClick,
-}: {
-  href: string;
-  label: string;
-  icon: React.ElementType;
-  isActive: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <Tooltip delayDuration={0}>
-      <TooltipTrigger asChild>
-        <Link
-          href={href}
-          onClick={onClick}
-          className={cn(
-            "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] font-medium transition-all duration-300",
-            isActive
-              ? "bg-primary/6 text-primary dark:bg-primary/10 shadow-sm shadow-primary/3"
-              : "text-muted-foreground/65 hover:bg-muted/50 hover:text-foreground"
-          )}
-        >
-          {isActive && (
-            <motion.div
-              layoutId="sidebar-indicator"
-              className="absolute left-0 top-1/2 h-6 w-0.75 -translate-y-1/2 rounded-r-full bg-linear-to-b from-primary to-primary/70"
-              style={{ boxShadow: "0 0 12px oklch(0.7 0.19 160 / 0.35), 0 0 4px oklch(0.7 0.19 160 / 0.15)" }}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            />
-          )}
-          <Icon
-            className={cn(
-              "h-4.5 w-4.5 shrink-0 transition-all duration-300",
-              isActive ? "scale-105" : "group-hover:scale-105 group-hover:text-foreground/80"
-            )}
-          />
-          <span className="truncate">{label}</span>
-          {isActive && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-primary animate-pulse-subtle" />
-          )}
-        </Link>
-      </TooltipTrigger>
-      <TooltipContent side="right" className="lg:hidden">
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+export function Sidebar() {
   const pathname = usePathname();
-  const { usuario, logout, isAdmin } = useAuth();
+  const router = useRouter();
+  const { logout, isAdmin } = useAuth();
+  const { isAdminMode } = useAdminMode();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const inAdmin = isAdmin && isAdminMode;
+  const navItems = inAdmin ? adminNavItems : userNavItems;
+  const accent = inAdmin ? "amber" : "emerald";
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    [...userNavItems, ...adminNavItems].forEach((item) =>
+      router.prefetch(item.href),
+    );
+  }, [router]);
 
-  return (
-    <div className="flex h-full flex-col">
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-7">
-        <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl gradient-primary shadow-lg shadow-emerald-500/25 transition-transform duration-300 hover:scale-105">
-          <TrendingUp className="h-5 w-5 text-white" />
-          <div className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-card">
-            <div className="h-full w-full rounded-full bg-emerald-400 animate-pulse-subtle" />
-          </div>
-        </div>
-        <div>
-          <h1 className="text-lg font-extrabold tracking-tight">
-            Control<span className="text-gradient">Finance</span>
-          </h1>
-          <p className="text-[10px] text-muted-foreground/40 -mt-0.5 font-medium tracking-wide">Controle financeiro</p>
-        </div>
-      </div>
-
-      <div className="mx-5 divider-premium" />
-
-      {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 px-3 py-4 overflow-y-auto">
-        <TooltipProvider delayDuration={0}>
-          {navItems.map((item) => (
-            <NavLink
-              key={item.href}
-              {...item}
-              isActive={pathname === item.href}
-              onClick={onNavigate}
-            />
-          ))}
-
-          {isAdmin && (
-            <>
-              <div className="mx-2 my-3 divider-premium" />
-              <p className="px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-500/80 flex items-center gap-1.5">
-                <Shield className="h-3 w-3" />
-                Administração
-              </p>
-              {adminNavItems.map((item) => (
-                <NavLink
-                  key={item.href}
-                  {...item}
-                  isActive={pathname === item.href}
-                  onClick={onNavigate}
-                />
-              ))}
-            </>
-          )}
-        </TooltipProvider>
-      </nav>
-
-      <div className="mx-5 divider-premium" />
-
-      {/* Footer */}
-      <div className="p-4 space-y-3">
-        {/* Theme toggle */}
-        <div className="flex items-center justify-between rounded-xl bg-muted/25 px-4 py-3 border border-border/15 transition-colors hover:bg-muted/40">
-          <div className="flex items-center gap-2.5">
-            {mounted && theme === "dark" ? (
-              <Moon className="h-4 w-4 text-primary animate-in fade-in zoom-in duration-300" />
-            ) : (
-              <Sun className="h-4 w-4 text-amber-500 animate-in fade-in zoom-in duration-300" />
-            )}
-            <span className="text-xs font-semibold text-muted-foreground/80">
-              Modo Escuro
-            </span>
-          </div>
-          {mounted && (
-            <Switch
-              checked={theme === "dark"}
-              onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
-              aria-label="Alternar modo escuro"
-              className="data-[state=checked]:bg-primary"
-            />
-          )}
-        </div>
-
-        {/* User card */}
-        {usuario && (
-          <div className="relative overflow-hidden rounded-2xl p-3.5 border border-primary/6 bg-linear-to-br from-primary/3 via-primary/1 to-transparent">
-            {/* Decorative corner */}
-            <div className="absolute -right-4 -top-4 h-18 w-18 rounded-full bg-primary/3 blur-md" />
-
-            <div className="relative flex items-center gap-3">
-              <Avatar className="h-10 w-10 border-2 border-primary/12 shadow-lg shadow-primary/4 transition-transform duration-300 hover:scale-105">
-                <AvatarFallback className="bg-linear-to-br from-primary/8 to-primary/18 text-primary text-xs font-extrabold">
-                  {getInitials(usuario.nome)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate">{usuario.nome}</p>
-                <p className="text-[10px] text-muted-foreground/50 truncate">
-                  {usuario.email}
-                </p>
-              </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 shrink-0 transition-all duration-300"
-                      onClick={logout}
-                      aria-label="Sair"
-                    >
-                      <LogOut className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Sair</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-1 text-center">
-          <p className="text-[10px] text-muted-foreground/30 font-mono tracking-widest">
-            v1.16.0
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function Sidebar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  /* ── helper: is this nav item active? ── */
+  const isItemActive = (item: (typeof navItems)[number]) => {
+    if ("exact" in item && item.exact) return pathname === item.href;
+    return pathname === item.href || pathname.startsWith(item.href + "/");
+  };
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:w-65 lg:flex-col lg:fixed lg:inset-y-0 lg:z-50 border-r border-border/15 bg-card/85 backdrop-blur-2xl backdrop-saturate-150">
-        <SidebarContent />
+      {/* ═══ Desktop Icon Sidebar ═══ */}
+      <aside
+        className={cn(
+          "hidden lg:flex fixed left-0 top-0 bottom-0 w-20 sidebar-glass z-40 flex-col items-center py-8 gap-8",
+          inAdmin && "border-r border-amber-500/15",
+        )}
+      >
+        {/* Logo — green (user) or amber (admin) */}
+        <Link
+          href={inAdmin ? "/admin" : "/dashboard"}
+          className={cn(
+            "size-10 rounded-xl flex items-center justify-center shadow-lg shrink-0 hover:scale-105 transition-transform",
+            inAdmin
+              ? "bg-amber-500 shadow-amber-500/20"
+              : "bg-emerald-600 shadow-emerald-600/20",
+          )}
+        >
+          {inAdmin ? (
+            <Shield className="h-5 w-5 text-black" />
+          ) : (
+            <Wallet className="h-5 w-5 text-white" />
+          )}
+        </Link>
+
+        {/* Navigation */}
+        <TooltipProvider delayDuration={0}>
+          <AnimatePresence mode="wait">
+            <motion.nav
+              key={inAdmin ? "admin" : "user"}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 8 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col gap-2 flex-1"
+            >
+              {navItems.map((item) => {
+                const active = isItemActive(item);
+                return (
+                  <Tooltip key={item.href}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "relative size-12 rounded-2xl flex items-center justify-center transition-colors duration-200",
+                          active
+                            ? inAdmin
+                              ? "text-black"
+                              : "text-white"
+                            : inAdmin
+                              ? "text-slate-500 hover:bg-amber-500/10 hover:text-amber-400"
+                              : "text-slate-400 dark:text-slate-500 hover:bg-white/80 dark:hover:bg-white/10 hover:text-emerald-600 dark:hover:text-emerald-600",
+                        )}
+                      >
+                        {active && (
+                          <motion.div
+                            layoutId={
+                              inAdmin
+                                ? "sidebar-admin-pill"
+                                : "sidebar-user-pill"
+                            }
+                            className={cn(
+                              "absolute inset-0 rounded-2xl shadow-lg",
+                              inAdmin
+                                ? "bg-amber-500 shadow-amber-500/30"
+                                : "bg-emerald-600 shadow-emerald-600/20",
+                            )}
+                            transition={{
+                              type: "spring",
+                              stiffness: 350,
+                              damping: 30,
+                            }}
+                          />
+                        )}
+                        <item.icon className="h-5 w-5 relative z-10" />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="right"
+                      sideOffset={8}
+                      className="text-xs font-bold"
+                    >
+                      {item.label}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </motion.nav>
+          </AnimatePresence>
+
+          {/* ── Profile switch button ── */}
+          {isAdmin && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href={inAdmin ? "/dashboard" : "/admin"}
+                  className={cn(
+                    "relative size-12 rounded-2xl flex items-center justify-center transition-all duration-200 border-2 border-dashed",
+                    inAdmin
+                      ? "text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+                      : "text-amber-500 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50",
+                  )}
+                >
+                  <ArrowLeftRight className="h-4 w-4" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent
+                side="right"
+                sideOffset={8}
+                className="text-xs font-bold"
+              >
+                {inAdmin ? "Voltar ao App" : "Administração"}
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Bottom actions */}
+          <div className="flex flex-col gap-2 mt-auto">
+            {/* Theme toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() =>
+                    mounted && setTheme(theme === "dark" ? "light" : "dark")
+                  }
+                  className={cn(
+                    "size-12 rounded-2xl flex items-center justify-center transition-all duration-300 cursor-pointer",
+                    inAdmin
+                      ? "text-slate-500 hover:bg-amber-500/10 hover:text-amber-400"
+                      : "text-slate-400 dark:text-slate-500 hover:bg-white/80 dark:hover:bg-white/10 hover:text-emerald-600",
+                  )}
+                >
+                  {mounted && theme === "dark" ? (
+                    <Sun className="h-5 w-5" />
+                  ) : (
+                    <Moon className="h-5 w-5" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="right"
+                sideOffset={8}
+                className="text-xs font-bold"
+              >
+                {mounted && theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Logout */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={logout}
+                  className="size-12 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-300 cursor-pointer"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="right"
+                sideOffset={8}
+                className="text-xs font-bold"
+              >
+                Sair
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       </aside>
 
-      {/* Mobile header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex h-14 items-center gap-3 border-b border-border/15 glass-premium px-4">
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}>
-              {mobileOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
+      {/* ═══ Mobile Header + Sheet ═══ */}
+      <header
+        className={cn(
+          "lg:hidden fixed top-0 left-0 right-0 z-50 h-14 px-4 flex items-center justify-between backdrop-blur-xl",
+          inAdmin
+            ? "bg-white dark:bg-[#161B22] border-b-2 border-amber-500/60"
+            : "bg-white dark:bg-[#161B22] border-b border-slate-200/60 dark:border-white/5",
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-xl"
+                aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+              >
+                {mobileOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-72 p-0 border-r-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl"
+            >
+              <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+              <div className="flex h-full flex-col">
+                {/* Logo */}
+                <div
+                  className={cn(
+                    "flex items-center gap-3 px-5 py-6 border-b",
+                    inAdmin
+                      ? "border-amber-500/20"
+                      : "border-slate-100 dark:border-slate-800",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "size-10 rounded-xl flex items-center justify-center shadow-lg",
+                      inAdmin
+                        ? "bg-amber-500 shadow-amber-500/20"
+                        : "bg-emerald-600 shadow-emerald-600/20",
+                    )}
+                  >
+                    {inAdmin ? (
+                      <Shield className="h-5 w-5 text-black" />
+                    ) : (
+                      <Wallet className="h-5 w-5 text-white" />
+                    )}
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold tracking-tight">
+                      {inAdmin ? "Admin Panel" : "Control Finance"}
+                    </h1>
+                    {inAdmin && (
+                      <p className="text-xs text-amber-500 font-semibold">
+                        Administração
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Nav */}
+                <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                  {navItems.map((item) => {
+                    const active = isItemActive(item);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
+                          active
+                            ? inAdmin
+                              ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20"
+                              : "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20"
+                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800",
+                        )}
+                      >
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+
+                  {/* Switch profile button */}
+                  {isAdmin && (
+                    <>
+                      <div
+                        className={cn(
+                          "h-px my-2 mx-1",
+                          inAdmin ? "bg-emerald-500/20" : "bg-amber-500/20",
+                        )}
+                      />
+                      <Link
+                        href={inAdmin ? "/dashboard" : "/admin"}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 border border-dashed",
+                          inAdmin
+                            ? "text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+                            : "text-amber-500 border-amber-500/30 hover:bg-amber-500/10",
+                        )}
+                      >
+                        <ArrowLeftRight className="h-5 w-5 shrink-0" />
+                        {inAdmin ? "Voltar ao App" : "Administração"}
+                      </Link>
+                    </>
+                  )}
+                </nav>
+
+                {/* Bottom */}
+                <div className="p-4 space-y-1 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    onClick={() => {
+                      if (mounted)
+                        setTheme(theme === "dark" ? "light" : "dark");
+                    }}
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 w-full transition-all cursor-pointer"
+                  >
+                    {mounted && theme === "dark" ? (
+                      <Sun className="h-5 w-5" />
+                    ) : (
+                      <Moon className="h-5 w-5" />
+                    )}
+                    {mounted && theme === "dark"
+                      ? "Modo Claro"
+                      : "Modo Escuro"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      logout();
+                    }}
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 w-full transition-all cursor-pointer"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    Sair
+                  </button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                "size-8 rounded-lg flex items-center justify-center shadow-md",
+                inAdmin
+                  ? "bg-amber-500 shadow-amber-500/20"
+                  : "bg-emerald-600 shadow-emerald-600/20",
               )}
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0 border-r-0 bg-card/95 backdrop-blur-2xl">
-            <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
-            <SidebarContent onNavigate={() => setMobileOpen(false)} />
-          </SheetContent>
-        </Sheet>
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl gradient-primary shadow-md shadow-emerald-500/20">
-            <TrendingUp className="h-4 w-4 text-white" />
+            >
+              {inAdmin ? (
+                <Shield className="h-4 w-4 text-black" />
+              ) : (
+                <Wallet className="h-4 w-4 text-white" />
+              )}
+            </div>
+            <span className="text-sm font-bold tracking-tight">
+              {inAdmin ? "Admin Panel" : "Control Finance"}
+            </span>
+            {inAdmin && (
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-500">
+                Admin
+              </span>
+            )}
           </div>
-          <span className="text-sm font-extrabold tracking-tight">
-            Control<span className="text-gradient">Finance</span>
-          </span>
         </div>
+
+        <button className="relative p-2 text-slate-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-white/10 rounded-full transition-colors cursor-pointer">
+          <Bell className="h-5 w-5" />
+          <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border border-white dark:border-slate-900" />
+        </button>
       </header>
     </>
   );

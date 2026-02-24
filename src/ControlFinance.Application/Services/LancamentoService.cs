@@ -88,6 +88,7 @@ public class LancamentoService : ILancamentoService
             UsuarioId = usuarioId,
             CategoriaId = categoria.Id,
             Categoria = categoria,
+            ContaBancariaId = dto.ContaBancariaId,
             CriadoEm = DateTime.UtcNow
         };
 

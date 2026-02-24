@@ -1,5 +1,6 @@
 using System.Globalization;
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
@@ -15,15 +16,23 @@ public class LembretesController : BaseAuthController
 {
     private readonly ILembretePagamentoRepository _repo;
     private readonly ICategoriaRepository _categoriaRepo;
+    private readonly ILancamentoService _lancamentoService;
+    private readonly IPagamentoCicloRepository _pagamentoCicloRepo;
     private static readonly TimeZoneInfo BrasiliaTimeZone =
         TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows()
             ? "E. South America Standard Time"
             : "America/Sao_Paulo");
 
-    public LembretesController(ILembretePagamentoRepository repo, ICategoriaRepository categoriaRepo)
+    public LembretesController(
+        ILembretePagamentoRepository repo,
+        ICategoriaRepository categoriaRepo,
+        ILancamentoService lancamentoService,
+        IPagamentoCicloRepository pagamentoCicloRepo)
     {
         _repo = repo;
         _categoriaRepo = categoriaRepo;
+        _lancamentoService = lancamentoService;
+        _pagamentoCicloRepo = pagamentoCicloRepo;
     }
 
     /// <summary>
@@ -33,6 +42,12 @@ public class LembretesController : BaseAuthController
     public async Task<IActionResult> Listar([FromQuery] bool apenasAtivos = true)
     {
         var lembretes = await _repo.ObterPorUsuarioAsync(UsuarioId, apenasAtivos);
+        var hoje = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BrasiliaTimeZone).Date;
+        var periodKeyAtual = $"{hoje:yyyy-MM}";
+        var lembreteIds = lembretes.Select(l => l.Id).ToList();
+        var idsPagos = lembreteIds.Count > 0
+            ? await _pagamentoCicloRepo.ObterIdsComCiclosPagoAsync(lembreteIds, periodKeyAtual)
+            : new HashSet<int>();
         var resultado = lembretes.Select(l => new
         {
             l.Id,
@@ -55,6 +70,7 @@ public class LembretesController : BaseAuthController
             HorarioFimLembrete = l.HorarioFimLembrete.ToString(@"hh\:mm"),
             CriadoEm = l.CriadoEm.ToString("o"),
             AtualizadoEm = l.AtualizadoEm.ToString("o"),
+            PagoCicloAtual = idsPagos.Contains(l.Id),
         });
         return Ok(resultado);
     }
@@ -331,4 +347,82 @@ public class LembretesController : BaseAuthController
             return data;
         return null;
     }
+
+    /// <summary>
+    /// Registra o pagamento de uma conta fixa no ciclo atual,
+    /// criando automaticamente um lançamento de saída.
+    /// </summary>
+    [HttpPost("{id}/pagar")]
+    public async Task<IActionResult> MarcarPago(int id, [FromBody] PagarContaFixaRequest request)
+    {
+        var lembrete = await _repo.ObterPorIdAsync(id);
+        if (lembrete == null || lembrete.UsuarioId != UsuarioId)
+            return NotFound(new { erro = "Lembrete não encontrado." });
+
+        if (lembrete.Ativo == false)
+            return BadRequest(new { erro = "Conta fixa está inativa." });
+
+        var hoje = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BrasiliaTimeZone).Date;
+        var periodKey = !string.IsNullOrWhiteSpace(request.PeriodKey)
+            ? request.PeriodKey
+            : $"{hoje:yyyy-MM}";
+
+        var jaPagei = await _pagamentoCicloRepo.JaPagouCicloAsync(id, periodKey);
+        if (jaPagei)
+            return Conflict(new { erro = "Esta conta já foi registrada como paga para este período." });
+
+        var valorPago = request.ValorPago ?? lembrete.Valor ?? 0m;
+        if (valorPago <= 0)
+            return BadRequest(new { erro = "Valor do pagamento deve ser maior que zero." });
+
+        var formaPgto = lembrete.FormaPagamento ?? FormaPagamento.PIX;
+        var categoriaNome = lembrete.Categoria?.Nome ?? "Outros";
+
+        DateTime? dataLancamento = null;
+        if (!string.IsNullOrWhiteSpace(request.DataPagamento) &&
+            DateTime.TryParseExact(request.DataPagamento, "yyyy-MM-dd",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var dataParsed))
+        {
+            dataLancamento = ConverterDataBrasiliaParaUtc(dataParsed);
+        }
+
+        var lancamento = await _lancamentoService.RegistrarAsync(UsuarioId, new RegistrarLancamentoDto
+        {
+            Valor = valorPago,
+            Descricao = lembrete.Descricao,
+            Data = dataLancamento,
+            Tipo = TipoLancamento.Gasto,
+            FormaPagamento = formaPgto,
+            Categoria = categoriaNome,
+            ContaBancariaId = request.ContaBancariaId,
+        });
+
+        var ciclo = await _pagamentoCicloRepo.CriarAsync(new PagamentoCiclo
+        {
+            LembretePagamentoId = id,
+            PeriodKey = periodKey,
+            Pago = true,
+            DataPagamento = DateTime.UtcNow,
+            ValorPago = valorPago,
+            CriadoEm = DateTime.UtcNow,
+        });
+
+        return Ok(new
+        {
+            ciclo.Id,
+            ciclo.PeriodKey,
+            ciclo.Pago,
+            DataPagamento = ciclo.DataPagamento?.ToString("o"),
+            ciclo.ValorPago,
+            LancamentoId = lancamento.Id,
+        });
+    }
+}
+
+public class PagarContaFixaRequest
+{
+    public decimal? ValorPago { get; set; }
+    public int? ContaBancariaId { get; set; }
+    public string? DataPagamento { get; set; } // "yyyy-MM-dd"
+    public string? PeriodKey { get; set; }     // "YYYY-MM", defaults to current month
 }

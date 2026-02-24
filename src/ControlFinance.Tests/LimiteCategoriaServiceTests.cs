@@ -83,7 +83,6 @@ public class LimiteCategoriaServiceTests
         var resultado = await _service.VerificarAlertaAsync(1, 10, 100m);
 
         Assert.NotNull(resultado);
-        Assert.Contains("🔴", resultado);
         Assert.Contains("Limite excedido", resultado);
     }
 
@@ -96,7 +95,6 @@ public class LimiteCategoriaServiceTests
         var resultado = await _service.VerificarAlertaAsync(1, 10, 100m);
 
         Assert.NotNull(resultado);
-        Assert.Contains("🟡", resultado);
         Assert.Contains("Quase no limite", resultado);
     }
 
@@ -109,7 +107,7 @@ public class LimiteCategoriaServiceTests
         var resultado = await _service.VerificarAlertaAsync(1, 10, 100m);
 
         Assert.NotNull(resultado);
-        Assert.Contains("📊", resultado);
+        Assert.Contains("% do limite", resultado);
     }
 
     [Fact]
@@ -213,7 +211,7 @@ public class LimiteCategoriaServiceTests
 
         var resultado = _service.FormatarLimitesBot(limites);
 
-        Assert.Contains("🔴", resultado);
+        Assert.Contains("[EXCEDIDO]", resultado);
         Assert.Contains("Alimentação", resultado);
         Assert.Contains("Estourou", resultado);
     }
@@ -235,7 +233,7 @@ public class LimiteCategoriaServiceTests
 
         var resultado = _service.FormatarLimitesBot(limites);
 
-        Assert.Contains("🟢", resultado);
+        Assert.Contains("[OK]", resultado);
         Assert.Contains("Tranquilo", resultado);
         Assert.Contains("controle", resultado);
     }
@@ -257,7 +255,7 @@ public class LimiteCategoriaServiceTests
 
         var resultado = _service.FormatarLimitesBot(limites);
 
-        Assert.Contains("🟡", resultado);
+        Assert.Contains("[CRÍTICO]", resultado);
         Assert.Contains("Quase no limite", resultado);
     }
 
@@ -278,7 +276,7 @@ public class LimiteCategoriaServiceTests
 
         var resultado = _service.FormatarLimitesBot(limites);
 
-        Assert.Contains("📊", resultado);
+        Assert.Contains("[ATENÇÃO]", resultado);
         Assert.Contains("Fique de olho", resultado);
     }
 

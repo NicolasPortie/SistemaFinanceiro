@@ -18,6 +18,7 @@ public class DecisaoGastoServiceTests
     private readonly Mock<IMetaFinanceiraRepository> _metaRepoMock;
     private readonly Mock<ICategoriaRepository> _categoriaRepoMock;
     private readonly Mock<IParcelaRepository> _parcelaRepoMock;
+    private readonly Mock<IUsuarioRepository> _usuarioRepoMock;
     private readonly Mock<IScoreSaudeFinanceiraService> _scoreServiceMock;
     private readonly Mock<IPerfilComportamentalService> _perfilComportamentalMock;
     private readonly Mock<IImpactoMetaService> _impactoMetaServiceMock;
@@ -34,6 +35,7 @@ public class DecisaoGastoServiceTests
         _metaRepoMock = new Mock<IMetaFinanceiraRepository>();
         _categoriaRepoMock = new Mock<ICategoriaRepository>();
         _parcelaRepoMock = new Mock<IParcelaRepository>();
+        _usuarioRepoMock = new Mock<IUsuarioRepository>();
         _scoreServiceMock = new Mock<IScoreSaudeFinanceiraService>();
         _perfilComportamentalMock = new Mock<IPerfilComportamentalService>();
         _impactoMetaServiceMock = new Mock<IImpactoMetaService>();
@@ -48,6 +50,7 @@ public class DecisaoGastoServiceTests
             _metaRepoMock.Object,
             _categoriaRepoMock.Object,
             _parcelaRepoMock.Object,
+            _usuarioRepoMock.Object,
             _scoreServiceMock.Object,
             _perfilComportamentalMock.Object,
             _impactoMetaServiceMock.Object,
@@ -398,7 +401,7 @@ public class DecisaoGastoServiceTests
         var resultado = await _service.AvaliarGastoRapidoAsync(1, 100m, "almoço", "Alimentação");
 
         Assert.NotNull(resultado.AlertaLimite);
-        Assert.Contains("🔴", resultado.AlertaLimite);
+        Assert.Contains("LIMITE EXCEDIDO", resultado.AlertaLimite);
     }
 
     [Fact]

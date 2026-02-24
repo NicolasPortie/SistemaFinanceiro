@@ -22,8 +22,6 @@ import {
   Timer,
   ShieldCheck,
   Gift,
-  Info,
-  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -32,7 +30,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -48,7 +45,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PageShell, PageHeader, ErrorState, CardSkeleton } from "@/components/shared/page-components";
 import { cn } from "@/lib/utils";
 
-// ── Helpers ────────────────────────────────
+// -- Helpers --------------------------------
 
 function formatDuration(dias: number | null): string {
   if (!dias) return "Permanente";
@@ -65,14 +62,6 @@ function formatDuration(dias: number | null): string {
   return `${dias} dia(s)`;
 }
 
-function formatHorasExpiracao(horas: number): string {
-  if (horas >= 24) {
-    const dias = Math.floor(horas / 24);
-    const horasRestantes = horas % 24;
-    return horasRestantes > 0 ? `${dias}d ${horasRestantes}h` : `${dias}d`;
-  }
-  return `${horas}h`;
-}
 
 const PRESETS_ACESSO = [
   { label: "7 dias", value: 7 },
@@ -91,7 +80,7 @@ const PRESETS_EXPIRACAO = [
   { label: "30 dias", value: 720 },
 ];
 
-// ── Main Component ─────────────────────────
+// -- Main Component -------------------------
 
 export default function AdminConvitesPage() {
   const queryClient = useQueryClient();
@@ -162,7 +151,7 @@ export default function AdminConvitesPage() {
   };
 
   const getStatus = (c: AdminCodigoConvite) => {
-    if (c.usado && !c.ilimitado) return { label: "Usado", color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20", icon: CheckCircle2 };
+    if (c.usado && !c.ilimitado) return { label: "Usado", color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: CheckCircle2 };
     if (c.expirado) return { label: "Expirado", color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20", icon: XCircle };
     if (c.usosRealizados > 0 && !c.usado) return { label: "Em uso", color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20", icon: Users };
     return { label: "Disponível", color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: Clock };
@@ -203,14 +192,14 @@ export default function AdminConvitesPage() {
       <div className="grid gap-3 grid-cols-3">
         {[
           { label: "Disponíveis", value: ativos.length, color: "text-emerald-500", bg: "bg-emerald-500/10", icon: Send },
-          { label: "Usados", value: usados.length, color: "text-blue-500", bg: "bg-blue-500/10", icon: CheckCircle2 },
+          { label: "Usados", value: usados.length, color: "text-emerald-500", bg: "bg-emerald-500/10", icon: CheckCircle2 },
           { label: "Expirados", value: expirados.length, color: "text-red-500", bg: "bg-red-500/10", icon: XCircle },
         ].map((item) => (
           <motion.div
             key={item.label}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="card-premium p-4 flex items-center gap-3"
+            className="glass-panel rounded-2xl p-4 flex items-center gap-3"
           >
             <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", item.bg)}>
               <item.icon className={cn("h-4.5 w-4.5", item.color)} />
@@ -225,7 +214,7 @@ export default function AdminConvitesPage() {
 
       {/* Codes List */}
       <div className="space-y-2.5">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence>
           {convites?.map((c, i) => {
             const status = getStatus(c);
             return (
@@ -235,7 +224,7 @@ export default function AdminConvitesPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ delay: i * 0.03 }}
-                className="card-premium p-4 group"
+                className="glass-panel rounded-2xl p-4 group"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0 space-y-2">
@@ -282,10 +271,10 @@ export default function AdminConvitesPage() {
                       </span>
 
                       {c.usado && c.usadoPorNome && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-blue-500/8 text-blue-600 dark:text-blue-400">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-emerald-500/8 text-emerald-600 dark:text-emerald-400">
                           <Users className="h-3 w-3" />
                           {c.usadoPorNome}
-                          {c.usadoEm && ` · ${formatDate(c.usadoEm)}`}
+                          {c.usadoEm && ` — ${formatDate(c.usadoEm)}`}
                         </span>
                       )}
                     </div>
@@ -323,7 +312,7 @@ export default function AdminConvitesPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="card-premium p-10 flex flex-col items-center justify-center text-center"
+            className="glass-panel rounded-2xl p-10 flex flex-col items-center justify-center text-center"
           >
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4">
               <Gift className="h-7 w-7" />
@@ -340,7 +329,7 @@ export default function AdminConvitesPage() {
         )}
       </div>
 
-      {/* ── Remove Confirmation ── */}
+      {/* -- Remove Confirmation -- */}
       <AlertDialog open={removingId !== null} onOpenChange={() => setRemovingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -363,206 +352,159 @@ export default function AdminConvitesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Create Dialog ── */}
+      {/* -- Create Dialog -- */}
       <Dialog open={showCreate} onOpenChange={(open) => !open && handleCloseCreate()}>
-        <DialogContent className="sm:max-w-lg flex flex-col max-h-[92vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2.5 text-lg">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Gift className="h-4.5 w-4.5" />
-              </div>
-              Gerar Convite
-            </DialogTitle>
-            <DialogDescription>
-              Cada código só pode ser usado <strong>uma única vez</strong>. Ao se cadastrar com o código, o convidado recebe acesso ao sistema pelo tempo que você definir.
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          {/* Header */}
+          <DialogHeader className="pb-1">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary mb-2">
+              <Send className="h-5 w-5" />
+            </div>
+            <DialogTitle className="text-xl font-bold">Criar Novo Convite</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Configure as permissões e validade para o novo acesso.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-1 overflow-y-auto flex-1 pr-1">
-            {/* Descrição */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Para quem é esse convite? <span className="normal-case font-normal text-muted-foreground/50">(opcional)</span>
+          <div className="space-y-4">
+            {/* ── Duração do Acesso ── */}
+            <div>
+              <Label className="block text-sm font-semibold text-foreground mb-2">
+                Duração do Acesso
               </Label>
-              <Input
-                placeholder="Ex: João, Maria, teste..."
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                maxLength={200}
-                className="h-10 rounded-xl"
-              />
-            </div>
-
-            {/* ── Tempo de Acesso ao Sistema ── */}
-            <div className="space-y-2.5 rounded-xl border border-primary/15 bg-primary/3 p-3.5">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <ShieldCheck className="h-4 w-4" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold">Tempo de Acesso ao Sistema</p>
-                  <p className="text-[11px] text-muted-foreground/60">Por quanto tempo o convidado poderá usar o sistema após ativar o código</p>
-                </div>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {PRESETS_ACESSO.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => { setDiasAcesso(p.value); setAcessoPermanente(false); }}
+                    className={cn(
+                      "px-3 py-2 text-sm font-medium rounded-xl border transition-colors",
+                      !acessoPermanente && diasAcesso === p.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:border-border/80",
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
               </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-background/60 border border-border/30">
-                <Label htmlFor="acessoPermanente" className="cursor-pointer text-sm font-medium">Acesso permanente</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  placeholder="Personalizado"
+                  value={acessoPermanente ? "" : diasAcesso}
+                  onChange={(e) => {
+                    setAcessoPermanente(false);
+                    setDiasAcesso(Math.max(1, Number(e.target.value)));
+                  }}
+                  className="pr-14 h-10 rounded-full bg-muted/30 border-border/60"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">dias</span>
+              </div>
+              <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-border/30">
+                <div>
+                  <p className="text-sm font-semibold">Acesso permanente</p>
+                  <p className="text-[11px] text-muted-foreground/60">Sem prazo de expiração de acesso</p>
+                </div>
                 <Switch id="acessoPermanente" checked={acessoPermanente} onCheckedChange={setAcessoPermanente} />
               </div>
-
-              {!acessoPermanente && (
-                <div className="space-y-2.5">
-                  <div className="flex flex-wrap gap-1.5">
-                    {PRESETS_ACESSO.map((p) => (
-                      <button
-                        key={p.value}
-                        type="button"
-                        onClick={() => setDiasAcesso(p.value)}
-                        className={cn(
-                          "px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all",
-                          diasAcesso === p.value
-                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                            : "bg-background border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                        )}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={3650}
-                      value={diasAcesso}
-                      onChange={(e) => setDiasAcesso(Number(e.target.value))}
-                      className="h-9 rounded-lg w-24 text-center font-semibold tabular-nums"
-                    />
-                    <span className="text-sm text-muted-foreground">dias</span>
-                    <span className="text-xs text-muted-foreground/50 ml-auto">= {formatDuration(diasAcesso)}</span>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* ── Prazo para Ativar o Código ── */}
-            <div className="space-y-2.5 rounded-xl border border-amber-500/15 bg-amber-500/3 p-3.5">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <Timer className="h-4 w-4" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold">Prazo para Ativar o Código</p>
-                  <p className="text-[11px] text-muted-foreground/60">Quanto tempo o convidado tem para usar o código e se cadastrar</p>
-                </div>
+            {/* ── Expiração do Código ── */}
+            <div>
+              <Label className="block text-sm font-semibold text-foreground mb-2">
+                Expiração do Código
+              </Label>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {PRESETS_EXPIRACAO.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => { setHorasValidade(p.value); setCodigoPermanente(false); }}
+                    className={cn(
+                      "px-3 py-2 text-sm font-medium rounded-xl border transition-colors",
+                      !codigoPermanente && horasValidade === p.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:border-border/80",
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
               </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-background/60 border border-border/30">
-                <Label htmlFor="codigoPermanente" className="cursor-pointer text-sm font-medium">Sem prazo (nunca expira)</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  min={1}
+                  max={87600}
+                  placeholder="Personalizado"
+                  value={codigoPermanente ? "" : horasValidade}
+                  onChange={(e) => {
+                    setCodigoPermanente(false);
+                    setHorasValidade(Math.max(1, Number(e.target.value)));
+                  }}
+                  className="pr-16 h-10 rounded-full bg-muted/30 border-border/60"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">horas</span>
+              </div>
+              <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-border/30">
+                <div>
+                  <p className="text-sm font-semibold">Sem prazo (nunca expira)</p>
+                  <p className="text-[11px] text-muted-foreground/60">O código pode ser usado a qualquer momento</p>
+                </div>
                 <Switch id="codigoPermanente" checked={codigoPermanente} onCheckedChange={setCodigoPermanente} />
               </div>
-
-              {!codigoPermanente && (
-                <div className="space-y-2.5">
-                  <div className="flex flex-wrap gap-1.5">
-                    {PRESETS_EXPIRACAO.map((p) => (
-                      <button
-                        key={p.value}
-                        type="button"
-                        onClick={() => setHorasValidade(p.value)}
-                        className={cn(
-                          "px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all",
-                          horasValidade === p.value
-                            ? "bg-amber-500 text-white border-amber-500 shadow-sm"
-                            : "bg-background border-border/50 text-muted-foreground hover:border-amber-500/40 hover:text-foreground"
-                        )}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={87600}
-                      value={horasValidade}
-                      onChange={(e) => setHorasValidade(Number(e.target.value))}
-                      className="h-9 rounded-lg w-24 text-center font-semibold tabular-nums"
-                    />
-                    <span className="text-sm text-muted-foreground">horas</span>
-                    <span className="text-xs text-muted-foreground/50 ml-auto">= {formatHorasExpiracao(horasValidade)}</span>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Quantidade */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quantidade de códigos</Label>
-              <div className="flex items-center gap-3">
+            {/* ── Uso Único ── */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Uso Único</p>
+                <p className="text-[11px] text-muted-foreground/60">O convite expira após o primeiro uso</p>
+              </div>
+              <Switch checked id="usoUnico" disabled />
+            </div>
+
+            {/* ── Quantidade + Descrição ── */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Quantidade</Label>
                 <Input
                   type="number"
                   min={1}
                   max={50}
                   value={quantidade}
-                  onChange={(e) => setQuantidade(Number(e.target.value))}
-                  className="h-10 rounded-xl w-24 text-center font-semibold tabular-nums"
+                  onChange={(e) => setQuantidade(Math.max(1, Math.min(50, Number(e.target.value))))}
+                  className="h-10 rounded-full text-center font-semibold tabular-nums bg-muted/30 border-border/60"
                 />
-                {quantidade > 1 && (
-                  <p className="text-xs text-muted-foreground/60">
-                    {quantidade} códigos com as mesmas configurações
-                  </p>
-                )}
+              </div>
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  Descrição <span className="font-normal opacity-60">(opcional)</span>
+                </Label>
+                <Input
+                  placeholder="Ex: João, amigo..."
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  maxLength={200}
+                  className="h-10 rounded-full bg-muted/30 border-border/60"
+                />
               </div>
             </div>
 
-            {/* Resumo */}
-            <div className="rounded-xl border border-border/40 bg-muted/20 p-3.5 space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70 flex items-center gap-1.5">
-                <Sparkles className="h-3 w-3" />
-                Resumo do convite
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground/60 text-xs">Acesso ao sistema</span>
-                  <p className="font-semibold">{acessoPermanente ? "Permanente" : formatDuration(diasAcesso)}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground/60 text-xs">Prazo p/ ativar</span>
-                  <p className="font-semibold">{codigoPermanente ? "Sem prazo" : formatHorasExpiracao(horasValidade)}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground/60 text-xs">Uso por código</span>
-                  <p className="font-semibold">Único (1x)</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground/60 text-xs">Códigos a gerar</span>
-                  <p className="font-semibold">{quantidade}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Info */}
-            <div className="flex items-start gap-2.5 text-xs text-muted-foreground/50">
-              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              <p>O convidado usará o código ao se cadastrar. Após ativar, terá acesso ao sistema pelo tempo configurado.</p>
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={handleCloseCreate} className="rounded-xl">
-              Cancelar
-            </Button>
+            {/* ── Submit ── */}
             <Button
               onClick={() => criar.mutate()}
               loading={criar.isPending}
-              className="gap-2 rounded-xl font-bold shadow-premium btn-premium"
+              className="w-full gap-2 h-11 rounded-full font-semibold text-sm bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all"
             >
               <Send className="h-4 w-4" />
               {quantidade > 1 ? `Gerar ${quantidade} Convites` : "Gerar Convite"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </PageShell>

@@ -105,7 +105,7 @@ public class ImpactoMetaServiceTests
 
         Assert.Single(resultado);
         Assert.True(resultado[0].ReservaAbaixoMinimo);
-        Assert.Contains("⚠️", resultado[0].Descricao);
+        Assert.Contains("consumiria mais que sua folga", resultado[0].Descricao);
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public class ImpactoMetaServiceTests
 
         Assert.Single(resultado);
         Assert.False(resultado[0].ReservaAbaixoMinimo);
-        Assert.Contains("✅", resultado[0].Descricao);
+        Assert.Contains("não seria impactada", resultado[0].Descricao);
     }
 
     // ════════════════ Meta JuntarValor ════════════════
@@ -160,7 +160,7 @@ public class ImpactoMetaServiceTests
 
         Assert.Single(resultado);
         Assert.Equal(2, resultado[0].MesesAtraso);
-        Assert.Contains("🔴", resultado[0].Descricao);
+        Assert.Contains("atrasa", resultado[0].Descricao);
     }
 
     [Fact]

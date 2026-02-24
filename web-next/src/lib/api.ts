@@ -14,6 +14,7 @@ export interface Usuario {
   telegramVinculado: boolean;
   criadoEm: string;
   role: string;
+  rendaMensal: number | null;
 }
 
 export interface AuthResponse {
@@ -195,6 +196,8 @@ export interface Lancamento {
   numeroParcelas: number;
   parcelado: boolean;
   criadoEm: string;
+  contaBancariaId?: number | null;
+  contaBancariaNome?: string | null;
 }
 
 export interface LancamentosPaginados {
@@ -221,6 +224,32 @@ export interface CriarLancamentoRequest {
   categoria?: string;
   numeroParcelas?: number;
   cartaoCreditoId?: number;
+  contaBancariaId?: number;
+}
+
+// ── Contas Bancárias ──────────────────────────────────────
+
+export type TipoContaBancaria = 'Corrente' | 'Poupanca' | 'Investimento' | 'Digital' | 'Carteira' | 'Outro';
+
+export interface ContaBancaria {
+  id: number;
+  nome: string;
+  tipo: TipoContaBancaria;
+  saldo: number;
+  ativo: boolean;
+  criadoEm: string;
+}
+
+export interface CriarContaBancariaRequest {
+  nome: string;
+  tipo: TipoContaBancaria;
+  saldo?: number;
+}
+
+export interface AtualizarContaBancariaRequest {
+  nome?: string;
+  tipo?: TipoContaBancaria;
+  saldo?: number;
 }
 
 // ── Cartões extras ─────────────────────────────────────────
@@ -263,6 +292,7 @@ export interface AtualizarPerfilRequest {
   nome?: string;
   senhaAtual?: string;
   novaSenha?: string;
+  rendaMensal?: number | null;
 }
 
 // ── Lembretes / Contas Fixas ───────────────────────────────
@@ -290,6 +320,7 @@ export interface LembretePagamento {
   dataFimRecorrencia: string | null;
   criadoEm: string;
   atualizadoEm: string;
+  pagoCicloAtual: boolean;
 }
 
 export interface CriarLembreteRequest {
@@ -318,6 +349,23 @@ export interface AtualizarLembreteRequest {
   formaPagamento?: string;
   lembreteTelegramAtivo?: boolean;
   dataFimRecorrencia?: string;
+  ativo?: boolean;
+}
+
+export interface PagarContaFixaRequest {
+  valorPago?: number;
+  contaBancariaId?: number;
+  dataPagamento?: string; // "yyyy-MM-dd"
+  periodKey?: string;     // "YYYY-MM"
+}
+
+export interface PagamentoCicloResult {
+  id: number;
+  periodKey: string;
+  pago: boolean;
+  dataPagamento: string | null;
+  valorPago: number;
+  lancamentoId: number;
 }
 
 // ── Decisão de Gasto ───────────────────────────────────────
@@ -666,8 +714,8 @@ export const api = {
       request(`/cartoes/${id}`, { method: "DELETE" }),
     adicionarLimiteExtra: (id: number, data: { valorAdicional: number; percentualExtra: number }) =>
       request(`/cartoes/${id}/limite-extra`, { method: "POST", body: data }),
-    faturas: (cartaoId: number) =>
-      request<FaturaResumo[]>(`/cartoes/${cartaoId}/fatura`),
+    faturas: (cartaoId: number, mes?: string) =>
+      request<FaturaResumo[]>(`/cartoes/${cartaoId}/fatura${mes ? `?mes=${mes}` : ''}`),
 
     resgatarLimiteExtra: (id: number, data: { valorResgate: number; percentualBonus: number }) =>
       request<{ mensagem: string; novoLimite: number; valorResgatado: number; novoSaldoDisponivel: number }>(`/cartoes/${id}/resgatar-limite`, { method: "POST", body: data }),
@@ -717,6 +765,18 @@ export const api = {
       request<LembretePagamento>(`/lembretes/${id}`, { method: "PUT", body: data }),
     desativar: (id: number) =>
       request(`/lembretes/${id}`, { method: "DELETE" }),
+    pagar: (id: number, data: PagarContaFixaRequest) =>
+      request<PagamentoCicloResult>(`/lembretes/${id}/pagar`, { method: "POST", body: data }),
+  },
+
+  contasBancarias: {
+    listar: () => request<ContaBancaria[]>("/contas-bancarias"),
+    criar: (data: CriarContaBancariaRequest) =>
+      request<ContaBancaria>("/contas-bancarias", { method: "POST", body: data }),
+    atualizar: (id: number, data: AtualizarContaBancariaRequest) =>
+      request<ContaBancaria>(`/contas-bancarias/${id}`, { method: "PUT", body: data }),
+    desativar: (id: number) =>
+      request(`/contas-bancarias/${id}`, { method: "DELETE" }),
   },
 
   decisao: {
