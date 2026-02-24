@@ -144,19 +144,19 @@ public class MetaFinanceiraService : IMetaFinanceiraService
     public string FormatarMetasBot(List<MetaFinanceiraDto> metas)
     {
         if (!metas.Any())
-            return "Nenhuma meta definida ainda.\n\nCrie com: \"meta de juntar 10 mil até dezembro\" ou /meta criar Viagem 5000 12/2026";
+            return "🎯 Nenhuma meta definida ainda.\n\n_Crie com: \"quero juntar 10 mil até dezembro\"_";
 
-        var texto = "*Suas Metas*\n\n";
+        var texto = "🎯 *Suas Metas*\n━━━━━━━━━━━━━━━━━━━━\n\n";
 
         foreach (var m in metas)
         {
             var statusEmoji = m.Status switch
             {
-                "Ativa" => "[Ativa]",
-                "Pausada" => "[Pausada]",
-                "Concluida" => "[Concluída]",
-                "Cancelada" => "[Cancelada]",
-                _ => "[Ativa]"
+                "Ativa" => "🟢",
+                "Pausada" => "⏸️",
+                "Concluida" => "🏆",
+                "Cancelada" => "❌",
+                _ => "🟢"
             };
 
             var barra = GerarBarra(m.PercentualConcluido);
@@ -169,20 +169,20 @@ public class MetaFinanceiraService : IMetaFinanceiraService
             {
                 var desvioMsg = m.Desvio switch
                 {
-                    "adiantada" => "Adiantado — ótimo ritmo.",
-                    "no_ritmo" => "No ritmo certo.",
-                    "atrasada" => "Atrasada — aumente os aportes.",
+                    "adiantada" => "🚀 Adiantado — ótimo ritmo!",
+                    "no_ritmo" => "✅ No ritmo certo.",
+                    "atrasada" => "⚠️ Atrasada — aumente os aportes.",
                     _ => ""
                 };
                 var falta = m.ValorAlvo - m.ValorAtual;
-                texto += $"   Prazo: {m.Prazo:MM/yyyy} ({m.MesesRestantes} meses)\n";
-                texto += $"   Falta R$ {falta:N2} — guarde R$ {m.ValorMensalNecessario:N2}/mês\n";
+                texto += $"   📅 Prazo: {m.Prazo:MM/yyyy} ({m.MesesRestantes} meses)\n";
+                texto += $"   💰 Falta R$ {falta:N2} — guarde *R$ {m.ValorMensalNecessario:N2}/mês*\n";
                 if (!string.IsNullOrEmpty(desvioMsg))
                     texto += $"   {desvioMsg}\n";
             }
             else if (m.Status == "Concluida")
             {
-                texto += "   _Meta atingida! Parabéns._\n";
+                texto += "   🌟 _Meta atingida! Parabéns!_\n";
             }
 
             texto += "\n";
@@ -191,9 +191,9 @@ public class MetaFinanceiraService : IMetaFinanceiraService
         var ativas = metas.Count(m => m.Status == "Ativa");
         var concluidas = metas.Count(m => m.Status == "Concluida");
         if (concluidas > 0 && ativas > 0)
-            texto += $"{concluidas} meta(s) concluída(s) e {ativas} em andamento. Continue.";
+            texto += $"🏆 {concluidas} meta(s) concluída(s) e {ativas} em andamento!";
         else if (ativas > 0)
-            texto += "_Use \"aportar [valor] na meta [nome]\" para registrar progresso._";
+            texto += "_Diga \"aportar [valor] na meta [nome]\" para registrar progresso._";
 
         return texto.TrimEnd();
     }

@@ -4,6 +4,7 @@ using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace ControlFinance.Application.Services.Handlers;
@@ -23,6 +24,7 @@ public class ConsultaHandler : IConsultaHandler
     private readonly IMetaFinanceiraService _metaService;
     private readonly ITagLancamentoRepository _tagRepo;
     private readonly ILogger<ConsultaHandler> _logger;
+    private readonly string _webUrl;
 
     public ConsultaHandler(
         IResumoService resumoService,
@@ -33,7 +35,8 @@ public class ConsultaHandler : IConsultaHandler
         ILimiteCategoriaService limiteService,
         IMetaFinanceiraService metaService,
         ITagLancamentoRepository tagRepo,
-        ILogger<ConsultaHandler> logger)
+        ILogger<ConsultaHandler> logger,
+        IConfiguration? configuration = null)
     {
         _resumoService = resumoService;
         _faturaService = faturaService;
@@ -44,6 +47,7 @@ public class ConsultaHandler : IConsultaHandler
         _metaService = metaService;
         _tagRepo = tagRepo;
         _logger = logger;
+        _webUrl = configuration?["Cors:AllowedOrigins:1"] ?? "https://finance.nicolasportie.com";
     }
 
     public async Task<string> GerarResumoFormatadoAsync(Usuario usuario)
@@ -64,16 +68,16 @@ public class ConsultaHandler : IConsultaHandler
                 .ToList();
 
             if (!recentes.Any())
-                return "Nenhum lançamento registrado ainda. Que tal começar? Ex: \"Gastei 30 no almoço\"";
+                return "📭 Nenhum lançamento registrado ainda.\n\nQue tal começar? Diga algo como:\n_\"Gastei 30 no almoço\"_";
 
-            var texto = "*Seus últimos lançamentos*\n\n";
+            var texto = "📋 *Seus últimos lançamentos*\n━━━━━━━━━━━━━━━━━━━━\n\n";
             var totalReceita = 0m;
             var totalDespesa = 0m;
 
             foreach (var l in recentes)
             {
-                var sinal = l.Tipo == TipoLancamento.Receita ? "+" : "-";
-                texto += $"{l.Data:dd/MM} | {sinal} R$ {l.Valor:N2} | {l.Descricao}\n";
+                var sinal = l.Tipo == TipoLancamento.Receita ? "🟢 +" : "🔴 -";
+                texto += $"{l.Data:dd/MM}  {sinal} R$ {l.Valor:N2}  {l.Descricao}\n";
 
                 if (l.Tipo == TipoLancamento.Receita)
                     totalReceita += l.Valor;
@@ -82,13 +86,13 @@ public class ConsultaHandler : IConsultaHandler
             }
 
             var saldoExtrato = totalReceita - totalDespesa;
-            var saldoEmoji = saldoExtrato >= 0 ? "✅" : "❌";
+            var saldoEmoji = saldoExtrato >= 0 ? "✅" : "⚠️";
 
-            texto += $"\n{saldoEmoji} *Resumo desses lançamentos:*\n";
-            texto += $"  Entradas: R$ {totalReceita:N2}\n";
-            texto += $"  Saídas: R$ {totalDespesa:N2}\n";
-            texto += $"  Saldo: R$ {saldoExtrato:N2}";
-            texto += "\n\n_Use /resumo para ver o mês completo._";
+            texto += $"\n━━━━━━━━━━━━━━━━━━━━\n";
+            texto += $"💵 Entradas: *R$ {totalReceita:N2}*\n";
+            texto += $"💸 Saídas: *R$ {totalDespesa:N2}*\n";
+            texto += $"{saldoEmoji} Saldo: *R$ {saldoExtrato:N2}*";
+            texto += "\n\n_Diga \"resumo do mês\" para ver o mês completo._";
 
             return texto;
         }
@@ -107,14 +111,14 @@ public class ConsultaHandler : IConsultaHandler
     {
         var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
         if (!cartoes.Any())
-            return "Você ainda não tem cartão cadastrado para consultar fatura.\n\nAcesse o menu *Cartões* no sistema web.";
+            return "💳 Nenhum cartão cadastrado.\n\nAcesse o menu *Cartões* no sistema web para adicionar.";
 
         string? referenciaNormalizada = null;
         if (!string.IsNullOrWhiteSpace(referenciaMes))
         {
             if (!DateTime.TryParseExact(referenciaMes, new[] { "M/yyyy", "MM/yyyy" },
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out var referencia))
-                return "❌ Referência inválida. Use MM/yyyy. Exemplo: /fatura_detalhada 03/2026";
+                return "⚠️ Referência inválida. Use o formato MM/aaaa.\nExemplo: _\"fatura de 03/2026\"_";
 
             referenciaNormalizada = referencia.ToString("MM/yyyy", CultureInfo.InvariantCulture);
         }
@@ -138,7 +142,7 @@ public class ConsultaHandler : IConsultaHandler
 
             if (!pendentes.Any())
             {
-                resultado += $"{cartao.Nome}: Sem fatura pendente.\n\n";
+                resultado += $"💳 {cartao.Nome}: Sem fatura pendente ✅\n\n";
                 continue;
             }
 
@@ -150,7 +154,7 @@ public class ConsultaHandler : IConsultaHandler
 
                 if (faturaSelecionada == null)
                 {
-                    resultado += $"{cartao.Nome}: Sem fatura pendente para {referenciaNormalizada}.\n\n";
+                    resultado += $"💳 {cartao.Nome}: Sem fatura para {referenciaNormalizada}\n\n";
                     continue;
                 }
             }
@@ -174,10 +178,14 @@ public class ConsultaHandler : IConsultaHandler
                 if (outras.Any())
                 {
                     var totalOutras = outras.Sum(f => f.Total);
-                    resultado += $"⚠️ Você também tem {outras.Count} outra(s) fatura(s) pendente(s) totalizando R$ {totalOutras:N2}.\nUse /faturas para ver todas.\n\n";
+                    resultado += $"⚠️ Mais {outras.Count} fatura(s) pendente(s) — total R$ {totalOutras:N2}\n_Diga \"ver todas as faturas\" para detalhes._\n\n";
                 }
             }
         }
+
+        if (usuario.TelegramChatId.HasValue && resultado.Contains("💳"))
+            BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
+                new[] { ("Acessar fatura", $"url:{_webUrl}/cartoes") });
 
         return resultado.TrimEnd();
     }
@@ -186,9 +194,9 @@ public class ConsultaHandler : IConsultaHandler
     {
         var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
         if (!cartoes.Any())
-            return "Você ainda não tem cartão cadastrado para listar faturas.\n\nAcesse o menu *Cartões* no sistema web.";
+            return "💳 Nenhum cartão cadastrado.\n\nAcesse o menu *Cartões* no sistema web para adicionar.";
 
-        var resultado = "*Todas as faturas pendentes:*\n\n";
+        var resultado = "📑 *Todas as faturas pendentes*\n━━━━━━━━━━━━━━━━━━━━\n\n";
         var temFatura = false;
 
         foreach (var cartao in cartoes)
@@ -208,18 +216,22 @@ public class ConsultaHandler : IConsultaHandler
             }
         }
 
-        return temFatura ? resultado.TrimEnd() : "✅ Nenhuma fatura pendente. Tudo em dia.";
+        if (temFatura && usuario.TelegramChatId.HasValue)
+            BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
+                new[] { ("Acessar faturas", $"url:{_webUrl}/cartoes") });
+
+        return temFatura ? resultado.TrimEnd() : "✅ Nenhuma fatura pendente — tudo em dia!";
     }
 
     public async Task<string> ListarCategoriasAsync(Usuario usuario)
     {
         var categorias = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
-        if (!categorias.Any()) return "Nenhuma categoria encontrada.";
+        if (!categorias.Any()) return "📂 Nenhuma categoria encontrada.";
 
-        var texto = "*Suas categorias:*\n";
+        var texto = "🏷️ *Suas categorias*\n━━━━━━━━━━━━━━━━━━━━\n";
         foreach (var cat in categorias)
         {
-            var ico = cat.Padrao ? "•" : "•";
+            var ico = cat.Padrao ? "📌" : "📎";
             texto += $"\n{ico} {cat.Nome}";
         }
         return texto;
@@ -228,12 +240,18 @@ public class ConsultaHandler : IConsultaHandler
     public async Task<string> ListarLimitesFormatadoAsync(Usuario usuario)
     {
         var limites = await _limiteService.ListarLimitesAsync(usuario.Id);
+        if (usuario.TelegramChatId.HasValue)
+            BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
+                new[] { ("Ver meus limites", $"url:{_webUrl}/limites") });
         return _limiteService.FormatarLimitesBot(limites);
     }
 
     public async Task<string> ListarMetasFormatadoAsync(Usuario usuario)
     {
         var metas = await _metaService.ListarMetasAsync(usuario.Id);
+        if (usuario.TelegramChatId.HasValue)
+            BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
+                new[] { ("Ver minhas metas", $"url:{_webUrl}/metas") });
         return _metaService.FormatarMetasBot(metas);
     }
 
@@ -253,7 +271,7 @@ public class ConsultaHandler : IConsultaHandler
             .ToList();
 
         if (!salarios.Any())
-            return "Não encontrei receitas de salário nos últimos 6 meses.\n\nRegistre com algo como: \"recebi 3500 de salário\".";
+            return "💰 Não encontrei receitas de salário nos últimos 6 meses.\n\n_Registre com algo como: \"recebi 3500 de salário\"_";
 
         var porMes = salarios
             .GroupBy(l => new DateTime(l.Data.Year, l.Data.Month, 1, 0, 0, 0, DateTimeKind.Utc))
@@ -266,18 +284,18 @@ public class ConsultaHandler : IConsultaHandler
             .Where(x => x.Mes.Year == hoje.Year && x.Mes.Month == hoje.Month)
             .Sum(x => x.Total);
 
-        var texto = "*Sua receita de salário*\n\n";
-        texto += $"Média mensal: *R$ {media:N2}*\n";
-        texto += $"Este mês ({hoje:MM/yyyy}): *R$ {totalAtual:N2}*\n\n";
-        texto += "*Histórico:*";
+        var texto = "💵 *Sua receita de salário*\n━━━━━━━━━━━━━━━━━━━━\n\n";
+        texto += $"📊 Média mensal: *R$ {media:N2}*\n";
+        texto += $"📅 Este mês ({hoje:MM/yyyy}): *R$ {totalAtual:N2}*\n\n";
+        texto += "📈 *Histórico:*";
 
         foreach (var item in porMes)
             texto += $"\n  • {item.Mes:MMM/yyyy}: R$ {item.Total:N2}";
 
         if (totalAtual > 0 && totalAtual > media * 1.05m)
-            texto += "\n\nEste mês você recebeu acima da média.";
+            texto += "\n\n✅ Este mês você recebeu acima da média!";
         else if (totalAtual > 0 && totalAtual < media * 0.95m)
-            texto += "\n\nEste mês ficou um pouco abaixo da média.";
+            texto += "\n\n⚠️ Este mês ficou um pouco abaixo da média.";
 
         return texto;
     }
@@ -286,7 +304,7 @@ public class ConsultaHandler : IConsultaHandler
     {
         var nomeCategoria = respostaIA?.Trim();
         if (string.IsNullOrWhiteSpace(nomeCategoria))
-            return "❌ Me diga qual categoria quer detalhar. Ex: \"detalhar Alimentação\"";
+            return "❓ Me diga qual categoria quer detalhar.\nEx: _\"detalhar Alimentação\"_";
 
         var categoria = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, nomeCategoria);
         if (categoria == null)
@@ -299,9 +317,9 @@ public class ConsultaHandler : IConsultaHandler
             if (categoria == null)
             {
                 var lista = categorias.Any()
-                    ? "\n\nSuas categorias: " + string.Join(", ", categorias.Select(c => c.Nome))
+                    ? "\n\n🏷️ Suas categorias: " + string.Join(", ", categorias.Select(c => c.Nome))
                     : "";
-                return $"❌ Categoria \"{nomeCategoria}\" não encontrada.{lista}";
+                return $"❌ Categoria \"_{nomeCategoria}_\" não encontrada.{lista}";
             }
         }
 
@@ -319,24 +337,24 @@ public class ConsultaHandler : IConsultaHandler
             .ToList();
 
         if (!lancamentosCat.Any())
-            return $"*{categoria.Nome}*\n\nSem gastos nesta categoria em {hoje:MM/yyyy}.";
+            return $"🏷️ *{categoria.Nome}*\n\nSem gastos nesta categoria em {hoje:MM/yyyy}.";
 
         var total = lancamentosCat.Sum(l => l.Valor);
-        var texto = $"*Detalhes — {categoria.Nome}*\n{inicioMes:MM/yyyy}\n\n";
+        var texto = $"🏷️ *Detalhes — {categoria.Nome}*\n{inicioMes:MM/yyyy}\n━━━━━━━━━━━━━━━━━━━━\n\n";
 
         foreach (var l in lancamentosCat)
         {
             var pagInfo = l.FormaPagamento switch
             {
-                FormaPagamento.PIX => "PIX",
-                FormaPagamento.Debito => "Débito",
-                FormaPagamento.Credito => "Crédito",
+                FormaPagamento.PIX => "⚡ PIX",
+                FormaPagamento.Debito => "🏧 Débito",
+                FormaPagamento.Credito => "💳 Crédito",
                 _ => ""
             };
             texto += $"{l.Data:dd/MM} — {l.Descricao} — R$ {l.Valor:N2} ({pagInfo})\n";
         }
 
-        texto += $"\n*Subtotal: R$ {total:N2}*\n*{lancamentosCat.Count} lançamento(s)*";
+        texto += $"\n━━━━━━━━━━━━━━━━━━━━\n💰 *Subtotal: R$ {total:N2}*\n📌 *{lancamentosCat.Count} lançamento(s)*";
         return texto;
     }
 
@@ -363,36 +381,35 @@ public class ConsultaHandler : IConsultaHandler
                 ? (diffGastos / resumoAnterior.TotalGastos * 100)
                 : 0;
 
-            var texto = $"*Comparativo mensal*\n";
-            texto += $"{inicioMesAnterior:MMMM} vs {inicioMesAtual:MMMM}\n\n";
+            var texto = $"📊 *Comparativo mensal*\n{inicioMesAnterior:MMMM} vs {inicioMesAtual:MMMM}\n━━━━━━━━━━━━━━━━━━━━\n\n";
 
             // Gastos
             if (diffGastos > 0)
-                texto += $"Você gastou *R$ {Math.Abs(diffGastos):N2} a mais* este mês ({percentualGasto:+0;-0}%)\n";
+                texto += $"🔴 Você gastou *R$ {Math.Abs(diffGastos):N2} a mais* este mês ({percentualGasto:+0;-0}%)\n";
             else if (diffGastos < 0)
-                texto += $"Você gastou *R$ {Math.Abs(diffGastos):N2} a menos* este mês ({percentualGasto:+0;-0}%) ✅\n";
+                texto += $"🟢 Você gastou *R$ {Math.Abs(diffGastos):N2} a menos* este mês ({percentualGasto:+0;-0}%) \n";
             else
-                texto += "Gastos iguais nos dois meses\n";
-            texto += $"  {inicioMesAnterior:MMM}: R$ {resumoAnterior.TotalGastos:N2} → {inicioMesAtual:MMM}: R$ {resumoAtual.TotalGastos:N2}\n\n";
+                texto += "⚖️ Gastos iguais nos dois meses\n";
+            texto += $"  {inicioMesAnterior:MMM}: R$ {resumoAnterior.TotalGastos:N2} ➡️ {inicioMesAtual:MMM}: R$ {resumoAtual.TotalGastos:N2}\n\n";
 
             // Receitas
             if (diffReceitas > 0)
-                texto += $"Receita *aumentou R$ {Math.Abs(diffReceitas):N2}*\n";
+                texto += $"🟢 Receita *aumentou R$ {Math.Abs(diffReceitas):N2}*\n";
             else if (diffReceitas < 0)
-                texto += $"Receita *diminuiu R$ {Math.Abs(diffReceitas):N2}*\n";
+                texto += $"🔴 Receita *diminuiu R$ {Math.Abs(diffReceitas):N2}*\n";
             else
-                texto += "Receita igual nos dois meses\n";
-            texto += $"  {inicioMesAnterior:MMM}: R$ {resumoAnterior.TotalReceitas:N2} → {inicioMesAtual:MMM}: R$ {resumoAtual.TotalReceitas:N2}\n\n";
+                texto += "⚖️ Receita igual nos dois meses\n";
+            texto += $"  {inicioMesAnterior:MMM}: R$ {resumoAnterior.TotalReceitas:N2} ➡️ {inicioMesAtual:MMM}: R$ {resumoAtual.TotalReceitas:N2}\n\n";
 
             // Saldo
-            var saldoEmoji = resumoAtual.Saldo >= 0 ? "✅" : "❌";
+            var saldoEmoji = resumoAtual.Saldo >= 0 ? "✅" : "⚠️";
             texto += $"{saldoEmoji} *Resultado do mês:* R$ {resumoAtual.Saldo:N2}\n";
-            texto += $"  (Mês passado foi R$ {resumoAnterior.Saldo:N2})\n\n";
+            texto += $"  _(Mês passado: R$ {resumoAnterior.Saldo:N2})_\n\n";
 
             // Categorias que mais mudaram
             if (resumoAtual.GastosPorCategoria.Any() && resumoAnterior.GastosPorCategoria.Any())
             {
-                texto += "*O que mais mudou:*\n";
+                texto += "🏷️ *O que mais mudou:*\n";
 
                 var todasCategorias = resumoAtual.GastosPorCategoria
                     .Select(c => c.Categoria)
@@ -412,21 +429,23 @@ public class ConsultaHandler : IConsultaHandler
 
                 foreach (var v in variações)
                 {
-                    var direcao = v.Diff > 0 ? "subiu" : "caiu";
-                    texto += $"  • {v.Categoria}: {direcao} R$ {Math.Abs(v.Diff):N2}\n";
+                    var direcao = v.Diff > 0 ? "📈 subiu" : "📉 caiu";
+                    texto += $"  {direcao} {v.Categoria}: R$ {Math.Abs(v.Diff):N2}\n";
                 }
             }
 
             // Diagnóstico final
             if (diffGastos < 0 && resumoAtual.Saldo >= 0)
-                texto += "\n✅ Você está no caminho certo — gastou menos e está no positivo.";
+                texto += "\n🌟 Você está no caminho certo — gastou menos e está no positivo!";
             else if (diffGastos < 0)
-                texto += "\n✅ Bom progresso. Seus gastos diminuíram.";
+                texto += "\n✅ Bom progresso! Seus gastos diminuíram.";
             else if (percentualGasto > 20)
                 texto += "\n⚠️ Gastos cresceram bastante. Revise as categorias acima.";
             else if (diffGastos > 0)
-                texto += "\nGastos aumentaram um pouco. Fique atento nas próximas semanas.";
-
+                texto += "\n👀 Gastos aumentaram um pouco. Fique atento nas próximas semanas.";
+            if (usuario.TelegramChatId.HasValue)
+                BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
+                    new[] { ("Ver análise detalhada", $"url:{_webUrl}/dashboard") });
             return texto;
         }
         catch (Exception ex)
@@ -448,27 +467,27 @@ public class ConsultaHandler : IConsultaHandler
             {
                 var todasTags = await _tagRepo.ObterTagsDoUsuarioAsync(usuario.Id);
                 if (!todasTags.Any())
-                    return "Você ainda não tem tags. Adicione com: \"tag #reembolso\" após um lançamento.";
+                    return "🏷️ Você ainda não tem tags.\n\n_Adicione com: \"tag #reembolso\" após um lançamento._";
 
-                return "*Suas tags:*\n\n" +
-                       string.Join("\n", todasTags.Select(t => $"  #{t}"));
+                return "🏷️ *Suas tags*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                       string.Join("\n", todasTags.Select(t => $"  📎 #{t}"));
             }
 
             var lancamentosTag = await _tagRepo.ObterPorUsuarioETagAsync(usuario.Id, tagNormalizada);
             if (!lancamentosTag.Any())
-                return $"Nenhum lançamento com a tag *#{tagNormalizada}*.";
+                return $"🏷️ Nenhum lançamento com a tag *#{tagNormalizada}*.";
 
             var total = lancamentosTag.Sum(t => t.Lancamento.Valor);
-            var texto = $"*Lançamentos com #{tagNormalizada}*\n\n";
+            var texto = $"🏷️ *Lançamentos com #{tagNormalizada}*\n━━━━━━━━━━━━━━━━━━━━\n\n";
 
             foreach (var t in lancamentosTag.Take(15))
             {
                 var l = t.Lancamento;
-                var sinal = l.Tipo == TipoLancamento.Receita ? "+" : "-";
+                var sinal = l.Tipo == TipoLancamento.Receita ? "🟢 +" : "🔴 -";
                 texto += $"{l.Data:dd/MM} — {l.Descricao} — {sinal} R$ {l.Valor:N2}\n";
             }
 
-            texto += $"\n*Total: R$ {total:N2}*\n*{lancamentosTag.Count} lançamento(s)*";
+            texto += $"\n━━━━━━━━━━━━━━━━━━━━\n💰 *Total: R$ {total:N2}*\n📌 *{lancamentosTag.Count} lançamento(s)*";
             return texto;
         }
         catch (Exception ex)

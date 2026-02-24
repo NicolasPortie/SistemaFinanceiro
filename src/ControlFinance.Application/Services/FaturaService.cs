@@ -62,18 +62,19 @@ public class FaturaService : IFaturaService
 
         string statusTexto;
         if (vencida)
-            statusTexto = $"*VENCIDA há {Math.Abs(diasParaVencer)} dia(s)!*";
+            statusTexto = $"🔴 *VENCIDA há {Math.Abs(diasParaVencer)} dia(s)!*";
         else if (diasParaVencer <= 3)
-            statusTexto = $"Vence em *{diasParaVencer} dia(s)!*";
+            statusTexto = $"⚠️ Vence em *{diasParaVencer} dia(s)!*";
         else if (diasParaVencer <= 7)
-            statusTexto = $"Vence em {diasParaVencer} dias";
+            statusTexto = $"📅 Vence em {diasParaVencer} dias";
         else
-            statusTexto = fatura.Status;
+            statusTexto = $"✅ {fatura.Status}";
 
         var texto = $"""
-            *Fatura — {fatura.CartaoNome}*
+            💳 *Fatura — {fatura.CartaoNome}*
+            ━━━━━━━━━━━━━━━━━━━━
             Ref: {fatura.MesReferencia} | Vence: {fatura.DataVencimento:dd/MM/yyyy}
-            *Total: R$ {fatura.Total:N2}*
+            💰 *Total: R$ {fatura.Total:N2}*
             {statusTexto}
             """;
 
@@ -85,7 +86,7 @@ public class FaturaService : IFaturaService
                 .OrderByDescending(x => x.Total)
                 .ToList();
 
-            texto += "\n\n*Distribuição por categoria:*";
+            texto += "\n\n🏷️ *Distribuição por categoria:*";
             foreach (var cat in porCategoria)
             {
                 texto += $"\n  • {cat.Categoria}: R$ {cat.Total:N2}";
@@ -95,7 +96,7 @@ public class FaturaService : IFaturaService
         if (fatura.Status != "Paga" && !vencida)
             texto += "\n\n_Diga \"paguei a fatura\" quando quitar._";
         else if (vencida)
-            texto += "\n\n_Regularize o pagamento para evitar juros._";
+            texto += "\n\n⚠️ _Regularize o pagamento para evitar juros._";
 
         return texto;
     }
@@ -107,16 +108,17 @@ public class FaturaService : IFaturaService
 
         string statusTexto;
         if (vencida)
-            statusTexto = $"*VENCIDA há {Math.Abs(diasParaVencer)} dia(s)!*";
+            statusTexto = $"🔴 *VENCIDA há {Math.Abs(diasParaVencer)} dia(s)!*";
         else if (diasParaVencer <= 3)
-            statusTexto = $"Vence em *{diasParaVencer} dia(s)!*";
+            statusTexto = $"⚠️ Vence em *{diasParaVencer} dia(s)!*";
         else
-            statusTexto = fatura.Status;
+            statusTexto = $"✅ {fatura.Status}";
 
         var texto = $"""
-            *Fatura Detalhada — {fatura.CartaoNome}*
+            💳 *Fatura Detalhada — {fatura.CartaoNome}*
+            ━━━━━━━━━━━━━━━━━━━━
             Ref: {fatura.MesReferencia} | Vence: {fatura.DataVencimento:dd/MM/yyyy}
-            *Total: R$ {fatura.Total:N2}*
+            💰 *Total: R$ {fatura.Total:N2}*
             {statusTexto}
             """;
 
@@ -130,7 +132,7 @@ public class FaturaService : IFaturaService
             foreach (var grupo in porCategoria)
             {
                 var totalCat = grupo.Sum(p => p.Valor);
-                texto += $"\n\n*{grupo.Key}* — R$ {totalCat:N2}";
+                texto += $"\n\n🏷️ *{grupo.Key}* — R$ {totalCat:N2}";
                 foreach (var p in grupo)
                 {
                     var parcelaInfo = p.Parcela != "1/1" ? $" ({p.Parcela})" : "";
@@ -138,7 +140,7 @@ public class FaturaService : IFaturaService
                 }
             }
 
-            texto += $"\n\n*{fatura.Parcelas.Count} lançamento(s)* nesta fatura";
+            texto += $"\n\n📌 *{fatura.Parcelas.Count} lançamento(s)* nesta fatura";
         }
         else
         {

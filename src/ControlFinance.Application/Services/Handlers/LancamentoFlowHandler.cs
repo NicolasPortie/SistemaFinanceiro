@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -125,20 +125,20 @@ public class LancamentoFlowHandler : ILancamentoHandler
             pendente.Estado = EstadoPendente.AguardandoFormaPagamento;
             _pendentes[chatId] = pendente;
 
-            var texto = $"Registrar: *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n" +
-                        "Qual a forma de pagamento?\n\n" +
-                        "1. PIX\n" +
-                        "2. Débito\n";
+            var texto = $"📝 *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n" +
+                        "💳 Qual a forma de pagamento?\n\n" +
+                        "1️⃣ PIX\n" +
+                        "2️⃣ Débito\n";
 
             var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
             if (cartoes.Any())
             {
                 var nomes = string.Join(", ", cartoes.Select(c => c.Nome));
-                texto += $"3. Crédito ({nomes})\n";
+                texto += $"3️⃣ Crédito ({nomes})\n";
             }
             else
             {
-                texto += "3. Crédito\n";
+                texto += "3️⃣ Crédito\n";
             }
 
             BotTecladoHelper.DefinirTeclado(chatId,
@@ -166,7 +166,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
                 pendente.CartoesDisponiveis = cartoes;
                 _pendentes[chatId] = pendente;
 
-                var texto = $"💰 Registrar: *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n💳 Qual cartão?\n";
+                var texto = $"📝 *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n💳 Qual cartão?\n";
                 for (int i = 0; i < cartoes.Count; i++)
                     texto += $"\n{i + 1}️⃣ {cartoes[i].Nome}";
                 var botoesCard = cartoes.Select((c, i) => new (string, string)[] { ($"💳 {c.Nome}", (i + 1).ToString()) })
@@ -314,7 +314,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
         await ExtrairESalvarTagsAsync(lancamento.Id, usuario.Id, dados.Descricao);
 
-        var emoji = tipo == TipoLancamento.Receita ? "[+]" : "[-]";
+        var emoji = tipo == TipoLancamento.Receita ? "🟢" : "🔴";
         var parcelaInfo = dto.NumeroParcelas > 1 ? $" em {dto.NumeroParcelas}x" : "";
         var pagInfo = formaPag switch
         {
@@ -324,7 +324,14 @@ public class LancamentoFlowHandler : ILancamentoHandler
             _ => ""
         };
 
-        var mensagem = $"✅ Registrado\n\n{dto.Descricao}\nR$ {dto.Valor:N2}{parcelaInfo}\n{dto.Categoria}\n{pagInfo}\n{dto.Data:dd/MM/yyyy}";
+        var tipoTexto = tipo == TipoLancamento.Receita ? "Receita" : "Gasto";
+        var linhaFormaPagReg = tipo == TipoLancamento.Receita ? "" : $"💳 {pagInfo}\n";
+        var mensagem = $"✅ *{tipoTexto} registrado!*\n\n" +
+                       $"{emoji} {dto.Descricao}\n" +
+                       $"💰 R$ {dto.Valor:N2}{parcelaInfo}\n" +
+                       $"🏷️ {dto.Categoria}\n" +
+                       linhaFormaPagReg +
+                       $"📅 {dto.Data:dd/MM/yyyy}";
 
         if (tipo == TipoLancamento.Gasto)
         {
@@ -891,7 +898,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
                 // Botões de ação rápida pós-registro
                 BotTecladoHelper.DefinirTeclado(chatId,
-                    new[] { ("Registrar outro", "/gasto "), ("Ver resumo", "/resumo") }
+                    new[] { ("✏️ Registrar outro", "/gasto "), ("📊 Ver resumo", "/resumo") }
                 );
 
                 return resultado;
@@ -1163,15 +1170,14 @@ public class LancamentoFlowHandler : ILancamentoHandler
         }
         var data = dados.Data?.ToString("dd/MM/yyyy") ?? DateTime.UtcNow.ToString("dd/MM/yyyy");
 
-        var linhaFormaPag = tipo == "Receita" ? "" : $"{formaPag}\n";
-        return $"*Confirma este lançamento?*\n\n" +
-               $"*{tipo}*\n" +
-               $"{dados.Descricao}\n" +
-               $"R$ {dados.Valor:N2}{parcelaInfo}\n" +
-               linhaParcelaDetalhe +
-               $"{dados.Categoria}\n" +
+        var linhaFormaPag = tipo == "Receita" ? "" : $"💳 *Pagamento:* {formaPag}\n";
+        return $"{emoji} *Confirma este lançamento?*\n\n" +
+               $"📝 *Descrição:* {dados.Descricao}\n" +
+               $"💰 *Valor:* R$ {dados.Valor:N2}{parcelaInfo}\n" +
+               (string.IsNullOrEmpty(linhaParcelaDetalhe) ? "" : $"    └ {linhaParcelaDetalhe}") +
+               $"🏷️ *Categoria:* {dados.Categoria}\n" +
                linhaFormaPag +
-               $"{data}";
+               $"📅 *Data:* {data}";
     }
 
     /// <summary>

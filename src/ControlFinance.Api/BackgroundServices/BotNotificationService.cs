@@ -6,6 +6,7 @@ using ControlFinance.Domain.Interfaces;
 using ControlFinance.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace ControlFinance.Api.BackgroundServices;
 
@@ -26,6 +27,8 @@ public class BotNotificationService : BackgroundService
     private static readonly TimeSpan HoraIncentivoSexta = new(18, 0, 0);  // 18h Sexta
     private static readonly TimeSpan HoraFechamentoMes = new(19, 0, 0);   // 19h Último dia
     private static readonly TimeSpan HoraResumoSemanal = new(20, 0, 0);   // 20h Domingo
+
+    private const string WebUrl = "https://finance.nicolasportie.com";
 
     public BotNotificationService(
         IServiceProvider serviceProvider,
@@ -188,11 +191,11 @@ public class BotNotificationService : BackgroundService
                 var vencemHoje = lembretes.Where(l =>
                     l.DataVencimento.Date == agoraBrasilia.Date).ToList();
 
-                var msg = $"*{saudacao}, {user.Nome}!*\n\n" +
-                          $"*Resumo do mês ({agoraBrasilia:MMMM}):*\n" +
-                          $"Receitas: R$ {resumo.TotalReceitas:N2}\n" +
-                          $"Gastos: R$ {resumo.TotalGastos:N2}\n" +
-                          $"Saldo: R$ {resumo.Saldo:N2}\n";
+                var msg = $"*{saudacao}, {user.Nome}!* ☕\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                          $"📊 *Resumo de {agoraBrasilia:MMMM}:*\n" +
+                          $"🟢 Receitas: R$ {resumo.TotalReceitas:N2}\n" +
+                          $"🔴 Gastos: R$ {resumo.TotalGastos:N2}\n" +
+                          $"💰 Resultado: R$ {resumo.Saldo:N2}\n";
 
                 if (vencemHoje.Any())
                 {
@@ -204,7 +207,7 @@ public class BotNotificationService : BackgroundService
                     }
                 }
 
-                msg += "\nBom dia e boas finanças!";
+                msg += "\n🚀 Bom dia e boas finanças!";
 
                 await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
             }
@@ -236,16 +239,16 @@ public class BotNotificationService : BackgroundService
 
                 if (disponivel > 50)
                 {
-                    var msg = $"*Sextou, {user.Nome}!*\n\n" +
-                              $"Você ainda tem *R$ {disponivel:N2}* livres no orçamento de Lazer.\n" +
-                              "Aproveite o fim de semana com tranquilidade.";
+                    var msg = $"🎉 *Sextou, {user.Nome}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                              $"💰 Você ainda tem *R$ {disponivel:N2}* livres no orçamento de Lazer.\n" +
+                              "🌟 Aproveite o fim de semana com tranquilidade!";
                     await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                 }
                 else if (disponivel > 0)
                 {
-                    var msg = $"*Sextou, {user.Nome}!*\n\n" +
-                              $"Atenção: restam apenas *R$ {disponivel:N2}* para Lazer este mês.\n" +
-                              "Aproveite com moderação.";
+                    var msg = $"🎉 *Sextou, {user.Nome}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                              $"⚠️ Restam apenas *R$ {disponivel:N2}* para Lazer este mês.\n" +
+                              "👀 Aproveite com moderação!";
                     await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                 }
             }
@@ -270,12 +273,13 @@ public class BotNotificationService : BackgroundService
             {
                 var resumo = await resumoService.GerarResumoSemanalAsync(user.Id);
                 var categoriaMaiorGasto = resumo.GastosPorCategoria.FirstOrDefault()?.Categoria ?? "Sem gastos";
-                var msg = "*Resumo da Semana*\n\n" +
-                          $"Gastos: R$ {resumo.TotalGastos:N2}\n" +
-                          $"Maior categoria: {categoriaMaiorGasto}\n\n" +
-                          "Planeje bem a próxima semana.";
-                
-                await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
+                var msg = "📊 *Resumo da Semana*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                          $"💸 Gastos: *R$ {resumo.TotalGastos:N2}*\n" +
+                          $"🏷️ Maior categoria: *{categoriaMaiorGasto}*\n\n" +
+                          "💪 Planeje bem a próxima semana!";
+
+                await EnviarComBotaoAsync(user.TelegramChatId!.Value, msg,
+                    "Ver análise completa", $"{WebUrl}/dashboard", ct);
             }
             catch (Exception ex)
             {
@@ -297,11 +301,12 @@ public class BotNotificationService : BackgroundService
         {
             try
             {
-                var msg = $"*O mês de {mesAtual:MMMM} está acabando.*\n\n" +
-                          "Não esqueça de checar se todas as contas foram pagas.\n" +
-                          "Amanhã começa um novo ciclo.";
+                var msg = $"📅 *O mês de {mesAtual:MMMM} está acabando!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                          "✅ Confira se todas as contas foram pagas.\n" +
+                          "🚀 Amanhã começa um novo ciclo!";
 
-                await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
+                await EnviarComBotaoAsync(user.TelegramChatId!.Value, msg,
+                    "Ver resumo do mês", $"{WebUrl}/dashboard", ct);
             }
             catch (Exception ex)
             {
@@ -334,16 +339,19 @@ public class BotNotificationService : BackgroundService
 
                     if (percentualUsado >= 0.8m && percentualUsado < 1.0m)
                     {
-                        var msg = $"⚠️ *Alerta de Limite: {cat.Nome}*\n" +
-                                  $"Você já usou {percentualUsado:P0} do seu orçamento.\n" +
-                                  $"Resta: R$ {disponivel:N2}";
-                        await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
+                        var msg = $"⚠️ *{cat.Nome} — {percentualUsado:P0} do orçamento*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                                  $"💰 Disponível: *R$ {disponivel:N2}*\n" +
+                                  "👀 Fique de olho nos gastos desta categoria.";
+                        await EnviarComBotaoAsync(user.TelegramChatId!.Value, msg,
+                            "Ver gastos da categoria", $"{WebUrl}/dashboard", ct);
                     }
                     else if (percentualUsado >= 1.0m)
                     {
-                        var msg = $"🚨 *Limite Estourado: {cat.Nome}*\n" +
-                                  $"Você ultrapassou seu orçamento em R$ {Math.Abs(disponivel):N2}!";
-                        await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
+                        var msg = $"🚨 *Limite estourado: {cat.Nome}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                                  $"🔴 Você ultrapassou em *R$ {Math.Abs(disponivel):N2}*!\n" +
+                                  "Revise seus gastos para voltar ao controle.";
+                        await EnviarComBotaoAsync(user.TelegramChatId!.Value, msg,
+                            "Abrir app", $"{WebUrl}/dashboard", ct);
                     }
                 }
             }
@@ -422,7 +430,7 @@ public class BotNotificationService : BackgroundService
                     var score = await scoreService.ObterScoreAtualAsync(user.Id);
                     if (score > 0 && score < 40)
                     {
-                        alertas.Add($"Sua saúde financeira está em *{score:N0}/100*. Use /score para ver dicas de como melhorar.");
+                        alertas.Add($"🩺 Sua saúde financeira está em *{score:N0}/100*. Diga _\"meu score\"_ para ver dicas de como melhorar.");
                     }
                 }
                 catch { /* Score não disponível */ }
@@ -469,7 +477,7 @@ public class BotNotificationService : BackgroundService
 
                     foreach (var r in recorrentes)
                     {
-                        alertas.Add($"Percebi que você paga \"{r.Desc}\" todo mês (média R$ {r.Valor:N2}). Considere cadastrar como conta fixa via /conta\\_fixa");
+                        alertas.Add($"Percebi que você paga \"{r.Desc}\" todo mês (média R$ {r.Valor:N2}). Diga _\"nova conta fixa\"_ para cadastrar e nunca esquecer!");
                     }
                 }
                 catch { /* Falha ao detectar recorrentes */ }
@@ -477,11 +485,12 @@ public class BotNotificationService : BackgroundService
                 // Enviar alertas se houver
                 if (alertas.Any())
                 {
-                    var msg = "*Alertas financeiros*\n\n" +
+                    var msg = "💡 *Insights financeiros*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
                               string.Join("\n\n", alertas) +
-                              "\n\n_Use /score para um diagnóstico completo._";
+                              "\n\n_Diga \"meu score\" para um diagnóstico completo._";
 
-                    await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
+                    await EnviarComBotaoAsync(user.TelegramChatId!.Value, msg,
+                        "Abrir app", $"{WebUrl}/dashboard", ct);
                 }
             }
             catch (Exception ex)
@@ -496,6 +505,32 @@ public class BotNotificationService : BackgroundService
         var mensagemCorrigida = CorrigirTextoCorrompido(mensagem);
         await _botClient.SendMessage(chatId, mensagemCorrigida,
             parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
+    }
+
+    /// <summary>
+    /// Envia mensagem com botão de link para o sistema web.
+    /// Usado apenas em notificações contextuais onde ir ao app faz sentido.
+    /// </summary>
+    private async Task EnviarComBotaoAsync(long chatId, string mensagem, string labelBotao, string url, CancellationToken ct)
+    {
+        var mensagemCorrigida = CorrigirTextoCorrompido(mensagem);
+        var keyboard = new InlineKeyboardMarkup(
+            InlineKeyboardButton.WithUrl(labelBotao, url)
+        );
+        try
+        {
+            await _botClient.SendMessage(chatId, mensagemCorrigida,
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                replyMarkup: keyboard,
+                cancellationToken: ct);
+        }
+        catch
+        {
+            // Fallback sem botão se o markup falhar
+            await _botClient.SendMessage(chatId, mensagemCorrigida,
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                cancellationToken: ct);
+        }
     }
 
     private static string CorrigirTextoCorrompido(string texto)

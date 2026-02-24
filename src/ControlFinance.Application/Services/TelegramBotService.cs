@@ -482,10 +482,11 @@ public class TelegramBotService : ITelegramBotService
             if (msgTrimmed.Length == 6 && msgTrimmed.All(char.IsDigit))
                 return await ProcessarVinculacaoAsync(chatId, $"vincular {msgTrimmed}", nomeUsuario);
 
-            return "Você ainda não tem conta vinculada.\n\n" +
-                   "1. Crie sua conta em finance.nicolasportie.com\n" +
-                   "2. No seu perfil, gere um código de vinculação\n" +
-                   "3. Envie aqui o código de 6 dígitos";
+            return "🔗 *Conta não vinculada*\n\n" +
+                   "Para começar, siga estes passos:\n\n" +
+                   "1️⃣ Crie sua conta em finance.nicolasportie.com\n" +
+                   "2️⃣ No seu perfil, gere um código de vinculação\n" +
+                   "3️⃣ Envie aqui o código de 6 dígitos";
         }
 
         // Verificar confirmação de desvinculação pendente
@@ -530,8 +531,9 @@ public class TelegramBotService : ITelegramBotService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao processar mensagem via IA para usuário {Nome}", usuario.Nome);
-            return "Estou com dificuldades para processar sua mensagem agora. " +
-                   "Tente novamente em alguns instantes ou use um comando direto como /resumo, /fatura, /ajuda.";
+            return "⚠️ Estou com dificuldades para processar sua mensagem agora.\n\n" +
+                   "Tente novamente em alguns instantes ou diga algo como:\n" +
+                   "📌 \"resumo\" • \"fatura\" • \"ajuda\"";
         }
     }
 
@@ -551,35 +553,33 @@ public class TelegramBotService : ITelegramBotService
                 >= 12 and < 18 => "Boa tarde",
                 _ => "Boa noite"
             };
-            return $"{saudacao}, {usuario.Nome}!\n\n" +
-                   "Como posso te ajudar? Alguns exemplos:\n" +
-                   "\"Gastei 50 no mercado\"\n" +
-                   "\"Resumo financeiro\"\n" +
-                   "\"Fatura do cartão\"\n" +
-                   "\"Posso gastar 200 em roupas?\"\n\n" +
-                   "Ou digite /ajuda para ver todos os comandos.";
+            return $"{saudacao}, *{usuario.Nome}*! 👋\n\n" +
+                   "Como posso te ajudar?\n\n" +
+                   "📌 \"Gastei 50 no mercado\"\n" +
+                   "📌 \"Resumo financeiro\"\n" +
+                   "📌 \"Fatura do cartão\"\n" +
+                   "📌 \"Posso gastar 200 em roupas?\"\n\n" +
+                   "Ou diga *ajuda* para ver tudo que posso fazer.";
         }
 
         // Ajuda
         if (msgLower is "ajuda" or "help" or "socorro" or "comandos" or "menu"
             or "o que voce faz" or "o que você faz" or "como funciona")
         {
-            return "*O que posso fazer por você:*\n\n" +
-                   "*Lançamentos* — Me diga seus gastos ou receitas em linguagem natural\n" +
-                   "   Ex: \"Gastei 30 no almoço\" ou \"Recebi 1500 de salário\"\n\n" +
-                   "*Resumo* — \"Resumo financeiro\" ou /resumo\n" +
-                   "*Fatura* — \"Fatura do cartão\" ou /fatura\n" +
-                   "*Categorias* — \"Ver categorias\" ou /categorias\n" +
-                   "*Metas* — \"Ver metas\" ou /metas\n" +
-                   "*Limites* — \"Ver limites\" ou /limites\n" +
-                   "*Decisão* — \"Posso gastar X em Y?\"\n" +
-                   "*Previsão* — \"Quero comprar X de R$ Y em Z parcelas\"\n" +
-                   "*Cartões* — consulta de faturas no bot; cadastro/edição no site\n" +
-                   "*Lembretes* — /lembrete criar Internet;15/03/2026;99,90;mensal\n" +
-                   "*Salário médio* — /salario_mensal\n" +
-                   "*Áudio* — Envie áudio que eu transcrevo\n" +
-                   "*Imagem* — Envie foto de nota fiscal\n\n" +
-                   "Digite qualquer coisa e eu entendo.";
+            return "📋 *O que posso fazer por você:*\n\n" +
+                   "💵 *Lançamentos*\n" +
+                   "    \"Gastei 30 no almoço\" ou \"Recebi 1500 de salário\"\n\n" +
+                   "📊 *Resumo* — \"como estou esse mês?\"\n" +
+                   "💳 *Fatura* — \"minha fatura\" ou \"fatura do Nubank\"\n" +
+                   "🏷️ *Categorias* — \"minhas categorias\"\n" +
+                   "🎯 *Metas* — \"minhas metas\"\n" +
+                   "📏 *Limites* — \"meus limites\"\n" +
+                   "🤔 *Decisão* — \"posso gastar X em Y?\"\n" +
+                   "🔮 *Simulação* — \"se eu comprar X de R$ Y em Zx?\"\n" +
+                   "🔔 *Lembretes* — \"meus lembretes\"\n" +
+                   "🎙️ *Áudio* — Envie áudio que eu transcrevo\n" +
+                   "📸 *Imagem* — Envie foto de nota fiscal\n\n" +
+                   "Fale naturalmente — eu entendo! 😊";
         }
 
         // Intentos de gestão no estilo cadastro/edição/exclusão devem ir para o Web
@@ -605,7 +605,7 @@ public class TelegramBotService : ITelegramBotService
         if (msgLower is "obrigado" or "obrigada" or "valeu" or "vlw" or "thanks" or "brigado" or "brigada"
             or "obg" or "muito obrigado" or "muito obrigada")
         {
-            return "Por nada! Estou aqui quando precisar.";
+            return "De nada! 😊 Estou sempre por aqui quando precisar.";
         }
 
         // Consultas diretas que não precisam de IA
@@ -1081,6 +1081,9 @@ public class TelegramBotService : ITelegramBotService
     private async Task<string> GerarResumoFormatado(Usuario usuario)
     {
         var resumo = await _resumoService.GerarResumoMensalAsync(usuario.Id);
+        if (usuario.TelegramChatId.HasValue)
+            BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
+                new[] { ("Ver análise detalhada", $"url:{_sistemaWebUrl}/dashboard") });
         return _resumoService.FormatarResumo(resumo);
     }
 
@@ -1103,7 +1106,7 @@ public class TelegramBotService : ITelegramBotService
         if (!string.IsNullOrWhiteSpace(referenciaMes))
         {
             if (!TryParseMesReferencia(referenciaMes, out var referencia))
-                return "❌ Referência inválida. Use MM/yyyy. Exemplo: /fatura_detalhada 03/2026";
+                return "❌ Referência inválida. Use MM/yyyy. Exemplo: _\"fatura detalhada 03/2026\"_";
 
             referenciaNormalizada = referencia.ToString("MM/yyyy", CultureInfo.InvariantCulture);
         }
@@ -1167,7 +1170,7 @@ public class TelegramBotService : ITelegramBotService
                 if (outras.Any())
                 {
                     var totalOutras = outras.Sum(f => f.Total);
-                    resultado += $"Você também tem {outras.Count} outra(s) fatura(s) pendente(s) totalizando R$ {totalOutras:N2}.\nUse /faturas para ver todas.\n\n";
+                    resultado += $"📎 Você também tem {outras.Count} outra(s) fatura(s) pendente(s) totalizando R$ {totalOutras:N2}.\nDiga _\"ver todas as faturas\"_ para conferir.\n\n";
                 }
             }
         }
@@ -1190,7 +1193,7 @@ public class TelegramBotService : ITelegramBotService
         if (LooksLikeMesReferencia(ultimoToken))
         {
             if (!TryParseMesReferencia(ultimoToken, out var referencia))
-                return "❌ Referência inválida. Use MM/yyyy. Exemplo: /fatura_detalhada 03/2026";
+                return "❌ Referência inválida. Use MM/yyyy. Exemplo: _\"fatura detalhada 03/2026\"_";
 
             referenciaMes = referencia.ToString("MM/yyyy", CultureInfo.InvariantCulture);
             if (tokens.Length > 1)
@@ -1398,45 +1401,38 @@ public class TelegramBotService : ITelegramBotService
 
         return comando switch
         {
-            "/start" => $"Olá, {usuario.Nome}! Sou o ControlFinance, seu assistente financeiro.\n\nFale naturalmente:\n• \"paguei 45 no mercado\"\n• \"recebi 5000 de salário\"\n• \"posso gastar 50 num lanche?\"\n• \"se eu comprar uma TV de 3000 em 10x?\"\n• \"limitar alimentação em 800\"\n• \"quero juntar 10 mil até dezembro\"\n\nAceito texto, áudio e foto de cupom.",
-            "/ajuda" or "/help" => "*Comandos disponíveis:*\n\n" +
-                "*Lançamentos*\n" +
-                "• \"gastei 50 no mercado\"\n" +
-                "• \"recebi 3000 de salário\"\n" +
-                "• \"ifood 89,90 no crédito 3x\"\n" +
-                "• \"excluir mercado\"\n" +
-                "• \"dividi 100 com 2 amigos\"\n" +
-                "• \"meu extrato\" — últimos lançamentos\n\n" +
-                "*Cartões e Faturas*\n" +
-                "• \"minha fatura\" ou \"fatura do Nubank\"\n" +
-                "• \"todas as faturas\"\n" +
-                "• \"fatura detalhada\"\n" +
-                "• \"paguei a fatura do Nubank\"\n\n" +
-                "*Análises*\n" +
-                "• \"como estou esse mês?\" — resumo\n" +
-                "• \"detalha alimentação\" — por categoria\n" +
-                "• \"compara com mês passado\"\n" +
-                "• \"minhas receitas recorrentes\"\n" +
-                "• \"posso gastar 80 no iFood?\"\n" +
-                "• \"se eu comprar TV de 3000 em 12x?\"\n\n" +
-                "*Metas e Limites*\n" +
-                "• \"limitar alimentação em 800\"\n" +
-                "• \"meus limites\"\n" +
-                "• \"quero juntar 5000 pra viagem até junho\"\n" +
-                "• \"minhas metas\"\n" +
-                "• \"depositar 200 na meta viagem\"\n\n" +
-                "*Lembretes e Contas*\n" +
-                "• \"meus lembretes\" — contas a pagar\n" +
-                "• \"qual meu salário?\"\n" +
-                "• \"minhas categorias\"\n" +
-                "• \"criar categoria Roupas\"\n\n" +
-                "*Inteligência Financeira*\n" +
-                "• \"meu score financeiro\"\n" +
-                "• \"meu perfil de gastos\"\n" +
-                "• \"já lancei 89.90?\" — duplicidade\n" +
-                "• \"eventos sazonais\"\n\n" +
-                "/cancelar — cancela qualquer operação pendente\n\n" +
-                "Fale naturalmente. Aceito texto, áudio e foto de cupom.",
+            "/start" => $"👋 Olá, *{usuario.Nome}*! Sou o *ControlFinance*, seu assistente financeiro.\n\n💬 Fale naturalmente:\n\n📌 \"paguei 45 no mercado\"\n📌 \"recebi 5000 de salário\"\n📌 \"posso gastar 50 num lanche?\"\n📌 \"se eu comprar uma TV de 3000 em 10x?\"\n📌 \"limitar alimentação em 800\"\n📌 \"quero juntar 10 mil até dezembro\"\n\n🎙️ Aceito *texto*, *áudio* e *foto de cupom*.",
+            "/ajuda" or "/help" => "📋 *Guia Completo*\n\n" +
+                "💵 *Lançamentos*\n" +
+                "   \"gastei 50 no mercado\"\n" +
+                "   \"recebi 3000 de salário\"\n" +
+                "   \"ifood 89,90 no crédito 3x\"\n" +
+                "   \"excluir mercado\"\n" +
+                "   \"dividi 100 com 2 amigos\"\n" +
+                "   \"meu extrato\"\n\n" +
+                "💳 *Cartões e Faturas*\n" +
+                "   \"minha fatura\" ou \"fatura do Nubank\"\n" +
+                "   \"todas as faturas\"\n" +
+                "   \"paguei a fatura do Nubank\"\n\n" +
+                "📊 *Análises*\n" +
+                "   \"como estou esse mês?\"\n" +
+                "   \"detalha alimentação\"\n" +
+                "   \"compara com mês passado\"\n" +
+                "   \"posso gastar 80 no iFood?\"\n" +
+                "   \"se eu comprar TV de 3000 em 12x?\"\n\n" +
+                "🎯 *Metas e Limites*\n" +
+                "   \"limitar alimentação em 800\"\n" +
+                "   \"quero juntar 5000 pra viagem até junho\"\n" +
+                "   \"depositar 200 na meta viagem\"\n\n" +
+                "🔔 *Lembretes e Contas*\n" +
+                "   \"meus lembretes\"\n" +
+                "   \"qual meu salário?\"\n" +
+                "   \"criar categoria Roupas\"\n\n" +
+                "🧠 *Inteligência Financeira*\n" +
+                "   \"meu score financeiro\"\n" +
+                "   \"meu perfil de gastos\"\n" +
+                "   \"já lancei 89.90?\"\n\n" +
+                "Fale naturalmente — eu entendo! 🎙️📸",
             "/simular" => await _previsaoHandler.ProcessarComandoSimularAsync(usuario, partes.Length > 1 ? partes[1] : null)
                          ?? await ProcessarComIAAsync(usuario, mensagem),
             "/posso" => await _previsaoHandler.ProcessarComandoPossoAsync(usuario, partes.Length > 1 ? partes[1] : null)
@@ -2217,14 +2213,17 @@ public class TelegramBotService : ITelegramBotService
             return await ListarLembretesFormatadoAsync(usuario);
 
         if (acao is "ajuda" or "help")
-            return "Use /lembrete criar descricao;dd/MM/yyyy;valor;mensal\n" +
-                   "Exemplo: /lembrete criar Internet;15/03/2026;99,90;mensal\n" +
-                   "Ou: /lembrete remover 12";
+            return "❓ *Ajuda — Lembretes*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                   "Diga naturalmente:\n" +
+                   "  📝 _\"criar lembrete de internet dia 15 de 99,90 mensal\"_\n" +
+                   "  ❌ _\"remover lembrete 12\"_\n" +
+                   "  ✅ _\"paguei lembrete 12\"_\n" +
+                   "  📋 _\"meus lembretes\"_";
 
         if (acao is "remover" or "excluir" or "desativar" or "concluir" or "pago")
         {
             if (!int.TryParse(resto, out var id))
-                return "Informe o ID. Exemplo: /lembrete remover 12";
+                return "📌 Informe o ID. Exemplo: _\"remover lembrete 12\"_";
 
             var removido = await _lembreteRepo.DesativarAsync(usuario.Id, id);
             return removido
@@ -2242,12 +2241,14 @@ public class TelegramBotService : ITelegramBotService
     private async Task<string> ProcessarComandoContaFixaAsync(Usuario usuario, string? parametros)
     {
         if (string.IsNullOrWhiteSpace(parametros))
-            return "Use /conta_fixa descricao;valor;dia\n" +
-                   "Exemplo: /conta_fixa Aluguel;1500;5";
+            return "📌 *Cadastro de Conta Fixa*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                   "Diga naturalmente:\n" +
+                   "_\"conta fixa de aluguel 1500 dia 5\"_\n\n" +
+                   "Ou use: `descricao;valor;dia`";
 
         var partes = parametros.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (partes.Length < 3)
-            return "Formato invalido. Use /conta_fixa descricao;valor;dia";
+            return "⚠️ Formato inválido. Diga naturalmente:\n_\"conta fixa de aluguel 1500 dia 5\"_";
 
         var descricao = partes[0];
         if (string.IsNullOrWhiteSpace(descricao))
@@ -2284,11 +2285,11 @@ public class TelegramBotService : ITelegramBotService
     private async Task<string> CriarLembreteAPartirTextoAsync(Usuario usuario, string? payload)
     {
         if (string.IsNullOrWhiteSpace(payload))
-            return "Formato: /lembrete criar descricao;dd/MM/yyyy;valor;mensal";
+            return "📌 Diga naturalmente:\n_\"lembrete de internet dia 15 de 99,90 mensal\"_";
 
         var partes = payload.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (partes.Length < 2)
-            return "Formato invalido. Use: /lembrete criar descricao;dd/MM/yyyy;valor;mensal";
+            return "⚠️ Formato inválido. Diga naturalmente:\n_\"lembrete de internet dia 15 de 99,90 mensal\"_";
 
         var descricao = partes[0].Trim();
         if (string.IsNullOrWhiteSpace(descricao))
@@ -2368,7 +2369,7 @@ public class TelegramBotService : ITelegramBotService
         var lembretes = await _lembreteRepo.ObterPorUsuarioAsync(usuario.Id, apenasAtivos: true);
         if (!lembretes.Any())
             return "🔔 Nenhum lembrete ativo.\n\n" +
-                   "Use /lembrete criar descricao;dd/MM/yyyy;valor;mensal";
+                   "💡 Diga _\"criar lembrete de internet dia 15 de 99,90 mensal\"_ para começar!";
 
         var texto = "🔔 Seus lembretes ativos:\n";
         foreach (var lembrete in lembretes)
@@ -2381,7 +2382,7 @@ public class TelegramBotService : ITelegramBotService
             texto += $"\n#{lembrete.Id} - {lembrete.Descricao} - {lembrete.DataVencimento:dd/MM/yyyy}{valorTexto}{recorrenciaTexto}";
         }
 
-        texto += "\n\nPara remover: /lembrete remover ID";
+        texto += "\n\n💡 Para remover, diga _\"remover lembrete [ID]\"_";
         return texto;
     }
 
@@ -2477,13 +2478,13 @@ public class TelegramBotService : ITelegramBotService
 
         _logger.LogInformation("Telegram vinculado: {Email} → ChatId {ChatId}", usuario.Email, chatId);
 
-        return $"✅ Vinculado com sucesso!\n\n" +
-               $"Olá, {usuario.Nome}. Agora você pode usar o bot.\n\n" +
-               $"Exemplos:\n" +
-               $"• \"gastei 50 no mercado\"\n" +
-               $"• \"recebi 3000 de salário\"\n" +
-               $"• \"quanto gastei esse mês?\"\n\n" +
-               $"Aceito texto, áudio e foto de cupom.";
+        return $"✅ *Vinculado com sucesso!*\n\n" +
+               $"Olá, *{usuario.Nome}*! Agora você pode usar o bot.\n\n" +
+               $"💬 Exemplos do que posso fazer:\n\n" +
+               $"📌 \"gastei 50 no mercado\"\n" +
+               $"📌 \"recebi 3000 de salário\"\n" +
+               $"📌 \"quanto gastei esse mês?\"\n\n" +
+               $"🎙️ Aceito *texto*, *áudio* e *foto de cupom*.";
     }
 
     private async Task<(Usuario, CodigoVerificacao)?> BuscarUsuarioPorCodigoAsync(string codigo)
@@ -2664,6 +2665,9 @@ public class TelegramBotService : ITelegramBotService
         try
         {
             var scoreDto = await _scoreService.CalcularAsync(usuario.Id);
+            if (usuario.TelegramChatId.HasValue)
+                BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
+                    new[] { ("Ver análise completa", $"url:{_sistemaWebUrl}/dashboard") });
             return scoreDto.ResumoTexto;
         }
         catch (Exception ex)
@@ -2695,7 +2699,10 @@ public class TelegramBotService : ITelegramBotService
             if (perfil.ScoreSaudeFinanceira > 0)
                 sb.AppendLine($"\nScore de saúde financeira: *{perfil.ScoreSaudeFinanceira:N0}/100*");
 
-            sb.AppendLine("\n_Use /score para ver os fatores detalhados._");
+            sb.AppendLine("\n💡 _Diga \"meu score\" para ver os fatores detalhados._");
+            if (usuario.TelegramChatId.HasValue)
+                BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
+                    new[] { ("Ver perfil completo", $"url:{_sistemaWebUrl}/perfil") });
             return sb.ToString();
         }
         catch (Exception ex)

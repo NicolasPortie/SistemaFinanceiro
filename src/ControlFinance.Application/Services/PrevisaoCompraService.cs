@@ -562,11 +562,11 @@ public class PrevisaoCompraService : IPrevisaoCompraService
     {
         return rec switch
         {
-            RecomendacaoCompra.Seguir => "Pode seguir com a compra.",
-            RecomendacaoCompra.AjustarParcelas => "Considere ajustar o parcelamento.",
-            RecomendacaoCompra.Adiar => "Recomendável adiar se possível.",
-            RecomendacaoCompra.ReduzirValor => "Valor elevado — considere uma opção mais acessível.",
-            _ => "Avaliar"
+            RecomendacaoCompra.Seguir => "✅ Pode seguir com a compra!",
+            RecomendacaoCompra.AjustarParcelas => "⚠️ Considere ajustar o parcelamento.",
+            RecomendacaoCompra.Adiar => "⏳ Recomendável adiar se possível.",
+            RecomendacaoCompra.ReduzirValor => "📉 Valor elevado — considere uma opção mais acessível.",
+            _ => "🔍 Avaliar"
         };
     }
 
@@ -581,61 +581,57 @@ public class PrevisaoCompraService : IPrevisaoCompraService
     {
         var riscoEmoji = classificacaoRisco switch
         {
-            "Seguro" => "Seguro",
-            "Moderado" => "Moderado",
-            "Arriscado" => "Arriscado",
-            "Crítico" => "Crítico",
-            _ => "Indefinido"
+            "Seguro" => "🟢 Seguro",
+            "Moderado" => "🟡 Moderado",
+            "Arriscado" => "🟠 Arriscado",
+            "Crítico" => "🔴 Crítico",
+            _ => "⚪ Indefinido"
         };
 
         var confiancaEmoji = confianca switch
         {
-            NivelConfianca.Baixa => $"Baixa ({perfil.DiasDeHistorico} dias de histórico)",
-            NivelConfianca.Media => $"Média ({perfil.DiasDeHistorico} dias de histórico)",
-            NivelConfianca.Alta => $"Alta ({perfil.DiasDeHistorico} dias de histórico)",
-            _ => "Indefinida"
+            NivelConfianca.Baixa => $"📊 Baixa ({perfil.DiasDeHistorico} dias de histórico)",
+            NivelConfianca.Media => $"📊 Média ({perfil.DiasDeHistorico} dias de histórico)",
+            NivelConfianca.Alta => $"📊 Alta ({perfil.DiasDeHistorico} dias de histórico)",
+            _ => "📊 Indefinida"
         };
 
         var parcelaInfo = request.NumeroParcelas > 1
             ? $" em {request.NumeroParcelas}x de R$ {request.Valor / request.NumeroParcelas:N2}"
             : " à vista";
 
-        var texto = $"*Análise de Compra*\n\n" +
-                   $"Item: {request.Descricao}\n" +
-                   $"Valor: R$ {request.Valor:N2}{parcelaInfo}\n\n" +
-                   $"Pior mês projetado: *{piorMes}* (saldo de R$ {menorSaldo:N2})\n" +
-                   $"Folga média mensal: R$ {folgaMedia:N2}\n" +
-                   $"Classificação: *{riscoEmoji}*\n" +
-                   $"Confiança: {confiancaEmoji}\n";
+        var texto = $"🔮 *Análise de Compra*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                   $"🛒 Item: *{request.Descricao}*\n" +
+                   $"💰 Valor: R$ {request.Valor:N2}{parcelaInfo}\n\n" +
+                   $"📉 Pior mês projetado: *{piorMes}* (R$ {menorSaldo:N2})\n" +
+                   $"📊 Folga média mensal: R$ {folgaMedia:N2}\n" +
+                   $"🏷️ Classificação: *{riscoEmoji}*\n" +
+                   $"{confiancaEmoji}\n";
 
-        // Score de saúde
         if (scoreSaude > 0)
-            texto += $"Score de saúde financeira: {scoreSaude:N0}/100\n";
+            texto += $"💯 Score de saúde: {scoreSaude:N0}/100\n";
 
-        // Probabilidade de mês negativo
         if (probabilidadeMesNegativo > 0)
-            texto += $"Probabilidade de mês negativo: {probabilidadeMesNegativo:N1}%\n";
+            texto += $"⚠️ Chance de mês negativo: {probabilidadeMesNegativo:N1}%\n";
 
         texto += $"\n*{FormatarRecomendacao(recomendacao)}*";
 
-        // Eventos sazonais no horizonte
         if (eventosSazonais?.Any() == true)
         {
-            texto += "\n\n*Eventos sazonais no período:*\n";
+            texto += "\n\n📅 *Eventos sazonais no período:*\n";
             foreach (var e in eventosSazonais.Take(5))
             {
-                var tipo = e.EhReceita ? "+" : "-";
+                var tipo = e.EhReceita ? "🟢 +" : "🔴 -";
                 texto += $"  {tipo} {e.Descricao} — {NomeMes(e.MesOcorrencia)} — R$ {e.ValorMedio:N2}\n";
             }
         }
 
-        // Impacto em metas
         if (impactoMetas?.Any(m => m.MesesAtraso > 0) == true)
         {
-            texto += "\n*Impacto nas metas:*\n";
+            texto += "\n🎯 *Impacto nas metas:*\n";
             foreach (var m in impactoMetas.Where(m => m.MesesAtraso > 0))
             {
-                texto += $"  {m.Descricao}\n";
+                texto += $"  ⚠️ {m.Descricao}\n";
             }
         }
 
@@ -644,14 +640,13 @@ public class PrevisaoCompraService : IPrevisaoCompraService
             texto += "\n\n_Previsão preliminar — com mais dados a precisão melhora._";
         }
 
-        // Adicionar cenários alternativos se existirem
         if (cenarios != null && cenarios.Any())
         {
             var melhorCenario = cenarios.OrderByDescending(c => c.MenorSaldoProjetado).First();
             if (melhorCenario.NumeroParcelas != request.NumeroParcelas)
             {
-                texto += $"\n\n*Opção mais favorável:* {melhorCenario.NumeroParcelas}x de R$ {melhorCenario.ValorParcela:N2}" +
-                         $" (risco {melhorCenario.Risco}, saldo mínimo R$ {melhorCenario.MenorSaldoProjetado:N2})";
+                texto += $"\n\n💡 *Opção mais favorável:* {melhorCenario.NumeroParcelas}x de R$ {melhorCenario.ValorParcela:N2}" +
+                         $" ({melhorCenario.Risco}, saldo mín. R$ {melhorCenario.MenorSaldoProjetado:N2})";
             }
         }
 

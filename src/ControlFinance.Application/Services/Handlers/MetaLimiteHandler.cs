@@ -38,7 +38,9 @@ public class MetaLimiteHandler : IMetaLimiteHandler
             };
 
             var resultado = await _limiteService.DefinirLimiteAsync(usuario.Id, dto);
-            return $"✅ Limite definido!\n\n{resultado.CategoriaNome}: R$ {resultado.ValorLimite:N2}/mês\nGasto atual: R$ {resultado.GastoAtual:N2} ({resultado.PercentualConsumido:N0}%)";
+            return $"✅ *Limite definido!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                   $"🏷️ {resultado.CategoriaNome}: *R$ {resultado.ValorLimite:N2}*/mês\n" +
+                   $"💸 Gasto atual: R$ {resultado.GastoAtual:N2} ({resultado.PercentualConsumido:N0}%)";
         }
         catch (InvalidOperationException ex)
         {
@@ -80,11 +82,11 @@ public class MetaLimiteHandler : IMetaLimiteHandler
 
             var resultado = await _metaService.CriarMetaAsync(usuario.Id, dto);
 
-            return $"✅ Meta criada!\n\n" +
-                   $"*{resultado.Nome}*\n" +
-                   $"Alvo: R$ {resultado.ValorAlvo:N2}\n" +
-                   $"Prazo: {resultado.Prazo:MM/yyyy} ({resultado.MesesRestantes} meses)\n" +
-                   $"Precisa guardar: R$ {resultado.ValorMensalNecessario:N2}/mês";
+            return $"✅ *Meta criada!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                   $"🎯 *{resultado.Nome}*\n" +
+                   $"💰 Alvo: R$ {resultado.ValorAlvo:N2}\n" +
+                   $"📅 Prazo: {resultado.Prazo:MM/yyyy} ({resultado.MesesRestantes} meses)\n" +
+                   $"📊 Guardar: *R$ {resultado.ValorMensalNecessario:N2}/mês*";
         }
         catch (Exception ex)
         {
@@ -116,12 +118,12 @@ public class MetaLimiteHandler : IMetaLimiteHandler
 
             if (resultado == null) return "❌ Erro ao atualizar meta.";
 
-            var acao = aporte.Valor >= 0 ? "Aporte realizado" : "Saque realizado";
+            var acao = aporte.Valor >= 0 ? "🟢 Aporte realizado" : "🔴 Saque realizado";
             var diff = Math.Abs(aporte.Valor);
 
-            return $"✅ {acao} na meta *{resultado.Nome}*!\n\n" +
-                   $"Valor: R$ {diff:N2}\n" +
-                   $"Progresso: R$ {resultado.ValorAtual:N2} / R$ {resultado.ValorAlvo:N2} ({resultado.PercentualConcluido:N0}%)";
+            return $"✅ *{acao} na meta \"_{resultado.Nome}_\"!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                   $"💰 Valor: R$ {diff:N2}\n" +
+                   $"📊 Progresso: R$ {resultado.ValorAtual:N2} / R$ {resultado.ValorAlvo:N2} ({resultado.PercentualConcluido:N0}%)";
         }
         catch (Exception ex)
         {
@@ -133,7 +135,7 @@ public class MetaLimiteHandler : IMetaLimiteHandler
     public async Task<string> ProcessarComandoLimiteAsync(Usuario usuario, string? parametros)
     {
         if (string.IsNullOrWhiteSpace(parametros))
-            return "*Limites por Categoria*\n\nExemplo: \"limite Alimentação 800\"\nOu: \"limitar lazer em 500\"\n\nPara ver todos, diga: \"listar limites\".";
+            return "🏷️ *Limites por Categoria*\n\nDefina dizendo algo como:\n_\"limitar Alimentação em 800\"_\n\nPara ver todos, diga: _\"meus limites\"_";
 
         var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 2 && decimal.TryParse(parts[^1].Replace(",", "."),
@@ -144,7 +146,9 @@ public class MetaLimiteHandler : IMetaLimiteHandler
             {
                 var resultado = await _limiteService.DefinirLimiteAsync(usuario.Id,
                     new DefinirLimiteDto { Categoria = categoria, Valor = valor });
-                return $"✅ Limite definido!\n{resultado.CategoriaNome}: R$ {resultado.ValorLimite:N2}/mês\nGasto atual: R$ {resultado.GastoAtual:N2} ({resultado.PercentualConsumido:N0}%)";
+                return $"✅ *Limite definido!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                       $"🏷️ {resultado.CategoriaNome}: *R$ {resultado.ValorLimite:N2}*/mês\n" +
+                       $"💸 Gasto atual: R$ {resultado.GastoAtual:N2} ({resultado.PercentualConsumido:N0}%)";
             }
             catch (InvalidOperationException ex)
             {
@@ -158,11 +162,11 @@ public class MetaLimiteHandler : IMetaLimiteHandler
     public async Task<string?> ProcessarComandoMetaAsync(Usuario usuario, string? parametros)
     {
         if (string.IsNullOrWhiteSpace(parametros))
-            return "*Metas Financeiras*\n\n" +
-                   "Para criar, diga algo como: \"meta criar Viagem 5000 12/2026\"\n" +
-                   "Para atualizar: \"meta atualizar [id] [valor]\"\n" +
-                   "Para listar: \"listar metas\"\n\n" +
-                   "Ou fale naturalmente: \"quero juntar 10 mil até dezembro\"";
+            return "🎯 *Metas Financeiras*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                   "Crie dizendo algo como:\n" +
+                   "💬 _\"quero juntar 10 mil até dezembro\"_\n" +
+                   "💬 _\"meta de viagem 5000 até 12/2026\"_\n\n" +
+                   "Para ver suas metas: _\"minhas metas\"_";
 
         var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var acao = parts[0].ToLower();
@@ -180,7 +184,11 @@ public class MetaLimiteHandler : IMetaLimiteHandler
                     var prazo = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
                     var dto = new CriarMetaDto { Nome = nome, ValorAlvo = valorAlvo, Prazo = prazo };
                     var resultado = await _metaService.CriarMetaAsync(usuario.Id, dto);
-                    return $"✅ Meta criada!\n*{resultado.Nome}*\nR$ {resultado.ValorAlvo:N2}\n{resultado.Prazo:MM/yyyy}\nR$ {resultado.ValorMensalNecessario:N2}/mês";
+                    return $"✅ *Meta criada!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                           $"🎯 *{resultado.Nome}*\n" +
+                           $"💰 R$ {resultado.ValorAlvo:N2}\n" +
+                           $"📅 {resultado.Prazo:MM/yyyy}\n" +
+                           $"📊 Guardar *R$ {resultado.ValorMensalNecessario:N2}/mês*";
                 }
                 return "❌ Prazo inválido. Use MM/aaaa (ex: 12/2026)";
             }
@@ -195,7 +203,8 @@ public class MetaLimiteHandler : IMetaLimiteHandler
                 var resultado = await _metaService.AtualizarMetaAsync(usuario.Id, metaId,
                     new AtualizarMetaDto { ValorAtual = novoValor });
                 if (resultado != null)
-                    return $"✅ Meta *{resultado.Nome}* atualizada!\nR$ {resultado.ValorAtual:N2} / R$ {resultado.ValorAlvo:N2} ({resultado.PercentualConcluido:N0}%)";
+                    return $"✅ Meta *{resultado.Nome}* atualizada!\n\n" +
+                           $"📊 R$ {resultado.ValorAtual:N2} / R$ {resultado.ValorAlvo:N2} ({resultado.PercentualConcluido:N0}%)";
                 return "❌ Meta não encontrada.";
             }
         }

@@ -169,11 +169,11 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
 
         var classificacaoEmoji = scoreTotal switch
         {
-            >= 80 => "[Excelente]",
-            >= 60 => "[Bom]",
-            >= 40 => "[Regular]",
-            >= 20 => "[Preocupante]",
-            _ => "[Crítico]"
+            >= 80 => "🌟",
+            >= 60 => "✅",
+            >= 40 => "⚠️",
+            >= 20 => "🟠",
+            _ => "🔴"
         };
 
         // Persistir no perfil comportamental
@@ -189,8 +189,10 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
 
         // ── Gerar resumo legível em linguagem simples ──
         var barraProgresso = GerarBarraProgresso(scoreTotal);
-        var resumo = $"{classificacaoEmoji} *Sua Saúde Financeira: {classificacao}*\n";
-        resumo += $"{barraProgresso} {scoreTotal:N0}/100\n\n";
+        var resumo = $"━━━━━━━━━━━━━━━━━━━━━\n";
+        resumo += $"{classificacaoEmoji} *Saúde Financeira: {classificacao}*\n";
+        resumo += $"{barraProgresso}  *{scoreTotal:N0}*/100\n";
+        resumo += $"━━━━━━━━━━━━━━━━━━━━━\n\n";
 
         // Separar pontos positivos e pontos de atenção
         var pontosPositivos = new List<string>();
@@ -249,26 +251,27 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
         // Montar mensagem final
         if (pontosPositivos.Any())
         {
-            resumo += "*O que está indo bem:*\n";
+            resumo += "🟢 *O que está indo bem:*\n";
             foreach (var p in pontosPositivos)
-                resumo += $"  • {p}\n";
+                resumo += $"  ✔️ {p}\n";
         }
 
         if (pontosAtencao.Any())
         {
-            resumo += $"\n*Pontos de atenção:*\n";
+            resumo += $"\n🔶 *Pontos de atenção:*\n";
             foreach (var p in pontosAtencao)
-                resumo += $"  • {p}\n";
+                resumo += $"  ⚡ {p}\n";
         }
 
+        resumo += "\n━━━━━━━━━━━━━━━━━━━━━";
         if (scoreTotal >= 80)
-            resumo += "\nParabéns! Suas finanças estão saudáveis. Continue assim.";
+            resumo += "\n🏆 *Parabéns!* Suas finanças estão saudáveis. Continue assim!";
         else if (scoreTotal >= 60)
-            resumo += "\nVocê está no caminho certo. Com pequenos ajustes, pode alcançar o nível excelente.";
+            resumo += "\n💪 Você está no caminho certo! Com pequenos ajustes, pode alcançar o nível excelente.";
         else if (scoreTotal >= 40)
-            resumo += "\nAtenção com os gastos. Revise os pontos acima para melhorar seu score.";
+            resumo += "\n⚠️ Atenção com os gastos. Revise os pontos acima para melhorar seu score.";
         else
-            resumo += "\nSituação delicada. Priorize gastar menos do que ganha e quitar dívidas.";
+            resumo += "\n🚨 Situação delicada. Priorize gastar menos do que ganha e quitar dívidas.";
 
         return new ScoreSaudeFinanceiraDto
         {
@@ -333,6 +336,6 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
         var preenchidos = (int)Math.Round(score / 100m * totalBlocos);
         preenchidos = Math.Clamp(preenchidos, 0, totalBlocos);
 
-        return "[" + new string('#', preenchidos) + new string('.', totalBlocos - preenchidos) + "]";
+        return new string('▓', preenchidos) + new string('░', totalBlocos - preenchidos);
     }
 }

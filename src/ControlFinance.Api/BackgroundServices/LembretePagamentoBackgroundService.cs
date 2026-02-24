@@ -4,6 +4,7 @@ using ControlFinance.Domain.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Telegram.Bot;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace ControlFinance.Api.BackgroundServices;
 
@@ -22,6 +23,8 @@ public class LembretePagamentoBackgroundService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<LembretePagamentoBackgroundService> _logger;
+
+    private const string WebUrl = "https://finance.nicolasportie.com";
 
     // Timezone Brasil
     private static readonly TimeZoneInfo BrasiliaTimeZone =
@@ -200,10 +203,14 @@ public class LembretePagamentoBackgroundService : BackgroundService
         // Enviar mensagem
         try
         {
+            var keyboard = new InlineKeyboardMarkup(
+                InlineKeyboardButton.WithUrl("Gerenciar lembretes", $"{WebUrl}/contas-fixas")
+            );
             var sent = await _botClient.SendMessage(
                 chatId: lembrete.Usuario.TelegramChatId.Value,
                 text: mensagem,
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                replyMarkup: keyboard,
                 cancellationToken: ct);
 
             // Log sucesso
@@ -244,41 +251,41 @@ public class LembretePagamentoBackgroundService : BackgroundService
 
     private static string FormatarMensagemDMenos(LembretePagamento l, int dias)
     {
-        var valor = l.Valor.HasValue ? $"\nValor: R$ {l.Valor.Value:N2}" : "";
-        var cat = l.Categoria != null ? $"\nCategoria: {l.Categoria.Nome}" : "";
-        return $"🔔 *Lembrete: {l.Descricao}*\n\n" +
-               $"Vence em {dias} dia(s) ({l.DataVencimento:dd/MM/yyyy})" +
+        var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
+        var cat = l.Categoria != null ? $"\n🏷️ Categoria: {l.Categoria.Nome}" : "";
+        return $"🔔 *Lembrete: {l.Descricao}*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+               $"📅 Vence em *{dias} dia(s)* ({l.DataVencimento:dd/MM/yyyy})" +
                valor + cat +
-               $"\n\nJá pagou? Use: /lembrete pago {l.Id}";
+               $"\n\n_Já pagou? Diga \"paguei lembrete {l.Id}\"_";
     }
 
     private static string FormatarMensagemDMenos1(LembretePagamento l)
     {
-        var valor = l.Valor.HasValue ? $"\nValor: R$ {l.Valor.Value:N2}" : "";
-        return $"⚠️ *Amanhã vence: {l.Descricao}*\n\n" +
-               $"Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
+        var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
+        return $"⚠️ *Amanhã vence: {l.Descricao}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+               $"📅 Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\nJá pagou? /lembrete pago {l.Id}";
+               $"\n\n_Já pagou? Diga \"paguei lembrete {l.Id}\"_";
     }
 
     private static string FormatarMensagemD0(LembretePagamento l)
     {
-        var valor = l.Valor.HasValue ? $"\nValor: R$ {l.Valor.Value:N2}" : "";
-        return $"🚨 *HOJE vence: {l.Descricao}*\n\n" +
-               $"{l.DataVencimento:dd/MM/yyyy}" +
+        var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
+        return $"🚨 *HOJE vence: {l.Descricao}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+               $"📅 {l.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\nMarcar como pago: /lembrete pago {l.Id}";
+               $"\n\n_Diga \"paguei lembrete {l.Id}\" para marcar como pago._";
     }
 
     private static string FormatarMensagemAtraso(LembretePagamento l, int diasAtraso)
     {
-        var valor = l.Valor.HasValue ? $"\nValor: R$ {l.Valor.Value:N2}" : "";
+        var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
         var sufixo = diasAtraso == 1 ? "ontem" : $"há {diasAtraso} dias";
-        return $"❗ *Conta vencida {sufixo}: {l.Descricao}*\n\n" +
-               $"Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
+        return $"❗ *Conta vencida {sufixo}: {l.Descricao}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+               $"📅 Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\nSe já pagou: /lembrete pago {l.Id}" +
-               "\n⚠️ Se não pagou, fique atento a multas e juros.";
+               $"\n\n_Se já pagou, diga \"paguei lembrete {l.Id}\"_" +
+               "\n⚠️ Fique atento a multas e juros!";
     }
 
     // ===== Ciclo =====

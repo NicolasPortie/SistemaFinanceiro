@@ -107,12 +107,11 @@ public class PrevisaoHandler : IPrevisaoHandler
     {
         if (string.IsNullOrWhiteSpace(parametros))
         {
-            return "*Simulação de Compra*\n\n" +
+            return "🔮 *Simulação de Compra*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "Fale naturalmente! Exemplos:\n\n" +
-                   "\"Se eu comprar uma TV de 3000 em 10x?\"\n" +
-                   "\"Quero comprar um celular de 4500, como fica?\"\n" +
-                   "\"Dá pra parcelar uma viagem de 8000 em 12x?\"\n\n" +
-                   "Se preferir, escreva assim: \"simular TV 5000 10x\"";
+                   "💬 _\"Se eu comprar uma TV de 3000 em 10x?\"_\n" +
+                   "💬 _\"Quero comprar um celular de 4500, como fica?\"_\n" +
+                   "💬 _\"Dá pra parcelar uma viagem de 8000 em 12x?\"_";
         }
 
         var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -173,7 +172,7 @@ public class PrevisaoHandler : IPrevisaoHandler
     public async Task<string> ProcessarComandoPossoAsync(Usuario usuario, string? parametros)
     {
         if (string.IsNullOrWhiteSpace(parametros))
-            return "*Posso gastar?*\n\nExemplo: \"posso 50 lanche\"\nOu fale naturalmente: \"posso gastar 80 no iFood?\"";
+            return "🤔 *Posso gastar?*\n\nMe diga o valor e eu analiso!\n_Ex: \"posso gastar 80 no iFood?\"_";
 
         var parts = parametros.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 1 && decimal.TryParse(parts[0].Replace(",", "."),
@@ -219,11 +218,11 @@ public class PrevisaoHandler : IPrevisaoHandler
             var disponivel = cartao.Limite - totalAberto;
             if (valorCompra > disponivel)
             {
-                return $"⚠️ *Atenção ao limite do cartão!*\n" +
-                       $"Limite: R$ {cartao.Limite:N2}\n" +
-                       $"Em aberto: R$ {totalAberto:N2}\n" +
-                       $"Disponível: R$ {disponivel:N2}\n" +
-                       $"Compra: R$ {valorCompra:N2}\n\n";
+                return $"⚠️ *Atenção ao limite do cartão!*\n━━━━━━━━━━━━━━━━━━━━\n" +
+                       $"💳 Limite: R$ {cartao.Limite:N2}\n" +
+                       $"📤 Em aberto: R$ {totalAberto:N2}\n" +
+                       $"✅ Disponível: R$ {disponivel:N2}\n" +
+                       $"🛒 Compra: R$ {valorCompra:N2}\n\n";
             }
 
             return string.Empty;

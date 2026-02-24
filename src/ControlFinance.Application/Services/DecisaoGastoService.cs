@@ -513,36 +513,38 @@ public class DecisaoGastoService : IDecisaoGastoService
     {
         var desc = !string.IsNullOrWhiteSpace(descricao) ? descricao : "esse gasto";
         var scoreTxt = resultado.ScoreSaudeFinanceira > 0
-            ? $"\nScore de saúde financeira: {resultado.ScoreSaudeFinanceira:N0}/100"
+            ? $"\n💯 Score: {resultado.ScoreSaudeFinanceira:N0}/100"
             : "";
         var variacaoTxt = resultado.VariacaoVsMediaHistorica != 0
-            ? $"\nVariação vs média: {(resultado.VariacaoVsMediaHistorica > 0 ? "+" : "")}{resultado.VariacaoVsMediaHistorica:N1}%"
+            ? $"\n📈 Variação vs média: {(resultado.VariacaoVsMediaHistorica > 0 ? "+" : "")}{resultado.VariacaoVsMediaHistorica:N1}%"
             : "";
         var metasTxt = resultado.ImpactoMetas?.Any(m => m.MesesAtraso > 0) == true
-            ? $"\nImpacto em metas: {string.Join("; ", resultado.ImpactoMetas.Where(m => m.MesesAtraso > 0).Select(m => m.Descricao))}"
+            ? $"\n🎯 Impacto em metas: {string.Join("; ", resultado.ImpactoMetas.Where(m => m.MesesAtraso > 0).Select(m => m.Descricao))}"
             : "";
 
         return resultado.Parecer switch
         {
-            "pode" => $"*Aprovado* — {desc} de R$ {resultado.ValorCompra:N2} tem baixo impacto.\n\n" +
-                       $"Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}\n" +
-                       $"Disponível: R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias" +
+            "pode" => $"✅ *Aprovado* — {desc} de R$ {resultado.ValorCompra:N2}\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                       $"🟢 Baixo impacto no orçamento.\n\n" +
+                       $"💸 Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}\n" +
+                       $"💰 Disponível: R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias" +
                        scoreTxt + variacaoTxt + metasTxt +
                        (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : ""),
 
-            "cautela" => $"*Aprovado com ressalva* — {desc} de R$ {resultado.ValorCompra:N2} consome {resultado.PercentualSaldoLivre:N0}% do saldo disponível.\n\n" +
-                          $"Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}\n" +
-                          $"Disponível: R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias\n" +
-                          $"Estimativa diária restante: ~R$ {(resultado.SaldoLivreMes - resultado.ValorCompra) / Math.Max(1, resultado.DiasRestantesMes):N2}/dia" +
-                          (resultado.ReservaMetas > 0 ? $"\nReserva para metas: R$ {resultado.ReservaMetas:N2}" : "") +
+            "cautela" => $"⚠️ *Aprovado com ressalva* — {desc} de R$ {resultado.ValorCompra:N2}\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                          $"🟡 Consome {resultado.PercentualSaldoLivre:N0}% do saldo disponível.\n\n" +
+                          $"💸 Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}\n" +
+                          $"💰 Disponível: R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias\n" +
+                          $"📊 Estimativa diária: ~R$ {(resultado.SaldoLivreMes - resultado.ValorCompra) / Math.Max(1, resultado.DiasRestantesMes):N2}/dia" +
+                          (resultado.ReservaMetas > 0 ? $"\n🎯 Reserva para metas: R$ {resultado.ReservaMetas:N2}" : "") +
                           scoreTxt + variacaoTxt + metasTxt +
                           (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : ""),
 
-            _ => $"*Não recomendado.* " +
+            _ => $"🔴 *Não recomendado* — {desc} de R$ {resultado.ValorCompra:N2}\n━━━━━━━━━━━━━━━━━━━━\n\n" +
                  (resultado.SaldoLivreMes <= 0
                      ? $"Seu saldo livre este mês já está negativo (R$ {resultado.SaldoLivreMes:N2})."
-                     : $"Restam apenas R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias — esse gasto de R$ {resultado.ValorCompra:N2} consumiria {resultado.PercentualSaldoLivre:N0}%.") +
-                 $"\n\nGastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}" +
+                     : $"Restam apenas R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias — consumiria {resultado.PercentualSaldoLivre:N0}%.") +
+                 $"\n\n💸 Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}" +
                  scoreTxt + variacaoTxt + metasTxt +
                  (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : "")
         };

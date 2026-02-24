@@ -114,18 +114,18 @@ public class LimiteCategoriaService : ILimiteCategoriaService
     public string FormatarLimitesBot(List<LimiteCategoriaDto> limites)
     {
         if (!limites.Any())
-            return "Nenhum limite definido ainda.\n\nDefina com: \"limitar Alimentação em 800\" ou /limite Alimentação 800";
+            return "🏷️ Nenhum limite definido ainda.\n\n_Defina com: \"limitar Alimentação em 800\"_";
 
-        var texto = "*Seus Limites Mensais*\n\n";
+        var texto = "🏷️ *Seus Limites Mensais*\n━━━━━━━━━━━━━━━━━━━━\n\n";
 
         foreach (var l in limites)
         {
             var emoji = l.Status switch
             {
-                "excedido" => "[EXCEDIDO]",
-                "critico" => "[CRÍTICO]",
-                "atencao" => "[ATENÇÃO]",
-                _ => "[OK]"
+                "excedido" => "🔴",
+                "critico" => "🟠",
+                "atencao" => "🟡",
+                _ => "🟢"
             };
 
             var barra = GerarBarra(l.PercentualConsumido);
@@ -136,7 +136,7 @@ public class LimiteCategoriaService : ILimiteCategoriaService
                 "excedido" => $"Estourou R$ {Math.Abs(restante):N2}!",
                 "critico" => $"Quase no limite! Resta R$ {restante:N2}",
                 "atencao" => $"Fique de olho! Resta R$ {restante:N2}",
-                _ => $"Tranquilo. Resta R$ {restante:N2}"
+                _ => $"Tranquilo • Resta R$ {restante:N2}"
             };
 
             texto += $"{emoji} *{l.CategoriaNome}*\n";
@@ -148,9 +148,9 @@ public class LimiteCategoriaService : ILimiteCategoriaService
         var excedidos = limites.Count(l => l.Status == "excedido");
         var ok = limites.Count(l => l.Status == "ok");
         if (excedidos > 0)
-            texto += $"{excedidos} limite(s) excedido(s). Revise seus gastos.";
+            texto += $"⚠️ {excedidos} limite(s) excedido(s). Revise seus gastos.";
         else if (ok == limites.Count)
-            texto += "Todos os limites estão sob controle.";
+            texto += "✅ Todos os limites estão sob controle!";
 
         return texto.TrimEnd();
     }
