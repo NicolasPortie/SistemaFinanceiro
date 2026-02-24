@@ -180,7 +180,7 @@ export default function RecuperarSenhaPage() {
   };
 
   return (
-    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased h-screen overflow-hidden relative">
+    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased min-h-screen overflow-y-auto relative">
       {/* Background blurs */}
       <div className="absolute top-[-10%] left-[-5%] w-200 h-200 bg-emerald-600/30 rounded-full blur-[160px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-150 h-150 bg-teal-500/15 rounded-full blur-[140px] pointer-events-none" />
@@ -391,7 +391,7 @@ export default function RecuperarSenhaPage() {
                           onPaste={i === 0 ? handleVerifyPaste : undefined}
                           autoComplete={i === 0 ? "one-time-code" : "off"}
                           autoFocus={i === 0}
-                          className="w-12 h-14 lg:w-14 lg:h-16 text-center text-2xl font-bold bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-4 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all"
+                          className="w-10 h-12 sm:w-12 sm:h-14 lg:w-14 lg:h-16 text-center text-xl sm:text-2xl font-bold bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-4 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all"
                         />
                       ))}
                     </div>

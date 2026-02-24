@@ -164,7 +164,7 @@ export default function ContasBancariasPage() {
   if (isError) return <ErrorState message="Não foi possível carregar as contas." />;
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-emerald-50/20 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4 sm:p-6 space-y-6">
+    <div className="space-y-6">
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">

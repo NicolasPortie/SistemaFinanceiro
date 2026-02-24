@@ -45,7 +45,7 @@ export function MonthlyCompositionChart({ data }: MonthlyCompositionChartProps) 
           tick={{ fontSize: 11, fill: "oklch(var(--muted-foreground))" }}
           axisLine={false}
           tickLine={false}
-          width={68}
+          width={58}
         />
         <Tooltip
           formatter={(value, name) => [formatCurrency(Number(value)), name]}

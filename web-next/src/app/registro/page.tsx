@@ -138,7 +138,7 @@ export default function RegistroPage() {
   };
 
   return (
-    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased h-screen overflow-hidden relative">
+    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased min-h-screen overflow-y-auto relative">
       {/* Background blurs */}
       <div className="absolute top-[-20%] left-[-10%] w-200 h-200 bg-emerald-500/30 rounded-full blur-[160px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-150 h-150 bg-teal-500/20 rounded-full blur-[140px] pointer-events-none" />

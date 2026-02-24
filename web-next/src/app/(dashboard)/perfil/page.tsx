@@ -242,7 +242,7 @@ export default function PerfilPage() {
     <div className="space-y-8">
       {/* ── Page Header ── */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Ajustes</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">Ajustes</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm">
           Gerencie suas informações pessoais, integrações e categorias.
         </p>
@@ -260,13 +260,13 @@ export default function PerfilPage() {
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-panel rounded-2xl p-8"
+          className="glass-panel rounded-2xl p-4 sm:p-6 lg:p-8"
         >
           {/* Top: avatar + info */}
-          <div className="flex items-start justify-between flex-wrap gap-6">
-            <div className="flex gap-6 items-center">
+          <div className="flex items-start justify-between flex-wrap gap-4 sm:gap-6">
+            <div className="flex gap-4 sm:gap-6 items-center">
               <div className="relative">
-                <Avatar className="h-24 w-24 border-4 border-white dark:border-slate-700 shadow-lg">
+                <Avatar className="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 border-4 border-white dark:border-slate-700 shadow-lg">
                   <AvatarFallback className="text-2xl font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
                     {getInitials(usuario.nome)}
                   </AvatarFallback>
@@ -399,7 +399,7 @@ export default function PerfilPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-panel rounded-2xl p-8 flex flex-col md:flex-row gap-8"
+          className="glass-panel rounded-2xl p-4 sm:p-6 lg:p-8 flex flex-col md:flex-row gap-6 lg:gap-8"
         >
           {/* Left: info & instructions */}
           <div className="flex-1 space-y-6">
@@ -447,7 +447,7 @@ export default function PerfilPage() {
           </div>
 
           {/* Right: code panel */}
-          <div className="w-full md:w-[480px] bg-white/60 dark:bg-slate-800/40 rounded-3xl p-8 shadow-lg border border-white/50 dark:border-slate-700/30 flex flex-col gap-6 relative overflow-hidden backdrop-blur-xl">
+          <div className="w-full md:w-100 lg:w-120 bg-white/60 dark:bg-slate-800/40 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-lg border border-white/50 dark:border-slate-700/30 flex flex-col gap-6 relative overflow-hidden backdrop-blur-xl">
             <div className="absolute -top-16 -right-16 size-48 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
 
             {usuario.telegramVinculado ? (
@@ -619,7 +619,7 @@ export default function PerfilPage() {
                       {cat.padrao ? (
                         <span className="text-slate-300 dark:text-slate-600 text-xs italic">Não editável</span>
                       ) : (
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <button
                             className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-600/10 rounded-lg transition-colors"
                             title="Editar"

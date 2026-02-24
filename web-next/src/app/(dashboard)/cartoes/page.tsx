@@ -358,7 +358,8 @@ export default function CartoesPage() {
             className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer text-sm"
           >
             <Plus className="h-4 w-4" />
-            Adicionar Cartão
+            <span className="hidden sm:inline">Adicionar Cartão</span>
+            <span className="sm:hidden">Novo</span>
           </button>
         </div>
       </motion.div>

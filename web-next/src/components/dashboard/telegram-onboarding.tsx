@@ -71,7 +71,7 @@ export function TelegramOnboarding() {
   if (!usuario || usuario.telegramVinculado) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <div className="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-3">
       {/* Expanded panel */}
       <AnimatePresence>
         {open && (
@@ -80,7 +80,7 @@ export function TelegramOnboarding() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="w-80 rounded-2xl border border-border/40 bg-card shadow-2xl shadow-black/10 overflow-hidden"
+            className="w-[calc(100vw-1.5rem)] sm:w-80 max-w-80 rounded-2xl border border-border/40 bg-card shadow-2xl shadow-black/10 overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3.5 border-b border-border/30 bg-muted/20">

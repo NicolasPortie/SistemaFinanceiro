@@ -348,7 +348,7 @@ export default function AdminUsuariosPage() {
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Buscar por nome, email ou ID..."
-              className="pl-9 pr-3 h-9 text-sm rounded-lg w-64 bg-muted/40 border-border/60 focus:bg-background focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+              className="pl-9 pr-3 h-9 text-sm rounded-lg w-full sm:w-64 bg-muted/40 border-border/60 focus:bg-background focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
             />
           </div>
           <Button variant="outline" size="sm" className="gap-1.5 rounded-lg h-9 text-xs">

@@ -189,7 +189,7 @@ export default function AdminConvitesPage() {
       </PageHeader>
 
       {/* Summary Cards */}
-      <div className="grid gap-3 grid-cols-3">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
         {[
           { label: "Disponíveis", value: ativos.length, color: "text-emerald-500", bg: "bg-emerald-500/10", icon: Send },
           { label: "Usados", value: usados.length, color: "text-emerald-500", bg: "bg-emerald-500/10", icon: CheckCircle2 },

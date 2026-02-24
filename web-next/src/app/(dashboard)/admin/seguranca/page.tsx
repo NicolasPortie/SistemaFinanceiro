@@ -264,7 +264,7 @@ export default function AdminSegurancaPage() {
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Buscar por usuário..."
-              className="pl-9 pr-3 h-9 text-sm rounded-lg w-64 bg-muted/40 border-border/60 focus:bg-background focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+              className="pl-9 pr-3 h-9 text-sm rounded-lg w-full sm:w-64 bg-muted/40 border-border/60 focus:bg-background focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
             />
           </div>
         </div>
@@ -282,7 +282,8 @@ export default function AdminSegurancaPage() {
               onClick={() => setShowRevogarTodas(true)}
             >
               <Power className="h-3.5 w-3.5" />
-              Encerrar Todas as Sessões
+              <span className="hidden sm:inline">Encerrar Todas as Sessões</span>
+              <span className="sm:hidden">Encerrar Todas</span>
             </Button>
           )}
         </div>

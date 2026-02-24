@@ -387,7 +387,7 @@ export default function ContasFixasPage() {
       ) : isError ? (
         <ErrorState message={error?.message} onRetry={() => refetch()} />
       ) : (
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
           {/* Total de Contas */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300">
             <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
@@ -533,7 +533,8 @@ export default function ContasFixasPage() {
         className="glass-panel rounded-2xl overflow-hidden"
       >
         {/* Table header */}
-        <div className="hidden lg:grid gap-4 items-center px-6 py-3.5 border-b border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-800/30" style={{gridTemplateColumns:"2fr 1fr 1fr 1fr 1.2fr 120px 80px 100px"}}>
+        <div className="overflow-x-auto">
+        <div className="hidden lg:grid gap-4 items-center px-6 py-3.5 border-b border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-800/30 min-w-225" style={{gridTemplateColumns:"2fr 1fr 1fr 1fr 1.2fr 120px 80px 100px"}}>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Descrição</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Valor Mensal</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Frequência</span>
@@ -572,7 +573,7 @@ export default function ContasFixasPage() {
                     className="group"
                   >
                     {/* Desktop row */}
-                    <div className={cn("hidden lg:grid gap-4 items-center px-6 py-3.5 hover:bg-white/40 dark:hover:bg-slate-800/30 transition-all duration-200", !l.ativo && "opacity-60")} style={{gridTemplateColumns:"2fr 1fr 1fr 1fr 1.2fr 120px 80px 100px"}}>
+                    <div className={cn("hidden lg:grid gap-4 items-center px-6 py-3.5 hover:bg-white/40 dark:hover:bg-slate-800/30 transition-all duration-200 min-w-225", !l.ativo && "opacity-60")} style={{gridTemplateColumns:"2fr 1fr 1fr 1fr 1.2fr 120px 80px 100px"}}>
                       {/* Description */}
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={cn(
@@ -725,6 +726,7 @@ export default function ContasFixasPage() {
             />
           </div>
         )}
+        </div>{/* end overflow-x-auto */}
 
         {/* Pagination */}
         {filtered.length > PAGE_SIZE && (
@@ -860,7 +862,7 @@ export default function ContasFixasPage() {
               {/* Frequency selector */}
               <div className="space-y-4 rounded-2xl border border-emerald-600/8 dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Frequência</Label>
-                <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2">
                   {([
                     { key: "Unico" as const, label: "Único", icon: CalendarClock },
                     { key: "Semanal" as const, label: "Semanal", icon: Repeat },
@@ -1095,7 +1097,7 @@ export default function ContasFixasPage() {
             {/* Frequency selector */}
             <div className="space-y-3">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Frequência</Label>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                 {([
                   { key: "Unico" as const, label: "Único" },
                   { key: "Semanal" as const, label: "Semanal" },

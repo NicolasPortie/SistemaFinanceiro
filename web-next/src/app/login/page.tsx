@@ -56,7 +56,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased h-screen overflow-hidden relative">
+    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased min-h-screen overflow-y-auto relative">
       {/* Background blurs */}
       <div className="absolute top-[-10%] left-[-10%] w-150 h-150 bg-emerald-500/20 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-125 h-125 bg-teal-500/10 rounded-full blur-[120px] pointer-events-none" />

@@ -266,7 +266,7 @@ export default function ConsultorFinanceiroPage() {
       {/* ── Page Header ── */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">
             Consultor Financeiro
           </h1>
         </div>
@@ -949,7 +949,7 @@ function RapidaResult({
           </span>
           <div className="flex items-center gap-2 mb-1">
             <span className={config.heroIcon}>{config.icon}</span>
-            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white">
               {config.label}
             </h2>
           </div>
@@ -1222,7 +1222,7 @@ function ProjecaoResult({
             <span className={riskColor(data.risco).badge}>
               {riskIcon(data.risco)}
             </span>
-            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white">
               {data.risco}
             </h2>
           </div>

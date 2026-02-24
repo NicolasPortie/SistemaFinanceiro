@@ -79,9 +79,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* ═══ Main Content ═══ */}
       <main
-        className="pt-16 lg:pt-24 pb-8 lg:pb-12 px-4 sm:px-6 lg:px-8 lg:ml-20"
+        className="pt-16 lg:pt-24 pb-8 lg:pb-12 px-3 sm:px-6 lg:px-8 lg:ml-20"
       >
-        <div className="max-w-400 mx-auto">{children}</div>
+        <div className="max-w-7xl mx-auto">{children}</div>
       </main>
     </div>
   );

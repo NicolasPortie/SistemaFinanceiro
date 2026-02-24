@@ -48,11 +48,14 @@ export function ProjectionChart({ data }: ProjectionChartProps) {
           tickLine={false}
         />
         <YAxis
-          tickFormatter={(v: number) => formatCurrency(v)}
+          tickFormatter={(v: number) => {
+            if (Math.abs(v) >= 1000) return `R$${(v / 1000).toFixed(0)}k`;
+            return `R$${v}`;
+          }}
           tick={{ fontSize: 11, fill: "oklch(var(--muted-foreground))" }}
           axisLine={false}
           tickLine={false}
-          width={90}
+          width={65}
         />
         <Tooltip
           formatter={(value, name) => [

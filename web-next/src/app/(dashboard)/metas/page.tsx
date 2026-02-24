@@ -679,7 +679,7 @@ function MetaCard({
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
+                <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer sm:opacity-0 sm:group-hover:opacity-100">
                   <MoreVertical className="h-4 w-4 text-slate-400" />
                 </button>
               </DropdownMenuTrigger>
