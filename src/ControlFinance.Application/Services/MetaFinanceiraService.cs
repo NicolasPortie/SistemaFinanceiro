@@ -144,7 +144,7 @@ public class MetaFinanceiraService : IMetaFinanceiraService
     public string FormatarMetasBot(List<MetaFinanceiraDto> metas)
     {
         if (!metas.Any())
-            return "🎯 Nenhuma meta definida ainda.\n\n_Crie com: \"quero juntar 10 mil até dezembro\"_";
+            return "🎯 Nenhuma meta definida ainda.\n\nCrie com: \"quero juntar 10 mil até dezembro\"";
 
         var texto = "🎯 *Suas Metas*\n━━━━━━━━━━━━━━━━━━━━\n\n";
 
@@ -172,6 +172,7 @@ public class MetaFinanceiraService : IMetaFinanceiraService
                     "adiantada" => "🚀 Adiantado — ótimo ritmo!",
                     "no_ritmo" => "✅ No ritmo certo.",
                     "atrasada" => "⚠️ Atrasada — aumente os aportes.",
+                    "recem_criada" => $"🆕 Meta recém-criada — comece a guardar R$ {m.ValorMensalNecessario:N2}/mês",
                     _ => ""
                 };
                 var falta = m.ValorAlvo - m.ValorAtual;
@@ -182,7 +183,7 @@ public class MetaFinanceiraService : IMetaFinanceiraService
             }
             else if (m.Status == "Concluida")
             {
-                texto += "   🌟 _Meta atingida! Parabéns!_\n";
+                texto += "   🌟 Meta atingida! Parabéns!\n";
             }
 
             texto += "\n";
@@ -193,7 +194,7 @@ public class MetaFinanceiraService : IMetaFinanceiraService
         if (concluidas > 0 && ativas > 0)
             texto += $"🏆 {concluidas} meta(s) concluída(s) e {ativas} em andamento!";
         else if (ativas > 0)
-            texto += "_Diga \"aportar [valor] na meta [nome]\" para registrar progresso._";
+            texto += "Para registrar progresso, diga \"aportar [valor] na meta [nome]\"";
 
         return texto.TrimEnd();
     }
@@ -223,7 +224,9 @@ public class MetaFinanceiraService : IMetaFinanceiraService
         else
         {
             var percentualTempo = (decimal)mesesDecorridos / totalMeses * 100;
-            if (percentual >= percentualTempo + 10)
+            if (mesesDecorridos == 0 && percentual <= 0)
+                desvio = "recem_criada";
+            else if (percentual >= percentualTempo + 10)
                 desvio = "adiantada";
             else if (percentual >= percentualTempo - 10)
                 desvio = "no_ritmo";

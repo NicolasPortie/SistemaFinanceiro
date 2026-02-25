@@ -93,10 +93,8 @@ public class FaturaService : IFaturaService
             }
         }
 
-        if (fatura.Status != "Paga" && !vencida)
-            texto += "\n\n_Diga \"paguei a fatura\" quando quitar._";
-        else if (vencida)
-            texto += "\n\n⚠️ _Regularize o pagamento para evitar juros._";
+        if (vencida)
+            texto += "\n\n⚠️ Regularize o pagamento para evitar juros.";
 
         return texto;
     }

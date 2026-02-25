@@ -68,7 +68,7 @@ public class ConsultaHandler : IConsultaHandler
                 .ToList();
 
             if (!recentes.Any())
-                return "📭 Nenhum lançamento registrado ainda.\n\nQue tal começar? Diga algo como:\n_\"Gastei 30 no almoço\"_";
+                return "💭 Nenhum lançamento registrado ainda.\n\nQue tal começar? Diga algo como:\n\"Gastei 30 no almoço\"";
 
             var texto = "📋 *Seus últimos lançamentos*\n━━━━━━━━━━━━━━━━━━━━\n\n";
             var totalReceita = 0m;
@@ -92,7 +92,10 @@ public class ConsultaHandler : IConsultaHandler
             texto += $"💵 Entradas: *R$ {totalReceita:N2}*\n";
             texto += $"💸 Saídas: *R$ {totalDespesa:N2}*\n";
             texto += $"{saldoEmoji} Saldo: *R$ {saldoExtrato:N2}*";
-            texto += "\n\n_Diga \"resumo do mês\" para ver o mês completo._";
+
+            if (usuario.TelegramChatId.HasValue)
+                BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
+                    new[] { ("Ver resumo do mês", $"url:{_webUrl}/dashboard") });
 
             return texto;
         }
@@ -118,7 +121,7 @@ public class ConsultaHandler : IConsultaHandler
         {
             if (!DateTime.TryParseExact(referenciaMes, new[] { "M/yyyy", "MM/yyyy" },
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out var referencia))
-                return "⚠️ Referência inválida. Use o formato MM/aaaa.\nExemplo: _\"fatura de 03/2026\"_";
+                return "⚠️ Referência inválida. Use o formato MM/aaaa.\nExemplo: \"fatura de 03/2026\"";
 
             referenciaNormalizada = referencia.ToString("MM/yyyy", CultureInfo.InvariantCulture);
         }
@@ -178,7 +181,7 @@ public class ConsultaHandler : IConsultaHandler
                 if (outras.Any())
                 {
                     var totalOutras = outras.Sum(f => f.Total);
-                    resultado += $"⚠️ Mais {outras.Count} fatura(s) pendente(s) — total R$ {totalOutras:N2}\n_Diga \"ver todas as faturas\" para detalhes._\n\n";
+                    resultado += $"⚠️ Mais {outras.Count} fatura(s) pendente(s) — total R$ {totalOutras:N2}\n\n";
                 }
             }
         }
@@ -271,7 +274,7 @@ public class ConsultaHandler : IConsultaHandler
             .ToList();
 
         if (!salarios.Any())
-            return "💰 Não encontrei receitas de salário nos últimos 6 meses.\n\n_Registre com algo como: \"recebi 3500 de salário\"_";
+            return "💰 Não encontrei receitas de salário nos últimos 6 meses.\n\nRegistre com algo como: \"recebi 3500 de salário\"";
 
         var porMes = salarios
             .GroupBy(l => new DateTime(l.Data.Year, l.Data.Month, 1, 0, 0, 0, DateTimeKind.Utc))
@@ -304,7 +307,7 @@ public class ConsultaHandler : IConsultaHandler
     {
         var nomeCategoria = respostaIA?.Trim();
         if (string.IsNullOrWhiteSpace(nomeCategoria))
-            return "❓ Me diga qual categoria quer detalhar.\nEx: _\"detalhar Alimentação\"_";
+            return "❓ Me diga qual categoria quer detalhar.\nEx: \"detalhar Alimentação\"";
 
         var categoria = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, nomeCategoria);
         if (categoria == null)
@@ -381,7 +384,8 @@ public class ConsultaHandler : IConsultaHandler
                 ? (diffGastos / resumoAnterior.TotalGastos * 100)
                 : 0;
 
-            var texto = $"📊 *Comparativo mensal*\n{inicioMesAnterior:MMMM} vs {inicioMesAtual:MMMM}\n━━━━━━━━━━━━━━━━━━━━\n\n";
+            var ptBR = new CultureInfo("pt-BR");
+            var texto = $"📊 *Comparativo mensal*\n{inicioMesAnterior.ToString("MMMM", ptBR)} vs {inicioMesAtual.ToString("MMMM", ptBR)}\n━━━━━━━━━━━━━━━━━━━━\n\n";
 
             // Gastos
             if (diffGastos > 0)
@@ -390,7 +394,7 @@ public class ConsultaHandler : IConsultaHandler
                 texto += $"🟢 Você gastou *R$ {Math.Abs(diffGastos):N2} a menos* este mês ({percentualGasto:+0;-0}%) \n";
             else
                 texto += "⚖️ Gastos iguais nos dois meses\n";
-            texto += $"  {inicioMesAnterior:MMM}: R$ {resumoAnterior.TotalGastos:N2} ➡️ {inicioMesAtual:MMM}: R$ {resumoAtual.TotalGastos:N2}\n\n";
+            texto += $"  {inicioMesAnterior.ToString("MMM", ptBR)}: R$ {resumoAnterior.TotalGastos:N2} ➡️ {inicioMesAtual.ToString("MMM", ptBR)}: R$ {resumoAtual.TotalGastos:N2}\n\n";
 
             // Receitas
             if (diffReceitas > 0)
@@ -399,12 +403,12 @@ public class ConsultaHandler : IConsultaHandler
                 texto += $"🔴 Receita *diminuiu R$ {Math.Abs(diffReceitas):N2}*\n";
             else
                 texto += "⚖️ Receita igual nos dois meses\n";
-            texto += $"  {inicioMesAnterior:MMM}: R$ {resumoAnterior.TotalReceitas:N2} ➡️ {inicioMesAtual:MMM}: R$ {resumoAtual.TotalReceitas:N2}\n\n";
+            texto += $"  {inicioMesAnterior.ToString("MMM", ptBR)}: R$ {resumoAnterior.TotalReceitas:N2} ➡️ {inicioMesAtual.ToString("MMM", ptBR)}: R$ {resumoAtual.TotalReceitas:N2}\n\n";
 
             // Saldo
             var saldoEmoji = resumoAtual.Saldo >= 0 ? "✅" : "⚠️";
             texto += $"{saldoEmoji} *Resultado do mês:* R$ {resumoAtual.Saldo:N2}\n";
-            texto += $"  _(Mês passado: R$ {resumoAnterior.Saldo:N2})_\n\n";
+            texto += $"  (Mês passado: R$ {resumoAnterior.Saldo:N2})\n\n";
 
             // Categorias que mais mudaram
             if (resumoAtual.GastosPorCategoria.Any() && resumoAnterior.GastosPorCategoria.Any())
@@ -467,7 +471,7 @@ public class ConsultaHandler : IConsultaHandler
             {
                 var todasTags = await _tagRepo.ObterTagsDoUsuarioAsync(usuario.Id);
                 if (!todasTags.Any())
-                    return "🏷️ Você ainda não tem tags.\n\n_Adicione com: \"tag #reembolso\" após um lançamento._";
+                    return "🏷️ Você ainda não tem tags.\n\nAdicione com: \"tag #reembolso\" após um lançamento.";
 
                 return "🏷️ *Suas tags*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
                        string.Join("\n", todasTags.Select(t => $"  📎 #{t}"));

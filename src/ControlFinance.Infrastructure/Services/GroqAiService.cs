@@ -130,7 +130,8 @@ public class GroqAiService : IAiService
             Se o usuário pedir seu "perfil", "jeito de gastar" = use 'responder_generico' indicando comandoInterno 'ver_perfil'.
             Se o usuário perguntar sobre "eventos", "gastos de meses específicos" = 'responder_generico' indicando comandoInterno 'ver_sazonalidade'.
             Se ele perguntar sobre "receitas fixas", "salário" ou "recorrentes" = 'responder_generico' indicando comandoInterno 'ver_recorrentes' (ou ver_salario se falar salário).
-            Se ele perguntar sobre assinaturas e contas que vão vencer = 'responder_generico' indicando comandoInterno 'ver_lembretes'.
+            Se ele perguntar sobre assinaturas, contas fixas, lembretes, "quais são minhas contas", "meus lembretes" ou contas que vão vencer = 'responder_generico' indicando comandoInterno 'ver_lembretes'.
+            Se o usuário usar verbos no passado (\"comprei\", \"adquiri\", \"fiz a compra\") referindo-se a uma transação JÁ concluída = use 'registrar_lancamento' (não 'prever_compra').
             """;
 
         try

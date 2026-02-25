@@ -637,7 +637,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
 
         if (confianca == NivelConfianca.Baixa)
         {
-            texto += "\n\n_Previsão preliminar — com mais dados a precisão melhora._";
+            texto += "\n\nPrevisão preliminar — com mais dados a precisão melhora.";
         }
 
         if (cenarios != null && cenarios.Any())

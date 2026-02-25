@@ -49,14 +49,14 @@ public class LembreteHandler : ILembreteHandler
 
         if (acao is "ajuda" or "help")
             return "❓ *Como usar lembretes:*\n\n" +
-                   "📝 Criar: _\"lembrete internet dia 15 de 99,90\"_\n" +
-                   "❌ Remover: _\"remover lembrete 12\"_\n" +
-                   "✅ Pago: _\"paguei lembrete 12\"_";
+                   "📝 Criar: \"lembrete internet dia 15 de 99,90\"\n" +
+                   "❌ Remover: \"remover lembrete 12\"\n" +
+                   "✅ Pago: \"paguei lembrete 12\"";
 
         if (acao is "remover" or "excluir" or "desativar")
         {
             if (!int.TryParse(resto, out var id))
-                return "📌 Informe o ID. Exemplo: _\"remover lembrete 12\"_";
+                return "📌 Informe o ID. Exemplo: \"remover lembrete 12\"";
 
             var removido = await _lembreteRepo.DesativarAsync(usuario.Id, id);
             return removido
@@ -67,7 +67,7 @@ public class LembreteHandler : ILembreteHandler
         if (acao is "pago" or "concluir")
         {
             if (!int.TryParse(resto, out var id))
-                return "📌 Informe o ID. Exemplo: _\"paguei lembrete 12\"_";
+                return "📌 Informe o ID. Exemplo: \"paguei lembrete 12\"";
 
             return await MarcarPagoCicloAtualAsync(usuario.Id, id);
         }
@@ -75,7 +75,7 @@ public class LembreteHandler : ILembreteHandler
         if (acao is "pausar" or "pause")
         {
             if (!int.TryParse(resto, out var id))
-                return "📌 Informe o ID. Exemplo: _\"pausar lembrete 12\"_";
+                return "📌 Informe o ID. Exemplo: \"pausar lembrete 12\"";
 
             var pausado = await _lembreteRepo.PausarAsync(usuario.Id, id);
             return pausado
@@ -214,8 +214,7 @@ public class LembreteHandler : ILembreteHandler
     {
         var lembretes = await _lembreteRepo.ObterPorUsuarioAsync(usuario.Id, apenasAtivos: true);
         if (!lembretes.Any())
-            return "💭 Nenhum lembrete ativo.\n\n" +
-                   "_Diga algo como:\n\"lembrete internet dia 15 de 99,90\"\nou \"conta fixa aluguel 1500 dia 5\"_";
+            return "💭 Nenhum lembrete ativo.\n\nPara criar um, diga algo como:\n\"lembrete internet dia 15 de 99,90\"\nou \"conta fixa aluguel 1500 dia 5\"";
 
         var texto = "🔔 *Seus lembretes ativos*\n━━━━━━━━━━━━━━━━━━━━\n";
         foreach (var lembrete in lembretes)
@@ -233,7 +232,7 @@ public class LembreteHandler : ILembreteHandler
         }
 
         texto += "\n━━━━━━━━━━━━━━━━━━━━\n";
-        texto += "_Diga \"paguei lembrete [ID]\" para marcar como pago._";
+        texto += "Para marcar como pago, diga \"paguei lembrete [ID]\"";
         return texto;
     }
 
@@ -254,7 +253,7 @@ public class LembreteHandler : ILembreteHandler
         // Verificar idempotência
         var jaPagou = await _cicloRepo.JaPagouCicloAsync(lembreteId, periodKey);
         if (jaPagou)
-            return $"✅ *Ciclo {periodKey}* do lembrete \"_{lembrete.Descricao}_\" já está marcado como pago.";
+            return $"✅ *Ciclo {periodKey}* do lembrete \"{lembrete.Descricao}\" já está marcado como pago.";
 
         var ciclo = new PagamentoCiclo
         {

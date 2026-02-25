@@ -135,7 +135,7 @@ public class MetaLimiteHandler : IMetaLimiteHandler
     public async Task<string> ProcessarComandoLimiteAsync(Usuario usuario, string? parametros)
     {
         if (string.IsNullOrWhiteSpace(parametros))
-            return "🏷️ *Limites por Categoria*\n\nDefina dizendo algo como:\n_\"limitar Alimentação em 800\"_\n\nPara ver todos, diga: _\"meus limites\"_";
+            return "🏷️ *Limites por Categoria*\n\nDefina dizendo algo como:\n\"limitar Alimentação em 800\"\n\nPara ver todos, diga: \"meus limites\"";
 
         var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 2 && decimal.TryParse(parts[^1].Replace(",", "."),
@@ -166,7 +166,7 @@ public class MetaLimiteHandler : IMetaLimiteHandler
                    "Crie dizendo algo como:\n" +
                    "💬 _\"quero juntar 10 mil até dezembro\"_\n" +
                    "💬 _\"meta de viagem 5000 até 12/2026\"_\n\n" +
-                   "Para ver suas metas: _\"minhas metas\"_";
+                   "Para ver suas metas: \"minhas metas\"";
 
         var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var acao = parts[0].ToLower();

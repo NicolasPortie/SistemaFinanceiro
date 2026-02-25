@@ -130,7 +130,7 @@ public static class GroqToolsHelper
                     type = "object",
                     properties = new
                     {
-                        nome = new { type = "string", description = "Nome do objetivo (ex: Viagem, Carro, Reserva de Emergência)" },
+                        nome = new { type = "string", description = "Nome limpo e descritivo do objetivo. Melhore o que o usuário disse: 'juntar 10 mil' → 'Reserva de R$ 10 mil', 'viajar em janeiro' → 'Viagem de Janeiro', 'comprar carro' → 'Compra do Carro'. Capitalize e seja conciso." },
                         tipo = new { type = "string", @enum = new[] { "juntar_valor", "reduzir_gasto", "reserva_mensal" }, description = "O tipo de meta." },
                         valorAlvo = new { type = "number", description = "O montante final que ele deseja atingir." },
                         prazo = new { type = "string", description = "A data final no formato MM/AAAA." },
@@ -247,7 +247,7 @@ public static class GroqToolsHelper
                     type = "object",
                     properties = new
                     {
-                        descricao = new { type = "string", description = "Breve descrição da conta (ex: Academia, Internet, Aluguel)." },
+                        descricao = new { type = "string", description = "Descrição capitalizada e limpa. Capitalize sempre: 'netflix' → 'Netflix', 'academia' → 'Academia', 'aluguel do apartamento' → 'Aluguel'." },
                         valor = new { type = "number", description = "O valor da conta fixa. Ocasionalmente o usuário pode não informar, mas tente extrair (use 0 se não tiver)." },
                         diaVencimento = new { type = "integer", description = "Dia do mês em que vence (1 a 31). Extraia do texto ou aproxime (se for 'amanhã', qual dia do mês é?)." },
                         categoria = new { type = "string", description = "Categoria financeira (ex: Saúde, Moradia, Lazer, etc)." },

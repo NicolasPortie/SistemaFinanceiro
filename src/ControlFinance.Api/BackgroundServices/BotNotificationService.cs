@@ -477,7 +477,7 @@ public class BotNotificationService : BackgroundService
 
                     foreach (var r in recorrentes)
                     {
-                        alertas.Add($"Percebi que você paga \"{r.Desc}\" todo mês (média R$ {r.Valor:N2}). Diga _\"nova conta fixa\"_ para cadastrar e nunca esquecer!");
+                        alertas.Add($"Percebi que você paga \"{r.Desc}\" todo mês (média R$ {r.Valor:N2}). Cadastre-a em Contas Fixas para nunca esquecer!");
                     }
                 }
                 catch { /* Falha ao detectar recorrentes */ }
@@ -486,8 +486,7 @@ public class BotNotificationService : BackgroundService
                 if (alertas.Any())
                 {
                     var msg = "💡 *Insights financeiros*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
-                              string.Join("\n\n", alertas) +
-                              "\n\n_Diga \"meu score\" para um diagnóstico completo._";
+                              string.Join("\n\n", alertas);
 
                     await EnviarComBotaoAsync(user.TelegramChatId!.Value, msg,
                         "Abrir app", $"{WebUrl}/dashboard", ct);

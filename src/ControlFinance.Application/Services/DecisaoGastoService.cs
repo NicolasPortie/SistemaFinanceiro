@@ -395,7 +395,7 @@ public class DecisaoGastoService : IDecisaoGastoService
         }
 
         if (perfil.Confianca == NivelConfianca.Baixa)
-            texto += "\n\n_Análise preliminar — com mais dados a precisão melhora._";
+            texto += "\n\nAnálise preliminar — com mais dados a precisão melhora.";
 
         return texto;
     }
@@ -512,9 +512,7 @@ public class DecisaoGastoService : IDecisaoGastoService
     private static string FormatarRespostaRapida(DecisaoGastoResultDto resultado, string? descricao)
     {
         var desc = !string.IsNullOrWhiteSpace(descricao) ? descricao : "esse gasto";
-        var scoreTxt = resultado.ScoreSaudeFinanceira > 0
-            ? $"\n💯 Score: {resultado.ScoreSaudeFinanceira:N0}/100"
-            : "";
+        var scoreTxt = ""; // Removido do contexto de "posso gastar" — score não é relevante aqui
         var variacaoTxt = resultado.VariacaoVsMediaHistorica != 0
             ? $"\n📈 Variação vs média: {(resultado.VariacaoVsMediaHistorica > 0 ? "+" : "")}{resultado.VariacaoVsMediaHistorica:N1}%"
             : "";

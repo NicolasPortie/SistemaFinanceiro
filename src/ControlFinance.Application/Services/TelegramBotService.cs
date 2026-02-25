@@ -658,7 +658,20 @@ public class TelegramBotService : ITelegramBotService
             return await _consultaHandler.ConsultarSalarioMensalAsync(usuario);
         }
 
-        if (msgLower.StartsWith("lembrete") || msgLower.StartsWith("lembrar ") || msgLower.StartsWith("conta fixa"))
+        // "paguei lembrete N" — marcar ciclo como pago (antes do bloco genérico de lembrete)
+        var pagueiLembreteMatch = System.Text.RegularExpressions.Regex.Match(
+            msgLower, @"paguei\s+(?:o\s+)?lembrete\s+(\d+)");
+        if (pagueiLembreteMatch.Success)
+        {
+            _logger.LogInformation("Resposta direta: pagar_lembrete#{Id} | Usuário: {Nome}",
+                pagueiLembreteMatch.Groups[1].Value, usuario.Nome);
+            return await _lembreteHandler.ProcessarComandoLembreteAsync(
+                usuario, "pago " + pagueiLembreteMatch.Groups[1].Value);
+        }
+
+        if (msgLower.StartsWith("lembrete") || msgLower.StartsWith("lembrar ") || msgLower.StartsWith("conta fixa")
+            || msgLower.Contains("contas fixas") || msgLower.Contains("meus lembretes")
+            || msgLower.Contains("minhas contas") || msgLower.Contains("quais são minhas contas"))
         {
             _logger.LogInformation("Resposta direta: lembrete | Usuário: {Nome}", usuario.Nome);
             return await _lembreteHandler.ProcessarComandoLembreteAsync(usuario, null);
@@ -2699,7 +2712,6 @@ public class TelegramBotService : ITelegramBotService
             if (perfil.ScoreSaudeFinanceira > 0)
                 sb.AppendLine($"\nScore de saúde financeira: *{perfil.ScoreSaudeFinanceira:N0}/100*");
 
-            sb.AppendLine("\n💡 _Diga \"meu score\" para ver os fatores detalhados._");
             if (usuario.TelegramChatId.HasValue)
                 BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
                     new[] { ("Ver perfil completo", $"url:{_sistemaWebUrl}/perfil") });

@@ -109,9 +109,9 @@ public class PrevisaoHandler : IPrevisaoHandler
         {
             return "🔮 *Simulação de Compra*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "Fale naturalmente! Exemplos:\n\n" +
-                   "💬 _\"Se eu comprar uma TV de 3000 em 10x?\"_\n" +
-                   "💬 _\"Quero comprar um celular de 4500, como fica?\"_\n" +
-                   "💬 _\"Dá pra parcelar uma viagem de 8000 em 12x?\"_";
+                   "💬 \"Se eu comprar uma TV de 3000 em 10x?\"\n" +
+                   "💬 \"Quero comprar um celular de 4500, como fica?\"\n" +
+                   "💬 \"Dá pra parcelar uma viagem de 8000 em 12x?\"";
         }
 
         var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -172,7 +172,7 @@ public class PrevisaoHandler : IPrevisaoHandler
     public async Task<string> ProcessarComandoPossoAsync(Usuario usuario, string? parametros)
     {
         if (string.IsNullOrWhiteSpace(parametros))
-            return "🤔 *Posso gastar?*\n\nMe diga o valor e eu analiso!\n_Ex: \"posso gastar 80 no iFood?\"_";
+            return "🤔 *Posso gastar?*\n\nMe diga o valor e eu analiso!\nEx: \"posso gastar 80 no iFood?\"";
 
         var parts = parametros.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 1 && decimal.TryParse(parts[0].Replace(",", "."),

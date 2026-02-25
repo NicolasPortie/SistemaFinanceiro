@@ -114,7 +114,7 @@ public class LimiteCategoriaService : ILimiteCategoriaService
     public string FormatarLimitesBot(List<LimiteCategoriaDto> limites)
     {
         if (!limites.Any())
-            return "🏷️ Nenhum limite definido ainda.\n\n_Defina com: \"limitar Alimentação em 800\"_";
+            return "🏷️ Nenhum limite definido ainda.\n\nDefina com: \"limitar Alimentação em 800\"";
 
         var texto = "🏷️ *Seus Limites Mensais*\n━━━━━━━━━━━━━━━━━━━━\n\n";
 
