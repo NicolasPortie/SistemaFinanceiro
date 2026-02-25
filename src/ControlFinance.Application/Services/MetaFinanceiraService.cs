@@ -146,7 +146,7 @@ public class MetaFinanceiraService : IMetaFinanceiraService
         if (!metas.Any())
             return "🎯 Nenhuma meta definida ainda.\n\nCrie com: \"quero juntar 10 mil até dezembro\"";
 
-        var texto = "🎯 *Suas Metas*\n━━━━━━━━━━━━━━━━━━━━\n\n";
+        var texto = "🎯 *Suas Metas*\n\n";
 
         foreach (var m in metas)
         {

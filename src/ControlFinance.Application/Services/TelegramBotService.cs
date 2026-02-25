@@ -2226,7 +2226,7 @@ public class TelegramBotService : ITelegramBotService
             return await ListarLembretesFormatadoAsync(usuario);
 
         if (acao is "ajuda" or "help")
-            return "❓ *Ajuda — Lembretes*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+            return "❓ *Ajuda — Lembretes*\n\n" +
                    "Diga naturalmente:\n" +
                    "  📝 _\"criar lembrete de internet dia 15 de 99,90 mensal\"_\n" +
                    "  ❌ _\"remover lembrete 12\"_\n" +
@@ -2254,7 +2254,7 @@ public class TelegramBotService : ITelegramBotService
     private async Task<string> ProcessarComandoContaFixaAsync(Usuario usuario, string? parametros)
     {
         if (string.IsNullOrWhiteSpace(parametros))
-            return "📌 *Cadastro de Conta Fixa*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+            return "📌 *Cadastro de Conta Fixa*\n\n" +
                    "Diga naturalmente:\n" +
                    "_\"conta fixa de aluguel 1500 dia 5\"_\n\n" +
                    "Ou use: `descricao;valor;dia`";

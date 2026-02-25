@@ -191,7 +191,7 @@ public class BotNotificationService : BackgroundService
                 var vencemHoje = lembretes.Where(l =>
                     l.DataVencimento.Date == agoraBrasilia.Date).ToList();
 
-                var msg = $"*{saudacao}, {user.Nome}!* ☕\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                var msg = $"*{saudacao}, {user.Nome}!* ☕\n\n" +
                           $"📊 *Resumo de {agoraBrasilia:MMMM}:*\n" +
                           $"🟢 Receitas: R$ {resumo.TotalReceitas:N2}\n" +
                           $"🔴 Gastos: R$ {resumo.TotalGastos:N2}\n" +
@@ -239,14 +239,14 @@ public class BotNotificationService : BackgroundService
 
                 if (disponivel > 50)
                 {
-                    var msg = $"🎉 *Sextou, {user.Nome}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                    var msg = $"🎉 *Sextou, {user.Nome}!*\n\n" +
                               $"💰 Você ainda tem *R$ {disponivel:N2}* livres no orçamento de Lazer.\n" +
                               "🌟 Aproveite o fim de semana com tranquilidade!";
                     await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
                 }
                 else if (disponivel > 0)
                 {
-                    var msg = $"🎉 *Sextou, {user.Nome}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                    var msg = $"🎉 *Sextou, {user.Nome}!*\n\n" +
                               $"⚠️ Restam apenas *R$ {disponivel:N2}* para Lazer este mês.\n" +
                               "👀 Aproveite com moderação!";
                     await EnviarMensagemAsync(user.TelegramChatId!.Value, msg, ct);
@@ -273,7 +273,7 @@ public class BotNotificationService : BackgroundService
             {
                 var resumo = await resumoService.GerarResumoSemanalAsync(user.Id);
                 var categoriaMaiorGasto = resumo.GastosPorCategoria.FirstOrDefault()?.Categoria ?? "Sem gastos";
-                var msg = "📊 *Resumo da Semana*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                var msg = "📊 *Resumo da Semana*\n\n" +
                           $"💸 Gastos: *R$ {resumo.TotalGastos:N2}*\n" +
                           $"🏷️ Maior categoria: *{categoriaMaiorGasto}*\n\n" +
                           "💪 Planeje bem a próxima semana!";
@@ -301,7 +301,7 @@ public class BotNotificationService : BackgroundService
         {
             try
             {
-                var msg = $"📅 *O mês de {mesAtual:MMMM} está acabando!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                var msg = $"📅 *O mês de {mesAtual:MMMM} está acabando!*\n\n" +
                           "✅ Confira se todas as contas foram pagas.\n" +
                           "🚀 Amanhã começa um novo ciclo!";
 
@@ -339,7 +339,7 @@ public class BotNotificationService : BackgroundService
 
                     if (percentualUsado >= 0.8m && percentualUsado < 1.0m)
                     {
-                        var msg = $"⚠️ *{cat.Nome} — {percentualUsado:P0} do orçamento*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                        var msg = $"⚠️ *{cat.Nome} — {percentualUsado:P0} do orçamento*\n\n" +
                                   $"💰 Disponível: *R$ {disponivel:N2}*\n" +
                                   "👀 Fique de olho nos gastos desta categoria.";
                         await EnviarComBotaoAsync(user.TelegramChatId!.Value, msg,
@@ -347,7 +347,7 @@ public class BotNotificationService : BackgroundService
                     }
                     else if (percentualUsado >= 1.0m)
                     {
-                        var msg = $"🚨 *Limite estourado: {cat.Nome}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                        var msg = $"🚨 *Limite estourado: {cat.Nome}!*\n\n" +
                                   $"🔴 Você ultrapassou em *R$ {Math.Abs(disponivel):N2}*!\n" +
                                   "Revise seus gastos para voltar ao controle.";
                         await EnviarComBotaoAsync(user.TelegramChatId!.Value, msg,
@@ -485,7 +485,7 @@ public class BotNotificationService : BackgroundService
                 // Enviar alertas se houver
                 if (alertas.Any())
                 {
-                    var msg = "💡 *Insights financeiros*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                    var msg = "💡 *Insights financeiros*\n\n" +
                               string.Join("\n\n", alertas);
 
                     await EnviarComBotaoAsync(user.TelegramChatId!.Value, msg,

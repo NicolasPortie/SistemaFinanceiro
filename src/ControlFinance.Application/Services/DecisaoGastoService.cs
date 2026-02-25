@@ -522,14 +522,14 @@ public class DecisaoGastoService : IDecisaoGastoService
 
         return resultado.Parecer switch
         {
-            "pode" => $"✅ *Aprovado* — {desc} de R$ {resultado.ValorCompra:N2}\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+            "pode" => $"✅ *Aprovado* — {desc} de R$ {resultado.ValorCompra:N2}\n\n" +
                        $"🟢 Baixo impacto no orçamento.\n\n" +
                        $"💸 Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}\n" +
                        $"💰 Disponível: R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias" +
                        scoreTxt + variacaoTxt + metasTxt +
                        (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : ""),
 
-            "cautela" => $"⚠️ *Aprovado com ressalva* — {desc} de R$ {resultado.ValorCompra:N2}\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+            "cautela" => $"⚠️ *Aprovado com ressalva* — {desc} de R$ {resultado.ValorCompra:N2}\n\n" +
                           $"🟡 Consome {resultado.PercentualSaldoLivre:N0}% do saldo disponível.\n\n" +
                           $"💸 Gastos no mês: R$ {resultado.GastoAcumuladoMes:N2} de R$ {resultado.ReceitaPrevistoMes:N2}\n" +
                           $"💰 Disponível: R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias\n" +
@@ -538,7 +538,7 @@ public class DecisaoGastoService : IDecisaoGastoService
                           scoreTxt + variacaoTxt + metasTxt +
                           (resultado.AlertaLimite != null ? $"\n\n{resultado.AlertaLimite}" : ""),
 
-            _ => $"🔴 *Não recomendado* — {desc} de R$ {resultado.ValorCompra:N2}\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+            _ => $"🔴 *Não recomendado* — {desc} de R$ {resultado.ValorCompra:N2}\n\n" +
                  (resultado.SaldoLivreMes <= 0
                      ? $"Seu saldo livre este mês já está negativo (R$ {resultado.SaldoLivreMes:N2})."
                      : $"Restam apenas R$ {resultado.SaldoLivreMes:N2} para {resultado.DiasRestantesMes} dias — consumiria {resultado.PercentualSaldoLivre:N0}%.") +

@@ -103,7 +103,7 @@ public class LembreteHandler : ILembreteHandler
     public async Task<string> ProcessarComandoContaFixaAsync(Usuario usuario, string? parametros)
     {
         if (string.IsNullOrWhiteSpace(parametros))
-            return "📌 *Cadastro de Conta Fixa*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+            return "📌 *Cadastro de Conta Fixa*\n\n" +
                    "Diga naturalmente:\n" +
                    "_\"conta fixa de internet 99,90 dia 15\"_\n\n" +
                    "Ou no formato:\n" +
@@ -199,7 +199,7 @@ public class LembreteHandler : ILembreteHandler
         var catTexto = categoriaNome ?? "Não informada";
         var telegramTexto = lembreteTelegram.Value ? "Ativo ✅" : "Desativado ❌";
 
-        return $"✅ *Conta fixa cadastrada!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+        return $"✅ *Conta fixa cadastrada!*\n\n" +
                $"📝 {lembrete.Descricao}\n" +
                $"💰 R$ {lembrete.Valor:N2}\n" +
                $"📅 Dia {dia} de cada mês\n" +
@@ -216,7 +216,7 @@ public class LembreteHandler : ILembreteHandler
         if (!lembretes.Any())
             return "💭 Nenhum lembrete ativo.\n\nPara criar um, diga algo como:\n\"lembrete internet dia 15 de 99,90\"\nou \"conta fixa aluguel 1500 dia 5\"";
 
-        var texto = "🔔 *Seus lembretes ativos*\n━━━━━━━━━━━━━━━━━━━━\n";
+        var texto = "🔔 *Seus lembretes ativos*\n\n";
         foreach (var lembrete in lembretes)
         {
             var valorTexto = lembrete.Valor.HasValue ? $" — R$ {lembrete.Valor.Value:N2}" : string.Empty;
@@ -231,7 +231,7 @@ public class LembreteHandler : ILembreteHandler
             texto += $"     📅 {lembrete.DataVencimento:dd/MM/yyyy}{valorTexto}{recorrenciaTexto}{catTexto}{periodKey}\n";
         }
 
-        texto += "\n━━━━━━━━━━━━━━━━━━━━\n";
+        texto += "\n";
         texto += "Para marcar como pago, diga \"paguei lembrete [ID]\"";
         return texto;
     }
@@ -366,7 +366,7 @@ public class LembreteHandler : ILembreteHandler
             var valorTexto = lembrete.Valor.HasValue ? $"R$ {lembrete.Valor.Value:N2}" : "Valor não informado";
             var dataFimTexto = lembrete.DataFimRecorrencia.HasValue ? $"\nTermina em: {lembrete.DataFimRecorrencia.Value:MM/yyyy}" : "";
 
-            return $"✅ *Conta fixa criada!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+            return $"✅ *Conta fixa criada!*\n\n" +
                    $"📝 *{lembrete.Descricao}*\n" +
                    $"💰 {valorTexto}\n" +
                    $"📅 Todo dia {diaVencimento} (começa em {lembrete.DataVencimento:dd/MM})\n" +
@@ -456,7 +456,7 @@ public class LembreteHandler : ILembreteHandler
             : string.Empty;
         var valorTexto = lembrete.Valor.HasValue ? $"\nValor: R$ {lembrete.Valor.Value:N2}" : string.Empty;
 
-        return $"✅ *Lembrete criado!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+        return $"✅ *Lembrete criado!*\n\n" +
                $"📝 {lembrete.Descricao}\n" +
                $"📅 Vencimento: {lembrete.DataVencimento:dd/MM/yyyy}" +
                $"{valorTexto}{recorrenciaTexto}";

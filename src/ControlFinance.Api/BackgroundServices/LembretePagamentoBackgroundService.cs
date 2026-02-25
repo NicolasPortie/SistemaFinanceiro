@@ -253,7 +253,7 @@ public class LembretePagamentoBackgroundService : BackgroundService
     {
         var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
         var cat = l.Categoria != null ? $"\n🏷️ Categoria: {l.Categoria.Nome}" : "";
-        return $"🔔 *Lembrete: {l.Descricao}*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+        return $"🔔 *Lembrete: {l.Descricao}*\n\n" +
                $"📅 Vence em *{dias} dia(s)* ({l.DataVencimento:dd/MM/yyyy})" +
                valor + cat +
                $"\n\nJá pagou? Diga \"paguei lembrete {l.Id}\"";
@@ -262,7 +262,7 @@ public class LembretePagamentoBackgroundService : BackgroundService
     private static string FormatarMensagemDMenos1(LembretePagamento l)
     {
         var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
-        return $"⚠️ *Amanhã vence: {l.Descricao}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+        return $"⚠️ *Amanhã vence: {l.Descricao}!*\n\n" +
                $"📅 Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
                valor +
                $"\n\nJá pagou? Diga \"paguei lembrete {l.Id}\"";
@@ -271,7 +271,7 @@ public class LembretePagamentoBackgroundService : BackgroundService
     private static string FormatarMensagemD0(LembretePagamento l)
     {
         var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
-        return $"🚨 *HOJE vence: {l.Descricao}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+        return $"🚨 *HOJE vence: {l.Descricao}!*\n\n" +
                $"📅 {l.DataVencimento:dd/MM/yyyy}" +
                valor +
                $"\n\nDiga \"paguei lembrete {l.Id}\" para marcar como pago.";
@@ -281,7 +281,7 @@ public class LembretePagamentoBackgroundService : BackgroundService
     {
         var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
         var sufixo = diasAtraso == 1 ? "ontem" : $"há {diasAtraso} dias";
-        return $"❗ *Conta vencida {sufixo}: {l.Descricao}!*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+        return $"❗ *Conta vencida {sufixo}: {l.Descricao}!*\n\n" +
                $"📅 Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
                valor +
                $"\n\nSe já pagou, diga \"paguei lembrete {l.Id}\"" +

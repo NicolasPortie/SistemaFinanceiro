@@ -600,7 +600,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
             ? $" em {request.NumeroParcelas}x de R$ {request.Valor / request.NumeroParcelas:N2}"
             : " à vista";
 
-        var texto = $"🔮 *Análise de Compra*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+        var texto = $"🔮 *Análise de Compra*\n\n" +
                    $"🛒 Item: *{request.Descricao}*\n" +
                    $"💰 Valor: R$ {request.Valor:N2}{parcelaInfo}\n\n" +
                    $"📉 Pior mês projetado: *{piorMes}* (R$ {menorSaldo:N2})\n" +

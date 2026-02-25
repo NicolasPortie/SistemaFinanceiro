@@ -72,7 +72,6 @@ public class FaturaService : IFaturaService
 
         var texto = $"""
             💳 *Fatura — {fatura.CartaoNome}*
-            ━━━━━━━━━━━━━━━━━━━━
             Ref: {fatura.MesReferencia} | Vence: {fatura.DataVencimento:dd/MM/yyyy}
             💰 *Total: R$ {fatura.Total:N2}*
             {statusTexto}
@@ -114,7 +113,6 @@ public class FaturaService : IFaturaService
 
         var texto = $"""
             💳 *Fatura Detalhada — {fatura.CartaoNome}*
-            ━━━━━━━━━━━━━━━━━━━━
             Ref: {fatura.MesReferencia} | Vence: {fatura.DataVencimento:dd/MM/yyyy}
             💰 *Total: R$ {fatura.Total:N2}*
             {statusTexto}

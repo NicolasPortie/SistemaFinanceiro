@@ -70,7 +70,7 @@ public class ConsultaHandler : IConsultaHandler
             if (!recentes.Any())
                 return "💭 Nenhum lançamento registrado ainda.\n\nQue tal começar? Diga algo como:\n\"Gastei 30 no almoço\"";
 
-            var texto = "📋 *Seus últimos lançamentos*\n━━━━━━━━━━━━━━━━━━━━\n\n";
+            var texto = "📋 *Seus últimos lançamentos*\n\n";
             var totalReceita = 0m;
             var totalDespesa = 0m;
 
@@ -88,7 +88,7 @@ public class ConsultaHandler : IConsultaHandler
             var saldoExtrato = totalReceita - totalDespesa;
             var saldoEmoji = saldoExtrato >= 0 ? "✅" : "⚠️";
 
-            texto += $"\n━━━━━━━━━━━━━━━━━━━━\n";
+            texto += $"\n";
             texto += $"💵 Entradas: *R$ {totalReceita:N2}*\n";
             texto += $"💸 Saídas: *R$ {totalDespesa:N2}*\n";
             texto += $"{saldoEmoji} Saldo: *R$ {saldoExtrato:N2}*";
@@ -199,7 +199,7 @@ public class ConsultaHandler : IConsultaHandler
         if (!cartoes.Any())
             return "💳 Nenhum cartão cadastrado.\n\nAcesse o menu *Cartões* no sistema web para adicionar.";
 
-        var resultado = "📑 *Todas as faturas pendentes*\n━━━━━━━━━━━━━━━━━━━━\n\n";
+        var resultado = "📑 *Todas as faturas pendentes*\n\n";
         var temFatura = false;
 
         foreach (var cartao in cartoes)
@@ -231,7 +231,7 @@ public class ConsultaHandler : IConsultaHandler
         var categorias = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
         if (!categorias.Any()) return "📂 Nenhuma categoria encontrada.";
 
-        var texto = "🏷️ *Suas categorias*\n━━━━━━━━━━━━━━━━━━━━\n";
+        var texto = "🏷️ *Suas categorias*\n\n";
         foreach (var cat in categorias)
         {
             var ico = cat.Padrao ? "📌" : "📎";
@@ -287,7 +287,7 @@ public class ConsultaHandler : IConsultaHandler
             .Where(x => x.Mes.Year == hoje.Year && x.Mes.Month == hoje.Month)
             .Sum(x => x.Total);
 
-        var texto = "💵 *Sua receita de salário*\n━━━━━━━━━━━━━━━━━━━━\n\n";
+        var texto = "💵 *Sua receita de salário*\n\n";
         texto += $"📊 Média mensal: *R$ {media:N2}*\n";
         texto += $"📅 Este mês ({hoje:MM/yyyy}): *R$ {totalAtual:N2}*\n\n";
         texto += "📈 *Histórico:*";
@@ -343,7 +343,7 @@ public class ConsultaHandler : IConsultaHandler
             return $"🏷️ *{categoria.Nome}*\n\nSem gastos nesta categoria em {hoje:MM/yyyy}.";
 
         var total = lancamentosCat.Sum(l => l.Valor);
-        var texto = $"🏷️ *Detalhes — {categoria.Nome}*\n{inicioMes:MM/yyyy}\n━━━━━━━━━━━━━━━━━━━━\n\n";
+        var texto = $"🏷️ *Detalhes — {categoria.Nome}* ({inicioMes:MM/yyyy})\n\n";
 
         foreach (var l in lancamentosCat)
         {
@@ -357,7 +357,7 @@ public class ConsultaHandler : IConsultaHandler
             texto += $"{l.Data:dd/MM} — {l.Descricao} — R$ {l.Valor:N2} ({pagInfo})\n";
         }
 
-        texto += $"\n━━━━━━━━━━━━━━━━━━━━\n💰 *Subtotal: R$ {total:N2}*\n📌 *{lancamentosCat.Count} lançamento(s)*";
+        texto += $"\n💰 *Subtotal: R$ {total:N2}*  📌 {lancamentosCat.Count} lançamento(s)";
         return texto;
     }
 
@@ -385,7 +385,7 @@ public class ConsultaHandler : IConsultaHandler
                 : 0;
 
             var ptBR = new CultureInfo("pt-BR");
-            var texto = $"📊 *Comparativo mensal*\n{inicioMesAnterior.ToString("MMMM", ptBR)} vs {inicioMesAtual.ToString("MMMM", ptBR)}\n━━━━━━━━━━━━━━━━━━━━\n\n";
+            var texto = $"📊 *Comparativo mensal — {inicioMesAnterior.ToString("MMMM", ptBR)} vs {inicioMesAtual.ToString("MMMM", ptBR)}*\n\n";
 
             // Gastos
             if (diffGastos > 0)
@@ -473,7 +473,7 @@ public class ConsultaHandler : IConsultaHandler
                 if (!todasTags.Any())
                     return "🏷️ Você ainda não tem tags.\n\nAdicione com: \"tag #reembolso\" após um lançamento.";
 
-                return "🏷️ *Suas tags*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+                return "🏷️ *Suas tags*\n\n" +
                        string.Join("\n", todasTags.Select(t => $"  📎 #{t}"));
             }
 
@@ -482,7 +482,7 @@ public class ConsultaHandler : IConsultaHandler
                 return $"🏷️ Nenhum lançamento com a tag *#{tagNormalizada}*.";
 
             var total = lancamentosTag.Sum(t => t.Lancamento.Valor);
-            var texto = $"🏷️ *Lançamentos com #{tagNormalizada}*\n━━━━━━━━━━━━━━━━━━━━\n\n";
+            var texto = $"🏷️ *Lançamentos com #{tagNormalizada}*\n\n";
 
             foreach (var t in lancamentosTag.Take(15))
             {
@@ -491,7 +491,7 @@ public class ConsultaHandler : IConsultaHandler
                 texto += $"{l.Data:dd/MM} — {l.Descricao} — {sinal} R$ {l.Valor:N2}\n";
             }
 
-            texto += $"\n━━━━━━━━━━━━━━━━━━━━\n💰 *Total: R$ {total:N2}*\n📌 *{lancamentosTag.Count} lançamento(s)*";
+            texto += $"\n💰 *Total: R$ {total:N2}*  📌 {lancamentosTag.Count} lançamento(s)";
             return texto;
         }
         catch (Exception ex)

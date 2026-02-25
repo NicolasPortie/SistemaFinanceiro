@@ -189,10 +189,9 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
 
         // ── Gerar resumo legível em linguagem simples ──
         var barraProgresso = GerarBarraProgresso(scoreTotal);
-        var resumo = $"━━━━━━━━━━━━━━━━━━━━━\n";
+        var resumo = string.Empty;
         resumo += $"{classificacaoEmoji} *Saúde Financeira: {classificacao}*\n";
-        resumo += $"{barraProgresso}  *{scoreTotal:N0}*/100\n";
-        resumo += $"━━━━━━━━━━━━━━━━━━━━━\n\n";
+        resumo += $"{barraProgresso}  *{scoreTotal:N0}*/100\n\n";
 
         // Separar pontos positivos e pontos de atenção
         var pontosPositivos = new List<string>();
@@ -263,7 +262,6 @@ public class ScoreSaudeFinanceiraService : IScoreSaudeFinanceiraService
                 resumo += $"  ⚡ {p}\n";
         }
 
-        resumo += "\n━━━━━━━━━━━━━━━━━━━━━";
         if (scoreTotal >= 80)
             resumo += "\n🏆 *Parabéns!* Suas finanças estão saudáveis. Continue assim!";
         else if (scoreTotal >= 60)

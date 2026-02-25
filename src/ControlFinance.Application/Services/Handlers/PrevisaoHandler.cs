@@ -107,7 +107,7 @@ public class PrevisaoHandler : IPrevisaoHandler
     {
         if (string.IsNullOrWhiteSpace(parametros))
         {
-            return "🔮 *Simulação de Compra*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
+            return "🔮 *Simulação de Compra*\n\n" +
                    "Fale naturalmente! Exemplos:\n\n" +
                    "💬 \"Se eu comprar uma TV de 3000 em 10x?\"\n" +
                    "💬 \"Quero comprar um celular de 4500, como fica?\"\n" +
@@ -218,7 +218,7 @@ public class PrevisaoHandler : IPrevisaoHandler
             var disponivel = cartao.Limite - totalAberto;
             if (valorCompra > disponivel)
             {
-                return $"⚠️ *Atenção ao limite do cartão!*\n━━━━━━━━━━━━━━━━━━━━\n" +
+                return $"⚠️ *Atenção ao limite do cartão!*\n" +
                        $"💳 Limite: R$ {cartao.Limite:N2}\n" +
                        $"📤 Em aberto: R$ {totalAberto:N2}\n" +
                        $"✅ Disponível: R$ {disponivel:N2}\n" +

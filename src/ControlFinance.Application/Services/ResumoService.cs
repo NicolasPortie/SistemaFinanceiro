@@ -141,7 +141,6 @@ public class ResumoService : IResumoService
 
         var texto = $"""
             📊 *Resumo Financeiro*
-            ━━━━━━━━━━━━━━━━━━━━
             Período: {resumo.De:dd/MM} a {resumo.Ate:dd/MM/yyyy}
 
             🟢 Receitas: R$ {resumo.TotalReceitas:N2}

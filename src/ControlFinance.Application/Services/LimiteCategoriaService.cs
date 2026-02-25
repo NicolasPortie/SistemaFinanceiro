@@ -116,7 +116,7 @@ public class LimiteCategoriaService : ILimiteCategoriaService
         if (!limites.Any())
             return "🏷️ Nenhum limite definido ainda.\n\nDefina com: \"limitar Alimentação em 800\"";
 
-        var texto = "🏷️ *Seus Limites Mensais*\n━━━━━━━━━━━━━━━━━━━━\n\n";
+        var texto = "🏷️ *Seus Limites Mensais*\n\n";
 
         foreach (var l in limites)
         {
