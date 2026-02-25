@@ -417,10 +417,14 @@ public class BotNotificationService : BackgroundService
                 {
                     var diasPassados = Math.Max(1, (hoje - inicioMes).Days);
                     var diasNoMes = DateTime.DaysInMonth(hoje.Year, hoje.Month);
-                    var gastoProjetado = gastosMesAtual / diasPassados * diasNoMes;
+                    var gastoDiario = gastosMesAtual / diasPassados;
+                    var gastoProjetado = gastoDiario * diasNoMes;
                     if (gastoProjetado > perfil.GastoMensalMedio * 1.3m)
                     {
-                        alertas.Add($"Nesse ritmo, você vai gastar *R$ {gastoProjetado:N2}* este mês. Sua média é R$ {perfil.GastoMensalMedio:N2}. Considere desacelerar.");
+                        var percentualAcima = (gastoProjetado - perfil.GastoMensalMedio) / perfil.GastoMensalMedio * 100;
+                        alertas.Add($"📈 Você gastou *R$ {gastosMesAtual:N2}* em {diasPassados} dias (R$ {gastoDiario:N2}/dia). " +
+                                    $"Projetando até o fim do mês: *R$ {gastoProjetado:N2}* — " +
+                                    $"{percentualAcima:N0}% acima da sua média mensal histórica (R$ {perfil.GastoMensalMedio:N2}/mês). Considere desacelerar.");
                     }
                 }
 
