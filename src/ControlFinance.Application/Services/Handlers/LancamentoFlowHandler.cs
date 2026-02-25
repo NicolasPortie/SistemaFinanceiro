@@ -325,8 +325,9 @@ public class LancamentoFlowHandler : ILancamentoHandler
         };
 
         var tipoTexto = tipo == TipoLancamento.Receita ? "Receita" : "Gasto";
+        var genero = tipo == TipoLancamento.Receita ? "registrada" : "registrado";
         var linhaFormaPagReg = tipo == TipoLancamento.Receita ? "" : $"💳 {pagInfo}\n";
-        var mensagem = $"✅ *{tipoTexto} registrado!*\n\n" +
+        var mensagem = $"✅ *{tipoTexto} {genero}!*\n\n" +
                        $"{emoji} {dto.Descricao}\n" +
                        $"💰 R$ {dto.Valor:N2}{parcelaInfo}\n" +
                        $"🏷️ {dto.Categoria}\n" +

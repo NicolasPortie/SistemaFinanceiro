@@ -301,6 +301,7 @@ export default function AdminSegurancaPage() {
             <thead>
               <tr className="border-b border-border/60 bg-muted/20 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                 <th className="px-6 py-3.5">Usuário</th>
+                <th className="px-6 py-3.5">IP</th>
                 <th className="px-6 py-3.5">Data de Início</th>
                 <th className="px-6 py-3.5">Expira em</th>
                 <th className="px-6 py-3.5">Status</th>
@@ -337,6 +338,11 @@ export default function AdminSegurancaPage() {
                             <p className="text-xs text-muted-foreground/60 mt-0.5">{s.usuarioEmail}</p>
                           </div>
                         </div>
+                      </td>
+
+                      {/* IP */}
+                      <td className="px-6 py-4">
+                        <p className="text-xs text-muted-foreground font-mono">{s.ipCriacao || "—"}</p>
                       </td>
 
                       {/* Data de Início */}
@@ -389,7 +395,7 @@ export default function AdminSegurancaPage() {
 
               {paginated.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-14 text-center">
+                  <td colSpan={6} className="px-6 py-14 text-center">
                     <Wifi className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">
                       {searchQuery ? "Nenhuma sessão corresponde à busca." : "Nenhuma sessão ativa no momento."}

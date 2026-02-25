@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type AdminUsuario } from "@/lib/api";
@@ -65,7 +65,7 @@ import { PageShell, ErrorState, CardSkeleton } from "@/components/shared/page-co
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
   "bg-indigo-500", "bg-violet-500", "bg-emerald-500", "bg-blue-500",
@@ -132,12 +132,12 @@ function getRoleBadge(role: string) {
   }
   return (
     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
-      UsuÃ¡rio
+      Usuário
     </span>
   );
 }
 
-// â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Page ───────────────────────────────────────────────────
 
 export default function AdminUsuariosPage() {
   const queryClient = useQueryClient();
@@ -167,13 +167,13 @@ export default function AdminUsuariosPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const bloquear = useMutation({ mutationFn: (id: number) => api.admin.usuarios.bloquear(id), ...mutationOpts("UsuÃ¡rio bloqueado") });
-  const desbloquear = useMutation({ mutationFn: (id: number) => api.admin.usuarios.desbloquear(id), ...mutationOpts("UsuÃ¡rio desbloqueado") });
+  const bloquear = useMutation({ mutationFn: (id: number) => api.admin.usuarios.bloquear(id), ...mutationOpts("Usuário bloqueado") });
+  const desbloquear = useMutation({ mutationFn: (id: number) => api.admin.usuarios.desbloquear(id), ...mutationOpts("Usuário desbloqueado") });
   const desativar = useMutation({ mutationFn: (id: number) => api.admin.usuarios.desativar(id), ...mutationOpts("Status da conta alterado") });
   const resetarLogin = useMutation({ mutationFn: (id: number) => api.admin.usuarios.resetarLogin(id), ...mutationOpts("Tentativas de login zeradas") });
-  const revogarSessoes = useMutation({ mutationFn: (id: number) => api.admin.usuarios.revogarSessoes(id), ...mutationOpts("SessÃµes encerradas â€” usuÃ¡rio precisarÃ¡ fazer login novamente") });
-  const promover = useMutation({ mutationFn: (id: number) => api.admin.usuarios.promover(id), ...mutationOpts("UsuÃ¡rio promovido a administrador") });
-  const rebaixar = useMutation({ mutationFn: (id: number) => api.admin.usuarios.rebaixar(id), ...mutationOpts("PermissÃ£o de admin removida") });
+  const revogarSessoes = useMutation({ mutationFn: (id: number) => api.admin.usuarios.revogarSessoes(id), ...mutationOpts("Sessões encerradas — usuário precisará fazer login novamente") });
+  const promover = useMutation({ mutationFn: (id: number) => api.admin.usuarios.promover(id), ...mutationOpts("Usuário promovido a administrador") });
+  const rebaixar = useMutation({ mutationFn: (id: number) => api.admin.usuarios.rebaixar(id), ...mutationOpts("Permissão de admin removida") });
   const estenderAcesso = useMutation({
     mutationFn: ({ id, dias }: { id: number; dias: number }) => api.admin.usuarios.estenderAcesso(id, dias),
     onSuccess: (data) => {
@@ -190,7 +190,7 @@ export default function AdminUsuariosPage() {
   const confirm = (label: string, description: string, onConfirm: () => void, variant: "destructive" | "default" = "default") =>
     setConfirmAction({ label, description, onConfirm, variant });
 
-  // â”€â”€ Computed stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Computed stats ─────────────────────────────────────
   const admins = usuarios?.filter((u) => u.role === "Admin").length ?? 0;
   const novos7d = useMemo(() => {
     if (!usuarios) return 0;
@@ -198,7 +198,7 @@ export default function AdminUsuariosPage() {
     return usuarios.filter((u) => new Date(u.criadoEm) >= cutoff).length;
   }, [usuarios]);
 
-  // â”€â”€ Search + pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Search + pagination ────────────────────────────────
   const filtered = useMemo(() => {
     if (!usuarios) return [];
     const q = searchQuery.toLowerCase().trim();
@@ -220,7 +220,7 @@ export default function AdminUsuariosPage() {
     setCurrentPage(1);
   }
 
-  // â”€â”€ Pagination numbers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Pagination numbers ─────────────────────────────────
   function getPageNumbers() {
     const pages: (number | "...")[] = [];
     if (totalPages <= 7) {
@@ -237,12 +237,12 @@ export default function AdminUsuariosPage() {
     return pages;
   }
 
-  // â”€â”€ Loading / Error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Loading / Error ────────────────────────────────────
   if (isLoading) {
     return (
       <PageShell>
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">Gerenciamento de UsuÃ¡rios</h1>
+          <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
           <p className="text-sm text-muted-foreground mt-1">Visualize e gerencie todas as contas da plataforma</p>
         </div>
         <CardSkeleton count={4} />
@@ -254,7 +254,7 @@ export default function AdminUsuariosPage() {
     return (
       <PageShell>
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">Gerenciamento de UsuÃ¡rios</h1>
+          <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
         </div>
         <ErrorState message={error?.message} onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "usuarios"] })} />
       </PageShell>
@@ -273,15 +273,15 @@ export default function AdminUsuariosPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-6"
       >
-        <h1 className="text-2xl font-bold">Gerenciamento de UsuÃ¡rios</h1>
+        <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
         <p className="text-sm text-muted-foreground mt-1">Visualize e gerencie todas as contas da plataforma</p>
       </motion.div>
 
-      {/* â”€â”€ Stat cards â”€â”€ */}
+      {/* ── Stat cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-7">
         {([
           {
-            label: "Total de UsuÃ¡rios",
+            label: "Total de Usuários",
             value: total,
             icon: Users,
             color: "text-emerald-500",
@@ -297,7 +297,7 @@ export default function AdminUsuariosPage() {
             gradient: "from-purple-500/5",
           },
           {
-            label: "Novos (Ãºltimos 7 dias)",
+            label: "Novos (últimos 7 dias)",
             value: novos7d,
             icon: UserPlus,
             color: "text-sky-400",
@@ -334,7 +334,7 @@ export default function AdminUsuariosPage() {
         ))}
       </div>
 
-      {/* â”€â”€ Toolbar â”€â”€ */}
+      {/* ── Toolbar ── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -363,12 +363,12 @@ export default function AdminUsuariosPage() {
         <p className="text-sm text-muted-foreground whitespace-nowrap">
           {filtered.length === 0
             ? "Nenhum resultado"
-            : `Exibindo ${startItem}â€“${endItem} de ${filtered.length}`}
+            : `Exibindo ${startItem}–${endItem} de ${filtered.length}`}
           {searchQuery && filtered.length !== total && ` (filtrado de ${total})`}
         </p>
       </motion.div>
 
-      {/* â”€â”€ Table â”€â”€ */}
+      {/* ── Table ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -379,12 +379,12 @@ export default function AdminUsuariosPage() {
           <table className="w-full text-left border-collapse min-w-275">
             <thead>
               <tr className="border-b border-border/60 bg-muted/20 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                <th className="px-4 py-3.5 min-w-55">Nome / UsuÃ¡rio</th>
+                <th className="px-4 py-3.5 min-w-55">Nome / Usuário</th>
                 <th className="px-4 py-3.5 min-w-50">Email</th>
                 <th className="px-4 py-3.5 min-w-22.5">Role</th>
                 <th className="px-4 py-3.5 min-w-27.5">Status</th>
                 <th className="px-4 py-3.5 min-w-50">Data de Cadastro</th>
-                <th className="px-4 py-3.5 text-right min-w-30">AÃ§Ãµes</th>
+                <th className="px-4 py-3.5 text-right min-w-30">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
@@ -415,7 +415,7 @@ export default function AdminUsuariosPage() {
                             <p className="text-sm font-semibold leading-tight">{u.nome}</p>
                             {isSelf(u) && (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20">
-                                VocÃª
+                                Você
                               </span>
                             )}
                           </div>
@@ -444,7 +444,7 @@ export default function AdminUsuariosPage() {
                     <td className="px-4 py-4">
                       {getStatusBadge(u)}
                       {u.tentativasLoginFalhadas > 0 && (
-                        <p className="text-[10px] text-amber-500 mt-1">{u.tentativasLoginFalhadas}Ã— senha errada</p>
+                        <p className="text-[10px] text-amber-500 mt-1">{u.tentativasLoginFalhadas}× senha errada</p>
                       )}
                     </td>
 
@@ -463,7 +463,7 @@ export default function AdminUsuariosPage() {
                       )}
                     </td>
 
-                    {/* AÃ§Ãµes */}
+                    {/* Ações */}
                     <td className="px-4 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button
@@ -489,26 +489,26 @@ export default function AdminUsuariosPage() {
                             <DropdownMenuContent align="end" className="w-64 rounded-xl p-1.5 shadow-lg border border-border/80">
 
                               <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-2 pb-0.5 pt-1">
-                                PermissÃ£o
+                                Permissão
                               </DropdownMenuLabel>
                               {u.role === "Admin" ? (
                                 <DropdownMenuItem
                                   className="gap-2.5 rounded-lg text-amber-600 dark:text-amber-500 focus:text-amber-600 dark:focus:text-amber-500 cursor-pointer"
                                   onClick={() => confirm(
                                     `Remover admin de ${u.nome}?`,
-                                    "O usuÃ¡rio perderÃ¡ acesso ao painel administrativo e voltarÃ¡ a ser um usuÃ¡rio comum.",
+                                    "O usuário perderá acesso ao painel administrativo e voltará a ser um usuário comum.",
                                     () => rebaixar.mutate(u.id),
                                   )}
                                 >
                                   <ShieldOff className="h-4 w-4" />
-                                  Remover permissÃ£o de Admin
+                                  Remover permissão de Admin
                                 </DropdownMenuItem>
                               ) : (
                                 <DropdownMenuItem
                                   className="gap-2.5 rounded-lg cursor-pointer"
                                   onClick={() => confirm(
                                     `Tornar ${u.nome} administrador?`,
-                                    "O usuÃ¡rio passarÃ¡ a ter acesso completo ao painel de administraÃ§Ã£o.",
+                                    "O usuário passará a ter acesso completo ao painel de administração.",
                                     () => promover.mutate(u.id),
                                   )}
                                 >
@@ -543,7 +543,7 @@ export default function AdminUsuariosPage() {
                                   className="gap-2.5 rounded-lg text-muted-foreground cursor-pointer"
                                   onClick={() => confirm(
                                     `Desativar a conta de ${u.nome}?`,
-                                    "A conta serÃ¡ desabilitada. O usuÃ¡rio nÃ£o conseguirÃ¡ fazer login atÃ© ser reativado manualmente por um admin.",
+                                    "A conta será desabilitada. O usuário não conseguirá fazer login até ser reativado manualmente por um admin.",
                                     () => desativar.mutate(u.id),
                                     "destructive",
                                   )}
@@ -564,7 +564,7 @@ export default function AdminUsuariosPage() {
                               <DropdownMenuSeparator className="my-1" />
 
                               <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-2 pb-0.5 pt-1">
-                                SeguranÃ§a
+                                Segurança
                               </DropdownMenuLabel>
 
                               {isBloqueado(u) && (
@@ -582,7 +582,7 @@ export default function AdminUsuariosPage() {
                                   className="gap-2.5 rounded-lg cursor-pointer"
                                   onClick={() => confirm(
                                     `Bloquear ${u.nome} temporariamente?`,
-                                    "O usuÃ¡rio ficarÃ¡ impedido de fazer login por um perÃ­odo. Use para casos de atividade suspeita.",
+                                    "O usuário ficará impedido de fazer login por um período. Use para casos de atividade suspeita.",
                                     () => bloquear.mutate(u.id),
                                     "destructive",
                                   )}
@@ -598,20 +598,20 @@ export default function AdminUsuariosPage() {
                                   onClick={() => resetarLogin.mutate(u.id)}
                                 >
                                   <RotateCcw className="h-4 w-4" />
-                                  Zerar tentativas erradas ({u.tentativasLoginFalhadas}Ã—)
+                                  Zerar tentativas erradas ({u.tentativasLoginFalhadas}×)
                                 </DropdownMenuItem>
                               )}
 
                               <DropdownMenuItem
                                 className="gap-2.5 rounded-lg text-emerald-600 dark:text-emerald-500 focus:text-emerald-600 dark:focus:text-emerald-500 cursor-pointer"
                                 onClick={() => confirm(
-                                  `Encerrar sessÃµes de ${u.nome}?`,
-                                  "O usuÃ¡rio serÃ¡ deslogado de todos os dispositivos e precisarÃ¡ fazer login novamente.",
+                                  `Encerrar sessões de ${u.nome}?`,
+                                  "O usuário será deslogado de todos os dispositivos e precisará fazer login novamente.",
                                   () => revogarSessoes.mutate(u.id),
                                 )}
                               >
                                 <LogOut className="h-4 w-4" />
-                                Encerrar sessÃµes (deslogar)
+                                Encerrar sessões (deslogar)
                               </DropdownMenuItem>
 
                             </DropdownMenuContent>
@@ -628,7 +628,7 @@ export default function AdminUsuariosPage() {
                   <td colSpan={7} className="px-4 py-14 text-center">
                     <Users className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">
-                      {searchQuery ? "Nenhum usuÃ¡rio corresponde Ã  busca." : "Nenhum usuÃ¡rio encontrado."}
+                      {searchQuery ? "Nenhum usuário corresponde à busca." : "Nenhum usuário encontrado."}
                     </p>
                   </td>
                 </tr>
@@ -637,13 +637,13 @@ export default function AdminUsuariosPage() {
           </table>
         </div>
 
-        {/* â”€â”€ Pagination â”€â”€ */}
+        {/* ── Pagination ── */}
         {filtered.length > 0 && (
           <div className="border-t border-border/40 px-4 py-4 flex items-center justify-between gap-2 flex-wrap">
             <p className="text-sm text-muted-foreground hidden sm:block">
               Mostrando{" "}
               <span className="font-semibold text-foreground">{startItem}</span>
-              {" â€“ "}
+              {" – "}
               <span className="font-semibold text-foreground">{endItem}</span>
               {" de "}
               <span className="font-semibold text-foreground">{filtered.length}</span>
@@ -687,7 +687,7 @@ export default function AdminUsuariosPage() {
                 disabled={safePage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               >
-                PrÃ³xima
+                Próxima
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>
@@ -695,7 +695,7 @@ export default function AdminUsuariosPage() {
         )}
       </motion.div>
 
-      {/* â”€â”€ Dialogs â”€â”€ */}
+      {/* ── Dialogs ── */}
       <UserDetailDialog usuario={selectedUser} onClose={() => setSelectedUser(null)} />
 
       <ExtenderAcessoDialog
@@ -728,7 +728,7 @@ export default function AdminUsuariosPage() {
   );
 }
 
-// â”€â”€ UserDetailDialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── UserDetailDialog ───────────────────────────────────────
 
 function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; onClose: () => void }) {
   const { data: detalhe, isLoading } = useQuery({
@@ -776,8 +776,8 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
               {/* Stats */}
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: "LanÃ§amentos", value: u?.totalLancamentos ?? 0, Icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-600" },
-                  { label: "CartÃµes", value: u?.totalCartoes ?? 0, Icon: CreditCard, color: "bg-blue-500/10 text-blue-600" },
+                  { label: "Lançamentos", value: u?.totalLancamentos ?? 0, Icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-600" },
+                  { label: "Cartões", value: u?.totalCartoes ?? 0, Icon: CreditCard, color: "bg-blue-500/10 text-blue-600" },
                   { label: "Metas", value: u?.totalMetas ?? 0, Icon: Target, color: "bg-violet-500/10 text-violet-600" },
                 ].map((s) => (
                   <div key={s.label} className="rounded-xl border border-border/40 bg-muted/20 p-3 flex flex-col items-center gap-1.5">
@@ -795,7 +795,7 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
                 {[
                   { label: "Membro desde", value: formatDate(u?.criadoEm ?? "") },
                   {
-                    label: "SessÃµes ativas",
+                    label: "Sessões ativas",
                     value: (
                       <span className={cn(
                         "inline-flex items-center gap-1 font-semibold",
@@ -813,7 +813,7 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
                         <Send className="h-3.5 w-3.5" /> Vinculado
                       </span>
                     ) : (
-                      <span className="text-muted-foreground">NÃ£o vinculado</span>
+                      <span className="text-muted-foreground">Não vinculado</span>
                     )
                   },
                   {
@@ -823,7 +823,7 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
                         "font-semibold",
                         (u?.tentativasLoginFalhadas ?? 0) > 0 ? "text-amber-500" : "text-muted-foreground"
                       )}>
-                        {u?.tentativasLoginFalhadas ?? 0}Ã—
+                        {u?.tentativasLoginFalhadas ?? 0}×
                       </span>
                     )
                   },
@@ -860,7 +860,7 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
   );
 }
 
-// â”€â”€ ExtenderAcessoDialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ExtenderAcessoDialog ───────────────────────────────────
 
 const PRESETS_EXTEND = [
   { label: "7 dias", value: 7 },
@@ -953,18 +953,18 @@ function ExtenderAcessoDialog({
           </div>
 
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-            <p className="text-[11px] text-muted-foreground/60 mb-0.5">Nova data de expiraÃ§Ã£o</p>
+            <p className="text-[11px] text-muted-foreground/60 mb-0.5">Nova data de expiração</p>
             <p className="font-bold text-primary">
               {novaExpiracao.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
             </p>
             {estaExpirado && (
               <p className="text-[11px] text-amber-600 mt-1">
-                Como o acesso jÃ¡ expirou, os dias serÃ£o contados a partir de hoje.
+                Como o acesso já expirou, os dias serão contados a partir de hoje.
               </p>
             )}
             {expiraAtual === null && (
               <p className="text-[11px] text-amber-600 mt-1">
-                O usuÃ¡rio tem acesso permanente. ApÃ³s estender, passarÃ¡ a ter prazo definido.
+                O usuário tem acesso permanente. Após estender, passará a ter prazo definido.
               </p>
             )}
           </div>

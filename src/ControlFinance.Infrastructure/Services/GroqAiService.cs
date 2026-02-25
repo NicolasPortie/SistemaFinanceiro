@@ -131,6 +131,7 @@ public class GroqAiService : IAiService
             Se o usuário perguntar sobre "eventos", "gastos de meses específicos" = 'responder_generico' indicando comandoInterno 'ver_sazonalidade'.
             Se ele perguntar sobre "receitas fixas", "salário" ou "recorrentes" = 'responder_generico' indicando comandoInterno 'ver_recorrentes' (ou ver_salario se falar salário).
             Se ele perguntar sobre assinaturas, contas fixas, lembretes, "quais são minhas contas", "meus lembretes" ou contas que vão vencer = 'responder_generico' indicando comandoInterno 'ver_lembretes'.
+            IMPORTANTE: Se o usuário quiser CRIAR/CADASTRAR/ADICIONAR uma conta fixa nova (ex: "conta fixa de internet 99,90 dia 15", "adicionar aluguel 1500 dia 10", "netflix 55,90 todo dia 5") = use 'criar_conta_fixa' (NÃO 'ver_lembretes'). Só use 'ver_lembretes' quando ele quiser VER/LISTAR as contas existentes.
             Se o usuário usar verbos no passado (\"comprei\", \"adquiri\", \"fiz a compra\") referindo-se a uma transação JÁ concluída = use 'registrar_lancamento' (não 'prever_compra').
             """;
 

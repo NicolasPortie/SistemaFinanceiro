@@ -46,6 +46,9 @@ import {
   DollarSign,
   MoreVertical,
   RefreshCw,
+  MessageSquare,
+  Globe,
+  Image as ImageIcon,
 } from "lucide-react";
 import {
   EmptyState,
@@ -591,7 +594,7 @@ export default function LancamentosPage() {
         className="glass-panel rounded-2xl overflow-hidden"
       >
         {/* Table header */}
-        <div className="hidden lg:grid lg:grid-cols-[40px_2.5fr_1fr_1fr_1.2fr_1fr_50px] gap-4 items-center px-6 py-3.5 border-b border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-800/30">
+        <div className="hidden lg:grid lg:grid-cols-[40px_2fr_1fr_1fr_1fr_0.8fr_1fr_50px] gap-4 items-center px-6 py-3.5 border-b border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-800/30">
           <div>
             <Checkbox
               checked={!!lancamentosData?.items?.length && selectedIds.length === lancamentosData.items.length}
@@ -603,6 +606,7 @@ export default function LancamentosPage() {
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Data</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Categoria</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Forma Pgto.</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Origem</span>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 text-right">Valor</span>
           <span />
         </div>
@@ -627,7 +631,7 @@ export default function LancamentosPage() {
                     {/* Desktop row */}
                     <div
                       className={cn(
-                        "hidden lg:grid lg:grid-cols-[40px_2.5fr_1fr_1fr_1.2fr_1fr_50px] gap-4 items-center px-6 py-3.5 transition-all duration-200 cursor-pointer",
+                        "hidden lg:grid lg:grid-cols-[40px_2fr_1fr_1fr_1fr_0.8fr_1fr_50px] gap-4 items-center px-6 py-3.5 transition-all duration-200 cursor-pointer",
                         selectedIds.includes(l.id)
                           ? "bg-emerald-600/5 hover:bg-emerald-600/8"
                           : "hover:bg-white/40 dark:hover:bg-slate-800/30"
@@ -688,12 +692,26 @@ export default function LancamentosPage() {
                         </div>
                       </div>
 
+                      {/* Origem */}
+                      <div className="flex items-center gap-1.5">
+                        {l.origem === "Imagem" ? (
+                          <ImageIcon className="h-3.5 w-3.5 text-violet-500" />
+                        ) : l.origem === "Audio" ? (
+                          <MessageSquare className="h-3.5 w-3.5 text-sky-500" />
+                        ) : (
+                          <Globe className="h-3.5 w-3.5 text-slate-400" />
+                        )}
+                        <span className="text-[12px] text-slate-500 dark:text-slate-400 font-medium">
+                          {l.origem === "Imagem" ? "Imagem" : l.origem === "Audio" ? "Áudio" : "Texto"}
+                        </span>
+                      </div>
+
                       {/* Value */}
                       <span className={cn(
                         "text-sm font-bold tabular-nums text-right whitespace-nowrap",
                         l.tipo === "receita" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
                       )}>
-                        {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
+                        {l.tipo === "receita" ? "+" : "\u2212"} {formatCurrency(l.valor)}
                       </span>
 
                       {/* Actions dropdown */}

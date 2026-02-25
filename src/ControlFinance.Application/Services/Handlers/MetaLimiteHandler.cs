@@ -121,7 +121,7 @@ public class MetaLimiteHandler : IMetaLimiteHandler
             var acao = aporte.Valor >= 0 ? "🟢 Aporte realizado" : "🔴 Saque realizado";
             var diff = Math.Abs(aporte.Valor);
 
-            return $"✅ *{acao} na meta \"_{resultado.Nome}_\"!*\n\n" +
+            return $"✅ *{acao} na meta \"{resultado.Nome}\"!*\n\n" +
                    $"💰 Valor: R$ {diff:N2}\n" +
                    $"📊 Progresso: R$ {resultado.ValorAtual:N2} / R$ {resultado.ValorAlvo:N2} ({resultado.PercentualConcluido:N0}%)";
         }

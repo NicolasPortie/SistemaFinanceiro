@@ -173,6 +173,7 @@ public class LancamentosController : BaseAuthController
         l.Parcelado,
         l.CriadoEm,
         contaBancariaId = l.ContaBancariaId,
-        contaBancariaNome = l.ContaBancaria?.Nome
+        contaBancariaNome = l.ContaBancaria?.Nome,
+        origem = l.Origem.ToString()
     };
 }

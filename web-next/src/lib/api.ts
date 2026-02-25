@@ -198,6 +198,7 @@ export interface Lancamento {
   criadoEm: string;
   contaBancariaId?: number | null;
   contaBancariaNome?: string | null;
+  origem?: string;
 }
 
 export interface LancamentosPaginados {

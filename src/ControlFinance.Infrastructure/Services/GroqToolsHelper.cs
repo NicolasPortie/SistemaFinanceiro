@@ -82,7 +82,7 @@ public static class GroqToolsHelper
             function = new
             {
                 name = "prever_compra",
-                description = "Simula uma compra futura de valor alto (geralmente parcelada).",
+                description = "Simula uma compra futura, hipotética ou planejada. Use quando o usuário disser 'se eu comprar...', 'e se eu...', 'quanto fica se...', 'quero comprar X em Yx', 'simula X', 'como fica X parcelado'. Funciona para qualquer valor, parcelado ou à vista.",
                 parameters = new
                 {
                     type = "object",
