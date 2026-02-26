@@ -960,25 +960,91 @@ function RapidaResult({
           )}
         </div>
 
-        {/* Right: message */}
-        <div className="p-6 flex-1 flex flex-col justify-center">
-          <div className="flex items-start gap-4">
-            <div className="size-10 rounded-full bg-emerald-600/10 flex items-center justify-center shrink-0">
-              <Brain className="h-5 w-5 text-emerald-600" />
+        {/* Right: structured data */}
+        <div className="p-6 flex-1 flex flex-col justify-center gap-4">
+          {/* Verdict headline */}
+          <div className="flex items-center gap-3">
+            <div className="size-9 rounded-full bg-emerald-600/10 flex items-center justify-center shrink-0">
+              <Brain className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <h4 className="font-bold text-slate-800 dark:text-white mb-2">
-                Mensagem do Consultor
+              <h4 className="font-semibold text-slate-800 dark:text-white text-sm">
+                {data.parecer === "pode"
+                  ? "Aprovado"
+                  : data.parecer === "cautela"
+                    ? "Aprovado com ressalva"
+                    : "Não recomendado"}
+                {" — "}
+                <span className="font-normal text-slate-500 dark:text-slate-400">
+                  {formatCurrency(data.valorCompra)}
+                </span>
               </h4>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                {data.resumoTexto}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {data.parecer === "pode"
+                  ? "Baixo impacto no orçamento"
+                  : data.parecer === "cautela"
+                    ? `Consome ${data.percentualSaldoLivre.toFixed(0)}% do saldo disponível`
+                    : data.saldoLivreMes <= 0
+                      ? `Saldo livre negativo (${formatCurrency(data.saldoLivreMes)})`
+                      : `Consumiria ${data.percentualSaldoLivre.toFixed(0)}% do saldo restante`}
               </p>
             </div>
           </div>
 
-          {/* Suggested alternatives (if it's not "pode gastar") */}
+          {/* Key metrics row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Gastos no mês</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white">{formatCurrency(data.gastoAcumuladoMes)}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">de {formatCurrency(data.receitaPrevistoMes)}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Disponível</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white">{formatCurrency(data.saldoLivreMes)}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">para {data.diasRestantesMes} dias</p>
+            </div>
+            {data.variacaoVsMediaHistorica != null && data.variacaoVsMediaHistorica !== 0 && (
+              <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Vs média</p>
+                <p className={`text-sm font-bold ${data.variacaoVsMediaHistorica > 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                  {data.variacaoVsMediaHistorica > 0 ? "+" : ""}{data.variacaoVsMediaHistorica.toFixed(1)}%
+                </p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">últimos 3 meses</p>
+              </div>
+            )}
+            {data.parecer === "cautela" && data.diasRestantesMes > 0 && (
+              <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Estimativa/dia</p>
+                <p className="text-sm font-bold text-slate-800 dark:text-white">
+                  ~{formatCurrency((data.saldoLivreMes - data.valorCompra) / Math.max(1, data.diasRestantesMes))}
+                </p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">após a compra</p>
+              </div>
+            )}
+          </div>
+
+          {/* Impact on goals (inline summary) */}
+          {data.impactoMetas && data.impactoMetas.some(m => m.mesesAtraso > 0) && (
+            <div className="flex items-start gap-2 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 px-3 py-2">
+              <Target className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Impacto em metas</p>
+                {data.impactoMetas.filter(m => m.mesesAtraso > 0).map(meta => (
+                  <p key={meta.nomeMeta} className="text-xs text-slate-600 dark:text-slate-300">
+                    <span className="font-medium">{meta.nomeMeta}</span>
+                    {" — atrasa ~"}{meta.mesesAtraso} {meta.mesesAtraso === 1 ? "mês" : "meses"}
+                    <span className="text-slate-400 dark:text-slate-500">
+                      {" "}(de {formatCurrency(meta.valorMensalNecessarioAntes)}/mês para {formatCurrency(meta.valorMensalNecessarioDepois)}/mês)
+                    </span>
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
           {data.parecer !== "pode" && (
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-slate-100 dark:border-slate-700/50">
               <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">
                 Ações:
               </span>
@@ -1228,21 +1294,52 @@ function ProjecaoResult({
           </div>
           <Badge className={riskColor(data.risco).badge}>{data.confianca}</Badge>
         </div>
-        <div className="p-6 flex-1 flex flex-col justify-center">
-          <div className="flex items-start gap-4">
-            <div className="size-10 rounded-full bg-emerald-600/10 flex items-center justify-center shrink-0">
-              <Brain className="h-5 w-5 text-emerald-600" />
+        <div className="p-6 flex-1 flex flex-col justify-center gap-3">
+          {/* Structured recommendation */}
+          <div className="flex items-center gap-3">
+            <div className="size-9 rounded-full bg-emerald-600/10 flex items-center justify-center shrink-0">
+              <Brain className="h-4 w-4 text-emerald-600" />
             </div>
-            <div>
-              <h4 className="font-bold text-slate-800 dark:text-white mb-2">
-                Mensagem do Consultor
-              </h4>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                {data.recomendacao}
-              </p>
-            </div>
+            <h4 className="font-semibold text-slate-800 dark:text-white text-sm">
+              Recomendação da IA
+            </h4>
           </div>
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 flex items-center gap-3 flex-wrap">
+
+          {/* Recommendation as structured paragraphs */}
+          <div className="space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+            {data.recomendacao.split(/\n+/).filter(Boolean).map((line, i) => (
+              <p key={i} className="leading-relaxed">{line.trim()}</p>
+            ))}
+          </div>
+
+          {/* Key projection metrics inline */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+            <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Pior mês</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white">{data.piorMes}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">saldo: {formatCurrency(data.menorSaldoProjetado)}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Folga média</p>
+              <p className={`text-sm font-bold ${data.folgaMensalMedia >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                {formatCurrency(data.folgaMensalMedia)}
+              </p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">{data.folgaMensalMedia >= 0 ? "positiva" : "negativa"}</p>
+            </div>
+            {data.scoreSaudeFinanceira != null && (
+              <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Saúde</p>
+                <p className={`text-sm font-bold ${data.scoreSaudeFinanceira >= 70 ? "text-emerald-600 dark:text-emerald-400" : data.scoreSaudeFinanceira >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}>
+                  {data.scoreSaudeFinanceira}/100
+                </p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                  {data.scoreSaudeFinanceira >= 70 ? "saudável" : data.scoreSaudeFinanceira >= 40 ? "atenção" : "crítico"}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-700/50">
             <span className="text-xs font-bold text-slate-400 uppercase">Ações:</span>
             <button
               onClick={onReset}
