@@ -120,6 +120,15 @@ public class GroqAiService : IAiService
             Usuário: "gasolina 100 pau credito"
             Ação: Chamar registrar_lancamento(valor=100.0, descricao="gasolina", formaPagamento="credito")
 
+            Usuário: "São duas parcelas de R$37,95"
+            Ação: Chamar registrar_lancamento(valor=75.90, numeroParcelas=2) → TOTAL = 2 × 37.95 = 75.90 (valor é o TOTAL, não a parcela)
+
+            Usuário: "Parcelei em 3 vezes de R$50,00 no crédito"
+            Ação: Chamar registrar_lancamento(valor=150.00, numeroParcelas=3, formaPagamento="credito") → TOTAL = 3 × 50.00 = 150.00
+
+            Usuário: "6x de R$29,90 no cartão"
+            Ação: Chamar registrar_lancamento(valor=179.40, numeroParcelas=6, formaPagamento="credito") → TOTAL = 6 × 29.90 = 179.40
+
             MENSAGEM DO USUÁRIO: "{{mensagem}}"
 
             INSTRUÇÃO:
@@ -330,6 +339,10 @@ public class GroqAiService : IAiService
                     {
                         result.Resposta = parametro; // O TelegramBotService espera a categoria na propriedade Resposta.
                     }
+                    if (comando == "criar_categoria" && !string.IsNullOrEmpty(parametro))
+                    {
+                        result.Resposta = parametro; // O TelegramBotService espera SOMENTE o nome da categoria na propriedade Resposta.
+                    }
                     if (comando == "excluir_lancamento")
                     {
                          if (!string.IsNullOrEmpty(parametro))
@@ -384,6 +397,20 @@ public class GroqAiService : IAiService
                     "Valor corrigido de {Original} para {Corrigido} (mensagem: {Msg})",
                     resultado.Lancamento.Valor, valorCorrigido, mensagem);
                 resultado.Lancamento.Valor = valorCorrigido;
+            }
+        }
+
+        // CORREÇÃO DE PARCELAS: se a IA confundiu valor-por-parcela com valor-total,
+        // detecta padrão "N parcelas de X" na mensagem e recalcula.
+        if (resultado.Lancamento != null && resultado.Lancamento.NumeroParcelas > 1)
+        {
+            var totalCorrigido = CorrigirValorParcelado(mensagem, resultado.Lancamento.Valor, resultado.Lancamento.NumeroParcelas);
+            if (totalCorrigido != resultado.Lancamento.Valor)
+            {
+                _logger.LogWarning(
+                    "Valor parcelado corrigido de {Original} para {Corrigido} ({N}x) (mensagem: {Msg})",
+                    resultado.Lancamento.Valor, totalCorrigido, resultado.Lancamento.NumeroParcelas, mensagem);
+                resultado.Lancamento.Valor = totalCorrigido;
             }
         }
 
@@ -458,6 +485,72 @@ public class GroqAiService : IAiService
     }
 
 
+
+    /// <summary>
+    /// Detecta padrões "N parcelas de X" / "Nx de X" / "parcelei em N vezes de X" na mensagem
+    /// e, se o valor retornado pela IA corresponde ao valor por parcela (não ao total),
+    /// retorna o total corrigido (N × X). Caso contrário, retorna o valorIa inalterado.
+    /// </summary>
+    private decimal CorrigirValorParcelado(string mensagem, decimal valorIa, int numeroParcelas)
+    {
+        if (string.IsNullOrWhiteSpace(mensagem) || numeroParcelas < 2) return valorIa;
+
+        try
+        {
+            var msgLower = mensagem.ToLowerInvariant();
+
+            // Mapa de números por extenso em português
+            var numExtenso = new Dictionary<string, int>
+            {
+                ["uma"] = 1, ["duas"] = 2, ["dois"] = 2, ["três"] = 3, ["tres"] = 3,
+                ["quatro"] = 4, ["cinco"] = 5, ["seis"] = 6, ["sete"] = 7,
+                ["oito"] = 8, ["nove"] = 9, ["dez"] = 10, ["onze"] = 11, ["doze"] = 12
+            };
+
+            // Padrões: "2 parcelas de X", "duas parcelas de X",
+            //           "2x de X", "2 vezes de X", "parcelei em 2 vezes de X"
+            var padroes = new[]
+            {
+                @"(\d+)\s*x\s+de\s+r?\$?\s*([\d.,]+)",
+                @"(\d+)\s+(?:parcelas?|vezes?)\s+de\s+r?\$?\s*([\d.,]+)",
+                @"([a-z]+)\s+(?:parcelas?|vezes?)\s+de\s+r?\$?\s*([\d.,]+)",
+                @"parcelei?\s+em\s+(\d+)\s+(?:parcelas?|vezes?)\s+de\s+r?\$?\s*([\d.,]+)",
+                @"parcelei?\s+em\s+([a-z]+)\s+(?:parcelas?|vezes?)\s+de\s+r?\$?\s*([\d.,]+)",
+            };
+
+            foreach (var padrao in padroes)
+            {
+                var m = Regex.Match(msgLower, padrao);
+                if (!m.Success) continue;
+
+                // Resolver número
+                int nParsed;
+                var nStr = m.Groups[1].Value;
+                if (!int.TryParse(nStr, out nParsed))
+                    numExtenso.TryGetValue(nStr, out nParsed);
+
+                if (nParsed != numeroParcelas) continue;
+
+                // Resolver valor por parcela
+                var valorStr = m.Groups[2].Value;
+                if (!decimal.TryParse(valorStr.Replace(".", "").Replace(",", "."),
+                        NumberStyles.Any, CultureInfo.InvariantCulture, out var valorParcela))
+                    continue;
+
+                // Se a IA retornou exatamente o valor por parcela (não o total)
+                if (Math.Abs(valorIa - valorParcela) < 0.02m)
+                {
+                    return Math.Round(valorParcela * numeroParcelas, 2);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao corrigir valor parcelado. Mantendo original: {Valor}", valorIa);
+        }
+
+        return valorIa;
+    }
 
     /// <summary>
     /// Valida se o valor retornado pela IA faz sentido com base na mensagem original.

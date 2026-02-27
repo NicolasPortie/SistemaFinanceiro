@@ -41,7 +41,7 @@ public static class GroqToolsHelper
                     type = "object",
                     properties = new
                     {
-                        valor = new { type = "number", description = "O valor numérico do lançamento." },
+                        valor = new { type = "number", description = "O valor TOTAL do lançamento. ATENÇÃO PARCELAS: se o usuário disser 'N parcelas de X' ou 'Nx de X', o valor total é N×X. Ex: '2 parcelas de R$37,95' → valor=75.90 (2×37.95). Ex: '3x de R$50' → valor=150.00 (3×50). NUNCA use o valor por parcela como total." },
                         descricao = new { type = "string", description = "Breve descrição do que foi pago/comprado ou recebido." },
                         categoria = new { type = "string", description = "A categoria financeira. Use o mapeamento aprendido do histórico do usuário se houver correspondência, senão escolha das categorias listadas no contexto." },
                         formaPagamento = new { type = "string", @enum = new[] { "pix", "debito", "credito", "nao_informado" }, description = "Forma de pagamento utilizada." },
@@ -226,8 +226,8 @@ public static class GroqToolsHelper
                     type = "object",
                     properties = new
                     {
-                        comandoInterno = new { type = "string", description = "O comando que ele quer executar. Ex: listar_faturas, ver_fatura, ver_categorias, consultar_metas, consultar_limites, ver_extrato, excluir_lancamento, ver_score, ver_perfil, ver_sazonalidade, ver_recorrentes, ver_lembretes, ver_salario" },
-                        parametro = new { type = "string", description = "Qualquer entidade textual que precise acompanhar o comando interno (ex: o nome do cartão a ser excluido, a categoria detalhada, a descrição do lancamento excluido). Para excluir_lancamento: use a descrição do lançamento mencionada pelo usuário. Se o usuário disser 'excluir último' ou 'apagar último lançamento', envie 'ultimo' como parametro. Se não especificou qual, envie vazio." },
+                        comandoInterno = new { type = "string", description = "O comando que ele quer executar. Ex: listar_faturas, ver_fatura, ver_categorias, consultar_metas, consultar_limites, ver_extrato, excluir_lancamento, ver_score, ver_perfil, ver_sazonalidade, ver_recorrentes, ver_lembretes, ver_salario, criar_categoria" },
+                        parametro = new { type = "string", description = "Qualquer entidade textual que precise acompanhar o comando interno (ex: o nome do cartão a ser excluido, a categoria detalhada, a descrição do lancamento excluido). Para excluir_lancamento: use a descrição do lançamento mencionada pelo usuário. Se o usuário disser 'excluir último' ou 'apagar último lançamento', envie 'ultimo' como parametro. Se não especificou qual, envie vazio. Para criar_categoria: envie SOMENTE o nome da nova categoria (ex: 'Roupas', 'Pet', 'Academia') — nunca uma frase completa." },
                         resposta = new { type = "string", description = "Resposta contextual que será exibida caso o fluxo de interface não intercepte a exibição." }
                     },
                     required = new[] { "comandoInterno", "resposta" }
