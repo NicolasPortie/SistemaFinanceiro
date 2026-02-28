@@ -226,7 +226,7 @@ export default function LancamentosPage() {
 
   const form = useForm<LancamentoData>({
     resolver: zodResolver(lancamentoSchema),
-      defaultValues: { descricao: "", valor: "", tipo: "despesa", categoria: "", cartaoId: "", contaId: "", formaPagamento: "", numeroParcelas: "" },
+    defaultValues: { descricao: "", valor: "", tipo: "despesa", categoria: "", cartaoId: "", contaId: "", formaPagamento: "", numeroParcelas: "" },
   });
 
   const editForm = useForm<EditarLancamentoData>({
@@ -244,23 +244,23 @@ export default function LancamentosPage() {
   const onSubmit = async (data: LancamentoData) => {
     const valor = parseFloat(data.valor.replace(",", "."));
 
-    let formaPagamento: 1 | 2 | 3 = 2;
+    let formaPagamento: "PIX" | "Debito" | "Credito" | "Dinheiro" | "Outro" = "Outro";
     let cartaoId: number | undefined;
     let contaBancariaId: number | undefined;
     let parcelas = 1;
 
     if (data.tipo === "receita") {
-      formaPagamento = 1;
+      formaPagamento = "PIX";
     } else if (data.formaPagamento === "credito") {
-      formaPagamento = 3;
+      formaPagamento = "Credito";
       cartaoId = data.cartaoId ? parseInt(data.cartaoId, 10) : undefined;
       parcelas = data.numeroParcelas ? parseInt(data.numeroParcelas, 10) : 1;
       if (parcelas < 1 || isNaN(parcelas)) parcelas = 1;
     } else if (data.formaPagamento === "pix") {
-      formaPagamento = 1;
+      formaPagamento = "PIX";
       contaBancariaId = data.contaId ? parseInt(data.contaId, 10) : undefined;
     } else if (data.formaPagamento === "debito") {
-      formaPagamento = 2;
+      formaPagamento = "Debito";
       contaBancariaId = data.contaId ? parseInt(data.contaId, 10) : undefined;
     }
 
@@ -268,7 +268,7 @@ export default function LancamentosPage() {
       {
         descricao: data.descricao,
         valor,
-        tipo: data.tipo === "despesa" ? 1 : 2,
+        tipo: data.tipo === "despesa" ? "Gasto" : "Receita",
         formaPagamento,
         categoria: data.categoria || "Outros",
         numeroParcelas: parcelas,

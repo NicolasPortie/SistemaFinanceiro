@@ -74,13 +74,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+// Dialog components (except AlertDialog) removed in favor of Sheet
 import {
   AlertDialog,
   AlertDialogAction,
@@ -657,85 +651,87 @@ export default function CartoesPage() {
         </SheetContent>
       </Sheet>
 
-      {/* ═══ Edit Dialog ═══ */}
-      <Dialog open={editingCard !== null} onOpenChange={() => setEditingCard(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Editar Cartão</DialogTitle>
-            <DialogDescription>Altere os dados do cartão</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={editFormState.handleSubmit(onSubmitEdit)} className="space-y-5">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome do cartão</Label>
-              <Input className="h-11 rounded-xl" {...editFormState.register("nome")} />
-              {editFormState.formState.errors.nome && <p className="text-xs text-red-500">{editFormState.formState.errors.nome.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Limite (R$)</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <CurrencyInput
-                  className="h-11 rounded-xl pl-9 tabular-nums font-semibold"
-                  value={editFormState.watch("limite") ?? ""}
-                  onValueChange={(v) => editFormState.setValue("limite", v, { shouldValidate: editFormState.formState.isSubmitted })}
-                />
-              </div>
-              {editFormState.formState.errors.limite && <p className="text-xs text-red-500">{editFormState.formState.errors.limite.message}</p>}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+      {/* ═══ Edit Sheet ═══ */}
+      <Sheet open={editingCard !== null} onOpenChange={() => setEditingCard(null)}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <SheetTitle className="text-lg font-bold tracking-tight">Editar Cartão</SheetTitle>
+            <SheetDescription>Altere os dados do cartão</SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8">
+            <form onSubmit={editFormState.handleSubmit(onSubmitEdit)} className="space-y-5">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de fechamento</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input className="h-11 rounded-xl pl-9" {...editFormState.register("diaFechamento")} />
-                </div>
-                {editFormState.formState.errors.diaFechamento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaFechamento.message}</p>}
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome do cartão</Label>
+                <Input className="h-11 rounded-xl" {...editFormState.register("nome")} />
+                {editFormState.formState.errors.nome && <p className="text-xs text-red-500">{editFormState.formState.errors.nome.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de vencimento</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Limite (R$)</Label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input className="h-11 rounded-xl pl-9" {...editFormState.register("diaVencimento")} />
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <CurrencyInput
+                    className="h-11 rounded-xl pl-9 tabular-nums font-semibold"
+                    value={editFormState.watch("limite") ?? ""}
+                    onValueChange={(v) => editFormState.setValue("limite", v, { shouldValidate: editFormState.formState.isSubmitted })}
+                  />
                 </div>
-                {editFormState.formState.errors.diaVencimento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaVencimento.message}</p>}
+                {editFormState.formState.errors.limite && <p className="text-xs text-red-500">{editFormState.formState.errors.limite.message}</p>}
               </div>
-            </div>
-            <Button type="submit" className="w-full h-11 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20" loading={atualizarCartao.isPending}>
-              Salvar alterações
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de fechamento</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <Input className="h-11 rounded-xl pl-9" {...editFormState.register("diaFechamento")} />
+                  </div>
+                  {editFormState.formState.errors.diaFechamento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaFechamento.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia de vencimento</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <Input className="h-11 rounded-xl pl-9" {...editFormState.register("diaVencimento")} />
+                  </div>
+                  {editFormState.formState.errors.diaVencimento && <p className="text-xs text-red-500">{editFormState.formState.errors.diaVencimento.message}</p>}
+                </div>
+              </div>
+              <Button type="submit" className="w-full h-11 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20" loading={atualizarCartao.isPending}>
+                Salvar alterações
+              </Button>
+            </form>
+          </div>
+        </SheetContent>
+      </Sheet>
 
-      {/* ═══ Fatura Dialog ═══ */}
-      <Dialog open={viewingFaturaId !== null} onOpenChange={() => setViewingFaturaId(null)}>
-        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="px-5 pt-5 pb-0">
-            <DialogTitle className="flex items-center gap-2 text-base">
+      {/* ═══ Fatura Sheet ═══ */}
+      <Sheet open={viewingFaturaId !== null} onOpenChange={() => setViewingFaturaId(null)}>
+        <SheetContent className="w-full sm:w-150 sm:max-w-150 overflow-hidden flex flex-col p-0">
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5 bg-muted/20">
+            <SheetTitle className="flex items-center gap-2 text-base">
               <CreditCard className="h-4 w-4" />
               {viewingFaturaId?.nome}
-            </DialogTitle>
-            <DialogDescription>Faturas pendentes</DialogDescription>
-          </DialogHeader>
-          <div className="overflow-y-auto flex-1 px-5 pb-5 pt-2">
+            </SheetTitle>
+            <SheetDescription>Faturas pendentes</SheetDescription>
+          </SheetHeader>
+          <div className="overflow-y-auto flex-1 px-5 sm:px-7 pb-5 pt-2">
             {viewingFaturaId && <FaturaView cartaoId={viewingFaturaId.id} />}
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
-      {/* ═══ Garantia Dialog ═══ */}
-      <Dialog open={garantiaCard !== null} onOpenChange={() => setGarantiaCard(null)}>
-        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
-          <div className="px-6 pt-6 pb-4 space-y-3">
-            <DialogHeader className="space-y-1">
-              <DialogTitle className="text-lg font-bold tracking-tight flex items-center gap-2">
+      {/* ═══ Garantia Sheet ═══ */}
+      <Sheet open={garantiaCard !== null} onOpenChange={() => setGarantiaCard(null)}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 p-0 gap-0 overflow-hidden flex flex-col">
+          <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 space-y-3">
+            <SheetHeader className="space-y-1">
+              <SheetTitle className="text-lg font-bold tracking-tight flex items-center gap-2">
                 <Shield className="h-5 w-5 text-emerald-500" />
                 Garantia — {garantiaCard?.nome}
-              </DialogTitle>
-              <DialogDescription>
+              </SheetTitle>
+              <SheetDescription>
                 Adicione ou resgate a garantia deste cartão.
-              </DialogDescription>
-            </DialogHeader>
+              </SheetDescription>
+            </SheetHeader>
 
             <div className="rounded-xl bg-emerald-500/8 border border-emerald-500/15 p-3.5 space-y-1.5">
               <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
@@ -888,8 +884,8 @@ export default function CartoesPage() {
               )}
             </TabsContent>
           </Tabs>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* ═══ Delete Confirmation ═══ */}
       <AlertDialog open={deletingId !== null} onOpenChange={() => setDeletingId(null)}>
@@ -907,6 +903,6 @@ export default function CartoesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </div >
   );
 }

@@ -51,6 +51,13 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -659,160 +666,238 @@ export default function PerfilPage() {
           DIALOGS
       ═══════════════════════════════════════════ */}
 
-      {/* Edit Name Dialog */}
-      <Dialog open={editandoNome} onOpenChange={setEditandoNome}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Editar Nome</DialogTitle>
-            <DialogDescription>Altere seu nome de exibição</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={nomeForm.handleSubmit(onSalvarNome)} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome</Label>
-              <Input className="h-11 rounded-xl" {...nomeForm.register("nome")} />
-              {nomeForm.formState.errors.nome && (
-                <p className="text-xs text-red-500">{nomeForm.formState.errors.nome.message}</p>
-              )}
-            </div>
-            <Button
-              type="submit"
-              className="w-full h-12 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-              loading={atualizarPerfilMutation.isPending}
-            >
-              <Save className="h-4 w-4" />
-              Salvar
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Name Sheet */}
+      <Sheet open={editandoNome} onOpenChange={setEditandoNome}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
 
-      {/* Edit Renda Mensal Dialog */}
-      <Dialog open={editandoRenda} onOpenChange={setEditandoRenda}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Renda Mensal</DialogTitle>
-            <DialogDescription>
-              Informe sua renda mensal base. Ela será usada como piso nas projeções financeiras.
-              Deixe R$ 0,00 para limpar.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={rendaForm.handleSubmit(onSalvarRenda)} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
-              <CurrencyInput
-                className="h-11 rounded-xl"
-                value={rendaForm.watch("rendaMensal")}
-                onValueChange={(v) => rendaForm.setValue("rendaMensal", v, { shouldValidate: true })}
-              />
-              {rendaForm.formState.errors.rendaMensal && (
-                <p className="text-xs text-red-500">{rendaForm.formState.errors.rendaMensal.message}</p>
-              )}
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
+                <User className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Editar Nome</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Altere seu nome de exibição</SheetDescription>
+              </div>
             </div>
-            <Button
-              type="submit"
-              className="w-full h-12 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-              loading={atualizarPerfilMutation.isPending}
-            >
-              <Save className="h-4 w-4" />
-              Salvar
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </SheetHeader>
 
-      {/* Change Password Dialog */}
-      <Dialog open={showSenha} onOpenChange={setShowSenha}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Alterar Senha</DialogTitle>
-            <DialogDescription>Informe sua senha atual e a nova senha</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={senhaForm.handleSubmit(onAlterarSenha)} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Senha atual</Label>
-              <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("senhaAtual")} />
-              {senhaForm.formState.errors.senhaAtual && (
-                <p className="text-xs text-red-500">{senhaForm.formState.errors.senhaAtual.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nova senha</Label>
-              <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("novaSenha")} />
-              {senhaForm.formState.errors.novaSenha && (
-                <p className="text-xs text-red-500">{senhaForm.formState.errors.novaSenha.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Confirmar nova senha</Label>
-              <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("confirmarSenha")} />
-              {senhaForm.formState.errors.confirmarSenha && (
-                <p className="text-xs text-red-500">{senhaForm.formState.errors.confirmarSenha.message}</p>
-              )}
-            </div>
-            <Button
-              type="submit"
-              className="w-full h-12 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-              loading={atualizarPerfilMutation.isPending}
-            >
-              <Lock className="h-4 w-4" />
-              Alterar senha
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            <form onSubmit={nomeForm.handleSubmit(onSalvarNome)} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome</Label>
+                <Input className="h-11 rounded-xl" {...nomeForm.register("nome")} />
+                {nomeForm.formState.errors.nome && (
+                  <p className="text-xs text-red-500">{nomeForm.formState.errors.nome.message}</p>
+                )}
+              </div>
+              <div className="pt-2 sm:pt-3 pb-safe">
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                  loading={atualizarPerfilMutation.isPending}
+                >
+                  <Save className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Salvar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </SheetContent>
+      </Sheet>
 
-      {/* New Category Dialog */}
-      <Dialog open={showNovaCategoria} onOpenChange={setShowNovaCategoria}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Nova Categoria</DialogTitle>
-            <DialogDescription>Crie uma categoria personalizada</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={categoriaForm.handleSubmit(onCriarCategoria)} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome da categoria</Label>
-              <Input className="h-11 rounded-xl" placeholder="Ex: Pets, Investimentos..." {...categoriaForm.register("nome")} />
-              {categoriaForm.formState.errors.nome && (
-                <p className="text-xs text-red-500">{categoriaForm.formState.errors.nome.message}</p>
-              )}
-            </div>
-            <Button
-              type="submit"
-              className="w-full h-12 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-              loading={criarCategoria.isPending}
-            >
-              <Tag className="h-4 w-4" />
-              Criar categoria
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Renda Mensal Sheet */}
+      <Sheet open={editandoRenda} onOpenChange={setEditandoRenda}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
 
-      {/* Edit Category Dialog */}
-      <Dialog open={editandoCategoria !== null} onOpenChange={() => setEditandoCategoria(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Editar Categoria</DialogTitle>
-            <DialogDescription>Altere o nome da categoria</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={editCategoriaForm.handleSubmit(onEditarCategoria)} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome</Label>
-              <Input className="h-11 rounded-xl" {...editCategoriaForm.register("nome")} />
-              {editCategoriaForm.formState.errors.nome && (
-                <p className="text-xs text-red-500">{editCategoriaForm.formState.errors.nome.message}</p>
-              )}
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
+                <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Renda Mensal</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                  Informe sua renda mensal base.
+                </SheetDescription>
+              </div>
             </div>
-            <Button
-              type="submit"
-              className="w-full h-12 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-              loading={atualizarCategoria.isPending}
-            >
-              Salvar
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            <form onSubmit={rendaForm.handleSubmit(onSalvarRenda)} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
+                <div className="relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center rounded-l-xl text-xs font-bold bg-emerald-600/10 text-emerald-600">
+                    R$
+                  </div>
+                  <CurrencyInput
+                    className="h-11 rounded-xl pl-13 tabular-nums font-semibold"
+                    value={rendaForm.watch("rendaMensal")}
+                    onValueChange={(v) => rendaForm.setValue("rendaMensal", v, { shouldValidate: true })}
+                  />
+                </div>
+                {rendaForm.formState.errors.rendaMensal && (
+                  <p className="text-xs text-red-500">{rendaForm.formState.errors.rendaMensal.message}</p>
+                )}
+              </div>
+              <div className="pt-2 sm:pt-3 pb-safe">
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                  loading={atualizarPerfilMutation.isPending}
+                >
+                  <Save className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Salvar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Change Password Sheet */}
+      <Sheet open={showSenha} onOpenChange={setShowSenha}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
+
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
+                <Lock className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Alterar Senha</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Informe sua senha atual e a nova senha</SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            <form onSubmit={senhaForm.handleSubmit(onAlterarSenha)} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Senha atual</Label>
+                <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("senhaAtual")} />
+                {senhaForm.formState.errors.senhaAtual && (
+                  <p className="text-xs text-red-500">{senhaForm.formState.errors.senhaAtual.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nova senha</Label>
+                <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("novaSenha")} />
+                {senhaForm.formState.errors.novaSenha && (
+                  <p className="text-xs text-red-500">{senhaForm.formState.errors.novaSenha.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Confirmar nova senha</Label>
+                <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("confirmarSenha")} />
+                {senhaForm.formState.errors.confirmarSenha && (
+                  <p className="text-xs text-red-500">{senhaForm.formState.errors.confirmarSenha.message}</p>
+                )}
+              </div>
+              <div className="pt-2 sm:pt-3 pb-safe">
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                  loading={atualizarPerfilMutation.isPending}
+                >
+                  <Lock className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Alterar senha
+                </Button>
+              </div>
+            </form>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* New Category Sheet */}
+      <Sheet open={showNovaCategoria} onOpenChange={setShowNovaCategoria}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
+
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
+                <Tag className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Nova Categoria</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Crie uma categoria personalizada</SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            <form onSubmit={categoriaForm.handleSubmit(onCriarCategoria)} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome da categoria</Label>
+                <Input className="h-11 rounded-xl" placeholder="Ex: Pets, Investimentos..." {...categoriaForm.register("nome")} />
+                {categoriaForm.formState.errors.nome && (
+                  <p className="text-xs text-red-500">{categoriaForm.formState.errors.nome.message}</p>
+                )}
+              </div>
+              <div className="pt-2 sm:pt-3 pb-safe">
+                <Button
+                  type="submit"
+                  className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                  loading={criarCategoria.isPending}
+                >
+                  <Tag className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Criar categoria
+                </Button>
+              </div>
+            </form>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Edit Category Sheet */}
+      <Sheet open={editandoCategoria !== null} onOpenChange={(open) => { if (!open) setEditandoCategoria(null); }}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
+
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
+                <Pencil className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Editar Categoria</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Altere o nome da categoria</SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            <form onSubmit={editCategoriaForm.handleSubmit(onEditarCategoria)} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome</Label>
+                <Input className="h-11 rounded-xl" {...editCategoriaForm.register("nome")} />
+                {editCategoriaForm.formState.errors.nome && (
+                  <p className="text-xs text-red-500">{editCategoriaForm.formState.errors.nome.message}</p>
+                )}
+              </div>
+              <div className="flex gap-2 pt-2 sm:pt-3 pb-safe">
+                <Button type="button" variant="outline" onClick={() => setEditandoCategoria(null)} className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 gap-2 sm:gap-2.5 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                  loading={atualizarCategoria.isPending}
+                >
+                  <Check className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Salvar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Delete Category Confirmation */}
       <AlertDialog open={removendoCategoria !== null} onOpenChange={() => setRemovendoCategoria(null)}>

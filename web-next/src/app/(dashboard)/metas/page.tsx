@@ -58,14 +58,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -564,47 +557,65 @@ export default function MetasPage() {
         </SheetContent>
       </Sheet>
 
-      {/* ═══ Edit Value Dialog ═══ */}
-      <Dialog open={editMeta !== null} onOpenChange={() => setEditMeta(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Atualizar valor</DialogTitle>
-            <DialogDescription>Informe o novo valor atual da meta &quot;{editMeta?.nome}&quot;</DialogDescription>
-          </DialogHeader>
-          {editMeta && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border/30">
-              <div className="relative h-12 w-12 shrink-0">
-                <svg className="h-12 w-12 -rotate-90" viewBox="0 0 48 48">
-                  <circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/30" />
-                  <circle cx="24" cy="24" r="18" fill="none" strokeWidth="4" strokeLinecap="round" className={progressStrokeColor(editMeta.percentualConcluido)} stroke="currentColor" strokeDasharray={`${Math.min(editMeta.percentualConcluido, 100) * 1.131} 113.1`} />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-[10px] font-extrabold tabular-nums">{editMeta.percentualConcluido.toFixed(0)}%</span>
-                </div>
+      {/* ═══ Edit Value Sheet ═══ */}
+      <Sheet open={editMeta !== null} onOpenChange={(open) => { if (!open) setEditMeta(null); }}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
+
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
+                <Edit3 className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm truncate">{editMeta.nome}</p>
-                <p className="text-[11px] text-muted-foreground/60 tabular-nums font-medium">Alvo: {formatCurrency(editMeta.valorAlvo)}</p>
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Atualizar valor</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Informe o novo valor atual da meta &quot;{editMeta?.nome}&quot;</SheetDescription>
               </div>
             </div>
-          )}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Atual (R$)</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-              <Input {...editForm.register("valorAtual")} className={cn("h-11 rounded-xl pl-9 tabular-nums font-semibold", editForm.formState.errors.valorAtual && "border-red-500")} />
-            </div>
-            {editForm.formState.errors.valorAtual && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.valorAtual.message}</p>}
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            {editMeta && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border/30">
+                <div className="relative h-12 w-12 shrink-0">
+                  <svg className="h-12 w-12 -rotate-90" viewBox="0 0 48 48">
+                    <circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/30" />
+                    <circle cx="24" cy="24" r="18" fill="none" strokeWidth="4" strokeLinecap="round" className={progressStrokeColor(editMeta.percentualConcluido)} stroke="currentColor" strokeDasharray={`${Math.min(editMeta.percentualConcluido, 100) * 1.131} 113.1`} />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[10px] font-extrabold tabular-nums">{editMeta.percentualConcluido.toFixed(0)}%</span>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm truncate">{editMeta.nome}</p>
+                  <p className="text-[11px] text-muted-foreground/60 tabular-nums font-medium">Alvo: {formatCurrency(editMeta.valorAlvo)}</p>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={editForm.handleSubmit(handleAtualizar)} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Atual (R$)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <Input {...editForm.register("valorAtual")} className={cn("h-11 rounded-xl pl-9 tabular-nums font-semibold", editForm.formState.errors.valorAtual && "border-red-500")} />
+                </div>
+                {editForm.formState.errors.valorAtual && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.valorAtual.message}</p>}
+              </div>
+
+              <div className="flex gap-2 pt-2 sm:pt-3 pb-safe">
+                <Button type="button" variant="outline" onClick={() => setEditMeta(null)} className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
+                  Cancelar
+                </Button>
+                <Button type="submit" loading={actionLoading === editMeta?.id} className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20">
+                  <CheckCircle2 className="h-5 w-5" />
+                  Salvar
+                </Button>
+              </div>
+            </form>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditMeta(null)} className="rounded-xl">Cancelar</Button>
-            <Button onClick={editForm.handleSubmit(handleAtualizar)} loading={actionLoading === editMeta?.id} className="gap-2 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20">
-              <CheckCircle2 className="h-4 w-4" />
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* ═══ Delete Dialog ═══ */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>

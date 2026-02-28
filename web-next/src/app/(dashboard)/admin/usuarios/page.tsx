@@ -36,12 +36,12 @@ import {
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -740,11 +740,11 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
   const u = detalhe ?? usuario;
 
   return (
-    <Dialog open={!!usuario} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden gap-0">
+    <Sheet open={!!usuario} onOpenChange={onClose}>
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l border-border/40">
         {/* Header */}
-        <div className="relative bg-linear-to-br from-emerald-600/10 via-emerald-500/5 to-transparent border-b border-border/40 px-6 pt-6 pb-5">
-          <DialogTitle className="sr-only">Perfil de {u?.nome}</DialogTitle>
+        <div className="relative bg-linear-to-br from-emerald-600/10 via-emerald-500/5 to-transparent border-b border-border/40 px-6 pt-12 pb-5">
+          <SheetTitle className="sr-only">Perfil de {u?.nome}</SheetTitle>
           <div className="flex items-start gap-4">
             <div className={cn(
               "h-14 w-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-lg",
@@ -766,97 +766,99 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
           </div>
         </div>
 
-        <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-          {isLoading && !detalhe ? (
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
-            </div>
-          ) : (
-            <>
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: "Lançamentos", value: u?.totalLancamentos ?? 0, Icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-600" },
-                  { label: "Cartões", value: u?.totalCartoes ?? 0, Icon: CreditCard, color: "bg-blue-500/10 text-blue-600" },
-                  { label: "Metas", value: u?.totalMetas ?? 0, Icon: Target, color: "bg-violet-500/10 text-violet-600" },
-                ].map((s) => (
-                  <div key={s.label} className="rounded-xl border border-border/40 bg-muted/20 p-3 flex flex-col items-center gap-1.5">
-                    <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", s.color)}>
-                      <s.Icon className="h-4 w-4" />
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="space-y-4 pb-10">
+            {isLoading && !detalhe ? (
+              <div className="space-y-3">
+                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+              </div>
+            ) : (
+              <>
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Lançamentos", value: u?.totalLancamentos ?? 0, Icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-600" },
+                    { label: "Cartões", value: u?.totalCartoes ?? 0, Icon: CreditCard, color: "bg-blue-500/10 text-blue-600" },
+                    { label: "Metas", value: u?.totalMetas ?? 0, Icon: Target, color: "bg-violet-500/10 text-violet-600" },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-xl border border-border/40 bg-muted/20 p-3 flex flex-col items-center gap-1.5">
+                      <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", s.color)}>
+                        <s.Icon className="h-4 w-4" />
+                      </div>
+                      <p className="text-xl font-bold tabular-nums">{s.value}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">{s.label}</p>
                     </div>
-                    <p className="text-xl font-bold tabular-nums">{s.value}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">{s.label}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              {/* Info rows */}
-              <div className="rounded-xl border border-border/40 overflow-hidden">
-                {[
-                  { label: "Membro desde", value: formatDate(u?.criadoEm ?? "") },
-                  {
-                    label: "Sessões ativas",
-                    value: (
-                      <span className={cn(
-                        "inline-flex items-center gap-1 font-semibold",
-                        (detalhe?.sessoesAtivas ?? 0) > 0 ? "text-emerald-600" : "text-muted-foreground"
-                      )}>
-                        <Shield className="h-3.5 w-3.5" />
-                        {detalhe?.sessoesAtivas ?? 0}
-                      </span>
-                    )
-                  },
-                  {
-                    label: "Telegram",
-                    value: u?.telegramVinculado ? (
-                      <span className="inline-flex items-center gap-1 text-sky-500 font-semibold">
-                        <Send className="h-3.5 w-3.5" /> Vinculado
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">Não vinculado</span>
-                    )
-                  },
-                  {
-                    label: "Tentativas de login falhadas",
-                    value: (
-                      <span className={cn(
-                        "font-semibold",
-                        (u?.tentativasLoginFalhadas ?? 0) > 0 ? "text-amber-500" : "text-muted-foreground"
-                      )}>
-                        {u?.tentativasLoginFalhadas ?? 0}×
-                      </span>
-                    )
-                  },
-                  ...(u?.acessoExpiraEm ? [{
-                    label: "Acesso expira em",
-                    value: (
-                      <span className={cn(
-                        "font-semibold text-sm",
-                        new Date(u.acessoExpiraEm) < new Date() ? "text-red-500" : "text-amber-500"
-                      )}>
-                        {formatDate(u.acessoExpiraEm)}
-                      </span>
-                    )
-                  }] : []),
-                ].map((row, i) => (
-                  <div key={i} className={cn(
-                    "flex items-center justify-between px-4 py-3 text-sm",
-                    i > 0 && "border-t border-border/40"
-                  )}>
-                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground/60 font-semibold">{row.label}</span>
-                    <span className="text-sm font-semibold">{row.value}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+                {/* Info rows */}
+                <div className="rounded-xl border border-border/40 overflow-hidden">
+                  {[
+                    { label: "Membro desde", value: formatDate(u?.criadoEm ?? "") },
+                    {
+                      label: "Sessões ativas",
+                      value: (
+                        <span className={cn(
+                          "inline-flex items-center gap-1 font-semibold",
+                          (detalhe?.sessoesAtivas ?? 0) > 0 ? "text-emerald-600" : "text-muted-foreground"
+                        )}>
+                          <Shield className="h-3.5 w-3.5" />
+                          {detalhe?.sessoesAtivas ?? 0}
+                        </span>
+                      )
+                    },
+                    {
+                      label: "Telegram",
+                      value: u?.telegramVinculado ? (
+                        <span className="inline-flex items-center gap-1 text-sky-500 font-semibold">
+                          <Send className="h-3.5 w-3.5" /> Vinculado
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Não vinculado</span>
+                      )
+                    },
+                    {
+                      label: "Tentativas de login falhadas",
+                      value: (
+                        <span className={cn(
+                          "font-semibold",
+                          (u?.tentativasLoginFalhadas ?? 0) > 0 ? "text-amber-500" : "text-muted-foreground"
+                        )}>
+                          {u?.tentativasLoginFalhadas ?? 0}×
+                        </span>
+                      )
+                    },
+                    ...(u?.acessoExpiraEm ? [{
+                      label: "Acesso expira em",
+                      value: (
+                        <span className={cn(
+                          "font-semibold text-sm",
+                          new Date(u.acessoExpiraEm) < new Date() ? "text-red-500" : "text-amber-500"
+                        )}>
+                          {formatDate(u.acessoExpiraEm)}
+                        </span>
+                      )
+                    }] : []),
+                  ].map((row, i) => (
+                    <div key={i} className={cn(
+                      "flex items-center justify-between px-4 py-3 text-sm",
+                      i > 0 && "border-t border-border/40"
+                    )}>
+                      <span className="text-[11px] uppercase tracking-wider text-muted-foreground/60 font-semibold">{row.label}</span>
+                      <span className="text-sm font-semibold">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="border-t border-border/40 px-6 py-4 flex justify-end bg-muted/10">
+        <div className="border-t border-border/40 px-6 py-4 flex justify-end bg-muted/10 mt-auto">
           <Button variant="outline" onClick={onClose} className="rounded-xl">Fechar</Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -893,84 +895,86 @@ function ExtenderAcessoDialog({
   const novaExpiracao = new Date(baseData.getTime() + dias * 86400_000);
 
   return (
-    <Dialog open={!!usuario} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2.5">
+    <Sheet open={!!usuario} onOpenChange={onClose}>
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l border-border/40">
+        <SheetHeader className="px-6 py-5 border-b border-border/40 pt-12">
+          <SheetTitle className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <ShieldCheck className="h-4 w-4" />
             </div>
             Estender Acesso
-          </DialogTitle>
-        </DialogHeader>
+          </SheetTitle>
+        </SheetHeader>
 
-        <div className="space-y-4">
-          <div className="rounded-xl border border-border/40 bg-muted/30 p-3 space-y-1">
-            <p className="font-semibold text-sm">{usuario?.nome}</p>
-            <p className="text-[11px] text-muted-foreground/60">{usuario?.email}</p>
-            <div className="flex items-center gap-1.5 text-[11px] mt-1">
-              <CalendarClock className="h-3.5 w-3.5 text-muted-foreground/50" />
-              {expiraAtual ? (
-                <span className={cn(estaExpirado ? "text-red-500 font-semibold" : "text-muted-foreground/70")}>
-                  Acesso atual: {estaExpirado ? "expirou em" : "expira em"} {formatDate(usuario!.acessoExpiraEm!)}
-                </span>
-              ) : (
-                <span className="text-emerald-600 font-semibold">Acesso permanente (sem prazo definido)</span>
+        <div className="flex-1 overflow-y-auto px-6">
+          <div className="space-y-4 py-6">
+            <div className="rounded-xl border border-border/40 bg-muted/30 p-3 space-y-1">
+              <p className="font-semibold text-sm">{usuario?.nome}</p>
+              <p className="text-[11px] text-muted-foreground/60">{usuario?.email}</p>
+              <div className="flex items-center gap-1.5 text-[11px] mt-1">
+                <CalendarClock className="h-3.5 w-3.5 text-muted-foreground/50" />
+                {expiraAtual ? (
+                  <span className={cn(estaExpirado ? "text-red-500 font-semibold" : "text-muted-foreground/70")}>
+                    Acesso atual: {estaExpirado ? "expirou em" : "expira em"} {formatDate(usuario!.acessoExpiraEm!)}
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 font-semibold">Acesso permanente (sem prazo definido)</span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider">Dias a adicionar</p>
+              <div className="flex flex-wrap gap-1.5">
+                {PRESETS_EXTEND.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => onDiasChange(p.value)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all",
+                      dias === p.value
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-background border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={dias}
+                  onChange={(e) => onDiasChange(Math.max(1, Math.min(3650, Number(e.target.value))))}
+                  className="h-9 rounded-lg w-24 text-center font-semibold tabular-nums"
+                />
+                <span className="text-sm text-muted-foreground">dias</span>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+              <p className="text-[11px] text-muted-foreground/60 mb-0.5">Nova data de expiração</p>
+              <p className="font-bold text-primary">
+                {novaExpiracao.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+              </p>
+              {estaExpirado && (
+                <p className="text-[11px] text-amber-600 mt-1">
+                  Como o acesso já expirou, os dias serão contados a partir de hoje.
+                </p>
+              )}
+              {expiraAtual === null && (
+                <p className="text-[11px] text-amber-600 mt-1">
+                  O usuário tem acesso permanente. Após estender, passará a ter prazo definido.
+                </p>
               )}
             </div>
           </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider">Dias a adicionar</p>
-            <div className="flex flex-wrap gap-1.5">
-              {PRESETS_EXTEND.map((p) => (
-                <button
-                  key={p.value}
-                  type="button"
-                  onClick={() => onDiasChange(p.value)}
-                  className={cn(
-                    "px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all",
-                    dias === p.value
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-background border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                  )}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={1}
-                max={3650}
-                value={dias}
-                onChange={(e) => onDiasChange(Math.max(1, Math.min(3650, Number(e.target.value))))}
-                className="h-9 rounded-lg w-24 text-center font-semibold tabular-nums"
-              />
-              <span className="text-sm text-muted-foreground">dias</span>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-            <p className="text-[11px] text-muted-foreground/60 mb-0.5">Nova data de expiração</p>
-            <p className="font-bold text-primary">
-              {novaExpiracao.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
-            </p>
-            {estaExpirado && (
-              <p className="text-[11px] text-amber-600 mt-1">
-                Como o acesso já expirou, os dias serão contados a partir de hoje.
-              </p>
-            )}
-            {expiraAtual === null && (
-              <p className="text-[11px] text-amber-600 mt-1">
-                O usuário tem acesso permanente. Após estender, passará a ter prazo definido.
-              </p>
-            )}
-          </div>
         </div>
 
-        <DialogFooter className="gap-2 mt-2">
+        <SheetFooter className="px-6 py-4 border-t border-border/40 bg-muted/10 flex-col sm:flex-row gap-2 sm:justify-end mt-auto">
           <Button variant="outline" onClick={onClose} className="rounded-xl">Cancelar</Button>
           <Button
             onClick={onConfirm}
@@ -981,8 +985,8 @@ function ExtenderAcessoDialog({
             <ShieldCheck className="h-4 w-4" />
             Estender Acesso
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -25,12 +25,12 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,7 +111,7 @@ export default function AdminConvitesPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "convites"] });
       if (data.length === 1) {
-        navigator.clipboard.writeText(data[0].codigo).catch(() => {});
+        navigator.clipboard.writeText(data[0].codigo).catch(() => { });
         toast.success(`Código gerado e copiado: ${data[0].codigo}`);
       } else {
         toast.success(`${data.length} códigos gerados com sucesso!`);
@@ -352,21 +352,26 @@ export default function AdminConvitesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* -- Create Dialog -- */}
-      <Dialog open={showCreate} onOpenChange={(open) => !open && handleCloseCreate()}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
-          {/* Header */}
-          <DialogHeader className="pb-1">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary mb-2">
-              <Send className="h-5 w-5" />
-            </div>
-            <DialogTitle className="text-xl font-bold">Criar Novo Convite</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              Configure as permissões e validade para o novo acesso.
-            </DialogDescription>
-          </DialogHeader>
+      {/* -- Create Sheet -- */}
+      <Sheet open={showCreate} onOpenChange={(open) => !open && handleCloseCreate()}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden flex flex-col p-0">
+          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
 
-          <div className="space-y-4">
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
+                <Send className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Criar Novo Convite</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                  Configure as permissões e validade para o novo acesso.
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4">
             {/* ── Duração do Acesso ── */}
             <div>
               <Label className="block text-sm font-semibold text-foreground mb-2">
@@ -496,17 +501,19 @@ export default function AdminConvitesPage() {
             </div>
 
             {/* ── Submit ── */}
-            <Button
-              onClick={() => criar.mutate()}
-              loading={criar.isPending}
-              className="w-full gap-2 h-11 rounded-full font-semibold text-sm bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all"
-            >
-              <Send className="h-4 w-4" />
-              {quantidade > 1 ? `Gerar ${quantidade} Convites` : "Gerar Convite"}
-            </Button>
+            <div className="pt-2 sm:pt-4 pb-safe">
+              <Button
+                onClick={() => criar.mutate()}
+                loading={criar.isPending}
+                className="w-full gap-2 h-11 sm:h-12 rounded-full font-semibold text-sm bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all"
+              >
+                <Send className="h-4 w-4" />
+                {quantidade > 1 ? `Gerar ${quantidade} Convites` : "Gerar Convite"}
+              </Button>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </PageShell>
   );
 }

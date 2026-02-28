@@ -68,14 +68,6 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -433,7 +425,7 @@ export default function ContasFixasPage() {
                     {(() => {
                       const diff = Math.ceil((new Date(stats.proximaVencer.dataVencimento).getTime() - new Date(new Date().toISOString().split("T")[0]).getTime()) / 86400000);
                       const d = new Date(stats.proximaVencer.dataVencimento);
-                      const fmt = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`;
+                      const fmt = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
                       return diff === 0 ? `Vence hoje (${fmt})` : diff === 1 ? `Vence amanhã (${fmt})` : `Vence em ${diff} dias (${fmt})`;
                     })()}
                   </p>
@@ -534,198 +526,198 @@ export default function ContasFixasPage() {
       >
         {/* Table header */}
         <div className="overflow-x-auto">
-        <div className="hidden lg:grid gap-4 items-center px-6 py-3.5 border-b border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-800/30 min-w-225" style={{gridTemplateColumns:"2fr 1fr 1fr 1fr 1.2fr 120px 80px 100px"}}>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Descrição</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Valor Mensal</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Frequência</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Dia Venc.</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Próx. Vencimento</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Status</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ativa</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ações</span>
-        </div>
-
-        {isLoading ? (
-          <div className="p-12 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">Carregando lembretes...</p>
+          <div className="hidden lg:grid gap-4 items-center px-6 py-3.5 border-b border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-800/30 min-w-225" style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 1.2fr 120px 80px 100px" }}>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Descrição</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Valor Mensal</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Frequência</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Dia Venc.</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Próx. Vencimento</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Status</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ativa</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ações</span>
           </div>
-        ) : filtered.length > 0 ? (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
-            <AnimatePresence>
-              {paged.map((l, i) => {
-                const status = getStatusInfo(l.dataVencimento);
-                const catInfo = getCategoryIcon(l.categoria ?? "");
-                const CatIcon = catInfo.icon;
-                const freqLabel = l.frequencia === "Semanal" ? "Semanal"
-                  : l.frequencia === "Quinzenal" ? "Quinzenal"
-                  : l.frequencia === "Anual" ? "Anual"
-                  : (l.recorrenteMensal || l.frequencia === "Mensal") ? "Mensal"
-                  : "Único";
-                const diaLabel = l.diaRecorrente ? `Dia ${l.diaRecorrente}` : "—";
-                return (
-                  <motion.div
-                    key={l.id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ delay: 0.015 * i }}
-                    className="group"
-                  >
-                    {/* Desktop row */}
-                    <div className={cn("hidden lg:grid gap-4 items-center px-6 py-3.5 hover:bg-white/40 dark:hover:bg-slate-800/30 transition-all duration-200 min-w-225", !l.ativo && "opacity-60")} style={{gridTemplateColumns:"2fr 1fr 1fr 1fr 1.2fr 120px 80px 100px"}}>
-                      {/* Description */}
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={cn(
-                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105",
-                          catInfo.color
+
+          {isLoading ? (
+            <div className="p-12 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">Carregando lembretes...</p>
+            </div>
+          ) : filtered.length > 0 ? (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
+              <AnimatePresence>
+                {paged.map((l, i) => {
+                  const status = getStatusInfo(l.dataVencimento);
+                  const catInfo = getCategoryIcon(l.categoria ?? "");
+                  const CatIcon = catInfo.icon;
+                  const freqLabel = l.frequencia === "Semanal" ? "Semanal"
+                    : l.frequencia === "Quinzenal" ? "Quinzenal"
+                      : l.frequencia === "Anual" ? "Anual"
+                        : (l.recorrenteMensal || l.frequencia === "Mensal") ? "Mensal"
+                          : "Único";
+                  const diaLabel = l.diaRecorrente ? `Dia ${l.diaRecorrente}` : "—";
+                  return (
+                    <motion.div
+                      key={l.id}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ delay: 0.015 * i }}
+                      className="group"
+                    >
+                      {/* Desktop row */}
+                      <div className={cn("hidden lg:grid gap-4 items-center px-6 py-3.5 hover:bg-white/40 dark:hover:bg-slate-800/30 transition-all duration-200 min-w-225", !l.ativo && "opacity-60")} style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 1.2fr 120px 80px 100px" }}>
+                        {/* Description */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={cn(
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105",
+                            catInfo.color
+                          )}>
+                            <CatIcon className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">{l.descricao}</p>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate">{l.categoria ?? "—"}</p>
+                          </div>
+                        </div>
+
+                        {/* Value */}
+                        <span className="text-[13px] font-bold text-slate-800 dark:text-white tabular-nums">
+                          {l.valor != null ? formatCurrency(l.valor) : "—"}
+                        </span>
+
+                        {/* Frequency */}
+                        <span className="text-[13px] text-slate-500 dark:text-slate-400 font-medium">{freqLabel}</span>
+
+                        {/* Due day */}
+                        <span className="text-[13px] text-slate-500 dark:text-slate-400 font-medium tabular-nums">{diaLabel}</span>
+
+                        {/* Next due date */}
+                        <span className={cn(
+                          "text-[13px] font-medium tabular-nums",
+                          l.ativo === false ? "text-slate-400 dark:text-slate-600" :
+                            isVencido(l.dataVencimento) ? "text-red-600 dark:text-red-400" : "text-slate-600 dark:text-slate-300"
                         )}>
-                          <CatIcon className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">{l.descricao}</p>
-                          <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate">{l.categoria ?? "—"}</p>
-                        </div>
-                      </div>
+                          {l.ativo === false ? "—" : formatShortDate(l.dataVencimento)}
+                        </span>
 
-                      {/* Value */}
-                      <span className="text-[13px] font-bold text-slate-800 dark:text-white tabular-nums">
-                        {l.valor != null ? formatCurrency(l.valor) : "—"}
-                      </span>
-
-                      {/* Frequency */}
-                      <span className="text-[13px] text-slate-500 dark:text-slate-400 font-medium">{freqLabel}</span>
-
-                      {/* Due day */}
-                      <span className="text-[13px] text-slate-500 dark:text-slate-400 font-medium tabular-nums">{diaLabel}</span>
-
-                      {/* Next due date */}
-                      <span className={cn(
-                        "text-[13px] font-medium tabular-nums",
-                        l.ativo === false ? "text-slate-400 dark:text-slate-600" :
-                        isVencido(l.dataVencimento) ? "text-red-600 dark:text-red-400" : "text-slate-600 dark:text-slate-300"
-                      )}>
-                        {l.ativo === false ? "—" : formatShortDate(l.dataVencimento)}
-                      </span>
-
-                      {/* Status badge */}
-                      <span className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold w-fit",
-                        l.pagoCicloAtual
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                          : !l.ativo
-                            ? "bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400"
-                            : status.badgeClass
-                      )}>
-                        {l.pagoCicloAtual ? (
-                          <><CheckCircle2 className="h-3 w-3" /> Pago</>
-                        ) : !l.ativo ? "Inativa" : status.label}
-                      </span>
-
-                      {/* Active toggle */}
-                      <div>
-                        <Switch
-                          checked={l.ativo !== false}
-                          onCheckedChange={(checked) => {
-                            if (!checked) setDeleteId(l.id);
-                            else atualizarLembrete.mutate({ id: l.id, data: { ativo: true } });
-                          }}
-                        />
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-1">
-                        {l.ativo !== false && !l.pagoCicloAtual && (
-                          <button
-                            onClick={() => openPagar(l)}
-                            className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
-                            title="Registrar pagamento"
-                          >
-                            <Banknote className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                        <button onClick={() => openEdit(l)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer">
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button onClick={() => setDeleteId(l.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-colors cursor-pointer">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Mobile card */}
-                    <div className={cn("lg:hidden flex items-center gap-3 px-4 py-3.5 hover:bg-white/30 dark:hover:bg-slate-800/20 transition-colors", !l.ativo && "opacity-60")}>
-                      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm", catInfo.color)}>
-                        <CatIcon className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-bold text-slate-800 dark:text-white truncate">{l.descricao}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{l.categoria ?? "—"}</span>
-                          {l.valor != null && (
-                            <>
-                              <span className="text-[11px] text-slate-300 dark:text-slate-600">·</span>
-                              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 tabular-nums">{formatCurrency(l.valor)}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={cn("inline-flex px-2 py-0.5 rounded-lg text-[11px] font-semibold",
+                        {/* Status badge */}
+                        <span className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold w-fit",
                           l.pagoCicloAtual
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                            : !l.ativo ? "bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400" : status.badgeClass)}>
-                          {l.pagoCicloAtual ? "Pago" : !l.ativo ? "Inativa" : status.label}
+                            : !l.ativo
+                              ? "bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400"
+                              : status.badgeClass
+                        )}>
+                          {l.pagoCicloAtual ? (
+                            <><CheckCircle2 className="h-3 w-3" /> Pago</>
+                          ) : !l.ativo ? "Inativa" : status.label}
                         </span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                              <MoreVertical className="h-4 w-4 text-slate-400" />
+
+                        {/* Active toggle */}
+                        <div>
+                          <Switch
+                            checked={l.ativo !== false}
+                            onCheckedChange={(checked) => {
+                              if (!checked) setDeleteId(l.id);
+                              else atualizarLembrete.mutate({ id: l.id, data: { ativo: true } });
+                            }}
+                          />
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1">
+                          {l.ativo !== false && !l.pagoCicloAtual && (
+                            <button
+                              onClick={() => openPagar(l)}
+                              className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                              title="Registrar pagamento"
+                            >
+                              <Banknote className="h-3.5 w-3.5" />
                             </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {l.ativo !== false && !l.pagoCicloAtual && (
-                              <DropdownMenuItem onClick={() => openPagar(l)} className="gap-2 text-emerald-600 dark:text-emerald-400 cursor-pointer">
-                                <Banknote className="h-3.5 w-3.5" /> Pagar
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => openEdit(l)} className="gap-2 cursor-pointer">
-                              <Pencil className="h-3.5 w-3.5" /> Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDeleteId(l.id)} className="gap-2 text-red-600 dark:text-red-400 cursor-pointer">
-                              <Trash2 className="h-3.5 w-3.5" /> Desativar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          )}
+                          <button onClick={() => openEdit(l)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button onClick={() => setDeleteId(l.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-colors cursor-pointer">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        ) : (
-          <div className="p-12">
-            <EmptyState
-              icon={<CalendarClock className="h-6 w-6" />}
-              title={activeFilters > 0 ? "Nenhum lembrete encontrado" : "Nenhum lembrete cadastrado"}
-              description={activeFilters > 0 ? "Tente remover os filtros para ver mais resultados" : "Adicione contas fixas e lembretes de pagamento para manter o controle"}
-              action={
-                activeFilters > 0 ? (
-                  <Button variant="outline" onClick={() => { setFiltroStatus("todos"); setBusca(""); }} className="gap-2 rounded-xl">
-                    <X className="h-4 w-4" />
-                    Limpar filtros
-                  </Button>
-                ) : (
-                  <button onClick={() => setShowForm(true)} className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm">
-                    <Plus className="h-4 w-4" />
-                    Criar primeiro lembrete
-                  </button>
-                )
-              }
-            />
-          </div>
-        )}
+
+                      {/* Mobile card */}
+                      <div className={cn("lg:hidden flex items-center gap-3 px-4 py-3.5 hover:bg-white/30 dark:hover:bg-slate-800/20 transition-colors", !l.ativo && "opacity-60")}>
+                        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm", catInfo.color)}>
+                          <CatIcon className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] font-bold text-slate-800 dark:text-white truncate">{l.descricao}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{l.categoria ?? "—"}</span>
+                            {l.valor != null && (
+                              <>
+                                <span className="text-[11px] text-slate-300 dark:text-slate-600">·</span>
+                                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 tabular-nums">{formatCurrency(l.valor)}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={cn("inline-flex px-2 py-0.5 rounded-lg text-[11px] font-semibold",
+                            l.pagoCicloAtual
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+                              : !l.ativo ? "bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400" : status.badgeClass)}>
+                            {l.pagoCicloAtual ? "Pago" : !l.ativo ? "Inativa" : status.label}
+                          </span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                                <MoreVertical className="h-4 w-4 text-slate-400" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {l.ativo !== false && !l.pagoCicloAtual && (
+                                <DropdownMenuItem onClick={() => openPagar(l)} className="gap-2 text-emerald-600 dark:text-emerald-400 cursor-pointer">
+                                  <Banknote className="h-3.5 w-3.5" /> Pagar
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => openEdit(l)} className="gap-2 cursor-pointer">
+                                <Pencil className="h-3.5 w-3.5" /> Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setDeleteId(l.id)} className="gap-2 text-red-600 dark:text-red-400 cursor-pointer">
+                                <Trash2 className="h-3.5 w-3.5" /> Desativar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div className="p-12">
+              <EmptyState
+                icon={<CalendarClock className="h-6 w-6" />}
+                title={activeFilters > 0 ? "Nenhum lembrete encontrado" : "Nenhum lembrete cadastrado"}
+                description={activeFilters > 0 ? "Tente remover os filtros para ver mais resultados" : "Adicione contas fixas e lembretes de pagamento para manter o controle"}
+                action={
+                  activeFilters > 0 ? (
+                    <Button variant="outline" onClick={() => { setFiltroStatus("todos"); setBusca(""); }} className="gap-2 rounded-xl">
+                      <X className="h-4 w-4" />
+                      Limpar filtros
+                    </Button>
+                  ) : (
+                    <button onClick={() => setShowForm(true)} className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm">
+                      <Plus className="h-4 w-4" />
+                      Criar primeiro lembrete
+                    </button>
+                  )
+                }
+              />
+            </div>
+          )}
         </div>{/* end overflow-x-auto */}
 
         {/* Pagination */}
@@ -1004,212 +996,226 @@ export default function ContasFixasPage() {
         </SheetContent>
       </Sheet>
 
-      {/* ═══ Edit Dialog ═══ */}
-      <Dialog open={editItem !== null} onOpenChange={(open) => !open && resetForm()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Editar Conta Fixa</DialogTitle>
-            <DialogDescription>Altere os dados da conta fixa</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={editForm.handleSubmit(handleAtualizar)} className="space-y-5">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Descrição</Label>
-              <Input {...editForm.register("descricao")} className={cn("h-11 rounded-xl", editForm.formState.errors.descricao && "border-red-500")} />
-              {editForm.formState.errors.descricao && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.descricao.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                <CurrencyInput
-                  placeholder="0,00"
-                  className={cn("h-11 rounded-xl pl-9 tabular-nums", editForm.formState.errors.valor && "border-red-500")}
-                  value={editForm.watch("valor") ?? ""}
-                  onValueChange={(v) => editForm.setValue("valor", v, { shouldValidate: editForm.formState.isSubmitted })}
-                />
-              </div>
-              {editForm.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.valor.message}</p>}
-            </div>
+      {/* ═══ Edit Sheet ═══ */}
+      <Sheet open={editItem !== null} onOpenChange={(open) => !open && resetForm()}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
+                <Pencil className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Editar Conta Fixa</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Altere os dados da conta fixa</SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <form onSubmit={editForm.handleSubmit(handleAtualizar)} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</Label>
-                <select
-                  value={editForm.watch("categoria")}
-                  onChange={(e) => editForm.setValue("categoria", e.target.value, { shouldValidate: true })}
-                  className={cn("h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm", editForm.formState.errors.categoria && "border-red-500")}
-                >
-                  <option value="">Selecione</option>
-                  {categorias.map((cat) => (
-                    <option key={cat.id} value={cat.nome}>{cat.nome}</option>
-                  ))}
-                </select>
-                {editForm.formState.errors.categoria && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.categoria.message}</p>}
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Descrição</Label>
+                <Input {...editForm.register("descricao")} className={cn("h-11 rounded-xl", editForm.formState.errors.descricao && "border-red-500")} />
+                {editForm.formState.errors.descricao && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.descricao.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Forma de pagamento</Label>
-                <select
-                  value={editForm.watch("formaPagamento")}
-                  onChange={(e) => editForm.setValue("formaPagamento", e.target.value, { shouldValidate: true })}
-                  className={cn("h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm", editForm.formState.errors.formaPagamento && "border-red-500")}
-                >
-                  <option value="">Selecione</option>
-                  <option value="pix">PIX</option>
-                  <option value="debito">Débito</option>
-                  <option value="credito">Crédito</option>
-                  <option value="dinheiro">Dinheiro</option>
-                  <option value="outro">Outro</option>
-                </select>
-                {editForm.formState.errors.formaPagamento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.formaPagamento.message}</p>}
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <CurrencyInput
+                    placeholder="0,00"
+                    className={cn("h-11 rounded-xl pl-9 tabular-nums", editForm.formState.errors.valor && "border-red-500")}
+                    value={editForm.watch("valor") ?? ""}
+                    onValueChange={(v) => editForm.setValue("valor", v, { shouldValidate: editForm.formState.isSubmitted })}
+                  />
+                </div>
+                {editForm.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.valor.message}</p>}
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lembrete automático no Telegram</Label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => editForm.setValue("lembreteTelegramAtivo", true)}
-                  className={cn(
-                    "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
-                    editForm.watch("lembreteTelegramAtivo")
-                      ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
-                      : "border-border/40 text-muted-foreground"
-                  )}
-                >
-                  Sim
-                </button>
-                <button
-                  type="button"
-                  onClick={() => editForm.setValue("lembreteTelegramAtivo", false)}
-                  className={cn(
-                    "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
-                    !editForm.watch("lembreteTelegramAtivo")
-                      ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
-                      : "border-border/40 text-muted-foreground"
-                  )}
-                >
-                  Não
-                </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoria</Label>
+                  <select
+                    value={editForm.watch("categoria")}
+                    onChange={(e) => editForm.setValue("categoria", e.target.value, { shouldValidate: true })}
+                    className={cn("h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm", editForm.formState.errors.categoria && "border-red-500")}
+                  >
+                    <option value="">Selecione</option>
+                    {categorias.map((cat) => (
+                      <option key={cat.id} value={cat.nome}>{cat.nome}</option>
+                    ))}
+                  </select>
+                  {editForm.formState.errors.categoria && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.categoria.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Forma de pagamento</Label>
+                  <select
+                    value={editForm.watch("formaPagamento")}
+                    onChange={(e) => editForm.setValue("formaPagamento", e.target.value, { shouldValidate: true })}
+                    className={cn("h-11 w-full rounded-xl border border-border/40 bg-background px-3 text-sm", editForm.formState.errors.formaPagamento && "border-red-500")}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="pix">PIX</option>
+                    <option value="debito">Débito</option>
+                    <option value="credito">Crédito</option>
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                  {editForm.formState.errors.formaPagamento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.formaPagamento.message}</p>}
+                </div>
               </div>
-            </div>
 
-            {/* Frequency selector */}
-            <div className="space-y-3">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Frequência</Label>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                {([
-                  { key: "Unico" as const, label: "Único" },
-                  { key: "Semanal" as const, label: "Semanal" },
-                  { key: "Quinzenal" as const, label: "Quinz." },
-                  { key: "Mensal" as const, label: "Mensal" },
-                  { key: "Anual" as const, label: "Anual" },
-                ] as const).map(({ key, label }) => (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lembrete automático no Telegram</Label>
+                <div className="flex gap-2">
                   <button
-                    key={key}
                     type="button"
-                    onClick={() => editForm.setValue("frequencia", key)}
+                    onClick={() => editForm.setValue("lembreteTelegramAtivo", true)}
                     className={cn(
-                      "p-2 rounded-lg border-2 text-[11px] font-semibold transition-all duration-200 cursor-pointer",
-                      editForm.watch("frequencia") === key
+                      "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                      editForm.watch("lembreteTelegramAtivo")
                         ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
-                        : "border-border/40 hover:border-border/60 text-muted-foreground"
+                        : "border-border/40 text-muted-foreground"
                     )}
                   >
-                    {label}
+                    Sim
                   </button>
-                ))}
-              </div>
-            </div>
-
-            {editForm.watch("frequencia") === "Unico" && (
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do Pagamento</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input type="date" {...editForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-9", editForm.formState.errors.dataVencimento && "border-red-500")} />
+                  <button
+                    type="button"
+                    onClick={() => editForm.setValue("lembreteTelegramAtivo", false)}
+                    className={cn(
+                      "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                      !editForm.watch("lembreteTelegramAtivo")
+                        ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
+                        : "border-border/40 text-muted-foreground"
+                    )}
+                  >
+                    Não
+                  </button>
                 </div>
-                {editForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.dataVencimento.message}</p>}
               </div>
-            )}
 
-            {editForm.watch("frequencia") === "Mensal" && (
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia do vencimento no mês</Label>
-                <Input type="number" min={1} max={31} placeholder="Ex: 10" {...editForm.register("diaRecorrente")} className={cn("h-11 rounded-xl", editForm.formState.errors.diaRecorrente && "border-red-500")} />
-                {editForm.formState.errors.diaRecorrente && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.diaRecorrente.message}</p>}
-                <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
-                  <Repeat className="h-3 w-3" />
-                  {editForm.watch("diaRecorrente") ? `Todo dia ${editForm.watch("diaRecorrente")} de cada mês` : "Informe o dia"}
-                </p>
-              </div>
-            )}
-
-            {(editForm.watch("frequencia") === "Semanal" || editForm.watch("frequencia") === "Quinzenal") && (
+              {/* Frequency selector */}
               <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia da semana</Label>
-                  <div className="grid grid-cols-7 gap-1">
-                    {DIAS_SEMANA.map((dia, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => editForm.setValue("diaSemana", String(idx))}
-                        className={cn(
-                          "p-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer border",
-                          editForm.watch("diaSemana") === String(idx)
-                            ? "border-emerald-600 bg-emerald-600/15 text-emerald-600"
-                            : "border-transparent hover:bg-muted/40 text-muted-foreground"
-                        )}
-                      >
-                        {dia.slice(0, 3)}
-                      </button>
-                    ))}
-                  </div>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Frequência</Label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                  {([
+                    { key: "Unico" as const, label: "Único" },
+                    { key: "Semanal" as const, label: "Semanal" },
+                    { key: "Quinzenal" as const, label: "Quinz." },
+                    { key: "Mensal" as const, label: "Mensal" },
+                    { key: "Anual" as const, label: "Anual" },
+                  ] as const).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => editForm.setValue("frequencia", key)}
+                      className={cn(
+                        "p-2 rounded-lg border-2 text-[11px] font-semibold transition-all duration-200 cursor-pointer",
+                        editForm.watch("frequencia") === key
+                          ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
+                          : "border-border/40 hover:border-border/60 text-muted-foreground"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do primeiro pagamento</Label>
+              </div>
+
+              {editForm.watch("frequencia") === "Unico" && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do Pagamento</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                     <Input type="date" {...editForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-9", editForm.formState.errors.dataVencimento && "border-red-500")} />
                   </div>
                   {editForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.dataVencimento.message}</p>}
                 </div>
-              </div>
-            )}
+              )}
 
-            {editForm.watch("frequencia") === "Anual" && (
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do pagamento anual</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input type="date" {...editForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-9", editForm.formState.errors.dataVencimento && "border-red-500")} />
+              {editForm.watch("frequencia") === "Mensal" && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia do vencimento no mês</Label>
+                  <Input type="number" min={1} max={31} placeholder="Ex: 10" {...editForm.register("diaRecorrente")} className={cn("h-11 rounded-xl", editForm.formState.errors.diaRecorrente && "border-red-500")} />
+                  {editForm.formState.errors.diaRecorrente && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.diaRecorrente.message}</p>}
+                  <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
+                    <Repeat className="h-3 w-3" />
+                    {editForm.watch("diaRecorrente") ? `Todo dia ${editForm.watch("diaRecorrente")} de cada mês` : "Informe o dia"}
+                  </p>
                 </div>
-                {editForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.dataVencimento.message}</p>}
-              </div>
-            )}
+              )}
 
-            {/* Optional end date for recurring bills */}
-            {editForm.watch("frequencia") !== "Unico" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Até quando pagar? <span className="text-muted-foreground/40">(opcional)</span></Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input type="date" {...editForm.register("dataFimRecorrencia")} className="h-11 rounded-xl pl-9" />
+              {(editForm.watch("frequencia") === "Semanal" || editForm.watch("frequencia") === "Quinzenal") && (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dia da semana</Label>
+                    <div className="grid grid-cols-7 gap-1">
+                      {DIAS_SEMANA.map((dia, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => editForm.setValue("diaSemana", String(idx))}
+                          className={cn(
+                            "p-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer border",
+                            editForm.watch("diaSemana") === String(idx)
+                              ? "border-emerald-600 bg-emerald-600/15 text-emerald-600"
+                              : "border-transparent hover:bg-muted/40 text-muted-foreground"
+                          )}
+                        >
+                          {dia.slice(0, 3)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do primeiro pagamento</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                      <Input type="date" {...editForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-9", editForm.formState.errors.dataVencimento && "border-red-500")} />
+                    </div>
+                    {editForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.dataVencimento.message}</p>}
+                  </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
-                  <CalendarClock className="h-3 w-3" />
-                  {editForm.watch("dataFimRecorrencia") ? `Até ${new Date(editForm.watch("dataFimRecorrencia") + "T12:00:00").toLocaleDateString("pt-BR")}` : "Sem data limite"}
-                </p>
-              </div>
-            )}
+              )}
 
-            <Button type="submit" className="w-full h-11 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20" loading={atualizarLembrete.isPending}>
-              Salvar alterações
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+              {editForm.watch("frequencia") === "Anual" && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data do pagamento anual</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <Input type="date" {...editForm.register("dataVencimento")} className={cn("h-11 rounded-xl pl-9", editForm.formState.errors.dataVencimento && "border-red-500")} />
+                  </div>
+                  {editForm.formState.errors.dataVencimento && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.dataVencimento.message}</p>}
+                </div>
+              )}
+
+              {/* Optional end date for recurring bills */}
+              {editForm.watch("frequencia") !== "Unico" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Até quando pagar? <span className="text-muted-foreground/40">(opcional)</span></Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <Input type="date" {...editForm.register("dataFimRecorrencia")} className="h-11 rounded-xl pl-9" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1">
+                    <CalendarClock className="h-3 w-3" />
+                    {editForm.watch("dataFimRecorrencia") ? `Até ${new Date(editForm.watch("dataFimRecorrencia") + "T12:00:00").toLocaleDateString("pt-BR")}` : "Sem data limite"}
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-2 sm:pt-3 pb-safe">
+                <Button type="submit" className="w-full h-12 sm:h-13 rounded-xl sm:rounded-2xl gap-2 sm:gap-2.5 font-bold text-sm sm:text-[15px] bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20" loading={atualizarLembrete.isPending}>
+                  <CheckCircle2 className="h-5 w-5" />
+                  Salvar alterações
+                </Button>
+              </div>
+            </form>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* ═══ Delete Dialog ═══ */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
@@ -1228,88 +1234,91 @@ export default function ContasFixasPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ═══ Payment Dialog ═══ */}
-      <Dialog open={pagarItem !== null} onOpenChange={(open) => { if (!open) setPagarItem(null); }}>
-        <DialogContent className="sm:max-w-sm dark:bg-slate-900 dark:border-slate-700/50">
-          <div className="h-1 w-full -mt-6 -mx-6 mb-5 rounded-t-lg bg-linear-to-r from-emerald-500 via-green-500 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
-          <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-white flex items-center gap-2">
-              <div className="size-8 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-lg">
-                <Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              Registrar Pagamento
-            </DialogTitle>
-            <DialogDescription className="text-slate-500 dark:text-slate-400">
-              {pagarItem?.descricao}
-            </DialogDescription>
-          </DialogHeader>
+      {/* ═══ Payment Sheet ═══ */}
+      <Sheet open={pagarItem !== null} onOpenChange={(open) => { if (!open) setPagarItem(null); }}>
+        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
+          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
 
-          <form onSubmit={handlePagar} className="space-y-4 mt-2">
-            {/* Valor */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor Pago (R$)</Label>
-              <div className="relative">
-                <div className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center rounded-l-xl text-sm font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  R$
+          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10 fade-in zoom-in duration-300">
+                <Banknote className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetTitle className="text-lg sm:text-xl font-semibold">Registrar Pagamento</SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">{pagarItem?.descricao}</SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <form onSubmit={handlePagar} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+              {/* Valor */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor Pago (R$)</Label>
+                <div className="relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center rounded-l-xl text-sm font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    R$
+                  </div>
+                  <CurrencyInput
+                    placeholder="0,00"
+                    value={pagarValor}
+                    onValueChange={(v) => setPagarValor(v)}
+                    className="h-11 rounded-xl pl-11 text-lg tabular-nums font-bold border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500/40 transition-all dark:bg-slate-800 dark:border-slate-700"
+                  />
                 </div>
-                <CurrencyInput
-                  placeholder="0,00"
-                  value={pagarValor}
-                  onValueChange={(v) => setPagarValor(v)}
-                  className="h-11 rounded-xl pl-11 text-lg tabular-nums font-bold border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500/40 transition-all dark:bg-slate-800 dark:border-slate-700"
-                />
               </div>
-            </div>
 
-            {/* Data */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Data do Pagamento</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                <Input
-                  type="date"
-                  value={pagarData}
-                  onChange={(e) => setPagarData(e.target.value)}
-                  className="h-11 rounded-xl pl-9 border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700"
-                />
+              {/* Data */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Data do Pagamento</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                  <Input
+                    type="date"
+                    value={pagarData}
+                    onChange={(e) => setPagarData(e.target.value)}
+                    className="h-11 rounded-xl pl-9 border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Conta Bancária */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Conta Bancária <span className="text-muted-foreground/40 normal-case">(opcional)</span>
-              </Label>
-              <Select value={pagarContaBancariaId} onValueChange={setPagarContaBancariaId}>
-                <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700">
-                  <SelectValue placeholder="Selecionar conta..." />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
-                  {contasBancarias.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)} className="dark:focus:bg-slate-800">
-                      {c.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Conta Bancária */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Conta Bancária <span className="text-muted-foreground/40 normal-case">(opcional)</span>
+                </Label>
+                <Select value={pagarContaBancariaId} onValueChange={setPagarContaBancariaId}>
+                  <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700">
+                    <SelectValue placeholder="Selecionar conta..." />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
+                    {contasBancarias.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)} className="dark:focus:bg-slate-800">
+                        {c.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <DialogFooter className="gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setPagarItem(null)} className="rounded-xl flex-1 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                loading={pagarConta.isPending}
-                className="rounded-xl flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Confirmar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+              <div className="flex gap-2 pt-2 sm:pt-3 pb-safe">
+                <Button type="button" variant="outline" onClick={() => setPagarItem(null)} className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  loading={pagarConta.isPending}
+                  className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                  Confirmar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
