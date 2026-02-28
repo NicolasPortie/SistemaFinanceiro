@@ -213,4 +213,81 @@ public class GroqAiServiceTests
         Assert.Equal("erro", result.Intencao); // Fallback do switch default
         Assert.Contains("reconheci", result.Resposta); // "Desculpa, reconheci a ação mas ainda não sei aplicar."
     }
+
+    // ─── Correção de parcelas: IA retornou valor-por-parcela em vez do total ───
+
+    [Fact]
+    public async Task ProcessarMensagemCompletaAsync_DuasParcelasDeX_CorrigeParaTotal()
+    {
+        // Arrange: IA confundiu e retornou o valor por parcela (37.95) em vez do total (75.90)
+        SetupGroqResponse("registrar_lancamento", new
+        {
+            valor = 37.95m,
+            descricao = "Riot Games",
+            categoria = "Games",
+            formaPagamento = "credito",
+            tipo = "gasto",
+            numeroParcelas = 2
+        });
+
+        // Act
+        var result = await _aiService.ProcessarMensagemCompletaAsync(
+            "São duas parcelas de R$37,95 Riot Games no crédito", "contexto");
+
+        // Assert
+        Assert.NotNull(result?.Lancamento);
+        Assert.Equal(2, result.Lancamento.NumeroParcelas);
+        // Valor deve ser corrigido para o TOTAL: 2 × 37.95 = 75.90
+        Assert.Equal(75.90m, result.Lancamento.Valor);
+    }
+
+    [Fact]
+    public async Task ProcessarMensagemCompletaAsync_ParceleiEmTresVezesDeX_CorrigeParaTotal()
+    {
+        // Arrange: IA confundiu e retornou o valor por parcela (50.00) em vez do total (150.00)
+        SetupGroqResponse("registrar_lancamento", new
+        {
+            valor = 50.00m,
+            descricao = "Curso",
+            categoria = "Educação",
+            formaPagamento = "credito",
+            tipo = "gasto",
+            numeroParcelas = 3
+        });
+
+        // Act
+        var result = await _aiService.ProcessarMensagemCompletaAsync(
+            "Parcelei em 3 vezes de R$50,00 o curso", "contexto");
+
+        // Assert
+        Assert.NotNull(result?.Lancamento);
+        Assert.Equal(3, result.Lancamento.NumeroParcelas);
+        // Valor deve ser corrigido para o TOTAL: 3 × 50.00 = 150.00
+        Assert.Equal(150.00m, result.Lancamento.Valor);
+    }
+
+    [Fact]
+    public async Task ProcessarMensagemCompletaAsync_ParcelasComTotalJaCorreto_NaoAltera()
+    {
+        // Arrange: IA já retornou o total correto (75.90), não deve alterar
+        SetupGroqResponse("registrar_lancamento", new
+        {
+            valor = 75.90m,
+            descricao = "Riot Games",
+            categoria = "Games",
+            formaPagamento = "credito",
+            tipo = "gasto",
+            numeroParcelas = 2
+        });
+
+        // Act
+        var result = await _aiService.ProcessarMensagemCompletaAsync(
+            "São duas parcelas de R$37,95 Riot Games no crédito", "contexto");
+
+        // Assert
+        Assert.NotNull(result?.Lancamento);
+        Assert.Equal(2, result.Lancamento.NumeroParcelas);
+        // Valor NÃO deve ser alterado (já é o total correto)
+        Assert.Equal(75.90m, result.Lancamento.Valor);
+    }
 }

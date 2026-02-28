@@ -21,13 +21,24 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+# Determinar versão a partir da tag git (ex: v1.27.2 → 1.27.2)
+$gitTag = git describe --tags --exact-match HEAD 2>$null
+if ($gitTag -and $gitTag -match '^v(.+)$') {
+    $appVersion = $Matches[1]
+} else {
+    $appVersion = git describe --tags --always 2>$null
+    if (-not $appVersion) { $appVersion = "0.0.0-dev" }
+}
+Write-Host "🏷️  Versão detectada: $appVersion" -ForegroundColor Cyan
+$env:APP_VERSION = $appVersion
+
 # Parar containers antigos
 Write-Host "⏸️  Parando containers antigos..." -ForegroundColor Yellow
 docker compose -f docker-compose.prod.yml down
 
 # Build das novas imagens (com cache - só rebuilda o que mudou)
-Write-Host "🔨 Construindo novas imagens..." -ForegroundColor Yellow
-docker compose -f docker-compose.prod.yml build
+Write-Host "🔨 Construindo novas imagens (versão: $appVersion)..." -ForegroundColor Yellow
+docker compose -f docker-compose.prod.yml build --build-arg VERSION=$appVersion
 
 # Iniciar containers
 Write-Host "🚀 Iniciando containers..." -ForegroundColor Yellow
