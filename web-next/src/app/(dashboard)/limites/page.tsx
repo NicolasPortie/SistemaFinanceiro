@@ -32,12 +32,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -487,32 +487,31 @@ export default function LimitesPage() {
         </motion.div>
       )}
 
-      {/* ═══ New Limit Sheet ═══ */}
-      <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
-          {/* Accent line */}
-          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
+      {/* ═══ New Limit Dialog ═══ */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+
 
           {/* Header */}
-          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+          <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/[0.08] bg-emerald-600/[0.03] p-3.5 sm:p-4">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10 transition-all duration-500">
                 <Gauge className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-lg sm:text-xl font-semibold">Definir Limite</SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                <DialogTitle className="text-lg sm:text-xl font-semibold">Definir Limite</DialogTitle>
+                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5">
                   Configure um limite de gasto para uma categoria
-                </SheetDescription>
+                </DialogDescription>
               </div>
             </div>
-          </SheetHeader>
+          </DialogHeader>
 
-          {/* Scrollable form body */}
-          <div className="flex-1 overflow-y-auto overscroll-contain">
+          {/* Form body */}
+          <div>
             <form
               onSubmit={form.handleSubmit(handleSalvar)}
-              className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5"
+              className="space-y-4 sm:space-y-5"
             >
               {/* Main fields */}
               <div className="space-y-4 rounded-2xl border border-emerald-600/[0.08] dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
@@ -619,8 +618,8 @@ export default function LimitesPage() {
               </div>
             </form>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* ═══ Delete Dialog ═══ */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>

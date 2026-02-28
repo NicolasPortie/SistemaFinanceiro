@@ -43,12 +43,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -60,7 +60,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
-// Dialog components (except AlertDialog) removed in favor of Sheet
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -704,29 +704,28 @@ export default function CartoesPage() {
         </motion.div>
       )}
 
-      {/* ═══ Create Sheet ═══ */}
-      <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
-          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
+      {/* ═══ Create Dialog ═══ */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
 
-          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+          <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/[0.08] bg-emerald-600/[0.03] p-3.5 sm:p-4">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10 transition-all duration-500">
                 <CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-lg sm:text-xl font-semibold">Novo Cartão</SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                <DialogTitle className="text-lg sm:text-xl font-semibold">Novo Cartão</DialogTitle>
+                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5">
                   Adicione um cartão de crédito à sua conta
-                </SheetDescription>
+                </DialogDescription>
               </div>
             </div>
-          </SheetHeader>
+          </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div>
             <form
               onSubmit={form.handleSubmit(onSubmitCreate)}
-              className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5"
+              className="space-y-4 sm:space-y-5"
             >
               <div className="space-y-4 rounded-2xl border border-emerald-600/[0.08] dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
                 <div className="space-y-1.5">
@@ -833,17 +832,17 @@ export default function CartoesPage() {
               </div>
             </form>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
-      {/* ═══ Edit Sheet ═══ */}
-      <Sheet open={editingCard !== null} onOpenChange={() => setEditingCard(null)}>
-        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
-          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
-            <SheetTitle className="text-lg font-bold tracking-tight">Editar Cartão</SheetTitle>
-            <SheetDescription>Altere os dados do cartão</SheetDescription>
-          </SheetHeader>
-          <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8">
+      {/* ═══ Edit Dialog ═══ */}
+      <Dialog open={editingCard !== null} onOpenChange={() => setEditingCard(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold tracking-tight">Editar Cartão</DialogTitle>
+            <DialogDescription>Altere os dados do cartão</DialogDescription>
+          </DialogHeader>
+          <div className="pb-4">
             <form onSubmit={editFormState.handleSubmit(onSubmitEdit)} className="space-y-5">
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -923,36 +922,36 @@ export default function CartoesPage() {
               </Button>
             </form>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
-      {/* ═══ Fatura Sheet ═══ */}
-      <Sheet open={viewingFaturaId !== null} onOpenChange={() => setViewingFaturaId(null)}>
-        <SheetContent className="w-full sm:w-150 sm:max-w-150 overflow-hidden flex flex-col p-0">
-          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5 bg-muted/20">
-            <SheetTitle className="flex items-center gap-2 text-base">
+      {/* ═══ Fatura Dialog ═══ */}
+      <Dialog open={viewingFaturaId !== null} onOpenChange={() => setViewingFaturaId(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+          <DialogHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5 bg-muted/20">
+            <DialogTitle className="flex items-center gap-2 text-base">
               <CreditCard className="h-4 w-4" />
               {viewingFaturaId?.nome}
-            </SheetTitle>
-            <SheetDescription>Faturas pendentes</SheetDescription>
-          </SheetHeader>
+            </DialogTitle>
+            <DialogDescription>Faturas pendentes</DialogDescription>
+          </DialogHeader>
           <div className="overflow-y-auto flex-1 px-5 sm:px-7 pb-5 pt-2">
             {viewingFaturaId && <FaturaView cartaoId={viewingFaturaId.id} />}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
-      {/* ═══ Garantia Sheet ═══ */}
-      <Sheet open={garantiaCard !== null} onOpenChange={() => setGarantiaCard(null)}>
-        <SheetContent className="w-full sm:w-125 sm:max-w-125 p-0 gap-0 overflow-hidden flex flex-col">
+      {/* ═══ Garantia Dialog ═══ */}
+      <Dialog open={garantiaCard !== null} onOpenChange={() => setGarantiaCard(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-0 gap-0">
           <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 space-y-3">
-            <SheetHeader className="space-y-1">
-              <SheetTitle className="text-lg font-bold tracking-tight flex items-center gap-2">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="text-lg font-bold tracking-tight flex items-center gap-2">
                 <Shield className="h-5 w-5 text-emerald-500" />
                 Garantia — {garantiaCard?.nome}
-              </SheetTitle>
-              <SheetDescription>Adicione ou resgate a garantia deste cartão.</SheetDescription>
-            </SheetHeader>
+              </DialogTitle>
+              <DialogDescription>Adicione ou resgate a garantia deste cartão.</DialogDescription>
+            </DialogHeader>
 
             <div className="rounded-xl bg-emerald-500/8 border border-emerald-500/15 p-3.5 space-y-1.5">
               <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
@@ -1094,8 +1093,8 @@ export default function CartoesPage() {
                         className={cn(
                           "h-11 rounded-xl pl-9 tabular-nums font-semibold",
                           resgateExcedeGarantia &&
-                            valorResgateBase > 0 &&
-                            "border-red-500 focus-visible:ring-red-500/30"
+                          valorResgateBase > 0 &&
+                          "border-red-500 focus-visible:ring-red-500/30"
                         )}
                         placeholder="0,00"
                         value={resgateForm.watch("valorResgate")}
@@ -1162,8 +1161,8 @@ export default function CartoesPage() {
               )}
             </TabsContent>
           </Tabs>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* ═══ Delete Confirmation ═══ */}
       <AlertDialog open={deletingId !== null} onOpenChange={() => setDeletingId(null)}>

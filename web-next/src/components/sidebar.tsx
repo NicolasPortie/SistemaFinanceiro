@@ -29,7 +29,7 @@ import {
   ArrowLeftRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -226,7 +226,7 @@ export function Sidebar() {
         </TooltipProvider>
       </aside>
 
-      {/* ═══ Mobile Header + Sheet ═══ */}
+      {/* ═══ Mobile Header + Dialog Menu ═══ */}
       <header
         className={cn(
           "lg:hidden fixed top-0 left-0 right-0 z-50 h-14 px-4 flex items-center justify-between backdrop-blur-xl",
@@ -236,22 +236,20 @@ export function Sidebar() {
         )}
       >
         <div className="flex items-center gap-3">
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-xl"
-                aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
-              >
-                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              className="w-72 p-0 border-r-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-xl"
+            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+          <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
+            <DialogContent
+              className="fixed inset-y-0 left-0 w-72 p-0 rounded-none border-r-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl data-[state=open]:slide-in-from-left sm:max-w-72 [&>button]:hidden"
             >
-              <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+              <DialogTitle className="sr-only">Menu de navegação</DialogTitle>
               <div className="flex h-full flex-col">
                 {/* Logo */}
                 <div
@@ -361,8 +359,8 @@ export function Sidebar() {
                   </button>
                 </div>
               </div>
-            </SheetContent>
-          </Sheet>
+            </DialogContent>
+          </Dialog>
 
           <div className="flex items-center gap-2">
             <div

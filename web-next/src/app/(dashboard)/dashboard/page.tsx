@@ -199,9 +199,19 @@ export default function DashboardPage() {
         className="glass-panel rounded-2xl p-4 lg:p-5 mb-6 lg:mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-            Visão Geral
-          </h2>
+          <div>
+            <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
+              {(() => {
+                const h = new Date().getHours();
+                const greeting = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+                const firstName = usuario?.nome?.split(" ")[0] || "";
+                return firstName ? `${greeting}, ${firstName}` : greeting;
+              })()}
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Visão geral das suas finanças
+            </p>
+          </div>
           <div className="hidden md:block h-8 w-px bg-slate-300 dark:bg-slate-600" />
           {/* Month selector */}
           <div className="flex items-center gap-2 bg-white/70 dark:bg-slate-700/70 px-3 py-1.5 rounded-xl border border-white/60 dark:border-slate-600/60 shadow-sm">

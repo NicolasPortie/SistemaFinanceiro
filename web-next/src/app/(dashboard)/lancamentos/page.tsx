@@ -81,13 +81,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -262,6 +256,8 @@ export default function LancamentosPage() {
   const cartaoSelecionado = useWatch({ control: form.control, name: "cartaoId" });
   const contaSelecionada = useWatch({ control: form.control, name: "contaId" });
   const formaPagamentoSelecionada = useWatch({ control: form.control, name: "formaPagamento" });
+  const valorDigitado = useWatch({ control: form.control, name: "valor" });
+  const parcelasSelecionadas = useWatch({ control: form.control, name: "numeroParcelas" });
 
   const activeFilters =
     (filtroTipo !== "todos" ? 1 : 0) +
@@ -1069,19 +1065,10 @@ export default function LancamentosPage() {
         )}
       </motion.div>
 
-      {/* ═══ New Transaction Sheet ═══ */}
-      <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
-          <div
-            className={cn(
-              "h-1.5 w-full shrink-0 transition-all duration-500",
-              tipoSelecionado === "receita"
-                ? "bg-linear-to-r from-emerald-400 via-emerald-500 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.25)]"
-                : "bg-linear-to-r from-red-400 via-red-500 to-rose-500 shadow-[0_2px_8px_rgba(239,68,68,0.25)]"
-            )}
-          />
-
-          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+      {/* ═══ New Transaction Dialog ═══ */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
             <div
               className={cn(
                 "flex items-center gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 transition-all duration-500",
@@ -1101,15 +1088,15 @@ export default function LancamentosPage() {
                 <Receipt className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-lg sm:text-xl font-semibold">
+                <DialogTitle className="text-lg sm:text-xl font-semibold">
                   Novo Lançamento
-                </SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
                   Registre uma nova movimentação financeira
-                </SheetDescription>
+                </DialogDescription>
               </div>
             </div>
-          </SheetHeader>
+          </DialogHeader>
 
           <div className="flex-1 overflow-y-auto overscroll-contain">
             <form
@@ -1253,33 +1240,7 @@ export default function LancamentosPage() {
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Forma de Pagamento
                   </Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        form.setValue("formaPagamento", "pix");
-                        form.setValue("cartaoId", "");
-                        form.setValue("numeroParcelas", "");
-                      }}
-                      className={cn(
-                        "group relative flex flex-col items-center gap-1.5 sm:gap-2.5 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer border",
-                        formaPagamentoSelecionada === "pix"
-                          ? "bg-emerald-600/5 text-emerald-600 border-emerald-600/20 shadow-sm shadow-emerald-500/5"
-                          : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40 hover:border-border/50 hover:text-foreground"
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg sm:rounded-xl transition-all",
-                          formaPagamentoSelecionada === "pix"
-                            ? "bg-emerald-600/10"
-                            : "bg-muted/40 group-hover:bg-muted/60"
-                        )}
-                      >
-                        <Smartphone className="h-4 w-4 sm:h-5 sm:w-5" />
-                      </div>
-                      PIX
-                    </button>
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -1428,20 +1389,42 @@ export default function LancamentosPage() {
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-foreground/70">Parcelas</Label>
                       <Select
-                        value={form.watch("numeroParcelas") ?? ""}
+                        value={parcelasSelecionadas ?? ""}
                         onValueChange={(v) => form.setValue("numeroParcelas", v)}
                       >
                         <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background">
                           <SelectValue placeholder="À vista (1x)" />
                         </SelectTrigger>
                         <SelectContent>
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                            <SelectItem key={n} value={n.toString()}>
-                              {n}x{n === 1 ? " (à vista)" : ""}
-                            </SelectItem>
-                          ))}
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => {
+                            const valorNum = parseFloat((valorDigitado || "").replace(",", "."));
+                            const valorParcela = !isNaN(valorNum) && valorNum > 0 ? valorNum / n : 0;
+                            return (
+                              <SelectItem key={n} value={n.toString()}>
+                                {n}x{n === 1 ? " (à vista)" : ""}{valorParcela > 0 && n > 1 ? ` — ${formatCurrency(valorParcela)}/mês` : ""}
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
+                      {(() => {
+                        const nParcelas = parseInt(parcelasSelecionadas || "1");
+                        const valorNum = parseFloat((valorDigitado || "").replace(",", "."));
+                        if (nParcelas > 1 && !isNaN(valorNum) && valorNum > 0) {
+                          return (
+                            <div className="mt-2 flex items-center gap-2 rounded-xl border border-emerald-500/15 dark:border-emerald-400/20 bg-emerald-50/50 dark:bg-emerald-950/30 px-3 py-2">
+                              <CreditCard className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                {nParcelas}x de <strong>{formatCurrency(valorNum / nParcelas)}</strong>
+                                <span className="text-emerald-600/60 dark:text-emerald-400/60 ml-1">
+                                  (total: {formatCurrency(valorNum)})
+                                </span>
+                              </span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                 )}
@@ -1464,8 +1447,8 @@ export default function LancamentosPage() {
               </div>
             </form>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* ═══ Edit Dialog ═══ */}
       <Dialog open={editingItem !== null} onOpenChange={() => setEditingItem(null)}>

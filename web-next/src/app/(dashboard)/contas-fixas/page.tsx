@@ -57,12 +57,12 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -566,7 +566,7 @@ export default function ContasFixasPage() {
                       const diff = Math.ceil(
                         (new Date(stats.proximaVencer.dataVencimento).getTime() -
                           new Date(new Date().toISOString().split("T")[0]).getTime()) /
-                          86400000
+                        86400000
                       );
                       const d = new Date(stats.proximaVencer.dataVencimento);
                       const fmt = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -1041,31 +1041,29 @@ export default function ContasFixasPage() {
         )}
       </motion.div>
 
-      {/* ═══ New Bill Sheet ═══ */}
-      <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
-          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
-
-          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+      {/* ═══ New Bill Dialog ═══ */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10 transition-all duration-500">
                 <CalendarClock className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-lg sm:text-xl font-semibold">
+                <DialogTitle className="text-lg sm:text-xl font-semibold">
                   Nova Conta Fixa
-                </SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
                   Configure sua conta fixa ou pagamento recorrente
-                </SheetDescription>
+                </DialogDescription>
               </div>
             </div>
-          </SheetHeader>
+          </DialogHeader>
 
           <div className="flex-1 overflow-y-auto overscroll-contain">
             <form
               onSubmit={createForm.handleSubmit(handleCriar)}
-              className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5"
+              className="space-y-4 sm:space-y-5"
             >
               {/* Main fields */}
               <div className="space-y-4 rounded-2xl border border-emerald-600/8 dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
@@ -1319,68 +1317,68 @@ export default function ContasFixasPage() {
 
                   {(createForm.watch("frequencia") === "Semanal" ||
                     createForm.watch("frequencia") === "Quinzenal") && (
-                    <motion.div
-                      key="semanal"
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-3"
-                    >
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                          Dia da semana
-                        </Label>
-                        <div className="grid grid-cols-7 gap-1">
-                          {DIAS_SEMANA.map((dia, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => createForm.setValue("diaSemana", String(idx))}
+                      <motion.div
+                        key="semanal"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-3"
+                      >
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                            Dia da semana
+                          </Label>
+                          <div className="grid grid-cols-7 gap-1">
+                            {DIAS_SEMANA.map((dia, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => createForm.setValue("diaSemana", String(idx))}
+                                className={cn(
+                                  "p-1.5 sm:p-2 rounded-lg text-[10px] sm:text-xs font-medium transition-all cursor-pointer border",
+                                  createForm.watch("diaSemana") === String(idx)
+                                    ? "border-emerald-600 bg-emerald-600/15 text-emerald-600"
+                                    : "border-transparent hover:bg-muted/40 text-muted-foreground"
+                                )}
+                              >
+                                {dia.slice(0, 3)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                            Data do primeiro pagamento
+                          </Label>
+                          <div className="relative">
+                            <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                            <Input
+                              type="date"
+                              {...createForm.register("dataVencimento")}
                               className={cn(
-                                "p-1.5 sm:p-2 rounded-lg text-[10px] sm:text-xs font-medium transition-all cursor-pointer border",
-                                createForm.watch("diaSemana") === String(idx)
-                                  ? "border-emerald-600 bg-emerald-600/15 text-emerald-600"
-                                  : "border-transparent hover:bg-muted/40 text-muted-foreground"
+                                "h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all",
+                                createForm.formState.errors.dataVencimento && "border-red-500"
                               )}
-                            >
-                              {dia.slice(0, 3)}
-                            </button>
-                          ))}
+                            />
+                          </div>
+                          {createForm.formState.errors.dataVencimento && (
+                            <p className="text-xs text-red-500 font-medium">
+                              {createForm.formState.errors.dataVencimento.message}
+                            </p>
+                          )}
                         </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                          Data do primeiro pagamento
-                        </Label>
-                        <div className="relative">
-                          <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                          <Input
-                            type="date"
-                            {...createForm.register("dataVencimento")}
-                            className={cn(
-                              "h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all",
-                              createForm.formState.errors.dataVencimento && "border-red-500"
-                            )}
-                          />
-                        </div>
-                        {createForm.formState.errors.dataVencimento && (
-                          <p className="text-xs text-red-500 font-medium">
-                            {createForm.formState.errors.dataVencimento.message}
-                          </p>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
-                        <Repeat className="h-3 w-3" />
-                        {createForm.watch("frequencia") === "Semanal"
-                          ? "Repete toda semana"
-                          : "Repete a cada 15 dias"}
-                        {createForm.watch("diaSemana")
-                          ? ` (${DIAS_SEMANA[parseInt(createForm.watch("diaSemana") || "0")]})`
-                          : ""}
-                      </p>
-                    </motion.div>
-                  )}
+                        <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
+                          <Repeat className="h-3 w-3" />
+                          {createForm.watch("frequencia") === "Semanal"
+                            ? "Repete toda semana"
+                            : "Repete a cada 15 dias"}
+                          {createForm.watch("diaSemana")
+                            ? ` (${DIAS_SEMANA[parseInt(createForm.watch("diaSemana") || "0")]})`
+                            : ""}
+                        </p>
+                      </motion.div>
+                    )}
 
                   {createForm.watch("frequencia") === "Anual" && (
                     <motion.div
@@ -1457,33 +1455,31 @@ export default function ContasFixasPage() {
               </div>
             </form>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
-      {/* ═══ Edit Sheet ═══ */}
-      <Sheet open={editItem !== null} onOpenChange={(open) => !open && resetForm()}>
-        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
-          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
-
-          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+      {/* ═══ Edit Dialog ═══ */}
+      <Dialog open={editItem !== null} onOpenChange={(open) => !open && resetForm()}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
                 <Pencil className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-lg sm:text-xl font-semibold">
+                <DialogTitle className="text-lg sm:text-xl font-semibold">
                   Editar Conta Fixa
-                </SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
                   Altere os dados da conta fixa
-                </SheetDescription>
+                </DialogDescription>
               </div>
             </div>
-          </SheetHeader>
+          </DialogHeader>
           <div className="flex-1 overflow-y-auto overscroll-contain">
             <form
               onSubmit={editForm.handleSubmit(handleAtualizar)}
-              className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5"
+              className="space-y-4 sm:space-y-5"
             >
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1706,52 +1702,52 @@ export default function ContasFixasPage() {
 
               {(editForm.watch("frequencia") === "Semanal" ||
                 editForm.watch("frequencia") === "Quinzenal") && (
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Dia da semana
-                    </Label>
-                    <div className="grid grid-cols-7 gap-1">
-                      {DIAS_SEMANA.map((dia, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => editForm.setValue("diaSemana", String(idx))}
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Dia da semana
+                      </Label>
+                      <div className="grid grid-cols-7 gap-1">
+                        {DIAS_SEMANA.map((dia, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => editForm.setValue("diaSemana", String(idx))}
+                            className={cn(
+                              "p-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer border",
+                              editForm.watch("diaSemana") === String(idx)
+                                ? "border-emerald-600 bg-emerald-600/15 text-emerald-600"
+                                : "border-transparent hover:bg-muted/40 text-muted-foreground"
+                            )}
+                          >
+                            {dia.slice(0, 3)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Data do primeiro pagamento
+                      </Label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                        <Input
+                          type="date"
+                          {...editForm.register("dataVencimento")}
                           className={cn(
-                            "p-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer border",
-                            editForm.watch("diaSemana") === String(idx)
-                              ? "border-emerald-600 bg-emerald-600/15 text-emerald-600"
-                              : "border-transparent hover:bg-muted/40 text-muted-foreground"
+                            "h-11 rounded-xl pl-9",
+                            editForm.formState.errors.dataVencimento && "border-red-500"
                           )}
-                        >
-                          {dia.slice(0, 3)}
-                        </button>
-                      ))}
+                        />
+                      </div>
+                      {editForm.formState.errors.dataVencimento && (
+                        <p className="text-xs text-red-500 font-medium">
+                          {editForm.formState.errors.dataVencimento.message}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Data do primeiro pagamento
-                    </Label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                      <Input
-                        type="date"
-                        {...editForm.register("dataVencimento")}
-                        className={cn(
-                          "h-11 rounded-xl pl-9",
-                          editForm.formState.errors.dataVencimento && "border-red-500"
-                        )}
-                      />
-                    </div>
-                    {editForm.formState.errors.dataVencimento && (
-                      <p className="text-xs text-red-500 font-medium">
-                        {editForm.formState.errors.dataVencimento.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
+                )}
 
               {editForm.watch("frequencia") === "Anual" && (
                 <div className="space-y-2">
@@ -1812,8 +1808,8 @@ export default function ContasFixasPage() {
               </div>
             </form>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* ═══ Delete Dialog ═══ */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
@@ -1842,114 +1838,110 @@ export default function ContasFixasPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ═══ Payment Sheet ═══ */}
-      <Sheet
+      {/* ═══ Payment Dialog ═══ */}
+      <Dialog
         open={pagarItem !== null}
         onOpenChange={(open) => {
           if (!open) setPagarItem(null);
         }}
       >
-        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
-          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
-
-          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10 fade-in zoom-in duration-300">
                 <Banknote className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-lg sm:text-xl font-semibold">
+                <DialogTitle className="text-lg sm:text-xl font-semibold">
                   Registrar Pagamento
-                </SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
                   {pagarItem?.descricao}
-                </SheetDescription>
+                </DialogDescription>
               </div>
             </div>
-          </SheetHeader>
+          </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain">
-            <form onSubmit={handlePagar} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
-              {/* Valor */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Valor Pago (R$)
-                </Label>
-                <div className="relative">
-                  <div className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center rounded-l-xl text-sm font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                    R$
-                  </div>
-                  <CurrencyInput
-                    placeholder="0,00"
-                    value={pagarValor}
-                    onValueChange={(v) => setPagarValor(v)}
-                    className="h-11 rounded-xl pl-11 text-lg tabular-nums font-bold border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500/40 transition-all dark:bg-slate-800 dark:border-slate-700"
-                  />
+          <form onSubmit={handlePagar} className="space-y-4 sm:space-y-5">
+            {/* Valor */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Valor Pago (R$)
+              </Label>
+              <div className="relative">
+                <div className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center rounded-l-xl text-sm font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  R$
                 </div>
+                <CurrencyInput
+                  placeholder="0,00"
+                  value={pagarValor}
+                  onValueChange={(v) => setPagarValor(v)}
+                  className="h-11 rounded-xl pl-11 text-lg tabular-nums font-bold border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500/40 transition-all dark:bg-slate-800 dark:border-slate-700"
+                />
               </div>
+            </div>
 
-              {/* Data */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Data do Pagamento
-                </Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                  <Input
-                    type="date"
-                    value={pagarData}
-                    onChange={(e) => setPagarData(e.target.value)}
-                    className="h-11 rounded-xl pl-9 border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700"
-                  />
-                </div>
+            {/* Data */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Data do Pagamento
+              </Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                <Input
+                  type="date"
+                  value={pagarData}
+                  onChange={(e) => setPagarData(e.target.value)}
+                  className="h-11 rounded-xl pl-9 border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700"
+                />
               </div>
+            </div>
 
-              {/* Conta Bancária */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Conta Bancária{" "}
-                  <span className="text-muted-foreground/40 normal-case">(opcional)</span>
-                </Label>
-                <Select value={pagarContaBancariaId} onValueChange={setPagarContaBancariaId}>
-                  <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700">
-                    <SelectValue placeholder="Selecionar conta..." />
-                  </SelectTrigger>
-                  <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
-                    {contasBancarias.map((c) => (
-                      <SelectItem
-                        key={c.id}
-                        value={String(c.id)}
-                        className="dark:focus:bg-slate-800"
-                      >
-                        {c.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Conta Bancária */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Conta Bancária{" "}
+                <span className="text-muted-foreground/40 normal-case">(opcional)</span>
+              </Label>
+              <Select value={pagarContaBancariaId} onValueChange={setPagarContaBancariaId}>
+                <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700">
+                  <SelectValue placeholder="Selecionar conta..." />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
+                  {contasBancarias.map((c) => (
+                    <SelectItem
+                      key={c.id}
+                      value={String(c.id)}
+                      className="dark:focus:bg-slate-800"
+                    >
+                      {c.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="flex gap-2 pt-2 sm:pt-3 pb-safe">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setPagarItem(null)}
-                  className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  loading={pagarConta.isPending}
-                  className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                >
-                  <CheckCircle2 className="h-5 w-5" />
-                  Confirmar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </SheetContent>
-      </Sheet>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPagarItem(null)}
+                className="h-12 rounded-xl flex-1 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                loading={pagarConta.isPending}
+                className="h-12 rounded-xl flex-1 gap-2 font-semibold text-sm bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+              >
+                <CheckCircle2 className="h-5 w-5" />
+                Confirmar
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

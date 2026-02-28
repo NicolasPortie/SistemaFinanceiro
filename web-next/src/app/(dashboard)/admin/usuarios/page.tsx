@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -749,7 +749,7 @@ export default function AdminUsuariosPage() {
                     className={cn(
                       "h-9 w-9 p-0 rounded-lg text-xs",
                       safePage === p &&
-                        "bg-emerald-500 hover:bg-emerald-600 border-emerald-500 shadow shadow-emerald-500/20"
+                      "bg-emerald-500 hover:bg-emerald-600 border-emerald-500 shadow shadow-emerald-500/20"
                     )}
                     onClick={() => setCurrentPage(p as number)}
                   >
@@ -805,7 +805,7 @@ export default function AdminUsuariosPage() {
               }}
               className={cn(
                 confirmAction?.variant === "destructive" &&
-                  "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                "bg-destructive text-destructive-foreground hover:bg-destructive/90"
               )}
             >
               Confirmar
@@ -835,14 +835,13 @@ function UserDetailDialog({
   const u = detalhe ?? usuario;
 
   return (
-    <Sheet open={!!usuario} onOpenChange={onClose}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l border-border/40"
+    <Dialog open={!!usuario} onOpenChange={onClose}>
+      <DialogContent
+        className="sm:max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0"
       >
         {/* Header */}
         <div className="relative bg-linear-to-br from-emerald-600/10 via-emerald-500/5 to-transparent border-b border-border/40 px-6 pt-12 pb-5">
-          <SheetTitle className="sr-only">Perfil de {u?.nome}</SheetTitle>
+          <DialogTitle className="sr-only">Perfil de {u?.nome}</DialogTitle>
           <div className="flex items-start gap-4">
             <div
               className={cn(
@@ -965,22 +964,22 @@ function UserDetailDialog({
                     },
                     ...(u?.acessoExpiraEm
                       ? [
-                          {
-                            label: "Acesso expira em",
-                            value: (
-                              <span
-                                className={cn(
-                                  "font-semibold text-sm",
-                                  new Date(u.acessoExpiraEm) < new Date()
-                                    ? "text-red-500"
-                                    : "text-amber-500"
-                                )}
-                              >
-                                {formatDate(u.acessoExpiraEm)}
-                              </span>
-                            ),
-                          },
-                        ]
+                        {
+                          label: "Acesso expira em",
+                          value: (
+                            <span
+                              className={cn(
+                                "font-semibold text-sm",
+                                new Date(u.acessoExpiraEm) < new Date()
+                                  ? "text-red-500"
+                                  : "text-amber-500"
+                              )}
+                            >
+                              {formatDate(u.acessoExpiraEm)}
+                            </span>
+                          ),
+                        },
+                      ]
                       : []),
                   ].map((row, i) => (
                     <div
@@ -1007,8 +1006,8 @@ function UserDetailDialog({
             Fechar
           </Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1045,19 +1044,18 @@ function ExtenderAcessoDialog({
   const novaExpiracao = new Date(baseData.getTime() + dias * 86400_000);
 
   return (
-    <Sheet open={!!usuario} onOpenChange={onClose}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l border-border/40"
+    <Dialog open={!!usuario} onOpenChange={onClose}>
+      <DialogContent
+        className="sm:max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0"
       >
-        <SheetHeader className="px-6 py-5 border-b border-border/40 pt-12">
-          <SheetTitle className="flex items-center gap-2.5">
+        <DialogHeader className="px-6 py-5 border-b border-border/40 pt-12">
+          <DialogTitle className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <ShieldCheck className="h-4 w-4" />
             </div>
             Estender Acesso
-          </SheetTitle>
-        </SheetHeader>
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6">
           <div className="space-y-4 py-6">
@@ -1142,7 +1140,7 @@ function ExtenderAcessoDialog({
           </div>
         </div>
 
-        <SheetFooter className="px-6 py-4 border-t border-border/40 bg-muted/10 flex-col sm:flex-row gap-2 sm:justify-end mt-auto">
+        <DialogFooter className="px-6 py-4 border-t border-border/40 bg-muted/10 flex-col sm:flex-row gap-2 sm:justify-end mt-auto">
           <Button variant="outline" onClick={onClose} className="rounded-xl">
             Cancelar
           </Button>
@@ -1155,8 +1153,8 @@ function ExtenderAcessoDialog({
             <ShieldCheck className="h-4 w-4" />
             Estender Acesso
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

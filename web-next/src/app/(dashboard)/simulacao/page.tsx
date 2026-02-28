@@ -271,21 +271,19 @@ export default function ConsultorFinanceiroPage() {
         </div>
         <div className="flex gap-2 bg-white/50 dark:bg-slate-800/40 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/30">
           <button
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              tab === "nova"
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === "nova"
                 ? "bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white border border-slate-100 dark:border-slate-600"
                 : "text-slate-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50 hover:text-slate-800 dark:hover:text-white"
-            }`}
+              }`}
             onClick={() => setTab("nova")}
           >
             Nova Análise
           </button>
           <button
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === "historico"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === "historico"
                 ? "bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white border border-slate-100 dark:border-slate-600"
                 : "text-slate-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50 hover:text-slate-800 dark:hover:text-white"
-            }`}
+              }`}
             onClick={() => {
               setTab("historico");
               carregarHistorico();
@@ -386,9 +384,8 @@ export default function ConsultorFinanceiroPage() {
                           </span>
                           <CurrencyInput
                             placeholder="0,00"
-                            className={`w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-lg font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all ${
-                              rapidaForm.formState.errors.valor ? "border-red-500" : ""
-                            }`}
+                            className={`w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-lg font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all ${rapidaForm.formState.errors.valor ? "border-red-500" : ""
+                              }`}
                             value={rapidaForm.watch("valor")}
                             onValueChange={(v) =>
                               rapidaForm.setValue("valor", v, {
@@ -419,17 +416,21 @@ export default function ConsultorFinanceiroPage() {
                         <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
                           Categoria
                         </label>
-                        <select
-                          className="w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all text-slate-700 dark:text-slate-300 cursor-pointer"
-                          {...rapidaForm.register("categoria")}
+                        <Select
+                          value={rapidaForm.watch("categoria") || ""}
+                          onValueChange={(v) => rapidaForm.setValue("categoria", v)}
                         >
-                          <option value="">Selecione (opcional)</option>
-                          {categorias.map((c) => (
-                            <option key={c.id} value={c.nome}>
-                              {c.nome}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger className="h-11 rounded-xl bg-white/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                            <SelectValue placeholder="Selecione (opcional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categorias.map((c) => (
+                              <SelectItem key={c.id} value={c.nome}>
+                                {c.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className="bg-slate-50/50 dark:bg-slate-800/30 rounded-xl p-4 border border-slate-100 dark:border-slate-700/50">
@@ -493,9 +494,8 @@ export default function ConsultorFinanceiroPage() {
                           O que você quer comprar?
                         </label>
                         <input
-                          className={`w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400 dark:text-white ${
-                            projecaoForm.formState.errors.descricao ? "border-red-500" : ""
-                          }`}
+                          className={`w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400 dark:text-white ${projecaoForm.formState.errors.descricao ? "border-red-500" : ""
+                            }`}
                           placeholder="Ex: iPhone 16, Cadeira Ergonômica..."
                           {...projecaoForm.register("descricao")}
                         />
@@ -516,9 +516,8 @@ export default function ConsultorFinanceiroPage() {
                           </span>
                           <CurrencyInput
                             placeholder="0,00"
-                            className={`w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-lg font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all ${
-                              projecaoForm.formState.errors.valor ? "border-red-500" : ""
-                            }`}
+                            className={`w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-lg font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all ${projecaoForm.formState.errors.valor ? "border-red-500" : ""
+                              }`}
                             value={projecaoForm.watch("valor")}
                             onValueChange={(v) =>
                               projecaoForm.setValue("valor", v, {
@@ -543,11 +542,10 @@ export default function ConsultorFinanceiroPage() {
                             <button
                               key={pm.value}
                               type="button"
-                              className={`flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                                formaPagamento === pm.value
+                              className={`flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${formaPagamento === pm.value
                                   ? "bg-emerald-600/10 text-emerald-600 border-2 border-emerald-600/30 shadow-md shadow-emerald-500/5"
                                   : "bg-white/40 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-700/40 border border-slate-200/60 dark:border-slate-700/40"
-                              }`}
+                                }`}
                               onClick={() => {
                                 projecaoForm.setValue(
                                   "formaPagamento",
@@ -580,11 +578,10 @@ export default function ConsultorFinanceiroPage() {
                                   <button
                                     key={p}
                                     type="button"
-                                    className={`h-9 min-w-11 px-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-                                      parcelas === p
+                                    className={`h-9 min-w-11 px-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${parcelas === p
                                         ? "bg-emerald-600 text-white shadow-sm"
                                         : "bg-white/40 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-700/40 border border-slate-200/60 dark:border-slate-700/40"
-                                    }`}
+                                      }`}
                                     onClick={() => projecaoForm.setValue("parcelas", p)}
                                   >
                                     {p}x
@@ -1618,11 +1615,10 @@ function ProjecaoResult({
                           {m.impactoCompra > 0 ? `-${formatCurrency(m.impactoCompra)}` : "-"}
                         </td>
                         <td
-                          className={`py-2.5 px-5 text-right font-bold tabular-nums ${
-                            m.saldoComCompra < 0
+                          className={`py-2.5 px-5 text-right font-bold tabular-nums ${m.saldoComCompra < 0
                               ? "text-red-600 dark:text-red-400"
                               : "text-emerald-600 dark:text-emerald-400"
-                          }`}
+                            }`}
                         >
                           {formatCurrency(m.saldoComCompra)}
                         </td>

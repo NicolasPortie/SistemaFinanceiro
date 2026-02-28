@@ -29,12 +29,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { ErrorState } from "@/components/shared/page-components";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ── Helpers ───────────────────────────────────────────────
 
@@ -132,7 +133,7 @@ export default function ContasBancariasPage() {
   const atualizarConta = useAtualizarContaBancaria();
   const desativarConta = useDesativarContaBancaria();
 
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm);
@@ -151,13 +152,13 @@ export default function ContasBancariasPage() {
   function openCreate() {
     setEditingId(null);
     setForm(defaultForm);
-    setSheetOpen(true);
+    setDialogOpen(true);
   }
 
   function openEdit(c: ContaBancaria) {
     setEditingId(c.id);
     setForm({ nome: c.nome, tipo: c.tipo, saldo: c.saldo.toFixed(2).replace(".", ",") });
-    setSheetOpen(true);
+    setDialogOpen(true);
   }
 
   // ── Submit ─────────────────────────────────────────────
@@ -173,7 +174,7 @@ export default function ContasBancariasPage() {
     } else {
       await criarConta.mutateAsync({ nome: form.nome, tipo: form.tipo, saldo });
     }
-    setSheetOpen(false);
+    setDialogOpen(false);
     setForm(defaultForm);
     setEditingId(null);
   }
@@ -191,15 +192,23 @@ export default function ContasBancariasPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Landmark className="h-6 w-6 text-emerald-600" />
-            Contas Bancárias
-          </h1>
-          <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-            Gerencie suas contas e carteiras
-          </p>
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-panel rounded-2xl p-4 lg:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      >
+        <div className="flex items-center gap-3">
+          <div className="size-10 flex items-center justify-center bg-emerald-600/10 rounded-xl">
+            <Landmark className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div>
+            <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
+              Contas Bancárias
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Gerencie suas contas e carteiras
+            </p>
+          </div>
         </div>
         <Button
           onClick={openCreate}
@@ -208,51 +217,69 @@ export default function ContasBancariasPage() {
           <Plus className="h-4 w-4" />
           Nova Conta
         </Button>
-      </div>
+      </motion.div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="glass-panel rounded-2xl p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0 }}
+          className="glass-panel rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+        >
+          <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 relative z-10">
             Saldo Total
           </p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1 tabular-nums">
+          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1 tabular-nums relative z-10">
             {isLoading ? "—" : formatCurrency(stats.totalSaldo)}
           </p>
-          <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1">
+          <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1 relative z-10">
             em {stats.totalContas} conta{stats.totalContas !== 1 ? "s" : ""}
           </p>
-        </div>
+        </motion.div>
 
-        <div className="glass-panel rounded-2xl p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="glass-panel rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+        >
+          <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 relative z-10">
             Contas Ativas
           </p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1 relative z-10">
             {isLoading ? "—" : stats.totalContas}
           </p>
-          <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1">
+          <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1 relative z-10">
             registradas no sistema
           </p>
-        </div>
+        </motion.div>
 
-        <div className="glass-panel rounded-2xl p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="glass-panel rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+        >
+          <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 relative z-10">
             Maior Saldo
           </p>
           {isLoading || !stats.maiorSaldo ? (
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">—</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1 relative z-10">—</p>
           ) : (
             <>
-              <p className="text-[15px] font-bold text-slate-900 dark:text-white mt-1 truncate">
+              <p className="text-[15px] font-bold text-slate-900 dark:text-white mt-1 truncate relative z-10">
                 {stats.maiorSaldo.nome}
               </p>
-              <p className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums">
+              <p className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums relative z-10">
                 {formatCurrency(stats.maiorSaldo.saldo)}
               </p>
             </>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {/* Table */}
@@ -414,32 +441,31 @@ export default function ContasBancariasPage() {
         )}
       </div>
 
-      {/* Sheet: criar / editar */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
-          {/* Top accent bar */}
-          <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
+      {/* Dialog: criar / editar */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
 
-          <SheetHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+
+          <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
                 <Landmark className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-lg sm:text-xl font-semibold">
+                <DialogTitle className="text-lg sm:text-xl font-semibold">
                   {editingId ? "Editar Conta" : "Nova Conta Bancária"}
-                </SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5">
                   {editingId
                     ? "Atualize os dados da sua conta bancária."
                     : "Adicione uma conta bancária ou carteira"}
-                </SheetDescription>
+                </DialogDescription>
               </div>
             </div>
-          </SheetHeader>
+          </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain">
-            <form onSubmit={handleSubmit} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+          <div>
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               {/* Main fields card */}
               <div className="space-y-4 rounded-2xl border border-emerald-600/8 dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
                 {/* Nome */}
@@ -536,8 +562,8 @@ export default function ContasBancariasPage() {
               </div>
             </form>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog: desativar */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
