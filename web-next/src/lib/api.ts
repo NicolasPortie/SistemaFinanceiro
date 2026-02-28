@@ -230,7 +230,13 @@ export interface CriarLancamentoRequest {
 
 // ── Contas Bancárias ──────────────────────────────────────
 
-export type TipoContaBancaria = 'Corrente' | 'Poupanca' | 'Investimento' | 'Digital' | 'Carteira' | 'Outro';
+export type TipoContaBancaria =
+  | "Corrente"
+  | "Poupanca"
+  | "Investimento"
+  | "Digital"
+  | "Carteira"
+  | "Outro";
 
 export interface ContaBancaria {
   id: number;
@@ -298,7 +304,7 @@ export interface AtualizarPerfilRequest {
 
 // ── Lembretes / Contas Fixas ───────────────────────────────
 
-export type FrequenciaLembrete = 'Semanal' | 'Quinzenal' | 'Mensal' | 'Anual';
+export type FrequenciaLembrete = "Semanal" | "Quinzenal" | "Mensal" | "Anual";
 
 export interface LembretePagamento {
   id: number;
@@ -357,7 +363,7 @@ export interface PagarContaFixaRequest {
   valorPago?: number;
   contaBancariaId?: number;
   dataPagamento?: string; // "yyyy-MM-dd"
-  periodKey?: string;     // "YYYY-MM"
+  periodKey?: string; // "YYYY-MM"
 }
 
 export interface PagamentoCicloResult {
@@ -600,7 +606,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       }
     }
 
-    throw new Error(errorData?.mensagem || errorData?.erro || errorData?.message || `Erro ${res.status}`);
+    throw new Error(
+      errorData?.mensagem || errorData?.erro || errorData?.message || `Erro ${res.status}`
+    );
   }
 
   const text = await res.text();
@@ -627,7 +635,10 @@ export const api = {
       request<AuthResponse>("/auth/verificar-registro", { method: "POST", body: data }),
 
     reenviarCodigoRegistro: (data: { email: string }) =>
-      request<RegistroPendenteResponse>("/auth/reenviar-codigo-registro", { method: "POST", body: data }),
+      request<RegistroPendenteResponse>("/auth/reenviar-codigo-registro", {
+        method: "POST",
+        body: data,
+      }),
 
     login: (data: { email: string; senha: string }) =>
       request<AuthResponse>("/auth/login", { method: "POST", body: data }),
@@ -650,8 +661,7 @@ export const api = {
         method: "POST",
       }),
 
-    excluirConta: () =>
-      request("/auth/conta", { method: "DELETE" }),
+    excluirConta: () => request("/auth/conta", { method: "DELETE" }),
   },
 
   lancamentos: {
@@ -688,8 +698,7 @@ export const api = {
     atualizar: (id: number, data: AtualizarLancamentoRequest) =>
       request(`/lancamentos/${id}`, { method: "PUT", body: data }),
 
-    remover: (id: number) =>
-      request(`/lancamentos/${id}`, { method: "DELETE" }),
+    remover: (id: number) => request(`/lancamentos/${id}`, { method: "DELETE" }),
 
     removerEmMassa: (ids: number[]) =>
       request("/lancamentos/em-massa", { method: "DELETE", body: ids }),
@@ -701,8 +710,7 @@ export const api = {
       request<Categoria>("/categorias", { method: "POST", body: data }),
     atualizar: (id: number, data: { nome: string }) =>
       request<Categoria>(`/categorias/${id}`, { method: "PUT", body: data }),
-    remover: (id: number) =>
-      request(`/categorias/${id}`, { method: "DELETE" }),
+    remover: (id: number) => request(`/categorias/${id}`, { method: "DELETE" }),
   },
 
   cartoes: {
@@ -711,15 +719,19 @@ export const api = {
       request("/cartoes", { method: "POST", body: data }),
     atualizar: (id: number, data: AtualizarCartaoRequest) =>
       request(`/cartoes/${id}`, { method: "PUT", body: data }),
-    desativar: (id: number) =>
-      request(`/cartoes/${id}`, { method: "DELETE" }),
+    desativar: (id: number) => request(`/cartoes/${id}`, { method: "DELETE" }),
     adicionarLimiteExtra: (id: number, data: { valorAdicional: number; percentualExtra: number }) =>
       request(`/cartoes/${id}/limite-extra`, { method: "POST", body: data }),
     faturas: (cartaoId: number, mes?: string) =>
-      request<FaturaResumo[]>(`/cartoes/${cartaoId}/fatura${mes ? `?mes=${mes}` : ''}`),
+      request<FaturaResumo[]>(`/cartoes/${cartaoId}/fatura${mes ? `?mes=${mes}` : ""}`),
 
     resgatarLimiteExtra: (id: number, data: { valorResgate: number; percentualBonus: number }) =>
-      request<{ mensagem: string; novoLimite: number; valorResgatado: number; novoSaldoDisponivel: number }>(`/cartoes/${id}/resgatar-limite`, { method: "POST", body: data }),
+      request<{
+        mensagem: string;
+        novoLimite: number;
+        valorResgatado: number;
+        novoSaldoDisponivel: number;
+      }>(`/cartoes/${id}/resgatar-limite`, { method: "POST", body: data }),
   },
 
   previsao: {
@@ -757,15 +769,15 @@ export const api = {
 
   lembretes: {
     listar: (apenasAtivos?: boolean) =>
-      request<LembretePagamento[]>(`/lembretes${apenasAtivos === false ? "?apenasAtivos=false" : ""}`),
-    obter: (id: number) =>
-      request<LembretePagamento>(`/lembretes/${id}`),
+      request<LembretePagamento[]>(
+        `/lembretes${apenasAtivos === false ? "?apenasAtivos=false" : ""}`
+      ),
+    obter: (id: number) => request<LembretePagamento>(`/lembretes/${id}`),
     criar: (data: CriarLembreteRequest) =>
       request<LembretePagamento>("/lembretes", { method: "POST", body: data }),
     atualizar: (id: number, data: AtualizarLembreteRequest) =>
       request<LembretePagamento>(`/lembretes/${id}`, { method: "PUT", body: data }),
-    desativar: (id: number) =>
-      request(`/lembretes/${id}`, { method: "DELETE" }),
+    desativar: (id: number) => request(`/lembretes/${id}`, { method: "DELETE" }),
     pagar: (id: number, data: PagarContaFixaRequest) =>
       request<PagamentoCicloResult>(`/lembretes/${id}/pagar`, { method: "POST", body: data }),
   },
@@ -776,8 +788,7 @@ export const api = {
       request<ContaBancaria>("/contas-bancarias", { method: "POST", body: data }),
     atualizar: (id: number, data: AtualizarContaBancariaRequest) =>
       request<ContaBancaria>(`/contas-bancarias/${id}`, { method: "PUT", body: data }),
-    desativar: (id: number) =>
-      request(`/contas-bancarias/${id}`, { method: "DELETE" }),
+    desativar: (id: number) => request(`/contas-bancarias/${id}`, { method: "DELETE" }),
   },
 
   decisao: {
@@ -809,13 +820,19 @@ export const api = {
       rebaixar: (id: number) =>
         request<{ message: string }>(`/admin/usuarios/${id}/rebaixar`, { method: "POST" }),
       estenderAcesso: (id: number, dias: number) =>
-        request<{ message: string; novaExpiracao: string }>(`/admin/usuarios/${id}/estender-acesso`, { method: "POST", body: { dias } }),
+        request<{ message: string; novaExpiracao: string }>(
+          `/admin/usuarios/${id}/estender-acesso`,
+          { method: "POST", body: { dias } }
+        ),
     },
 
     convites: {
       listar: () => request<AdminCodigoConvite[]>("/admin/convites"),
       criar: async (data: CriarConviteRequest) => {
-        const result = await request<AdminCodigoConvite | AdminCodigoConvite[]>("/admin/convites", { method: "POST", body: data });
+        const result = await request<AdminCodigoConvite | AdminCodigoConvite[]>("/admin/convites", {
+          method: "POST",
+          body: data,
+        });
         return Array.isArray(result) ? result : [result];
       },
       remover: (id: number) =>
@@ -825,7 +842,9 @@ export const api = {
     seguranca: {
       resumo: () => request<AdminSegurancaResumo>("/admin/seguranca"),
       revogarSessao: (tokenId: number) =>
-        request<{ message: string }>(`/admin/seguranca/sessoes/${tokenId}/revogar`, { method: "POST" }),
+        request<{ message: string }>(`/admin/seguranca/sessoes/${tokenId}/revogar`, {
+          method: "POST",
+        }),
       revogarTodas: () =>
         request<{ message: string }>("/admin/seguranca/sessoes/revogar-todas", { method: "POST" }),
     },
@@ -865,8 +884,6 @@ export interface AdminUsuario {
   totalCartoes: number;
   totalMetas: number;
 }
-
-
 
 export interface AdminUsuarioDetalhe extends AdminUsuario {
   sessoesAtivas: number;

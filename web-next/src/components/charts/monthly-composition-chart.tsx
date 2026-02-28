@@ -2,15 +2,7 @@
 
 import { formatCurrency, formatMonth } from "@/lib/format";
 import type { SimulacaoMes } from "@/lib/api";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface MonthlyCompositionChartProps {
   data: SimulacaoMes[];
@@ -63,18 +55,8 @@ export function MonthlyCompositionChart({ data }: MonthlyCompositionChartProps) 
           iconType="circle"
           iconSize={8}
         />
-        <Bar
-          dataKey="Receita"
-          fill="#10b981"
-          radius={[6, 6, 0, 0]}
-          maxBarSize={32}
-        />
-        <Bar
-          dataKey="Despesas"
-          fill="#ef4444"
-          radius={[6, 6, 0, 0]}
-          maxBarSize={32}
-        />
+        <Bar dataKey="Receita" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={32} />
+        <Bar dataKey="Despesas" fill="#ef4444" radius={[6, 6, 0, 0]} maxBarSize={32} />
       </BarChart>
     </ResponsiveContainer>
   );

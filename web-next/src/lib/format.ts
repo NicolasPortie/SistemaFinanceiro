@@ -52,10 +52,14 @@ export function getInitials(name: string): string {
 
 export function formatFormaPagamento(forma: string): string {
   switch (forma?.toLowerCase()) {
-    case "pix": return "PIX";
-    case "debito": return "Débito";
-    case "credito": return "Crédito";
-    default: return forma || "—";
+    case "pix":
+      return "PIX";
+    case "debito":
+      return "Débito";
+    case "credito":
+      return "Crédito";
+    default:
+      return forma || "—";
   }
 }
 

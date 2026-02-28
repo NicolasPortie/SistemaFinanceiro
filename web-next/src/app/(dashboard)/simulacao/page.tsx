@@ -90,7 +90,7 @@ const parcelasOpcoes = [1, 2, 3, 4, 6, 8, 10, 12];
 /* ────────────────────────────────────────────── */
 
 function isDecisaoRapida(
-  result: DecisaoGastoResult | DecisaoCompletaResult,
+  result: DecisaoGastoResult | DecisaoCompletaResult
 ): result is DecisaoGastoResult {
   return "podeGastar" in result;
 }
@@ -103,8 +103,7 @@ function parecerConfig(parecer: string) {
         color: "text-emerald-600 dark:text-emerald-400",
         bg: "bg-emerald-50 dark:bg-emerald-950/30",
         border: "border-emerald-200 dark:border-emerald-800",
-        badgeCls:
-          "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300",
+        badgeCls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300",
         label: "Pode gastar",
         heroGradient: "from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/20",
         heroIcon: "text-emerald-500",
@@ -115,8 +114,7 @@ function parecerConfig(parecer: string) {
         color: "text-amber-600 dark:text-amber-400",
         bg: "bg-amber-50 dark:bg-amber-950/30",
         border: "border-amber-200 dark:border-amber-800",
-        badgeCls:
-          "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
+        badgeCls: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
         label: "Com cautela",
         heroGradient: "from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/20",
         heroIcon: "text-yellow-500",
@@ -127,8 +125,7 @@ function parecerConfig(parecer: string) {
         color: "text-red-600 dark:text-red-400",
         bg: "bg-red-50 dark:bg-red-950/30",
         border: "border-red-200 dark:border-red-800",
-        badgeCls:
-          "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
+        badgeCls: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
         label: "Melhor segurar",
         heroGradient: "from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/20",
         heroIcon: "text-red-500",
@@ -185,7 +182,9 @@ export default function ConsultorFinanceiroPage() {
   const [mode, setMode] = useState<AnalysisMode>("rapida");
   const [tab, setTab] = useState<"nova" | "historico">("nova");
   const [resultadoSimulacao, setResultadoSimulacao] = useState<SimulacaoResultado | null>(null);
-  const [resultadoDecisao, setResultadoDecisao] = useState<DecisaoGastoResult | DecisaoCompletaResult | null>(null);
+  const [resultadoDecisao, setResultadoDecisao] = useState<
+    DecisaoGastoResult | DecisaoCompletaResult | null
+  >(null);
   const [showMeses, setShowMeses] = useState(false);
 
   /* ── forms ── */
@@ -219,7 +218,7 @@ export default function ConsultorFinanceiroPage() {
         parcelado: data.parcelado,
         parcelas: data.parcelado ? parseInt(data.parcelas || "1") || 1 : 1,
       },
-      { onSuccess: (res) => setResultadoDecisao(res) },
+      { onSuccess: (res) => setResultadoDecisao(res) }
     );
   };
 
@@ -552,10 +551,9 @@ export default function ConsultorFinanceiroPage() {
                               onClick={() => {
                                 projecaoForm.setValue(
                                   "formaPagamento",
-                                  pm.value as "pix" | "debito" | "credito",
+                                  pm.value as "pix" | "debito" | "credito"
                                 );
-                                if (pm.value !== "credito")
-                                  projecaoForm.setValue("parcelas", 1);
+                                if (pm.value !== "credito") projecaoForm.setValue("parcelas", 1);
                               }}
                             >
                               <pm.icon className="h-4 w-4" />
@@ -639,19 +637,21 @@ export default function ConsultorFinanceiroPage() {
               {/* ── Sidebar summary below form (sticky) ── */}
               <AnimatePresence>
                 {/* Projeção sidebar: budget summary */}
-                {resultadoSimulacao && mode === "projecao" && resultadoSimulacao.meses?.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="glass-panel p-5 rounded-2xl lg:sticky lg:top-6"
-                  >
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
-                      Resumo da Projeção
-                    </h4>
-                    <BalanceLineChart data={resultadoSimulacao.meses} />
-                  </motion.div>
-                )}
+                {resultadoSimulacao &&
+                  mode === "projecao" &&
+                  resultadoSimulacao.meses?.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="glass-panel p-5 rounded-2xl lg:sticky lg:top-6"
+                    >
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
+                        Resumo da Projeção
+                      </h4>
+                      <BalanceLineChart data={resultadoSimulacao.meses} />
+                    </motion.div>
+                  )}
 
                 {/* Rápida sidebar: budget donut */}
                 {resultadoDecisao && mode === "rapida" && isDecisaoRapida(resultadoDecisao) && (
@@ -743,17 +743,49 @@ export default function ConsultorFinanceiroPage() {
                       <div className="grid gap-2">
                         {mode === "rapida" ? (
                           <>
-                            <HowItWorksStep n={1} title="Orçamento" desc="Verifica se o valor cabe no seu saldo livre do mês" />
-                            <HowItWorksStep n={2} title="Histórico" desc="Compara com sua média de gastos dos últimos 3 meses" />
-                            <HowItWorksStep n={3} title="Tendência" desc="Analisa se seus gastos estão subindo ou caindo" />
-                            <HowItWorksStep n={4} title="Saúde Financeira" desc="Gera um score de 0 a 100 avaliando sua situação geral" />
+                            <HowItWorksStep
+                              n={1}
+                              title="Orçamento"
+                              desc="Verifica se o valor cabe no seu saldo livre do mês"
+                            />
+                            <HowItWorksStep
+                              n={2}
+                              title="Histórico"
+                              desc="Compara com sua média de gastos dos últimos 3 meses"
+                            />
+                            <HowItWorksStep
+                              n={3}
+                              title="Tendência"
+                              desc="Analisa se seus gastos estão subindo ou caindo"
+                            />
+                            <HowItWorksStep
+                              n={4}
+                              title="Saúde Financeira"
+                              desc="Gera um score de 0 a 100 avaliando sua situação geral"
+                            />
                           </>
                         ) : (
                           <>
-                            <HowItWorksStep n={1} title="Projeção 12 meses" desc="Simula mês a mês como fica seu saldo com a compra" />
-                            <HowItWorksStep n={2} title="Sazonalidade" desc="Considera gastos sazonais (IPVA, material escolar, etc.)" />
-                            <HowItWorksStep n={3} title="Impacto em metas" desc="Mostra se a compra atrasa suas metas financeiras" />
-                            <HowItWorksStep n={4} title="Cenários" desc="Sugere parcelamentos com risco menor" />
+                            <HowItWorksStep
+                              n={1}
+                              title="Projeção 12 meses"
+                              desc="Simula mês a mês como fica seu saldo com a compra"
+                            />
+                            <HowItWorksStep
+                              n={2}
+                              title="Sazonalidade"
+                              desc="Considera gastos sazonais (IPVA, material escolar, etc.)"
+                            />
+                            <HowItWorksStep
+                              n={3}
+                              title="Impacto em metas"
+                              desc="Mostra se a compra atrasa suas metas financeiras"
+                            />
+                            <HowItWorksStep
+                              n={4}
+                              title="Cenários"
+                              desc="Sugere parcelamentos com risco menor"
+                            />
                           </>
                         )}
                       </div>
@@ -839,9 +871,7 @@ export default function ConsultorFinanceiroPage() {
                           <td className="p-4 text-slate-600 dark:text-slate-300 tabular-nums">
                             {formatCurrency(h.folgaMensalMedia)}
                           </td>
-                          <td className="p-4 text-slate-500 dark:text-slate-400">
-                            {h.piorMes}
-                          </td>
+                          <td className="p-4 text-slate-500 dark:text-slate-400">{h.piorMes}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -884,10 +914,8 @@ function HowItWorksStep({ n, title, desc }: { n: number; title: string; desc: st
 }
 
 function ScoreGauge({ score }: { score: number }) {
-  const color =
-    score >= 70 ? "text-emerald-500" : score >= 40 ? "text-amber-500" : "text-red-500";
-  const bgColor =
-    score >= 70 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-red-500";
+  const color = score >= 70 ? "text-emerald-500" : score >= 40 ? "text-amber-500" : "text-red-500";
+  const bgColor = score >= 70 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-red-500";
   const label = score >= 70 ? "Saudável" : score >= 40 ? "Atenção" : "Crítico";
 
   return (
@@ -895,17 +923,28 @@ function ScoreGauge({ score }: { score: number }) {
       <div className="relative h-10 w-10">
         <svg className="h-10 w-10 -rotate-90" viewBox="0 0 36 36">
           <circle
-            cx="18" cy="18" r="14" fill="none" stroke="currentColor" strokeWidth="3"
+            cx="18"
+            cy="18"
+            r="14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
             className="text-slate-200 dark:text-slate-700"
           />
           <circle
-            cx="18" cy="18" r="14" fill="none" strokeWidth="3"
+            cx="18"
+            cy="18"
+            r="14"
+            fill="none"
+            strokeWidth="3"
             strokeDasharray={`${(score / 100) * 88} 88`}
             strokeLinecap="round"
             className={color}
           />
         </svg>
-        <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${color}`}>
+        <span
+          className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${color}`}
+        >
           {score}
         </span>
       </div>
@@ -922,19 +961,11 @@ function ScoreGauge({ score }: { score: number }) {
 
 /* ── Resultado Rápido ── */
 
-function RapidaResult({
-  data,
-  onReset,
-}: {
-  data: DecisaoGastoResult;
-  onReset: () => void;
-}) {
+function RapidaResult({ data, onReset }: { data: DecisaoGastoResult; onReset: () => void }) {
   const [layersOpen, setLayersOpen] = useState(false);
   const config = parecerConfig(data.parecer);
   const percentualUsado =
-    data.receitaPrevistoMes > 0
-      ? (data.gastoAcumuladoMes / data.receitaPrevistoMes) * 100
-      : 0;
+    data.receitaPrevistoMes > 0 ? (data.gastoAcumuladoMes / data.receitaPrevistoMes) * 100 : 0;
 
   return (
     <>
@@ -994,29 +1025,51 @@ function RapidaResult({
           {/* Key metrics row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Gastos no mês</p>
-              <p className="text-sm font-bold text-slate-800 dark:text-white">{formatCurrency(data.gastoAcumuladoMes)}</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500">de {formatCurrency(data.receitaPrevistoMes)}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                Gastos no mês
+              </p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white">
+                {formatCurrency(data.gastoAcumuladoMes)}
+              </p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                de {formatCurrency(data.receitaPrevistoMes)}
+              </p>
             </div>
             <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Disponível</p>
-              <p className="text-sm font-bold text-slate-800 dark:text-white">{formatCurrency(data.saldoLivreMes)}</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500">para {data.diasRestantesMes} dias</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                Disponível
+              </p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white">
+                {formatCurrency(data.saldoLivreMes)}
+              </p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                para {data.diasRestantesMes} dias
+              </p>
             </div>
             {data.variacaoVsMediaHistorica != null && data.variacaoVsMediaHistorica !== 0 && (
               <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Vs média</p>
-                <p className={`text-sm font-bold ${data.variacaoVsMediaHistorica > 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                  {data.variacaoVsMediaHistorica > 0 ? "+" : ""}{data.variacaoVsMediaHistorica.toFixed(1)}%
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                  Vs média
+                </p>
+                <p
+                  className={`text-sm font-bold ${data.variacaoVsMediaHistorica > 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}
+                >
+                  {data.variacaoVsMediaHistorica > 0 ? "+" : ""}
+                  {data.variacaoVsMediaHistorica.toFixed(1)}%
                 </p>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500">últimos 3 meses</p>
               </div>
             )}
             {data.parecer === "cautela" && data.diasRestantesMes > 0 && (
               <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Estimativa/dia</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                  Estimativa/dia
+                </p>
                 <p className="text-sm font-bold text-slate-800 dark:text-white">
-                  ~{formatCurrency((data.saldoLivreMes - data.valorCompra) / Math.max(1, data.diasRestantesMes))}
+                  ~
+                  {formatCurrency(
+                    (data.saldoLivreMes - data.valorCompra) / Math.max(1, data.diasRestantesMes)
+                  )}
                 </p>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500">após a compra</p>
               </div>
@@ -1024,20 +1077,27 @@ function RapidaResult({
           </div>
 
           {/* Impact on goals (inline summary) */}
-          {data.impactoMetas && data.impactoMetas.some(m => m.mesesAtraso > 0) && (
+          {data.impactoMetas && data.impactoMetas.some((m) => m.mesesAtraso > 0) && (
             <div className="flex items-start gap-2 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 px-3 py-2">
               <Target className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Impacto em metas</p>
-                {data.impactoMetas.filter(m => m.mesesAtraso > 0).map(meta => (
-                  <p key={meta.nomeMeta} className="text-xs text-slate-600 dark:text-slate-300">
-                    <span className="font-medium">{meta.nomeMeta}</span>
-                    {" — atrasa ~"}{meta.mesesAtraso} {meta.mesesAtraso === 1 ? "mês" : "meses"}
-                    <span className="text-slate-400 dark:text-slate-500">
-                      {" "}(de {formatCurrency(meta.valorMensalNecessarioAntes)}/mês para {formatCurrency(meta.valorMensalNecessarioDepois)}/mês)
-                    </span>
-                  </p>
-                ))}
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  Impacto em metas
+                </p>
+                {data.impactoMetas
+                  .filter((m) => m.mesesAtraso > 0)
+                  .map((meta) => (
+                    <p key={meta.nomeMeta} className="text-xs text-slate-600 dark:text-slate-300">
+                      <span className="font-medium">{meta.nomeMeta}</span>
+                      {" — atrasa ~"}
+                      {meta.mesesAtraso} {meta.mesesAtraso === 1 ? "mês" : "meses"}
+                      <span className="text-slate-400 dark:text-slate-500">
+                        {" "}
+                        (de {formatCurrency(meta.valorMensalNecessarioAntes)}/mês para{" "}
+                        {formatCurrency(meta.valorMensalNecessarioDepois)}/mês)
+                      </span>
+                    </p>
+                  ))}
               </div>
             </div>
           )}
@@ -1145,9 +1205,7 @@ function RapidaResult({
                             <span className="text-sm font-semibold text-slate-800 dark:text-white">
                               {camadaLabelMap[camada.camada] ?? camada.camada}
                             </span>
-                            <Badge
-                              className={`text-[10px] px-1.5 py-0 ${layerConfig.badgeCls}`}
-                            >
+                            <Badge className={`text-[10px] px-1.5 py-0 ${layerConfig.badgeCls}`}>
                               {layerConfig.label}
                             </Badge>
                           </div>
@@ -1225,13 +1283,7 @@ function RapidaResult({
 
 /* ── Resultado Completo (IA text) ── */
 
-function CompletaResult({
-  data,
-  onReset,
-}: {
-  data: DecisaoCompletaResult;
-  onReset: () => void;
-}) {
+function CompletaResult({ data, onReset }: { data: DecisaoCompletaResult; onReset: () => void }) {
   return (
     <div className="glass-panel p-6 rounded-2xl">
       <div className="flex items-center justify-between mb-4">
@@ -1285,9 +1337,7 @@ function ProjecaoResult({
             Veredito IA
           </span>
           <div className="flex items-center gap-2 mb-1">
-            <span className={riskColor(data.risco).badge}>
-              {riskIcon(data.risco)}
-            </span>
+            <span className={riskColor(data.risco).badge}>{riskIcon(data.risco)}</span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white">
               {data.risco}
             </h2>
@@ -1307,33 +1357,56 @@ function ProjecaoResult({
 
           {/* Recommendation as structured paragraphs */}
           <div className="space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
-            {data.recomendacao.split(/\n+/).filter(Boolean).map((line, i) => (
-              <p key={i} className="leading-relaxed">{line.trim()}</p>
-            ))}
+            {data.recomendacao
+              .split(/\n+/)
+              .filter(Boolean)
+              .map((line, i) => (
+                <p key={i} className="leading-relaxed">
+                  {line.trim()}
+                </p>
+              ))}
           </div>
 
           {/* Key projection metrics inline */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
             <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Pior mês</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                Pior mês
+              </p>
               <p className="text-sm font-bold text-slate-800 dark:text-white">{data.piorMes}</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500">saldo: {formatCurrency(data.menorSaldoProjetado)}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                saldo: {formatCurrency(data.menorSaldoProjetado)}
+              </p>
             </div>
             <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Folga média</p>
-              <p className={`text-sm font-bold ${data.folgaMensalMedia >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                Folga média
+              </p>
+              <p
+                className={`text-sm font-bold ${data.folgaMensalMedia >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+              >
                 {formatCurrency(data.folgaMensalMedia)}
               </p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500">{data.folgaMensalMedia >= 0 ? "positiva" : "negativa"}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                {data.folgaMensalMedia >= 0 ? "positiva" : "negativa"}
+              </p>
             </div>
             {data.scoreSaudeFinanceira != null && (
               <div className="rounded-xl bg-slate-50/80 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/40 px-3 py-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">Saúde</p>
-                <p className={`text-sm font-bold ${data.scoreSaudeFinanceira >= 70 ? "text-emerald-600 dark:text-emerald-400" : data.scoreSaudeFinanceira >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                  Saúde
+                </p>
+                <p
+                  className={`text-sm font-bold ${data.scoreSaudeFinanceira >= 70 ? "text-emerald-600 dark:text-emerald-400" : data.scoreSaudeFinanceira >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}
+                >
                   {data.scoreSaudeFinanceira}/100
                 </p>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                  {data.scoreSaudeFinanceira >= 70 ? "saudável" : data.scoreSaudeFinanceira >= 40 ? "atenção" : "crítico"}
+                  {data.scoreSaudeFinanceira >= 70
+                    ? "saudável"
+                    : data.scoreSaudeFinanceira >= 40
+                      ? "atenção"
+                      : "crítico"}
                 </p>
               </div>
             )}
@@ -1635,8 +1708,8 @@ function ProjecaoResult({
         <Activity className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
           <strong className="text-slate-700 dark:text-slate-300">Dica:</strong> Quanto mais
-          lançamentos você cadastrar, mais precisa fica a simulação. As projeções usam dados reais
-          e consideram sazonalidades detectadas automaticamente.
+          lançamentos você cadastrar, mais precisa fica a simulação. As projeções usam dados reais e
+          consideram sazonalidades detectadas automaticamente.
         </p>
       </div>
     </>
@@ -1676,7 +1749,9 @@ function MetricCard({
 
   return (
     <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden group hover:shadow-lg transition-all">
-      <div className={`absolute right-0 top-0 w-24 h-24 ${bgCorner} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`} />
+      <div
+        className={`absolute right-0 top-0 w-24 h-24 ${bgCorner} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`}
+      />
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">

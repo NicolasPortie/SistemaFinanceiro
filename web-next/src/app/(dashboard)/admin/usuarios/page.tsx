@@ -35,13 +35,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,8 +62,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 // ── Helpers ────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
-  "bg-indigo-500", "bg-violet-500", "bg-emerald-500", "bg-blue-500",
-  "bg-rose-500", "bg-amber-600", "bg-cyan-500", "bg-pink-500", "bg-teal-500",
+  "bg-indigo-500",
+  "bg-violet-500",
+  "bg-emerald-500",
+  "bg-blue-500",
+  "bg-rose-500",
+  "bg-amber-600",
+  "bg-cyan-500",
+  "bg-pink-500",
+  "bg-teal-500",
 ];
 
 function getAvatarColor(id: number) {
@@ -154,7 +155,12 @@ export default function AdminUsuariosPage() {
     onConfirm: () => void;
   } | null>(null);
 
-  const { data: usuarios, isLoading, isError, error } = useQuery({
+  const {
+    data: usuarios,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["admin", "usuarios"],
     queryFn: () => api.admin.usuarios.listar(),
   });
@@ -167,15 +173,37 @@ export default function AdminUsuariosPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const bloquear = useMutation({ mutationFn: (id: number) => api.admin.usuarios.bloquear(id), ...mutationOpts("Usuário bloqueado") });
-  const desbloquear = useMutation({ mutationFn: (id: number) => api.admin.usuarios.desbloquear(id), ...mutationOpts("Usuário desbloqueado") });
-  const desativar = useMutation({ mutationFn: (id: number) => api.admin.usuarios.desativar(id), ...mutationOpts("Status da conta alterado") });
-  const resetarLogin = useMutation({ mutationFn: (id: number) => api.admin.usuarios.resetarLogin(id), ...mutationOpts("Tentativas de login zeradas") });
-  const revogarSessoes = useMutation({ mutationFn: (id: number) => api.admin.usuarios.revogarSessoes(id), ...mutationOpts("Sessões encerradas — usuário precisará fazer login novamente") });
-  const promover = useMutation({ mutationFn: (id: number) => api.admin.usuarios.promover(id), ...mutationOpts("Usuário promovido a administrador") });
-  const rebaixar = useMutation({ mutationFn: (id: number) => api.admin.usuarios.rebaixar(id), ...mutationOpts("Permissão de admin removida") });
+  const bloquear = useMutation({
+    mutationFn: (id: number) => api.admin.usuarios.bloquear(id),
+    ...mutationOpts("Usuário bloqueado"),
+  });
+  const desbloquear = useMutation({
+    mutationFn: (id: number) => api.admin.usuarios.desbloquear(id),
+    ...mutationOpts("Usuário desbloqueado"),
+  });
+  const desativar = useMutation({
+    mutationFn: (id: number) => api.admin.usuarios.desativar(id),
+    ...mutationOpts("Status da conta alterado"),
+  });
+  const resetarLogin = useMutation({
+    mutationFn: (id: number) => api.admin.usuarios.resetarLogin(id),
+    ...mutationOpts("Tentativas de login zeradas"),
+  });
+  const revogarSessoes = useMutation({
+    mutationFn: (id: number) => api.admin.usuarios.revogarSessoes(id),
+    ...mutationOpts("Sessões encerradas — usuário precisará fazer login novamente"),
+  });
+  const promover = useMutation({
+    mutationFn: (id: number) => api.admin.usuarios.promover(id),
+    ...mutationOpts("Usuário promovido a administrador"),
+  });
+  const rebaixar = useMutation({
+    mutationFn: (id: number) => api.admin.usuarios.rebaixar(id),
+    ...mutationOpts("Permissão de admin removida"),
+  });
   const estenderAcesso = useMutation({
-    mutationFn: ({ id, dias }: { id: number; dias: number }) => api.admin.usuarios.estenderAcesso(id, dias),
+    mutationFn: ({ id, dias }: { id: number; dias: number }) =>
+      api.admin.usuarios.estenderAcesso(id, dias),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "usuarios"] });
       toast.success(`Acesso estendido! Novo prazo: ${formatDate(data.novaExpiracao)}`);
@@ -187,8 +215,12 @@ export default function AdminUsuariosPage() {
 
   const isSelf = (u: AdminUsuario) => u.id === currentUser?.id;
 
-  const confirm = (label: string, description: string, onConfirm: () => void, variant: "destructive" | "default" = "default") =>
-    setConfirmAction({ label, description, onConfirm, variant });
+  const confirm = (
+    label: string,
+    description: string,
+    onConfirm: () => void,
+    variant: "destructive" | "default" = "default"
+  ) => setConfirmAction({ label, description, onConfirm, variant });
 
   // ── Computed stats ─────────────────────────────────────
   const admins = usuarios?.filter((u) => u.role === "Admin").length ?? 0;
@@ -207,7 +239,7 @@ export default function AdminUsuariosPage() {
       (u) =>
         u.nome.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
-        String(u.id).includes(q),
+        String(u.id).includes(q)
     );
   }, [usuarios, searchQuery]);
 
@@ -243,7 +275,9 @@ export default function AdminUsuariosPage() {
       <PageShell>
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
-          <p className="text-sm text-muted-foreground mt-1">Visualize e gerencie todas as contas da plataforma</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Visualize e gerencie todas as contas da plataforma
+          </p>
         </div>
         <CardSkeleton count={4} />
       </PageShell>
@@ -256,7 +290,10 @@ export default function AdminUsuariosPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
         </div>
-        <ErrorState message={error?.message} onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "usuarios"] })} />
+        <ErrorState
+          message={error?.message}
+          onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "usuarios"] })}
+        />
       </PageShell>
     );
   }
@@ -268,43 +305,43 @@ export default function AdminUsuariosPage() {
   return (
     <PageShell>
       {/* Title */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
-      >
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
-        <p className="text-sm text-muted-foreground mt-1">Visualize e gerencie todas as contas da plataforma</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Visualize e gerencie todas as contas da plataforma
+        </p>
       </motion.div>
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-7">
-        {([
-          {
-            label: "Total de Usuários",
-            value: total,
-            icon: Users,
-            color: "text-emerald-500",
-            bg: "bg-emerald-500/10",
-            gradient: "from-emerald-500/5",
-          },
-          {
-            label: "Administradores",
-            value: admins,
-            icon: Crown,
-            color: "text-purple-400",
-            bg: "bg-purple-500/10",
-            gradient: "from-purple-500/5",
-          },
-          {
-            label: "Novos (últimos 7 dias)",
-            value: novos7d,
-            icon: UserPlus,
-            color: "text-sky-400",
-            bg: "bg-sky-500/10",
-            gradient: "from-sky-400/5",
-          },
-        ] as const).map((card, i) => (
+        {(
+          [
+            {
+              label: "Total de Usuários",
+              value: total,
+              icon: Users,
+              color: "text-emerald-500",
+              bg: "bg-emerald-500/10",
+              gradient: "from-emerald-500/5",
+            },
+            {
+              label: "Administradores",
+              value: admins,
+              icon: Crown,
+              color: "text-purple-400",
+              bg: "bg-purple-500/10",
+              gradient: "from-purple-500/5",
+            },
+            {
+              label: "Novos (últimos 7 dias)",
+              value: novos7d,
+              icon: UserPlus,
+              color: "text-sky-400",
+              bg: "bg-sky-500/10",
+              gradient: "from-sky-400/5",
+            },
+          ] as const
+        ).map((card, i) => (
           <motion.div
             key={card.label}
             initial={{ opacity: 0, y: 14 }}
@@ -313,18 +350,31 @@ export default function AdminUsuariosPage() {
             whileHover={{ y: -2 }}
             className="bg-card rounded-2xl p-6 border border-border/60 shadow-sm relative overflow-hidden"
           >
-            <div className={cn("absolute right-0 top-0 h-full w-24 bg-linear-to-l to-transparent pointer-events-none", card.gradient)} />
+            <div
+              className={cn(
+                "absolute right-0 top-0 h-full w-24 bg-linear-to-l to-transparent pointer-events-none",
+                card.gradient
+              )}
+            />
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-                <h3 className="text-3xl font-bold mt-1 tabular-nums">{card.value.toLocaleString("pt-BR")}</h3>
+                <h3 className="text-3xl font-bold mt-1 tabular-nums">
+                  {card.value.toLocaleString("pt-BR")}
+                </h3>
               </div>
               <div className={cn("p-3 rounded-xl", card.bg)}>
                 <card.icon className={cn("h-5 w-5", card.color)} />
               </div>
             </div>
             <div className="flex items-center text-sm">
-              <span className={cn("font-medium flex items-center px-2 py-0.5 rounded mr-2 text-xs", card.bg, card.color)}>
+              <span
+                className={cn(
+                  "font-medium flex items-center px-2 py-0.5 rounded mr-2 text-xs",
+                  card.bg,
+                  card.color
+                )}
+              >
                 <TrendingUp className="h-3 w-3 mr-1" />
                 dados reais
               </span>
@@ -398,16 +448,18 @@ export default function AdminUsuariosPage() {
                     transition={{ delay: i * 0.025 }}
                     className={cn(
                       "group transition-colors hover:bg-emerald-500/3",
-                      !u.ativo && "opacity-60",
+                      !u.ativo && "opacity-60"
                     )}
                   >
                     {/* Nome */}
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-xs",
-                          getAvatarColor(u.id),
-                        )}>
+                        <div
+                          className={cn(
+                            "shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-xs",
+                            getAvatarColor(u.id)
+                          )}
+                        >
                           {getInitials(u.nome)}
                         </div>
                         <div>
@@ -436,26 +488,32 @@ export default function AdminUsuariosPage() {
                     </td>
 
                     {/* Role */}
-                    <td className="px-4 py-4">
-                      {getRoleBadge(u.role)}
-                    </td>
+                    <td className="px-4 py-4">{getRoleBadge(u.role)}</td>
 
                     {/* Status */}
                     <td className="px-4 py-4">
                       {getStatusBadge(u)}
                       {u.tentativasLoginFalhadas > 0 && (
-                        <p className="text-[10px] text-amber-500 mt-1">{u.tentativasLoginFalhadas}× senha errada</p>
+                        <p className="text-[10px] text-amber-500 mt-1">
+                          {u.tentativasLoginFalhadas}× senha errada
+                        </p>
                       )}
                     </td>
 
                     {/* Cadastro */}
                     <td className="px-4 py-4">
-                      <p className="text-sm text-muted-foreground whitespace-nowrap">{formatDate(u.criadoEm)}</p>
+                      <p className="text-sm text-muted-foreground whitespace-nowrap">
+                        {formatDate(u.criadoEm)}
+                      </p>
                       {u.acessoExpiraEm && (
-                        <p className={cn(
-                          "text-xs mt-0.5 flex items-center gap-1 whitespace-nowrap",
-                          new Date(u.acessoExpiraEm) < new Date() ? "text-red-500" : "text-muted-foreground/60",
-                        )}>
+                        <p
+                          className={cn(
+                            "text-xs mt-0.5 flex items-center gap-1 whitespace-nowrap",
+                            new Date(u.acessoExpiraEm) < new Date()
+                              ? "text-red-500"
+                              : "text-muted-foreground/60"
+                          )}
+                        >
                           <CalendarClock className="h-3 w-3" />
                           {new Date(u.acessoExpiraEm) < new Date() ? "Expirou " : "Expira "}
                           {formatDate(u.acessoExpiraEm)}
@@ -486,19 +544,23 @@ export default function AdminUsuariosPage() {
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-64 rounded-xl p-1.5 shadow-lg border border-border/80">
-
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-64 rounded-xl p-1.5 shadow-lg border border-border/80"
+                            >
                               <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-2 pb-0.5 pt-1">
                                 Permissão
                               </DropdownMenuLabel>
                               {u.role === "Admin" ? (
                                 <DropdownMenuItem
                                   className="gap-2.5 rounded-lg text-amber-600 dark:text-amber-500 focus:text-amber-600 dark:focus:text-amber-500 cursor-pointer"
-                                  onClick={() => confirm(
-                                    `Remover admin de ${u.nome}?`,
-                                    "O usuário perderá acesso ao painel administrativo e voltará a ser um usuário comum.",
-                                    () => rebaixar.mutate(u.id),
-                                  )}
+                                  onClick={() =>
+                                    confirm(
+                                      `Remover admin de ${u.nome}?`,
+                                      "O usuário perderá acesso ao painel administrativo e voltará a ser um usuário comum.",
+                                      () => rebaixar.mutate(u.id)
+                                    )
+                                  }
                                 >
                                   <ShieldOff className="h-4 w-4" />
                                   Remover permissão de Admin
@@ -506,11 +568,13 @@ export default function AdminUsuariosPage() {
                               ) : (
                                 <DropdownMenuItem
                                   className="gap-2.5 rounded-lg cursor-pointer"
-                                  onClick={() => confirm(
-                                    `Tornar ${u.nome} administrador?`,
-                                    "O usuário passará a ter acesso completo ao painel de administração.",
-                                    () => promover.mutate(u.id),
-                                  )}
+                                  onClick={() =>
+                                    confirm(
+                                      `Tornar ${u.nome} administrador?`,
+                                      "O usuário passará a ter acesso completo ao painel de administração.",
+                                      () => promover.mutate(u.id)
+                                    )
+                                  }
                                 >
                                   <Crown className="h-4 w-4" />
                                   Tornar Administrador
@@ -524,12 +588,17 @@ export default function AdminUsuariosPage() {
                               </DropdownMenuLabel>
                               <DropdownMenuItem
                                 className="gap-2.5 rounded-lg text-emerald-600 dark:text-emerald-500 focus:text-emerald-600 dark:focus:text-emerald-500 cursor-pointer"
-                                onClick={() => { setExtendTarget(u); setExtendDias(30); }}
+                                onClick={() => {
+                                  setExtendTarget(u);
+                                  setExtendDias(30);
+                                }}
                               >
                                 <ShieldCheck className="h-4 w-4" />
                                 Estender Acesso
                                 {u.acessoExpiraEm && new Date(u.acessoExpiraEm) < new Date() && (
-                                  <span className="ml-auto text-[10px] text-red-500 font-semibold">expirado</span>
+                                  <span className="ml-auto text-[10px] text-red-500 font-semibold">
+                                    expirado
+                                  </span>
                                 )}
                               </DropdownMenuItem>
 
@@ -541,12 +610,14 @@ export default function AdminUsuariosPage() {
                               {u.ativo ? (
                                 <DropdownMenuItem
                                   className="gap-2.5 rounded-lg text-muted-foreground cursor-pointer"
-                                  onClick={() => confirm(
-                                    `Desativar a conta de ${u.nome}?`,
-                                    "A conta será desabilitada. O usuário não conseguirá fazer login até ser reativado manualmente por um admin.",
-                                    () => desativar.mutate(u.id),
-                                    "destructive",
-                                  )}
+                                  onClick={() =>
+                                    confirm(
+                                      `Desativar a conta de ${u.nome}?`,
+                                      "A conta será desabilitada. O usuário não conseguirá fazer login até ser reativado manualmente por um admin.",
+                                      () => desativar.mutate(u.id),
+                                      "destructive"
+                                    )
+                                  }
                                 >
                                   <UserX className="h-4 w-4" />
                                   Desativar conta
@@ -580,12 +651,14 @@ export default function AdminUsuariosPage() {
                               {!isBloqueado(u) && u.role !== "Admin" && (
                                 <DropdownMenuItem
                                   className="gap-2.5 rounded-lg cursor-pointer"
-                                  onClick={() => confirm(
-                                    `Bloquear ${u.nome} temporariamente?`,
-                                    "O usuário ficará impedido de fazer login por um período. Use para casos de atividade suspeita.",
-                                    () => bloquear.mutate(u.id),
-                                    "destructive",
-                                  )}
+                                  onClick={() =>
+                                    confirm(
+                                      `Bloquear ${u.nome} temporariamente?`,
+                                      "O usuário ficará impedido de fazer login por um período. Use para casos de atividade suspeita.",
+                                      () => bloquear.mutate(u.id),
+                                      "destructive"
+                                    )
+                                  }
                                 >
                                   <Ban className="h-4 w-4" />
                                   Bloquear temporariamente
@@ -604,16 +677,17 @@ export default function AdminUsuariosPage() {
 
                               <DropdownMenuItem
                                 className="gap-2.5 rounded-lg text-emerald-600 dark:text-emerald-500 focus:text-emerald-600 dark:focus:text-emerald-500 cursor-pointer"
-                                onClick={() => confirm(
-                                  `Encerrar sessões de ${u.nome}?`,
-                                  "O usuário será deslogado de todos os dispositivos e precisará fazer login novamente.",
-                                  () => revogarSessoes.mutate(u.id),
-                                )}
+                                onClick={() =>
+                                  confirm(
+                                    `Encerrar sessões de ${u.nome}?`,
+                                    "O usuário será deslogado de todos os dispositivos e precisará fazer login novamente.",
+                                    () => revogarSessoes.mutate(u.id)
+                                  )
+                                }
                               >
                                 <LogOut className="h-4 w-4" />
                                 Encerrar sessões (deslogar)
                               </DropdownMenuItem>
-
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
@@ -628,7 +702,9 @@ export default function AdminUsuariosPage() {
                   <td colSpan={7} className="px-4 py-14 text-center">
                     <Users className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">
-                      {searchQuery ? "Nenhum usuário corresponde à busca." : "Nenhum usuário encontrado."}
+                      {searchQuery
+                        ? "Nenhum usuário corresponde à busca."
+                        : "Nenhum usuário encontrado."}
                     </p>
                   </td>
                 </tr>
@@ -641,8 +717,7 @@ export default function AdminUsuariosPage() {
         {filtered.length > 0 && (
           <div className="border-t border-border/40 px-4 py-4 flex items-center justify-between gap-2 flex-wrap">
             <p className="text-sm text-muted-foreground hidden sm:block">
-              Mostrando{" "}
-              <span className="font-semibold text-foreground">{startItem}</span>
+              Mostrando <span className="font-semibold text-foreground">{startItem}</span>
               {" – "}
               <span className="font-semibold text-foreground">{endItem}</span>
               {" de "}
@@ -663,7 +738,9 @@ export default function AdminUsuariosPage() {
 
               {getPageNumbers().map((p, idx) =>
                 p === "..." ? (
-                  <span key={`dots-${idx}`} className="px-2 text-muted-foreground text-sm">...</span>
+                  <span key={`dots-${idx}`} className="px-2 text-muted-foreground text-sm">
+                    ...
+                  </span>
                 ) : (
                   <Button
                     key={p}
@@ -671,13 +748,14 @@ export default function AdminUsuariosPage() {
                     size="sm"
                     className={cn(
                       "h-9 w-9 p-0 rounded-lg text-xs",
-                      safePage === p && "bg-emerald-500 hover:bg-emerald-600 border-emerald-500 shadow shadow-emerald-500/20",
+                      safePage === p &&
+                        "bg-emerald-500 hover:bg-emerald-600 border-emerald-500 shadow shadow-emerald-500/20"
                     )}
                     onClick={() => setCurrentPage(p as number)}
                   >
                     {p}
                   </Button>
-                ),
+                )
               )}
 
               <Button
@@ -703,8 +781,13 @@ export default function AdminUsuariosPage() {
         dias={extendDias}
         onDiasChange={setExtendDias}
         isPending={estenderAcesso.isPending}
-        onConfirm={() => extendTarget && estenderAcesso.mutate({ id: extendTarget.id, dias: extendDias })}
-        onClose={() => { setExtendTarget(null); setExtendDias(30); }}
+        onConfirm={() =>
+          extendTarget && estenderAcesso.mutate({ id: extendTarget.id, dias: extendDias })
+        }
+        onClose={() => {
+          setExtendTarget(null);
+          setExtendDias(30);
+        }}
       />
 
       <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
@@ -716,8 +799,14 @@ export default function AdminUsuariosPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { confirmAction?.onConfirm(); setConfirmAction(null); }}
-              className={cn(confirmAction?.variant === "destructive" && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+              onClick={() => {
+                confirmAction?.onConfirm();
+                setConfirmAction(null);
+              }}
+              className={cn(
+                confirmAction?.variant === "destructive" &&
+                  "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              )}
             >
               Confirmar
             </AlertDialogAction>
@@ -730,7 +819,13 @@ export default function AdminUsuariosPage() {
 
 // ── UserDetailDialog ───────────────────────────────────────
 
-function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; onClose: () => void }) {
+function UserDetailDialog({
+  usuario,
+  onClose,
+}: {
+  usuario: AdminUsuario | null;
+  onClose: () => void;
+}) {
   const { data: detalhe, isLoading } = useQuery({
     queryKey: ["admin", "usuarios", usuario?.id],
     queryFn: () => api.admin.usuarios.detalhe(usuario!.id),
@@ -741,15 +836,20 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
 
   return (
     <Sheet open={!!usuario} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l border-border/40">
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l border-border/40"
+      >
         {/* Header */}
         <div className="relative bg-linear-to-br from-emerald-600/10 via-emerald-500/5 to-transparent border-b border-border/40 px-6 pt-12 pb-5">
           <SheetTitle className="sr-only">Perfil de {u?.nome}</SheetTitle>
           <div className="flex items-start gap-4">
-            <div className={cn(
-              "h-14 w-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-lg",
-              u ? getAvatarColor(u.id) : "bg-muted"
-            )}>
+            <div
+              className={cn(
+                "h-14 w-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-lg",
+                u ? getAvatarColor(u.id) : "bg-muted"
+              )}
+            >
               {u ? getInitials(u.nome) : "?"}
             </div>
             <div className="flex-1 min-w-0">
@@ -770,23 +870,50 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
           <div className="space-y-4 pb-10">
             {isLoading && !detalhe ? (
               <div className="space-y-3">
-                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
               </div>
             ) : (
               <>
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: "Lançamentos", value: u?.totalLancamentos ?? 0, Icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-600" },
-                    { label: "Cartões", value: u?.totalCartoes ?? 0, Icon: CreditCard, color: "bg-blue-500/10 text-blue-600" },
-                    { label: "Metas", value: u?.totalMetas ?? 0, Icon: Target, color: "bg-violet-500/10 text-violet-600" },
+                    {
+                      label: "Lançamentos",
+                      value: u?.totalLancamentos ?? 0,
+                      Icon: TrendingUp,
+                      color: "bg-emerald-500/10 text-emerald-600",
+                    },
+                    {
+                      label: "Cartões",
+                      value: u?.totalCartoes ?? 0,
+                      Icon: CreditCard,
+                      color: "bg-blue-500/10 text-blue-600",
+                    },
+                    {
+                      label: "Metas",
+                      value: u?.totalMetas ?? 0,
+                      Icon: Target,
+                      color: "bg-violet-500/10 text-violet-600",
+                    },
                   ].map((s) => (
-                    <div key={s.label} className="rounded-xl border border-border/40 bg-muted/20 p-3 flex flex-col items-center gap-1.5">
-                      <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", s.color)}>
+                    <div
+                      key={s.label}
+                      className="rounded-xl border border-border/40 bg-muted/20 p-3 flex flex-col items-center gap-1.5"
+                    >
+                      <div
+                        className={cn(
+                          "h-8 w-8 rounded-lg flex items-center justify-center",
+                          s.color
+                        )}
+                      >
                         <s.Icon className="h-4 w-4" />
                       </div>
                       <p className="text-xl font-bold tabular-nums">{s.value}</p>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">{s.label}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
+                        {s.label}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -798,14 +925,18 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
                     {
                       label: "Sessões ativas",
                       value: (
-                        <span className={cn(
-                          "inline-flex items-center gap-1 font-semibold",
-                          (detalhe?.sessoesAtivas ?? 0) > 0 ? "text-emerald-600" : "text-muted-foreground"
-                        )}>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 font-semibold",
+                            (detalhe?.sessoesAtivas ?? 0) > 0
+                              ? "text-emerald-600"
+                              : "text-muted-foreground"
+                          )}
+                        >
                           <Shield className="h-3.5 w-3.5" />
                           {detalhe?.sessoesAtivas ?? 0}
                         </span>
-                      )
+                      ),
                     },
                     {
                       label: "Telegram",
@@ -815,36 +946,53 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
                         </span>
                       ) : (
                         <span className="text-muted-foreground">Não vinculado</span>
-                      )
+                      ),
                     },
                     {
                       label: "Tentativas de login falhadas",
                       value: (
-                        <span className={cn(
-                          "font-semibold",
-                          (u?.tentativasLoginFalhadas ?? 0) > 0 ? "text-amber-500" : "text-muted-foreground"
-                        )}>
+                        <span
+                          className={cn(
+                            "font-semibold",
+                            (u?.tentativasLoginFalhadas ?? 0) > 0
+                              ? "text-amber-500"
+                              : "text-muted-foreground"
+                          )}
+                        >
                           {u?.tentativasLoginFalhadas ?? 0}×
                         </span>
-                      )
+                      ),
                     },
-                    ...(u?.acessoExpiraEm ? [{
-                      label: "Acesso expira em",
-                      value: (
-                        <span className={cn(
-                          "font-semibold text-sm",
-                          new Date(u.acessoExpiraEm) < new Date() ? "text-red-500" : "text-amber-500"
-                        )}>
-                          {formatDate(u.acessoExpiraEm)}
-                        </span>
-                      )
-                    }] : []),
+                    ...(u?.acessoExpiraEm
+                      ? [
+                          {
+                            label: "Acesso expira em",
+                            value: (
+                              <span
+                                className={cn(
+                                  "font-semibold text-sm",
+                                  new Date(u.acessoExpiraEm) < new Date()
+                                    ? "text-red-500"
+                                    : "text-amber-500"
+                                )}
+                              >
+                                {formatDate(u.acessoExpiraEm)}
+                              </span>
+                            ),
+                          },
+                        ]
+                      : []),
                   ].map((row, i) => (
-                    <div key={i} className={cn(
-                      "flex items-center justify-between px-4 py-3 text-sm",
-                      i > 0 && "border-t border-border/40"
-                    )}>
-                      <span className="text-[11px] uppercase tracking-wider text-muted-foreground/60 font-semibold">{row.label}</span>
+                    <div
+                      key={i}
+                      className={cn(
+                        "flex items-center justify-between px-4 py-3 text-sm",
+                        i > 0 && "border-t border-border/40"
+                      )}
+                    >
+                      <span className="text-[11px] uppercase tracking-wider text-muted-foreground/60 font-semibold">
+                        {row.label}
+                      </span>
                       <span className="text-sm font-semibold">{row.value}</span>
                     </div>
                   ))}
@@ -855,7 +1003,9 @@ function UserDetailDialog({ usuario, onClose }: { usuario: AdminUsuario | null; 
         </div>
 
         <div className="border-t border-border/40 px-6 py-4 flex justify-end bg-muted/10 mt-auto">
-          <Button variant="outline" onClick={onClose} className="rounded-xl">Fechar</Button>
+          <Button variant="outline" onClick={onClose} className="rounded-xl">
+            Fechar
+          </Button>
         </div>
       </SheetContent>
     </Sheet>
@@ -896,7 +1046,10 @@ function ExtenderAcessoDialog({
 
   return (
     <Sheet open={!!usuario} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l border-border/40">
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l border-border/40"
+      >
         <SheetHeader className="px-6 py-5 border-b border-border/40 pt-12">
           <SheetTitle className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -914,17 +1067,26 @@ function ExtenderAcessoDialog({
               <div className="flex items-center gap-1.5 text-[11px] mt-1">
                 <CalendarClock className="h-3.5 w-3.5 text-muted-foreground/50" />
                 {expiraAtual ? (
-                  <span className={cn(estaExpirado ? "text-red-500 font-semibold" : "text-muted-foreground/70")}>
-                    Acesso atual: {estaExpirado ? "expirou em" : "expira em"} {formatDate(usuario!.acessoExpiraEm!)}
+                  <span
+                    className={cn(
+                      estaExpirado ? "text-red-500 font-semibold" : "text-muted-foreground/70"
+                    )}
+                  >
+                    Acesso atual: {estaExpirado ? "expirou em" : "expira em"}{" "}
+                    {formatDate(usuario!.acessoExpiraEm!)}
                   </span>
                 ) : (
-                  <span className="text-emerald-600 font-semibold">Acesso permanente (sem prazo definido)</span>
+                  <span className="text-emerald-600 font-semibold">
+                    Acesso permanente (sem prazo definido)
+                  </span>
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider">Dias a adicionar</p>
+              <p className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider">
+                Dias a adicionar
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {PRESETS_EXTEND.map((p) => (
                   <button
@@ -935,7 +1097,7 @@ function ExtenderAcessoDialog({
                       "px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all",
                       dias === p.value
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-background border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                        : "bg-background border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground"
                     )}
                   >
                     {p.label}
@@ -948,7 +1110,9 @@ function ExtenderAcessoDialog({
                   min={1}
                   max={3650}
                   value={dias}
-                  onChange={(e) => onDiasChange(Math.max(1, Math.min(3650, Number(e.target.value))))}
+                  onChange={(e) =>
+                    onDiasChange(Math.max(1, Math.min(3650, Number(e.target.value))))
+                  }
                   className="h-9 rounded-lg w-24 text-center font-semibold tabular-nums"
                 />
                 <span className="text-sm text-muted-foreground">dias</span>
@@ -958,7 +1122,11 @@ function ExtenderAcessoDialog({
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
               <p className="text-[11px] text-muted-foreground/60 mb-0.5">Nova data de expiração</p>
               <p className="font-bold text-primary">
-                {novaExpiracao.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+                {novaExpiracao.toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })}
               </p>
               {estaExpirado && (
                 <p className="text-[11px] text-amber-600 mt-1">
@@ -975,7 +1143,9 @@ function ExtenderAcessoDialog({
         </div>
 
         <SheetFooter className="px-6 py-4 border-t border-border/40 bg-muted/10 flex-col sm:flex-row gap-2 sm:justify-end mt-auto">
-          <Button variant="outline" onClick={onClose} className="rounded-xl">Cancelar</Button>
+          <Button variant="outline" onClick={onClose} className="rounded-xl">
+            Cancelar
+          </Button>
           <Button
             onClick={onConfirm}
             disabled={dias < 1}

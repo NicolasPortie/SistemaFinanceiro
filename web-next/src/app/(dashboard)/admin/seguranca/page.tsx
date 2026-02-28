@@ -36,8 +36,15 @@ import { cn } from "@/lib/utils";
 // ── Helpers ────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
-  "bg-indigo-500", "bg-violet-500", "bg-emerald-500", "bg-blue-500",
-  "bg-rose-500", "bg-amber-600", "bg-cyan-500", "bg-pink-500", "bg-teal-500",
+  "bg-indigo-500",
+  "bg-violet-500",
+  "bg-emerald-500",
+  "bg-blue-500",
+  "bg-rose-500",
+  "bg-amber-600",
+  "bg-cyan-500",
+  "bg-pink-500",
+  "bg-teal-500",
 ];
 
 function getAvatarColor(id: number) {
@@ -115,9 +122,7 @@ export default function AdminSegurancaPage() {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return sessoes;
     return sessoes.filter(
-      (s) =>
-        s.usuarioNome.toLowerCase().includes(q) ||
-        s.usuarioEmail.toLowerCase().includes(q),
+      (s) => s.usuarioNome.toLowerCase().includes(q) || s.usuarioEmail.toLowerCase().includes(q)
     );
   }, [data?.sessoes, searchQuery]);
 
@@ -153,7 +158,9 @@ export default function AdminSegurancaPage() {
       <PageShell>
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Segurança Global</h1>
-          <p className="text-sm text-muted-foreground mt-1">Monitore e gerencie as sessões ativas da plataforma</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Monitore e gerencie as sessões ativas da plataforma
+          </p>
         </div>
         <CardSkeleton count={3} />
       </PageShell>
@@ -166,7 +173,10 @@ export default function AdminSegurancaPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Segurança Global</h1>
         </div>
-        <ErrorState message={error?.message ?? "Erro ao carregar dados"} onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "seguranca"] })} />
+        <ErrorState
+          message={error?.message ?? "Erro ao carregar dados"}
+          onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "seguranca"] })}
+        />
       </PageShell>
     );
   }
@@ -177,49 +187,49 @@ export default function AdminSegurancaPage() {
   return (
     <PageShell>
       {/* Title */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
-      >
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <h1 className="text-2xl font-bold">Segurança Global</h1>
-        <p className="text-sm text-muted-foreground mt-1">Monitore e gerencie as sessões ativas da plataforma</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Monitore e gerencie as sessões ativas da plataforma
+        </p>
       </motion.div>
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-7">
-        {([
-          {
-            label: "Sessões Ativas",
-            value: data.sessoesAtivas,
-            icon: Monitor,
-            color: "text-emerald-500",
-            bg: "bg-emerald-500/10",
-            gradient: "from-emerald-500/5",
-            subtitle: "dados reais",
-            subtitleExtra: "em tempo real",
-          },
-          {
-            label: "Usuários Bloqueados",
-            value: data.usuariosBloqueados,
-            icon: ShieldAlert,
-            color: data.usuariosBloqueados > 0 ? "text-red-400" : "text-muted-foreground",
-            bg: data.usuariosBloqueados > 0 ? "bg-red-500/10" : "bg-muted/60",
-            gradient: data.usuariosBloqueados > 0 ? "from-red-500/5" : "from-muted/5",
-            subtitle: data.usuariosBloqueados > 0 ? "atenção" : "tudo certo",
-            subtitleExtra: "por excesso de tentativas",
-          },
-          {
-            label: "Tentativas Falhadas",
-            value: data.tentativasLoginFalhadas,
-            icon: Globe,
-            color: data.tentativasLoginFalhadas > 0 ? "text-amber-400" : "text-muted-foreground",
-            bg: data.tentativasLoginFalhadas > 0 ? "bg-amber-500/10" : "bg-muted/60",
-            gradient: data.tentativasLoginFalhadas > 0 ? "from-amber-500/5" : "from-muted/5",
-            subtitle: data.tentativasLoginFalhadas > 0 ? "monitorar" : "tudo certo",
-            subtitleExtra: "total acumulado",
-          },
-        ] as const).map((card, i) => (
+        {(
+          [
+            {
+              label: "Sessões Ativas",
+              value: data.sessoesAtivas,
+              icon: Monitor,
+              color: "text-emerald-500",
+              bg: "bg-emerald-500/10",
+              gradient: "from-emerald-500/5",
+              subtitle: "dados reais",
+              subtitleExtra: "em tempo real",
+            },
+            {
+              label: "Usuários Bloqueados",
+              value: data.usuariosBloqueados,
+              icon: ShieldAlert,
+              color: data.usuariosBloqueados > 0 ? "text-red-400" : "text-muted-foreground",
+              bg: data.usuariosBloqueados > 0 ? "bg-red-500/10" : "bg-muted/60",
+              gradient: data.usuariosBloqueados > 0 ? "from-red-500/5" : "from-muted/5",
+              subtitle: data.usuariosBloqueados > 0 ? "atenção" : "tudo certo",
+              subtitleExtra: "por excesso de tentativas",
+            },
+            {
+              label: "Tentativas Falhadas",
+              value: data.tentativasLoginFalhadas,
+              icon: Globe,
+              color: data.tentativasLoginFalhadas > 0 ? "text-amber-400" : "text-muted-foreground",
+              bg: data.tentativasLoginFalhadas > 0 ? "bg-amber-500/10" : "bg-muted/60",
+              gradient: data.tentativasLoginFalhadas > 0 ? "from-amber-500/5" : "from-muted/5",
+              subtitle: data.tentativasLoginFalhadas > 0 ? "monitorar" : "tudo certo",
+              subtitleExtra: "total acumulado",
+            },
+          ] as const
+        ).map((card, i) => (
           <motion.div
             key={card.label}
             initial={{ opacity: 0, y: 14 }}
@@ -228,18 +238,31 @@ export default function AdminSegurancaPage() {
             whileHover={{ y: -2 }}
             className="bg-card rounded-2xl p-6 border border-border/60 shadow-sm relative overflow-hidden"
           >
-            <div className={cn("absolute right-0 top-0 h-full w-24 bg-linear-to-l to-transparent pointer-events-none", card.gradient)} />
+            <div
+              className={cn(
+                "absolute right-0 top-0 h-full w-24 bg-linear-to-l to-transparent pointer-events-none",
+                card.gradient
+              )}
+            />
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-                <h3 className="text-3xl font-bold mt-1 tabular-nums">{card.value.toLocaleString("pt-BR")}</h3>
+                <h3 className="text-3xl font-bold mt-1 tabular-nums">
+                  {card.value.toLocaleString("pt-BR")}
+                </h3>
               </div>
               <div className={cn("p-3 rounded-xl", card.bg)}>
                 <card.icon className={cn("h-5 w-5", card.color)} />
               </div>
             </div>
             <div className="flex items-center text-sm">
-              <span className={cn("font-medium flex items-center px-2 py-0.5 rounded mr-2 text-xs", card.bg, card.color)}>
+              <span
+                className={cn(
+                  "font-medium flex items-center px-2 py-0.5 rounded mr-2 text-xs",
+                  card.bg,
+                  card.color
+                )}
+              >
                 <TrendingUp className="h-3 w-3 mr-1" />
                 {card.subtitle}
               </span>
@@ -270,9 +293,7 @@ export default function AdminSegurancaPage() {
         </div>
         <div className="flex items-center gap-3">
           <p className="text-sm text-muted-foreground whitespace-nowrap">
-            {filtered.length === 0
-              ? "Nenhum resultado"
-              : `${filtered.length} sessão(ões)`}
+            {filtered.length === 0 ? "Nenhum resultado" : `${filtered.length} sessão(ões)`}
           </p>
           {data.sessoesAtivas > 0 && (
             <Button
@@ -321,28 +342,34 @@ export default function AdminSegurancaPage() {
                       transition={{ delay: i * 0.025 }}
                       className={cn(
                         "group transition-colors hover:bg-emerald-500/3",
-                        expired && "opacity-60",
+                        expired && "opacity-60"
                       )}
                     >
                       {/* Usuário */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-xs",
-                            getAvatarColor(s.usuarioId),
-                          )}>
+                          <div
+                            className={cn(
+                              "shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-xs",
+                              getAvatarColor(s.usuarioId)
+                            )}
+                          >
                             {getInitials(s.usuarioNome)}
                           </div>
                           <div>
                             <p className="text-sm font-semibold leading-tight">{s.usuarioNome}</p>
-                            <p className="text-xs text-muted-foreground/60 mt-0.5">{s.usuarioEmail}</p>
+                            <p className="text-xs text-muted-foreground/60 mt-0.5">
+                              {s.usuarioEmail}
+                            </p>
                           </div>
                         </div>
                       </td>
 
                       {/* IP */}
                       <td className="px-6 py-4">
-                        <p className="text-xs text-muted-foreground font-mono">{s.ipCriacao || "—"}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {s.ipCriacao || "—"}
+                        </p>
                       </td>
 
                       {/* Data de Início */}
@@ -352,13 +379,17 @@ export default function AdminSegurancaPage() {
 
                       {/* Expira em */}
                       <td className="px-6 py-4">
-                        <p className={cn(
-                          "text-sm font-medium tabular-nums",
-                          expired ? "text-red-500" : "text-muted-foreground",
-                        )}>
+                        <p
+                          className={cn(
+                            "text-sm font-medium tabular-nums",
+                            expired ? "text-red-500" : "text-muted-foreground"
+                          )}
+                        >
                           {getTimeRemaining(s.expiraEm)}
                         </p>
-                        <p className="text-[11px] text-muted-foreground/50 mt-0.5">{formatDate(s.expiraEm)}</p>
+                        <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+                          {formatDate(s.expiraEm)}
+                        </p>
                       </td>
 
                       {/* Status */}
@@ -398,10 +429,14 @@ export default function AdminSegurancaPage() {
                   <td colSpan={6} className="px-6 py-14 text-center">
                     <Wifi className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">
-                      {searchQuery ? "Nenhuma sessão corresponde à busca." : "Nenhuma sessão ativa no momento."}
+                      {searchQuery
+                        ? "Nenhuma sessão corresponde à busca."
+                        : "Nenhuma sessão ativa no momento."}
                     </p>
                     <p className="text-xs text-muted-foreground/50 mt-1">
-                      {searchQuery ? "Tente outro termo de busca." : "Quando alguém fizer login, a sessão aparecerá aqui."}
+                      {searchQuery
+                        ? "Tente outro termo de busca."
+                        : "Quando alguém fizer login, a sessão aparecerá aqui."}
                     </p>
                   </td>
                 </tr>
@@ -414,13 +449,9 @@ export default function AdminSegurancaPage() {
         {filtered.length > 0 && (
           <div className="border-t border-border/40 px-6 py-4 flex items-center justify-between gap-2 flex-wrap">
             <p className="text-sm text-muted-foreground hidden sm:block">
-              Mostrando{" "}
-              <span className="font-semibold text-foreground">{startItem}</span>
-              {" "}a{" "}
-              <span className="font-semibold text-foreground">{endItem}</span>
-              {" "}de{" "}
-              <span className="font-semibold text-foreground">{filtered.length}</span>
-              {" "}sessões
+              Mostrando <span className="font-semibold text-foreground">{startItem}</span> a{" "}
+              <span className="font-semibold text-foreground">{endItem}</span> de{" "}
+              <span className="font-semibold text-foreground">{filtered.length}</span> sessões
             </p>
             <div className="flex items-center gap-1.5 flex-wrap">
               <Button
@@ -436,7 +467,9 @@ export default function AdminSegurancaPage() {
 
               {getPageNumbers().map((p, idx) =>
                 p === "..." ? (
-                  <span key={`dots-${idx}`} className="px-2 text-muted-foreground text-sm">...</span>
+                  <span key={`dots-${idx}`} className="px-2 text-muted-foreground text-sm">
+                    ...
+                  </span>
                 ) : (
                   <Button
                     key={p}
@@ -444,13 +477,14 @@ export default function AdminSegurancaPage() {
                     size="sm"
                     className={cn(
                       "h-9 w-9 p-0 rounded-lg text-xs",
-                      safePage === p && "bg-emerald-500 hover:bg-emerald-600 border-emerald-500 shadow shadow-emerald-500/20",
+                      safePage === p &&
+                        "bg-emerald-500 hover:bg-emerald-600 border-emerald-500 shadow shadow-emerald-500/20"
                     )}
                     onClick={() => setCurrentPage(p as number)}
                   >
                     {p}
                   </Button>
-                ),
+                )
               )}
 
               <Button
@@ -474,7 +508,8 @@ export default function AdminSegurancaPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Encerrar sessão de {revogarAlvo?.usuarioNome}?</AlertDialogTitle>
             <AlertDialogDescription>
-              O usuário será deslogado imediatamente e precisará fazer login novamente. Use isso se suspeitar que a conta está sendo acessada indevidamente.
+              O usuário será deslogado imediatamente e precisará fazer login novamente. Use isso se
+              suspeitar que a conta está sendo acessada indevidamente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -497,7 +532,9 @@ export default function AdminSegurancaPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Encerrar TODAS as sessões?</AlertDialogTitle>
             <AlertDialogDescription>
-              Isso vai deslogar <strong>todos os usuários</strong> do sistema, incluindo você. Todos precisarão fazer login novamente. Use somente em caso de emergência ou suspeita de acesso não autorizado.
+              Isso vai deslogar <strong>todos os usuários</strong> do sistema, incluindo você. Todos
+              precisarão fazer login novamente. Use somente em caso de emergência ou suspeita de
+              acesso não autorizado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

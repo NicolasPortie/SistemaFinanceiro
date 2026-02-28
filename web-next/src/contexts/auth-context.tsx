@@ -9,7 +9,12 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   login: (email: string, senha: string) => Promise<void>;
-  registrar: (nome: string, email: string, senha: string, codigoConvite: string) => Promise<RegistroPendenteResponse>;
+  registrar: (
+    nome: string,
+    email: string,
+    senha: string,
+    codigoConvite: string
+  ) => Promise<RegistroPendenteResponse>;
   verificarRegistro: (email: string, codigo: string) => Promise<void>;
   logout: () => void;
   atualizarPerfil: () => Promise<void>;
@@ -56,9 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(res.usuario);
   }, []);
 
-  const registrar = useCallback(async (nome: string, email: string, senha: string, codigoConvite: string) => {
-    return await api.auth.registrar({ nome, email, senha, codigoConvite });
-  }, []);
+  const registrar = useCallback(
+    async (nome: string, email: string, senha: string, codigoConvite: string) => {
+      return await api.auth.registrar({ nome, email, senha, codigoConvite });
+    },
+    []
+  );
 
   const verificarRegistro = useCallback(async (email: string, codigo: string) => {
     const res = await api.auth.verificarRegistro({ email, codigo });
@@ -67,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    api.auth.logout().catch(() => { });
+    api.auth.logout().catch(() => {});
     localStorage.removeItem("cf_user");
     setUsuario(null);
   }, []);
@@ -83,7 +91,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ usuario, loading, isAdmin, login, registrar, verificarRegistro, logout, atualizarPerfil }}>
+    <AuthContext.Provider
+      value={{
+        usuario,
+        loading,
+        isAdmin,
+        login,
+        registrar,
+        verificarRegistro,
+        logout,
+        atualizarPerfil,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

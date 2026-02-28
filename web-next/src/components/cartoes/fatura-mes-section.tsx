@@ -6,40 +6,34 @@ import { api, type Cartao, type FaturaParcela } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import {
-  Receipt,
-  ShoppingCart,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-} from "lucide-react";
+import { Receipt, ShoppingCart, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 
 // ── Category badge colors ──────────────────────────────────
 const categoryBadgeColors: Record<string, string> = {
-  "Alimentação": "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
-  "Transporte": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  "Moradia": "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
-  "Lazer": "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400",
-  "Saúde": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  "Educação": "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400",
-  "Salário": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  "Roupas": "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
-  "Compras": "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-  "Eletrônicos": "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400",
-  "Outros": "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-400",
+  Alimentação: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
+  Transporte: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+  Moradia: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
+  Lazer: "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400",
+  Saúde: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+  Educação: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400",
+  Salário: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+  Roupas: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
+  Compras: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+  Eletrônicos: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400",
+  Outros: "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-400",
 };
 const defaultBadge = "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400";
 
 const categoryIconBg: Record<string, string> = {
-  "Alimentação": "bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400",
-  "Transporte": "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-  "Moradia": "bg-violet-100 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400",
-  "Lazer": "bg-pink-100 dark:bg-pink-500/15 text-pink-600 dark:text-pink-400",
-  "Saúde": "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-  "Educação": "bg-cyan-100 dark:bg-cyan-500/15 text-cyan-600 dark:text-cyan-400",
-  "Roupas": "bg-rose-100 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400",
-  "Compras": "bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400",
-  "Eletrônicos": "bg-purple-100 dark:bg-purple-500/15 text-purple-600 dark:text-purple-400",
+  Alimentação: "bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400",
+  Transporte: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  Moradia: "bg-violet-100 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400",
+  Lazer: "bg-pink-100 dark:bg-pink-500/15 text-pink-600 dark:text-pink-400",
+  Saúde: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  Educação: "bg-cyan-100 dark:bg-cyan-500/15 text-cyan-600 dark:text-cyan-400",
+  Roupas: "bg-rose-100 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400",
+  Compras: "bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  Eletrônicos: "bg-purple-100 dark:bg-purple-500/15 text-purple-600 dark:text-purple-400",
 };
 const defaultIconBg = "bg-slate-100 dark:bg-slate-500/15 text-slate-500 dark:text-slate-400";
 
@@ -93,10 +87,7 @@ export function FaturaMesSection({ cartoes, mesParam, mesLabel }: FaturaMesSecti
       }
     });
 
-    combined.sort(
-      (a, b) =>
-        new Date(b.dataCompra).getTime() - new Date(a.dataCompra).getTime()
-    );
+    combined.sort((a, b) => new Date(b.dataCompra).getTime() - new Date(a.dataCompra).getTime());
 
     return {
       parcelas: combined,
@@ -179,9 +170,7 @@ export function FaturaMesSection({ cartoes, mesParam, mesLabel }: FaturaMesSecti
             {proximoVencimento && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
                 Próximo vencimento:{" "}
-                <span className="font-semibold text-red-500">
-                  {formatVenc(proximoVencimento)}
-                </span>
+                <span className="font-semibold text-red-500">{formatVenc(proximoVencimento)}</span>
               </p>
             )}
           </div>
@@ -224,10 +213,8 @@ export function FaturaMesSection({ cartoes, mesParam, mesLabel }: FaturaMesSecti
           </thead>
           <tbody>
             {visibleParcelas.map((p, i) => {
-              const iconCls =
-                categoryIconBg[p.categoria] || defaultIconBg;
-              const badgeCls =
-                categoryBadgeColors[p.categoria] || defaultBadge;
+              const iconCls = categoryIconBg[p.categoria] || defaultIconBg;
+              const badgeCls = categoryBadgeColors[p.categoria] || defaultBadge;
 
               return (
                 <tr
@@ -251,9 +238,7 @@ export function FaturaMesSection({ cartoes, mesParam, mesLabel }: FaturaMesSecti
                     <p className="text-sm font-semibold text-slate-800 dark:text-white truncate max-w-55">
                       {p.descricao}
                     </p>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                      {p.cartaoNome}
-                    </p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500">{p.cartaoNome}</p>
                   </td>
 
                   {/* Data */}

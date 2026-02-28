@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Tag,
-  Receipt,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  ArrowRight,
-} from "lucide-react";
+import { Tag, Receipt, ArrowUpCircle, ArrowDownCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CategoryPieChart } from "@/components/charts";
 import { EmptyState } from "@/components/shared/page-components";
@@ -69,14 +63,21 @@ export function CategorySpendingCard({ gastosPorCategoria }: CategorySpendingCar
                       <span className="font-semibold text-[13px]">{g.categoria}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="tabular-nums text-muted-foreground/70 font-medium text-[13px]">{formatCurrency(g.total)}</span>
-                      <span className="text-[11px] tabular-nums text-muted-foreground/50 w-10 text-right font-bold">{g.percentual.toFixed(0)}%</span>
+                      <span className="tabular-nums text-muted-foreground/70 font-medium text-[13px]">
+                        {formatCurrency(g.total)}
+                      </span>
+                      <span className="text-[11px] tabular-nums text-muted-foreground/50 w-10 text-right font-bold">
+                        {g.percentual.toFixed(0)}%
+                      </span>
                     </div>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${g.percentual}%`, backgroundColor: categoryColors[i % categoryColors.length] }}
+                      style={{
+                        width: `${g.percentual}%`,
+                        backgroundColor: categoryColors[i % categoryColors.length],
+                      }}
                     />
                   </div>
                 </motion.div>
@@ -120,7 +121,11 @@ export function RecentTransactionsCard({ lancamentos }: RecentTransactionsCardPr
           <h3 className="text-sm font-bold tracking-tight">Últimos Lançamentos</h3>
         </div>
         <Link href="/lancamentos">
-          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs text-primary hover:text-primary font-semibold">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 h-7 text-xs text-primary hover:text-primary font-semibold"
+          >
             Ver todos <ArrowRight className="h-3 w-3" />
           </Button>
         </Link>
@@ -129,24 +134,38 @@ export function RecentTransactionsCard({ lancamentos }: RecentTransactionsCardPr
         {lancamentos.length > 0 ? (
           <div className="divide-y divide-border/20">
             {lancamentos.slice(0, 6).map((l) => (
-                <div key={l.id} className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-3.5 hover:bg-muted/15 transition-all duration-300 group">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-105 ${
-                  l.tipo === "receita"
-                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
-                    : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
-                }`}>
-                  {l.tipo === "receita" ? <ArrowUpCircle className="h-4 w-4" /> : <ArrowDownCircle className="h-4 w-4" />}
+              <div
+                key={l.id}
+                className="flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-3.5 hover:bg-muted/15 transition-all duration-300 group"
+              >
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-300 group-hover:scale-105 ${
+                    l.tipo === "receita"
+                      ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                      : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                  }`}
+                >
+                  {l.tipo === "receita" ? (
+                    <ArrowUpCircle className="h-4 w-4" />
+                  ) : (
+                    <ArrowDownCircle className="h-4 w-4" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold truncate">{l.descricao}</p>
-                  <p className="text-[11px] text-muted-foreground/50 font-medium">{l.categoria} · {formatDate(l.data)}</p>
+                  <p className="text-[11px] text-muted-foreground/50 font-medium">
+                    {l.categoria} · {formatDate(l.data)}
+                  </p>
                 </div>
-                <span className={`text-[13px] font-bold tabular-nums whitespace-nowrap ${
-                  l.tipo === "receita"
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-red-600 dark:text-red-400"
-                }`}>
-                  {l.tipo === "receita" ? "+" : "-"}{formatCurrency(l.valor)}
+                <span
+                  className={`text-[13px] font-bold tabular-nums whitespace-nowrap ${
+                    l.tipo === "receita"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-red-600 dark:text-red-400"
+                  }`}
+                >
+                  {l.tipo === "receita" ? "+" : "-"}
+                  {formatCurrency(l.valor)}
                 </span>
               </div>
             ))}

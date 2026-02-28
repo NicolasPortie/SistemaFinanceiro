@@ -11,7 +11,12 @@ import {
 } from "@/hooks/use-queries";
 import type { CriarMetaRequest, MetaFinanceira } from "@/lib/api";
 import { formatCurrency, formatShortDate } from "@/lib/format";
-import { metaSchema, atualizarMetaSchema, type MetaData, type AtualizarMetaData } from "@/lib/schemas";
+import {
+  metaSchema,
+  atualizarMetaSchema,
+  type MetaData,
+  type AtualizarMetaData,
+} from "@/lib/schemas";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,11 +39,7 @@ import {
   RefreshCw,
   MoreVertical,
 } from "lucide-react";
-import {
-  EmptyState,
-  ErrorState,
-  CardSkeleton,
-} from "@/components/shared/page-components";
+import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -69,12 +70,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,9 +93,21 @@ const tiposIcon: Record<string, React.ReactNode> = {
 };
 
 const prioridadeConfig: Record<string, { badge: string; color: string }> = {
-  alta: { badge: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-800", color: "text-red-500" },
-  media: { badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border-amber-200 dark:border-amber-800", color: "text-amber-500" },
-  baixa: { badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", color: "text-emerald-500" },
+  alta: {
+    badge:
+      "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-800",
+    color: "text-red-500",
+  },
+  media: {
+    badge:
+      "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+    color: "text-amber-500",
+  },
+  baixa: {
+    badge:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+    color: "text-emerald-500",
+  },
 };
 
 const desvioIcon = (desvio: string) => {
@@ -123,9 +131,21 @@ function progressStrokeColor(pct: number) {
 }
 
 const statusConfig: Record<string, { label: string; badgeClass: string }> = {
-  ativa: { label: "Ativa", badgeClass: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" },
-  pausada: { label: "Pausada", badgeClass: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20" },
-  concluida: { label: "Concluída", badgeClass: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" },
+  ativa: {
+    label: "Ativa",
+    badgeClass:
+      "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
+  },
+  pausada: {
+    label: "Pausada",
+    badgeClass:
+      "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
+  },
+  concluida: {
+    label: "Concluída",
+    badgeClass:
+      "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
+  },
 };
 
 export default function MetasPage() {
@@ -143,7 +163,15 @@ export default function MetasPage() {
   // Create form
   const createForm = useForm<MetaData>({
     resolver: zodResolver(metaSchema),
-    defaultValues: { nome: "", tipo: "juntar_valor", prioridade: "media", valorAlvo: "", valorAtual: "", prazo: "", categoria: "" },
+    defaultValues: {
+      nome: "",
+      tipo: "juntar_valor",
+      prioridade: "media",
+      valorAlvo: "",
+      valorAtual: "",
+      prazo: "",
+      categoria: "",
+    },
   });
   const tipo = createForm.watch("tipo");
   const prioridade = createForm.watch("prioridade");
@@ -158,11 +186,19 @@ export default function MetasPage() {
     const alvo = parseFloat(data.valorAlvo.replace(",", "."));
     const atual = parseFloat((data.valorAtual || "").replace(",", ".") || "0");
     const req: CriarMetaRequest = {
-      nome: data.nome, tipo: data.tipo, valorAlvo: alvo, valorAtual: atual, prazo: data.prazo, prioridade: data.prioridade,
+      nome: data.nome,
+      tipo: data.tipo,
+      valorAlvo: alvo,
+      valorAtual: atual,
+      prazo: data.prazo,
+      prioridade: data.prioridade,
       categoria: data.tipo === "reduzir_gasto" ? data.categoria : undefined,
     };
     criarMeta.mutate(req, {
-      onSuccess: () => { createForm.reset(); setShowForm(false); },
+      onSuccess: () => {
+        createForm.reset();
+        setShowForm(false);
+      },
     });
   };
 
@@ -227,7 +263,10 @@ export default function MetasPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => refetch()} className="p-2.5 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-xl transition-colors cursor-pointer">
+                <button
+                  onClick={() => refetch()}
+                  className="p-2.5 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-xl transition-colors cursor-pointer"
+                >
                   <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                 </button>
               </TooltipTrigger>
@@ -235,7 +274,10 @@ export default function MetasPage() {
             </Tooltip>
           </TooltipProvider>
           <button
-            onClick={() => { createForm.reset(); setShowForm(true); }}
+            onClick={() => {
+              createForm.reset();
+              setShowForm(true);
+            }}
             className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer text-sm"
           >
             <Plus className="h-4 w-4" />
@@ -253,7 +295,12 @@ export default function MetasPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
           {/* Metas Ativas */}
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0 }}
+            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+          >
             <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
             <div className="flex justify-between items-start z-10">
               <div className="size-10 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-xl text-emerald-600 dark:text-emerald-400">
@@ -261,8 +308,12 @@ export default function MetasPage() {
               </div>
             </div>
             <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Metas Ativas</p>
-              <h3 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">{ativas.length}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
+                Metas Ativas
+              </p>
+              <h3 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">
+                {ativas.length}
+              </h3>
               {pausadas.length > 0 && (
                 <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded mt-1 inline-block">
                   {pausadas.length} pausada{pausadas.length > 1 ? "s" : ""}
@@ -272,7 +323,12 @@ export default function MetasPage() {
           </motion.div>
 
           {/* Total Poupado */}
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+          >
             <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
             <div className="flex justify-between items-start z-10">
               <div className="size-10 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-xl text-emerald-600 dark:text-emerald-400">
@@ -280,19 +336,33 @@ export default function MetasPage() {
               </div>
             </div>
             <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Total Economizado</p>
-              <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">{formatCurrency(totalAtual)}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
+                Total Economizado
+              </p>
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
+                {formatCurrency(totalAtual)}
+              </h3>
               <div className="flex items-center gap-2 mt-1.5">
                 <div className="flex-1 bg-slate-100 dark:bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
-                  <div className="bg-emerald-500 h-1.5 rounded-full transition-all duration-700" style={{ width: `${Math.min(globalPct, 100)}%` }} />
+                  <div
+                    className="bg-emerald-500 h-1.5 rounded-full transition-all duration-700"
+                    style={{ width: `${Math.min(globalPct, 100)}%` }}
+                  />
                 </div>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold tabular-nums">{globalPct}%</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold tabular-nums">
+                  {globalPct}%
+                </span>
               </div>
             </div>
           </motion.div>
 
           {/* Metas Concluídas */}
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+          >
             <div className="absolute -right-6 -bottom-6 bg-purple-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-purple-500/15 transition-all" />
             <div className="flex justify-between items-start z-10">
               <div className="size-10 flex items-center justify-center bg-purple-100 dark:bg-purple-500/15 rounded-xl text-purple-600 dark:text-purple-400">
@@ -305,8 +375,12 @@ export default function MetasPage() {
               )}
             </div>
             <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Metas Concluídas</p>
-              <h3 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">{concluidas.length}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
+                Metas Concluídas
+              </p>
+              <h3 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">
+                {concluidas.length}
+              </h3>
             </div>
           </motion.div>
         </div>
@@ -315,7 +389,9 @@ export default function MetasPage() {
       {/* ═══ Active Goals ═══ */}
       {ativas.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">Metas Ativas</h3>
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">
+            Metas Ativas
+          </h3>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <AnimatePresence>
               {ativas.map((meta, i) => (
@@ -324,7 +400,10 @@ export default function MetasPage() {
                   meta={meta}
                   index={i}
                   actionLoading={actionLoading}
-                  onEdit={() => { setEditMeta(meta); editForm.reset({ valorAtual: meta.valorAtual.toFixed(2).replace(".", ",") }); }}
+                  onEdit={() => {
+                    setEditMeta(meta);
+                    editForm.reset({ valorAtual: meta.valorAtual.toFixed(2).replace(".", ",") });
+                  }}
                   onPausar={() => handlePausarResumir(meta)}
                   onRemover={() => setDeleteId(meta.id)}
                 />
@@ -337,7 +416,9 @@ export default function MetasPage() {
       {/* ═══ Paused Goals ═══ */}
       {pausadas.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">Pausadas</h3>
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">
+            Pausadas
+          </h3>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {pausadas.map((meta, i) => (
               <MetaCard
@@ -345,7 +426,10 @@ export default function MetasPage() {
                 meta={meta}
                 index={i}
                 actionLoading={actionLoading}
-                onEdit={() => { setEditMeta(meta); editForm.reset({ valorAtual: meta.valorAtual.toFixed(2).replace(".", ",") }); }}
+                onEdit={() => {
+                  setEditMeta(meta);
+                  editForm.reset({ valorAtual: meta.valorAtual.toFixed(2).replace(".", ",") });
+                }}
                 onPausar={() => handlePausarResumir(meta)}
                 onRemover={() => setDeleteId(meta.id)}
               />
@@ -357,7 +441,9 @@ export default function MetasPage() {
       {/* ═══ Completed Goals ═══ */}
       {concluidas.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">Concluídas</h3>
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">
+            Concluídas
+          </h3>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {concluidas.map((meta, i) => (
               <motion.div
@@ -372,10 +458,19 @@ export default function MetasPage() {
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-slate-800 dark:text-white truncate">{meta.nome}</p>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium tabular-nums">{formatCurrency(meta.valorAlvo)}</p>
+                    <p className="font-bold text-sm text-slate-800 dark:text-white truncate">
+                      {meta.nome}
+                    </p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium tabular-nums">
+                      {formatCurrency(meta.valorAlvo)}
+                    </p>
                   </div>
-                  <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-full", statusConfig.concluida.badgeClass)}>
+                  <span
+                    className={cn(
+                      "text-[10px] font-bold px-2.5 py-1 rounded-full",
+                      statusConfig.concluida.badgeClass
+                    )}
+                  >
                     Concluída
                   </span>
                 </div>
@@ -387,13 +482,20 @@ export default function MetasPage() {
 
       {/* ═══ Empty state ═══ */}
       {metas.length === 0 && !loading && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-panel rounded-2xl p-12">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-panel rounded-2xl p-12"
+        >
           <EmptyState
             icon={<Target className="h-6 w-6" />}
             title="Nenhuma meta"
             description="Crie sua primeira meta financeira para começar a acompanhar seu progresso"
             action={
-              <button onClick={() => setShowForm(true)} className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm">
+              <button
+                onClick={() => setShowForm(true)}
+                className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm"
+              >
                 <Plus className="h-4 w-4" />
                 Criar meta
               </button>
@@ -414,26 +516,46 @@ export default function MetasPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <SheetTitle className="text-lg sm:text-xl font-semibold">Nova Meta</SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Defina uma meta financeira para acompanhar</SheetDescription>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                  Defina uma meta financeira para acompanhar
+                </SheetDescription>
               </div>
             </div>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto overscroll-contain">
-            <form onSubmit={createForm.handleSubmit(handleCriar)} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            <form
+              onSubmit={createForm.handleSubmit(handleCriar)}
+              className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5"
+            >
               {/* Main fields */}
               <div className="space-y-4 rounded-2xl border border-emerald-600/[0.08] dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Nome da Meta</Label>
-                  <Input placeholder="Ex: Reserva de emergência" {...createForm.register("nome")} className={cn("h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.nome && "border-red-500")} />
-                  {createForm.formState.errors.nome && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.nome.message}</p>}
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Nome da Meta
+                  </Label>
+                  <Input
+                    placeholder="Ex: Reserva de emergência"
+                    {...createForm.register("nome")}
+                    className={cn(
+                      "h-11 rounded-xl border-border/40 bg-background placeholder:text-muted-foreground/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all",
+                      createForm.formState.errors.nome && "border-red-500"
+                    )}
+                  />
+                  {createForm.formState.errors.nome && (
+                    <p className="text-xs text-red-500 font-medium">
+                      {createForm.formState.errors.nome.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="border-t border-border/20" />
 
                 {/* Type selector */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tipo</Label>
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Tipo
+                  </Label>
                   <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                     {(["juntar_valor", "reduzir_gasto", "reserva_mensal"] as const).map((t) => (
                       <button
@@ -447,10 +569,12 @@ export default function MetasPage() {
                             : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40 hover:border-border/50 hover:text-foreground"
                         )}
                       >
-                        <div className={cn(
-                          "flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg sm:rounded-xl transition-all",
-                          tipo === t ? "bg-emerald-600/10" : "bg-muted/40 group-hover:bg-muted/60"
-                        )}>
+                        <div
+                          className={cn(
+                            "flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg sm:rounded-xl transition-all",
+                            tipo === t ? "bg-emerald-600/10" : "bg-muted/40 group-hover:bg-muted/60"
+                          )}
+                        >
                           {tiposIcon[t]}
                         </div>
                         {tiposLabel[t]}
@@ -463,7 +587,9 @@ export default function MetasPage() {
 
                 {/* Priority */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Prioridade</Label>
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Prioridade
+                  </Label>
                   <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                     {(["baixa", "media", "alta"] as const).map((p) => (
                       <button
@@ -477,7 +603,9 @@ export default function MetasPage() {
                             : "bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40 hover:border-border/50 hover:text-foreground"
                         )}
                       >
-                        <Flag className={cn("h-3 w-3", prioridade === p && prioridadeConfig[p].color)} />
+                        <Flag
+                          className={cn("h-3 w-3", prioridade === p && prioridadeConfig[p].color)}
+                        />
                         {p === "baixa" ? "Baixa" : p === "media" ? "Média" : "Alta"}
                       </button>
                     ))}
@@ -489,27 +617,50 @@ export default function MetasPage() {
               <div className="space-y-4 rounded-2xl border border-emerald-600/[0.08] dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor Alvo (R$)</Label>
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Valor Alvo (R$)
+                    </Label>
                     <div className="relative">
-                      <div className="absolute left-0 top-0 bottom-0 w-9 sm:w-10 flex items-center justify-center rounded-l-xl text-xs font-bold bg-emerald-600/10 text-emerald-600">R$</div>
+                      <div className="absolute left-0 top-0 bottom-0 w-9 sm:w-10 flex items-center justify-center rounded-l-xl text-xs font-bold bg-emerald-600/10 text-emerald-600">
+                        R$
+                      </div>
                       <CurrencyInput
                         placeholder="0,00"
-                        className={cn("h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.valorAlvo && "border-red-500")}
+                        className={cn(
+                          "h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all",
+                          createForm.formState.errors.valorAlvo && "border-red-500"
+                        )}
                         value={createForm.watch("valorAlvo")}
-                        onValueChange={(v) => createForm.setValue("valorAlvo", v, { shouldValidate: createForm.formState.isSubmitted })}
+                        onValueChange={(v) =>
+                          createForm.setValue("valorAlvo", v, {
+                            shouldValidate: createForm.formState.isSubmitted,
+                          })
+                        }
                       />
                     </div>
-                    {createForm.formState.errors.valorAlvo && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.valorAlvo.message}</p>}
+                    {createForm.formState.errors.valorAlvo && (
+                      <p className="text-xs text-red-500 font-medium">
+                        {createForm.formState.errors.valorAlvo.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Já guardado (R$)</Label>
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Já guardado (R$)
+                    </Label>
                     <div className="relative">
-                      <div className="absolute left-0 top-0 bottom-0 w-9 sm:w-10 flex items-center justify-center rounded-l-xl text-xs font-bold bg-emerald-500/10 text-emerald-500">R$</div>
+                      <div className="absolute left-0 top-0 bottom-0 w-9 sm:w-10 flex items-center justify-center rounded-l-xl text-xs font-bold bg-emerald-500/10 text-emerald-500">
+                        R$
+                      </div>
                       <CurrencyInput
                         placeholder="0,00"
                         className="h-11 rounded-xl pl-10 sm:pl-11 tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all"
                         value={createForm.watch("valorAtual") ?? ""}
-                        onValueChange={(v) => createForm.setValue("valorAtual", v, { shouldValidate: createForm.formState.isSubmitted })}
+                        onValueChange={(v) =>
+                          createForm.setValue("valorAtual", v, {
+                            shouldValidate: createForm.formState.isSubmitted,
+                          })
+                        }
                       />
                     </div>
                   </div>
@@ -519,22 +670,53 @@ export default function MetasPage() {
 
                 {/* Deadline */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Prazo</Label>
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Prazo
+                  </Label>
                   <div className="relative">
                     <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                    <Input type="date" {...createForm.register("prazo")} className={cn("h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all", createForm.formState.errors.prazo && "border-red-500")} />
-                    {createForm.formState.errors.prazo && <p className="text-xs text-red-500 font-medium">{createForm.formState.errors.prazo.message}</p>}
+                    <Input
+                      type="date"
+                      {...createForm.register("prazo")}
+                      className={cn(
+                        "h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all",
+                        createForm.formState.errors.prazo && "border-red-500"
+                      )}
+                    />
+                    {createForm.formState.errors.prazo && (
+                      <p className="text-xs text-red-500 font-medium">
+                        {createForm.formState.errors.prazo.message}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 {/* Category (for "reduzir_gasto") */}
                 <AnimatePresence>
                   {tipo === "reduzir_gasto" && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-1.5 overflow-hidden">
-                      <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Categoria</Label>
-                      <Select value={createForm.watch("categoria") || ""} onValueChange={(v) => createForm.setValue("categoria", v)}>
-                        <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30"><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
-                        <SelectContent>{categorias.map((c) => (<SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>))}</SelectContent>
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-1.5 overflow-hidden"
+                    >
+                      <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Categoria
+                      </Label>
+                      <Select
+                        value={createForm.watch("categoria") || ""}
+                        onValueChange={(v) => createForm.setValue("categoria", v)}
+                      >
+                        <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30">
+                          <SelectValue placeholder="Selecione a categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categorias.map((c) => (
+                            <SelectItem key={c.id} value={c.nome}>
+                              {c.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
                       </Select>
                     </motion.div>
                   )}
@@ -558,7 +740,12 @@ export default function MetasPage() {
       </Sheet>
 
       {/* ═══ Edit Value Sheet ═══ */}
-      <Sheet open={editMeta !== null} onOpenChange={(open) => { if (!open) setEditMeta(null); }}>
+      <Sheet
+        open={editMeta !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditMeta(null);
+        }}
+      >
         <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
           <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
 
@@ -568,8 +755,12 @@ export default function MetasPage() {
                 <Edit3 className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-lg sm:text-xl font-semibold">Atualizar valor</SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Informe o novo valor atual da meta &quot;{editMeta?.nome}&quot;</SheetDescription>
+                <SheetTitle className="text-lg sm:text-xl font-semibold">
+                  Atualizar valor
+                </SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                  Informe o novo valor atual da meta &quot;{editMeta?.nome}&quot;
+                </SheetDescription>
               </div>
             </div>
           </SheetHeader>
@@ -579,35 +770,78 @@ export default function MetasPage() {
               <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border/30">
                 <div className="relative h-12 w-12 shrink-0">
                   <svg className="h-12 w-12 -rotate-90" viewBox="0 0 48 48">
-                    <circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/30" />
-                    <circle cx="24" cy="24" r="18" fill="none" strokeWidth="4" strokeLinecap="round" className={progressStrokeColor(editMeta.percentualConcluido)} stroke="currentColor" strokeDasharray={`${Math.min(editMeta.percentualConcluido, 100) * 1.131} 113.1`} />
+                    <circle
+                      cx="24"
+                      cy="24"
+                      r="18"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      className="text-muted/30"
+                    />
+                    <circle
+                      cx="24"
+                      cy="24"
+                      r="18"
+                      fill="none"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      className={progressStrokeColor(editMeta.percentualConcluido)}
+                      stroke="currentColor"
+                      strokeDasharray={`${Math.min(editMeta.percentualConcluido, 100) * 1.131} 113.1`}
+                    />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] font-extrabold tabular-nums">{editMeta.percentualConcluido.toFixed(0)}%</span>
+                    <span className="text-[10px] font-extrabold tabular-nums">
+                      {editMeta.percentualConcluido.toFixed(0)}%
+                    </span>
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-sm truncate">{editMeta.nome}</p>
-                  <p className="text-[11px] text-muted-foreground/60 tabular-nums font-medium">Alvo: {formatCurrency(editMeta.valorAlvo)}</p>
+                  <p className="text-[11px] text-muted-foreground/60 tabular-nums font-medium">
+                    Alvo: {formatCurrency(editMeta.valorAlvo)}
+                  </p>
                 </div>
               </div>
             )}
 
             <form onSubmit={editForm.handleSubmit(handleAtualizar)} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor Atual (R$)</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Valor Atual (R$)
+                </Label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input {...editForm.register("valorAtual")} className={cn("h-11 rounded-xl pl-9 tabular-nums font-semibold", editForm.formState.errors.valorAtual && "border-red-500")} />
+                  <Input
+                    {...editForm.register("valorAtual")}
+                    className={cn(
+                      "h-11 rounded-xl pl-9 tabular-nums font-semibold",
+                      editForm.formState.errors.valorAtual && "border-red-500"
+                    )}
+                  />
                 </div>
-                {editForm.formState.errors.valorAtual && <p className="text-xs text-red-500 font-medium">{editForm.formState.errors.valorAtual.message}</p>}
+                {editForm.formState.errors.valorAtual && (
+                  <p className="text-xs text-red-500 font-medium">
+                    {editForm.formState.errors.valorAtual.message}
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-2 pt-2 sm:pt-3 pb-safe">
-                <Button type="button" variant="outline" onClick={() => setEditMeta(null)} className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditMeta(null)}
+                  className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
+                >
                   Cancelar
                 </Button>
-                <Button type="submit" loading={actionLoading === editMeta?.id} className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20">
+                <Button
+                  type="submit"
+                  loading={actionLoading === editMeta?.id}
+                  className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 gap-2 sm:gap-2.5 font-semibold text-sm sm:text-[15px] bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                >
                   <CheckCircle2 className="h-5 w-5" />
                   Salvar
                 </Button>
@@ -622,11 +856,17 @@ export default function MetasPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remover meta?</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja remover esta meta? Essa ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover esta meta? Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemover} loading={actionLoading === deleteId} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2">
+            <AlertDialogAction
+              onClick={handleRemover}
+              loading={actionLoading === deleteId}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2"
+            >
               <Trash2 className="h-4 w-4" />
               Remover
             </AlertDialogAction>
@@ -671,21 +911,35 @@ function MetaCard({
       <div className="p-5 pb-0">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-center gap-3">
-            <div className={cn(
-              "size-11 rounded-full flex items-center justify-center shadow-sm",
-              meta.tipo === "juntar_valor" && "bg-sky-100 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400",
-              meta.tipo === "reduzir_gasto" && "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400",
-              meta.tipo === "reserva_mensal" && "bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400",
-            )}>
+            <div
+              className={cn(
+                "size-11 rounded-full flex items-center justify-center shadow-sm",
+                meta.tipo === "juntar_valor" &&
+                  "bg-sky-100 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400",
+                meta.tipo === "reduzir_gasto" &&
+                  "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400",
+                meta.tipo === "reserva_mensal" &&
+                  "bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400"
+              )}
+            >
               {tiposIcon[meta.tipo] ?? <Target className="h-4 w-4" />}
             </div>
             <div className="min-w-0">
-              <h4 className="font-bold tracking-tight text-sm text-slate-800 dark:text-white truncate">{meta.nome}</h4>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{tiposLabel[meta.tipo] || meta.tipo}</p>
+              <h4 className="font-bold tracking-tight text-sm text-slate-800 dark:text-white truncate">
+                {meta.nome}
+              </h4>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                {tiposLabel[meta.tipo] || meta.tipo}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide", status.badgeClass)}>
+            <span
+              className={cn(
+                "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide",
+                status.badgeClass
+              )}
+            >
               {status.label}
             </span>
             <DropdownMenu>
@@ -698,12 +952,19 @@ function MetaCard({
                 <DropdownMenuItem onClick={onEdit} className="gap-2 cursor-pointer">
                   <Edit3 className="h-3.5 w-3.5" /> Atualizar valor
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onPausar} disabled={actionLoading === meta.id} className="gap-2 cursor-pointer">
+                <DropdownMenuItem
+                  onClick={onPausar}
+                  disabled={actionLoading === meta.id}
+                  className="gap-2 cursor-pointer"
+                >
                   {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
                   {isPaused ? "Retomar" : "Pausar"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onRemover} className="gap-2 text-red-600 dark:text-red-400 cursor-pointer">
+                <DropdownMenuItem
+                  onClick={onRemover}
+                  className="gap-2 text-red-600 dark:text-red-400 cursor-pointer"
+                >
                   <Trash2 className="h-3.5 w-3.5" /> Remover
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -736,18 +997,26 @@ function MetaCard({
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-base font-extrabold text-slate-800 dark:text-white tabular-nums">{meta.percentualConcluido.toFixed(0)}%</span>
+              <span className="text-base font-extrabold text-slate-800 dark:text-white tabular-nums">
+                {meta.percentualConcluido.toFixed(0)}%
+              </span>
             </div>
           </div>
           <div className="flex flex-col gap-1.5 w-full">
             <div className="flex justify-between items-end">
               <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Atual</span>
-              <span className={cn("text-sm font-bold tabular-nums", progressColor(pct))}>{formatCurrency(meta.valorAtual)}</span>
+              <span className={cn("text-sm font-bold tabular-nums", progressColor(pct))}>
+                {formatCurrency(meta.valorAtual)}
+              </span>
             </div>
             <div className="w-full h-px bg-slate-200 dark:bg-slate-700/40" />
             <div className="flex justify-between items-start">
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Objetivo</span>
-              <span className="text-xs font-bold text-slate-600 dark:text-slate-300 tabular-nums">{formatCurrency(meta.valorAlvo)}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                Objetivo
+              </span>
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300 tabular-nums">
+                {formatCurrency(meta.valorAlvo)}
+              </span>
             </div>
           </div>
         </div>
@@ -758,18 +1027,22 @@ function MetaCard({
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center text-xs">
             <span className="text-slate-500 dark:text-slate-400">Prazo</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300 tabular-nums">{formatShortDate(meta.prazo)}</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
+              {formatShortDate(meta.prazo)}
+            </span>
           </div>
           <div className="flex justify-between items-center text-xs">
             <span className="text-slate-500 dark:text-slate-400">Economia mensal nec.</span>
-            <span className={cn(
-              "font-semibold tabular-nums",
-              isPaused
-                ? "text-slate-400 dark:text-slate-500"
-                : meta.valorMensalNecessario > meta.valorAtual * 0.3
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-emerald-600 dark:text-emerald-400"
-            )}>
+            <span
+              className={cn(
+                "font-semibold tabular-nums",
+                isPaused
+                  ? "text-slate-400 dark:text-slate-500"
+                  : meta.valorMensalNecessario > meta.valorAtual * 0.3
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-emerald-600 dark:text-emerald-400"
+              )}
+            >
               {isPaused ? "Pausado" : formatCurrency(meta.valorMensalNecessario)}
             </span>
           </div>
@@ -778,7 +1051,9 @@ function MetaCard({
               {desvioIcon(meta.desvio)}
               <span>{meta.desvio === "no_ritmo" ? "no ritmo" : meta.desvio}</span>
               <span className="mx-1">·</span>
-              <span className="tabular-nums">{meta.mesesRestantes} {meta.mesesRestantes === 1 ? "mês" : "meses"}</span>
+              <span className="tabular-nums">
+                {meta.mesesRestantes} {meta.mesesRestantes === 1 ? "mês" : "meses"}
+              </span>
             </div>
           )}
         </div>

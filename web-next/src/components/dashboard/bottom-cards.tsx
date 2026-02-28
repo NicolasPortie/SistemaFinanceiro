@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import {
-  CreditCard,
-  Target,
-  Zap,
-  Gauge,
-  ArrowRight,
-  Sparkles,
-} from "lucide-react";
+import { CreditCard, Target, Zap, Gauge, ArrowRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -39,10 +32,17 @@ export function AlertsCard({ limitesAlerta }: AlertsCardProps) {
       {limitesAlerta.length > 0 ? (
         <div className="space-y-2.5">
           {limitesAlerta.slice(0, 4).map((l) => (
-            <div key={l.id} className="flex items-center gap-3 rounded-xl bg-muted/15 p-3 border border-border/15 transition-all duration-300 hover:bg-muted/30 hover:border-border/30">
-              <Gauge className={`h-4 w-4 shrink-0 ${
-                l.status === "excedido" || l.status === "critico" ? "text-red-500" : "text-amber-500"
-              }`} />
+            <div
+              key={l.id}
+              className="flex items-center gap-3 rounded-xl bg-muted/15 p-3 border border-border/15 transition-all duration-300 hover:bg-muted/30 hover:border-border/30"
+            >
+              <Gauge
+                className={`h-4 w-4 shrink-0 ${
+                  l.status === "excedido" || l.status === "critico"
+                    ? "text-red-500"
+                    : "text-amber-500"
+                }`}
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold truncate">{l.categoriaNome}</p>
                 <p className="text-[11px] text-muted-foreground/50 font-medium">
@@ -55,7 +55,11 @@ export function AlertsCard({ limitesAlerta }: AlertsCardProps) {
             </div>
           ))}
           <Link href="/limites">
-            <Button variant="ghost" size="sm" className="w-full text-xs gap-1.5 text-primary hover:text-primary font-semibold mt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs gap-1.5 text-primary hover:text-primary font-semibold mt-1"
+            >
               Ver limites <ArrowRight className="h-3 w-3" />
             </Button>
           </Link>
@@ -66,7 +70,9 @@ export function AlertsCard({ limitesAlerta }: AlertsCardProps) {
             <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <p className="text-sm font-bold">Tudo em ordem!</p>
-          <p className="text-[11px] text-muted-foreground/50 mt-1 font-medium">Nenhum limite ultrapassado</p>
+          <p className="text-[11px] text-muted-foreground/50 mt-1 font-medium">
+            Nenhum limite ultrapassado
+          </p>
         </div>
       )}
     </motion.div>
@@ -93,7 +99,11 @@ export function CardsOverviewCard({ cartoes }: CardsOverviewCardProps) {
           <h3 className="text-sm font-bold tracking-tight">Cartões</h3>
         </div>
         <Link href="/cartoes">
-          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs text-primary hover:text-primary font-semibold">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 h-7 text-xs text-primary hover:text-primary font-semibold"
+          >
             Gerenciar <ArrowRight className="h-3 w-3" />
           </Button>
         </Link>
@@ -101,19 +111,26 @@ export function CardsOverviewCard({ cartoes }: CardsOverviewCardProps) {
       {cartoes.length > 0 ? (
         <div className="space-y-2.5">
           {cartoes.slice(0, 3).map((c) => (
-            <div key={c.id} className="flex items-center gap-3 rounded-xl bg-muted/15 p-3 border border-border/15 transition-all duration-300 hover:bg-muted/30 hover:border-border/30 group">
+            <div
+              key={c.id}
+              className="flex items-center gap-3 rounded-xl bg-muted/15 p-3 border border-border/15 transition-all duration-300 hover:bg-muted/30 hover:border-border/30 group"
+            >
               <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-card-purple text-white shadow-sm shadow-violet-500/15 transition-transform duration-300 group-hover:scale-105">
                 <CreditCard className="h-3.5 w-3.5" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold truncate">{c.nome}</p>
-                <p className="text-[11px] text-muted-foreground/50 font-medium">Venc. dia {c.diaVencimento}</p>
+                <p className="text-[11px] text-muted-foreground/50 font-medium">
+                  Venc. dia {c.diaVencimento}
+                </p>
               </div>
               <p className="text-[13px] font-bold tabular-nums">{formatCurrency(c.limite)}</p>
             </div>
           ))}
           {cartoes.length > 3 && (
-            <p className="text-[11px] text-muted-foreground/50 text-center font-medium">+{cartoes.length - 3} cartões</p>
+            <p className="text-[11px] text-muted-foreground/50 text-center font-medium">
+              +{cartoes.length - 3} cartões
+            </p>
           )}
         </div>
       ) : (
@@ -122,7 +139,9 @@ export function CardsOverviewCard({ cartoes }: CardsOverviewCardProps) {
             <CreditCard className="h-5 w-5 text-muted-foreground/50" />
           </div>
           <p className="text-sm font-bold">Nenhum cartão</p>
-          <p className="text-[11px] text-muted-foreground/50 mt-1 font-medium">Adicione na aba Cartões</p>
+          <p className="text-[11px] text-muted-foreground/50 mt-1 font-medium">
+            Adicione na aba Cartões
+          </p>
         </div>
       )}
     </motion.div>
@@ -149,7 +168,11 @@ export function ActiveMetasCard({ metasAtivas }: ActiveMetasCardProps) {
           <h3 className="text-sm font-bold tracking-tight">Metas Ativas</h3>
         </div>
         <Link href="/metas">
-          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs text-primary hover:text-primary font-semibold">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 h-7 text-xs text-primary hover:text-primary font-semibold"
+          >
             Ver todas <ArrowRight className="h-3 w-3" />
           </Button>
         </Link>
@@ -157,10 +180,15 @@ export function ActiveMetasCard({ metasAtivas }: ActiveMetasCardProps) {
       {metasAtivas.length > 0 ? (
         <div className="space-y-3">
           {metasAtivas.slice(0, 3).map((meta) => (
-            <div key={meta.id} className="space-y-2.5 rounded-xl bg-muted/15 p-3 border border-border/15 transition-all duration-300 hover:bg-muted/30 hover:border-border/30">
+            <div
+              key={meta.id}
+              className="space-y-2.5 rounded-xl bg-muted/15 p-3 border border-border/15 transition-all duration-300 hover:bg-muted/30 hover:border-border/30"
+            >
               <div className="flex items-center justify-between">
                 <p className="text-[13px] font-semibold truncate">{meta.nome}</p>
-                <span className="text-xs font-extrabold tabular-nums text-primary">{meta.percentualConcluido.toFixed(0)}%</span>
+                <span className="text-xs font-extrabold tabular-nums text-primary">
+                  {meta.percentualConcluido.toFixed(0)}%
+                </span>
               </div>
               <Progress value={Math.min(meta.percentualConcluido, 100)} className="h-1.5" />
               <p className="text-[11px] text-muted-foreground/50 tabular-nums font-medium">
@@ -181,7 +209,11 @@ export function ActiveMetasCard({ metasAtivas }: ActiveMetasCardProps) {
           </div>
           <p className="text-sm font-bold">Sem metas ativas</p>
           <Link href="/metas">
-            <Button variant="ghost" size="sm" className="text-xs text-primary mt-1.5 hover:text-primary font-semibold">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-primary mt-1.5 hover:text-primary font-semibold"
+            >
               Criar meta
             </Button>
           </Link>

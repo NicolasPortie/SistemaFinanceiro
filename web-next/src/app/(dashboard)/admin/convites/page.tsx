@@ -42,7 +42,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { PageShell, PageHeader, ErrorState, CardSkeleton } from "@/components/shared/page-components";
+import {
+  PageShell,
+  PageHeader,
+  ErrorState,
+  CardSkeleton,
+} from "@/components/shared/page-components";
 import { cn } from "@/lib/utils";
 
 // -- Helpers --------------------------------
@@ -61,7 +66,6 @@ function formatDuration(dias: number | null): string {
   }
   return `${dias} dia(s)`;
 }
-
 
 const PRESETS_ACESSO = [
   { label: "7 dias", value: 7 },
@@ -95,7 +99,12 @@ export default function AdminConvitesPage() {
   const [acessoPermanente, setAcessoPermanente] = useState(false);
   const [quantidade, setQuantidade] = useState(1);
 
-  const { data: convites, isLoading, isError, error } = useQuery({
+  const {
+    data: convites,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["admin", "convites"],
     queryFn: () => api.admin.convites.listar(),
   });
@@ -111,7 +120,7 @@ export default function AdminConvitesPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "convites"] });
       if (data.length === 1) {
-        navigator.clipboard.writeText(data[0].codigo).catch(() => { });
+        navigator.clipboard.writeText(data[0].codigo).catch(() => {});
         toast.success(`Código gerado e copiado: ${data[0].codigo}`);
       } else {
         toast.success(`${data.length} códigos gerados com sucesso!`);
@@ -151,10 +160,37 @@ export default function AdminConvitesPage() {
   };
 
   const getStatus = (c: AdminCodigoConvite) => {
-    if (c.usado && !c.ilimitado) return { label: "Usado", color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: CheckCircle2 };
-    if (c.expirado) return { label: "Expirado", color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20", icon: XCircle };
-    if (c.usosRealizados > 0 && !c.usado) return { label: "Em uso", color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20", icon: Users };
-    return { label: "Disponível", color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: Clock };
+    if (c.usado && !c.ilimitado)
+      return {
+        label: "Usado",
+        color: "text-emerald-500",
+        bg: "bg-emerald-500/10",
+        border: "border-emerald-500/20",
+        icon: CheckCircle2,
+      };
+    if (c.expirado)
+      return {
+        label: "Expirado",
+        color: "text-red-500",
+        bg: "bg-red-500/10",
+        border: "border-red-500/20",
+        icon: XCircle,
+      };
+    if (c.usosRealizados > 0 && !c.usado)
+      return {
+        label: "Em uso",
+        color: "text-amber-500",
+        bg: "bg-amber-500/10",
+        border: "border-amber-500/20",
+        icon: Users,
+      };
+    return {
+      label: "Disponível",
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+      border: "border-emerald-500/20",
+      icon: Clock,
+    };
   };
 
   const ativos = convites?.filter((c) => !c.usado && !c.expirado) ?? [];
@@ -174,7 +210,10 @@ export default function AdminConvitesPage() {
     return (
       <PageShell>
         <PageHeader title="Convites" description="Gerencie os convites para novos usuários" />
-        <ErrorState message={error?.message ?? "Erro ao carregar convites"} onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "convites"] })} />
+        <ErrorState
+          message={error?.message ?? "Erro ao carregar convites"}
+          onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "convites"] })}
+        />
       </PageShell>
     );
   }
@@ -182,7 +221,10 @@ export default function AdminConvitesPage() {
   return (
     <PageShell>
       <PageHeader title="Convites" description="Gere códigos para convidar pessoas ao sistema">
-        <Button onClick={() => setShowCreate(true)} className="gap-2 h-10 rounded-xl font-bold shadow-premium btn-premium">
+        <Button
+          onClick={() => setShowCreate(true)}
+          className="gap-2 h-10 rounded-xl font-bold shadow-premium btn-premium"
+        >
           <Plus className="h-4 w-4" />
           Gerar Convite
         </Button>
@@ -191,9 +233,27 @@ export default function AdminConvitesPage() {
       {/* Summary Cards */}
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
         {[
-          { label: "Disponíveis", value: ativos.length, color: "text-emerald-500", bg: "bg-emerald-500/10", icon: Send },
-          { label: "Usados", value: usados.length, color: "text-emerald-500", bg: "bg-emerald-500/10", icon: CheckCircle2 },
-          { label: "Expirados", value: expirados.length, color: "text-red-500", bg: "bg-red-500/10", icon: XCircle },
+          {
+            label: "Disponíveis",
+            value: ativos.length,
+            color: "text-emerald-500",
+            bg: "bg-emerald-500/10",
+            icon: Send,
+          },
+          {
+            label: "Usados",
+            value: usados.length,
+            color: "text-emerald-500",
+            bg: "bg-emerald-500/10",
+            icon: CheckCircle2,
+          },
+          {
+            label: "Expirados",
+            value: expirados.length,
+            color: "text-red-500",
+            bg: "bg-red-500/10",
+            icon: XCircle,
+          },
         ].map((item) => (
           <motion.div
             key={item.label}
@@ -230,8 +290,17 @@ export default function AdminConvitesPage() {
                   <div className="flex-1 min-w-0 space-y-2">
                     {/* Code + Status */}
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <code className="text-base sm:text-lg font-mono font-extrabold tracking-[0.2em] text-foreground/90">{c.codigo}</code>
-                      <Badge className={cn("text-[10px] px-2 py-0.5 border", status.bg, status.color, status.border)}>
+                      <code className="text-base sm:text-lg font-mono font-extrabold tracking-[0.2em] text-foreground/90">
+                        {c.codigo}
+                      </code>
+                      <Badge
+                        className={cn(
+                          "text-[10px] px-2 py-0.5 border",
+                          status.bg,
+                          status.color,
+                          status.border
+                        )}
+                      >
                         <status.icon className="h-3 w-3 mr-1" />
                         {status.label}
                       </Badge>
@@ -256,10 +325,14 @@ export default function AdminConvitesPage() {
                           Sem prazo p/ ativar
                         </span>
                       ) : c.expiraEm ? (
-                        <span className={cn(
-                          "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md",
-                          c.expirado ? "bg-red-500/8 text-red-500" : "bg-amber-500/8 text-amber-600 dark:text-amber-400"
-                        )}>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md",
+                            c.expirado
+                              ? "bg-red-500/8 text-red-500"
+                              : "bg-amber-500/8 text-amber-600 dark:text-amber-400"
+                          )}
+                        >
                           <Timer className="h-3 w-3" />
                           {c.expirado ? "Expirou" : "Ativar até"} {formatDate(c.expiraEm)}
                         </span>
@@ -321,7 +394,10 @@ export default function AdminConvitesPage() {
             <p className="text-sm text-muted-foreground/60 mb-5 max-w-sm">
               Gere um código de convite para permitir que outras pessoas se cadastrem no sistema.
             </p>
-            <Button onClick={() => setShowCreate(true)} className="gap-2 rounded-xl font-bold shadow-premium btn-premium">
+            <Button
+              onClick={() => setShowCreate(true)}
+              className="gap-2 rounded-xl font-bold shadow-premium btn-premium"
+            >
               <Plus className="h-4 w-4" />
               Gerar Primeiro Convite
             </Button>
@@ -363,7 +439,9 @@ export default function AdminConvitesPage() {
                 <Send className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <SheetTitle className="text-lg sm:text-xl font-semibold">Criar Novo Convite</SheetTitle>
+                <SheetTitle className="text-lg sm:text-xl font-semibold">
+                  Criar Novo Convite
+                </SheetTitle>
                 <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
                   Configure as permissões e validade para o novo acesso.
                 </SheetDescription>
@@ -382,12 +460,15 @@ export default function AdminConvitesPage() {
                   <button
                     key={p.value}
                     type="button"
-                    onClick={() => { setDiasAcesso(p.value); setAcessoPermanente(false); }}
+                    onClick={() => {
+                      setDiasAcesso(p.value);
+                      setAcessoPermanente(false);
+                    }}
                     className={cn(
                       "px-3 py-2 text-sm font-medium rounded-xl border transition-colors",
                       !acessoPermanente && diasAcesso === p.value
                         ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:border-border/80",
+                        : "border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:border-border/80"
                     )}
                   >
                     {p.label}
@@ -407,14 +488,22 @@ export default function AdminConvitesPage() {
                   }}
                   className="pr-14 h-10 rounded-full bg-muted/30 border-border/60"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">dias</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                  dias
+                </span>
               </div>
               <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-border/30">
                 <div>
                   <p className="text-sm font-semibold">Acesso permanente</p>
-                  <p className="text-[11px] text-muted-foreground/60">Sem prazo de expiração de acesso</p>
+                  <p className="text-[11px] text-muted-foreground/60">
+                    Sem prazo de expiração de acesso
+                  </p>
                 </div>
-                <Switch id="acessoPermanente" checked={acessoPermanente} onCheckedChange={setAcessoPermanente} />
+                <Switch
+                  id="acessoPermanente"
+                  checked={acessoPermanente}
+                  onCheckedChange={setAcessoPermanente}
+                />
               </div>
             </div>
 
@@ -428,12 +517,15 @@ export default function AdminConvitesPage() {
                   <button
                     key={p.value}
                     type="button"
-                    onClick={() => { setHorasValidade(p.value); setCodigoPermanente(false); }}
+                    onClick={() => {
+                      setHorasValidade(p.value);
+                      setCodigoPermanente(false);
+                    }}
                     className={cn(
                       "px-3 py-2 text-sm font-medium rounded-xl border transition-colors",
                       !codigoPermanente && horasValidade === p.value
                         ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:border-border/80",
+                        : "border-border bg-muted/30 text-muted-foreground hover:text-foreground hover:border-border/80"
                     )}
                   >
                     {p.label}
@@ -453,14 +545,22 @@ export default function AdminConvitesPage() {
                   }}
                   className="pr-16 h-10 rounded-full bg-muted/30 border-border/60"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">horas</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                  horas
+                </span>
               </div>
               <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-border/30">
                 <div>
                   <p className="text-sm font-semibold">Sem prazo (nunca expira)</p>
-                  <p className="text-[11px] text-muted-foreground/60">O código pode ser usado a qualquer momento</p>
+                  <p className="text-[11px] text-muted-foreground/60">
+                    O código pode ser usado a qualquer momento
+                  </p>
                 </div>
-                <Switch id="codigoPermanente" checked={codigoPermanente} onCheckedChange={setCodigoPermanente} />
+                <Switch
+                  id="codigoPermanente"
+                  checked={codigoPermanente}
+                  onCheckedChange={setCodigoPermanente}
+                />
               </div>
             </div>
 
@@ -468,7 +568,9 @@ export default function AdminConvitesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold">Uso Único</p>
-                <p className="text-[11px] text-muted-foreground/60">O convite expira após o primeiro uso</p>
+                <p className="text-[11px] text-muted-foreground/60">
+                  O convite expira após o primeiro uso
+                </p>
               </div>
               <Switch checked id="usoUnico" disabled />
             </div>
@@ -476,7 +578,9 @@ export default function AdminConvitesPage() {
             {/* ── Quantidade + Descrição ── */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">Quantidade</Label>
+                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  Quantidade
+                </Label>
                 <Input
                   type="number"
                   min={1}

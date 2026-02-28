@@ -149,9 +149,7 @@ export default function RegistroPage() {
           <div className="size-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-lg shadow-black/10">
             <Wallet className="h-5 w-5 text-white" />
           </div>
-          <h2 className="text-white text-xl font-bold tracking-tight">
-            Control Finance
-          </h2>
+          <h2 className="text-white text-xl font-bold tracking-tight">Control Finance</h2>
         </header>
 
         {/* Main content */}
@@ -175,8 +173,8 @@ export default function RegistroPage() {
               transition={{ duration: 0.6, delay: 0.15 }}
               className="text-emerald-100/70 text-base sm:text-lg lg:text-xl xl:text-2xl font-light max-w-xl mx-auto lg:mx-0 leading-relaxed"
             >
-              Transforme sua relação com o dinheiro em uma experiência visual e
-              simplificada. Dashboard, metas e investimentos em um só lugar.
+              Transforme sua relação com o dinheiro em uma experiência visual e simplificada.
+              Dashboard, metas e investimentos em um só lugar.
             </motion.p>
             <motion.div
               initial={{ opacity: 0 }}
@@ -186,15 +184,11 @@ export default function RegistroPage() {
             >
               <div className="flex items-center gap-3">
                 <ShieldCheck className="h-5 w-5 text-emerald-300" />
-                <span className="text-sm font-medium text-white">
-                  Dados Criptografados
-                </span>
+                <span className="text-sm font-medium text-white">Dados Criptografados</span>
               </div>
               <div className="flex items-center gap-3">
                 <Zap className="h-5 w-5 text-emerald-300" />
-                <span className="text-sm font-medium text-white">
-                  Setup Instantâneo
-                </span>
+                <span className="text-sm font-medium text-white">Setup Instantâneo</span>
               </div>
             </motion.div>
           </div>
@@ -353,9 +347,7 @@ export default function RegistroPage() {
                                 <div
                                   key={rule.label}
                                   className={`flex items-center gap-1.5 text-[10px] font-bold ${
-                                    rule.passed
-                                      ? "text-green-500"
-                                      : "text-slate-400"
+                                    rule.passed ? "text-green-500" : "text-slate-400"
                                   }`}
                                 >
                                   {rule.passed ? (
@@ -419,9 +411,7 @@ export default function RegistroPage() {
                   {/* Login link */}
                   <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
                     <div className="flex items-center justify-center gap-2 text-sm">
-                      <span className="text-slate-500 dark:text-slate-400">
-                        Já tem uma conta?
-                      </span>
+                      <span className="text-slate-500 dark:text-slate-400">Já tem uma conta?</span>
                       <Link
                         className="font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
                         href="/login"
@@ -473,10 +463,7 @@ export default function RegistroPage() {
                     </p>
                   </div>
 
-                  <form
-                    onSubmit={verifyForm.handleSubmit(onVerify)}
-                    className="space-y-6"
-                  >
+                  <form onSubmit={verifyForm.handleSubmit(onVerify)} className="space-y-6">
                     {/* Code input */}
                     <div className="space-y-2">
                       <label
@@ -544,9 +531,7 @@ export default function RegistroPage() {
                         ) : (
                           <RefreshCw className="h-3.5 w-3.5" />
                         )}
-                        {resendCooldown > 0
-                          ? `Reenviar (${resendCooldown}s)`
-                          : "Reenviar"}
+                        {resendCooldown > 0 ? `Reenviar (${resendCooldown}s)` : "Reenviar"}
                       </button>
                     </div>
                     <button
@@ -599,9 +584,7 @@ export default function RegistroPage() {
                   <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">
                     Metas
                   </p>
-                  <p className="text-white text-sm font-bold">
-                    Reserva Emergência
-                  </p>
+                  <p className="text-white text-sm font-bold">Reserva Emergência</p>
                 </div>
               </div>
               <div className="auth-glass-card rounded-t-3xl p-6 flex items-center gap-5 flex-1 opacity-40 hover:opacity-100 transition-all">
@@ -612,9 +595,7 @@ export default function RegistroPage() {
                   <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">
                     Investimento
                   </p>
-                  <p className="text-white text-sm font-bold">
-                    Carteira Global
-                  </p>
+                  <p className="text-white text-sm font-bold">Carteira Global</p>
                 </div>
               </div>
             </div>
@@ -629,14 +610,10 @@ export default function RegistroPage() {
               <span className="text-white text-[10px] hover:underline cursor-pointer">
                 Privacidade
               </span>
-              <span className="text-white text-[10px] hover:underline cursor-pointer">
-                Termos
-              </span>
+              <span className="text-white text-[10px] hover:underline cursor-pointer">Termos</span>
               <div className="flex items-center gap-1.5">
                 <LockIcon className="h-3 w-3 text-white" />
-                <span className="text-white text-[10px] font-medium">
-                  SSL 256-bit
-                </span>
+                <span className="text-white text-[10px] font-medium">SSL 256-bit</span>
               </div>
             </div>
           </div>

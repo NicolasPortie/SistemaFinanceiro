@@ -4,13 +4,7 @@ import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { api, type CodigoTelegramResponse } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  MessageCircle,
-  ExternalLink,
-  Copy,
-  Check,
-  RefreshCw,
-} from "lucide-react";
+import { MessageCircle, ExternalLink, Copy, Check, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
@@ -95,13 +89,21 @@ export function TelegramOnboarding() {
             {/* Body */}
             <div className="p-4 space-y-3">
               <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                Registre gastos por audio, foto ou texto direto no Telegram. Funciona 24h sem abrir o app.
+                Registre gastos por audio, foto ou texto direto no Telegram. Funciona 24h sem abrir
+                o app.
               </p>
 
               {/* Step 1 */}
               <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider">1  Abra o bot</p>
-                <Button asChild variant="outline" size="sm" className="w-full gap-1.5 h-9 rounded-xl text-xs">
+                <p className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+                  1 Abra o bot
+                </p>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5 h-9 rounded-xl text-xs"
+                >
                   <a href={TELEGRAM_BOT_URL} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-3 w-3" />
                     @facilita_finance_bot
@@ -111,7 +113,9 @@ export function TelegramOnboarding() {
 
               {/* Step 2 */}
               <div className="space-y-1.5">
-                <p className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider">2  Envie o código</p>
+                <p className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+                  2 Envie o código
+                </p>
                 {gerando ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -123,14 +127,30 @@ export function TelegramOnboarding() {
                       <code className="flex-1 rounded-lg bg-muted px-2.5 py-2 text-xs font-mono font-bold select-all truncate">
                         {codigo.codigo}
                       </code>
-                      <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-lg" onClick={copiar}>
-                        {copiado ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 rounded-lg"
+                        onClick={copiar}
+                      >
+                        {copiado ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
                       </Button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/40">Expira em {formatDate(codigo.expiraEm)}</p>
+                    <p className="text-[10px] text-muted-foreground/40">
+                      Expira em {formatDate(codigo.expiraEm)}
+                    </p>
                   </div>
                 ) : (
-                  <Button variant="outline" size="sm" className="w-full rounded-xl gap-1.5 h-9 text-xs" onClick={gerarCodigo}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full rounded-xl gap-1.5 h-9 text-xs"
+                    onClick={gerarCodigo}
+                  >
                     <RefreshCw className="h-3 w-3" />
                     Gerar codigo
                   </Button>
@@ -145,7 +165,7 @@ export function TelegramOnboarding() {
                 disabled={!codigo}
                 loading={verificando}
               >
-                <Check className="h-3.5 w-3.5" /> Ja enviei  confirmar
+                <Check className="h-3.5 w-3.5" /> Ja enviei confirmar
               </Button>
             </div>
           </motion.div>

@@ -128,12 +128,11 @@ export const atualizarPerfilSchema = z.object({
 });
 
 export const rendaMensalSchema = z.object({
-  rendaMensal: z.string()
-    .refine((v) => {
-      if (!v || v === "0,00" || v === "0") return true; // Permitir limpar
-      const num = parseFloat(v.replace(/\./g, "").replace(",", "."));
-      return !isNaN(num) && num >= 0 && num <= 999999.99;
-    }, "Valor deve ser entre R$ 0 e R$ 999.999,99"),
+  rendaMensal: z.string().refine((v) => {
+    if (!v || v === "0,00" || v === "0") return true; // Permitir limpar
+    const num = parseFloat(v.replace(/\./g, "").replace(",", "."));
+    return !isNaN(num) && num >= 0 && num <= 999999.99;
+  }, "Valor deve ser entre R$ 0 e R$ 999.999,99"),
 });
 
 export const alterarSenhaSchema = z

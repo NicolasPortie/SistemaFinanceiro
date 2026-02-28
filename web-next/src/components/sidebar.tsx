@@ -30,12 +30,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -75,9 +70,7 @@ export function Sidebar() {
 
   useEffect(() => {
     setMounted(true);
-    [...userNavItems, ...adminNavItems].forEach((item) =>
-      router.prefetch(item.href),
-    );
+    [...userNavItems, ...adminNavItems].forEach((item) => router.prefetch(item.href));
   }, [router]);
 
   /* ── helper: is this nav item active? ── */
@@ -92,7 +85,7 @@ export function Sidebar() {
       <aside
         className={cn(
           "hidden lg:flex fixed left-0 top-0 bottom-0 w-20 sidebar-glass z-40 flex-col items-center py-8 gap-8",
-          inAdmin && "border-r border-amber-500/15",
+          inAdmin && "border-r border-amber-500/15"
         )}
       >
         {/* Logo — green (user) or amber (admin) */}
@@ -100,9 +93,7 @@ export function Sidebar() {
           href={inAdmin ? "/admin" : "/dashboard"}
           className={cn(
             "size-10 rounded-xl flex items-center justify-center shadow-lg shrink-0 hover:scale-105 transition-transform",
-            inAdmin
-              ? "bg-amber-500 shadow-amber-500/20"
-              : "bg-emerald-600 shadow-emerald-600/20",
+            inAdmin ? "bg-amber-500 shadow-amber-500/20" : "bg-emerald-600 shadow-emerald-600/20"
           )}
         >
           {inAdmin ? (
@@ -138,21 +129,17 @@ export function Sidebar() {
                               : "text-white"
                             : inAdmin
                               ? "text-slate-500 hover:bg-amber-500/10 hover:text-amber-400"
-                              : "text-slate-400 dark:text-slate-500 hover:bg-white/80 dark:hover:bg-white/10 hover:text-emerald-600 dark:hover:text-emerald-600",
+                              : "text-slate-400 dark:text-slate-500 hover:bg-white/80 dark:hover:bg-white/10 hover:text-emerald-600 dark:hover:text-emerald-600"
                         )}
                       >
                         {active && (
                           <motion.div
-                            layoutId={
-                              inAdmin
-                                ? "sidebar-admin-pill"
-                                : "sidebar-user-pill"
-                            }
+                            layoutId={inAdmin ? "sidebar-admin-pill" : "sidebar-user-pill"}
                             className={cn(
                               "absolute inset-0 rounded-2xl shadow-lg",
                               inAdmin
                                 ? "bg-amber-500 shadow-amber-500/30"
-                                : "bg-emerald-600 shadow-emerald-600/20",
+                                : "bg-emerald-600 shadow-emerald-600/20"
                             )}
                             transition={{
                               type: "spring",
@@ -164,11 +151,7 @@ export function Sidebar() {
                         <item.icon className="h-5 w-5 relative z-10" />
                       </Link>
                     </TooltipTrigger>
-                    <TooltipContent
-                      side="right"
-                      sideOffset={8}
-                      className="text-xs font-bold"
-                    >
+                    <TooltipContent side="right" sideOffset={8} className="text-xs font-bold">
                       {item.label}
                     </TooltipContent>
                   </Tooltip>
@@ -187,17 +170,13 @@ export function Sidebar() {
                     "relative size-12 rounded-2xl flex items-center justify-center transition-all duration-200 border-2 border-dashed",
                     inAdmin
                       ? "text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/50"
-                      : "text-amber-500 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50",
+                      : "text-amber-500 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50"
                   )}
                 >
                   <ArrowLeftRight className="h-4 w-4" />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent
-                side="right"
-                sideOffset={8}
-                className="text-xs font-bold"
-              >
+              <TooltipContent side="right" sideOffset={8} className="text-xs font-bold">
                 {inAdmin ? "Voltar ao App" : "Administração"}
               </TooltipContent>
             </Tooltip>
@@ -209,14 +188,12 @@ export function Sidebar() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() =>
-                    mounted && setTheme(theme === "dark" ? "light" : "dark")
-                  }
+                  onClick={() => mounted && setTheme(theme === "dark" ? "light" : "dark")}
                   className={cn(
                     "size-12 rounded-2xl flex items-center justify-center transition-all duration-300 cursor-pointer",
                     inAdmin
                       ? "text-slate-500 hover:bg-amber-500/10 hover:text-amber-400"
-                      : "text-slate-400 dark:text-slate-500 hover:bg-white/80 dark:hover:bg-white/10 hover:text-emerald-600",
+                      : "text-slate-400 dark:text-slate-500 hover:bg-white/80 dark:hover:bg-white/10 hover:text-emerald-600"
                   )}
                 >
                   {mounted && theme === "dark" ? (
@@ -226,11 +203,7 @@ export function Sidebar() {
                   )}
                 </button>
               </TooltipTrigger>
-              <TooltipContent
-                side="right"
-                sideOffset={8}
-                className="text-xs font-bold"
-              >
+              <TooltipContent side="right" sideOffset={8} className="text-xs font-bold">
                 {mounted && theme === "dark" ? "Modo Claro" : "Modo Escuro"}
               </TooltipContent>
             </Tooltip>
@@ -245,11 +218,7 @@ export function Sidebar() {
                   <LogOut className="h-5 w-5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent
-                side="right"
-                sideOffset={8}
-                className="text-xs font-bold"
-              >
+              <TooltipContent side="right" sideOffset={8} className="text-xs font-bold">
                 Sair
               </TooltipContent>
             </Tooltip>
@@ -263,7 +232,7 @@ export function Sidebar() {
           "lg:hidden fixed top-0 left-0 right-0 z-50 h-14 px-4 flex items-center justify-between backdrop-blur-xl",
           inAdmin
             ? "bg-white dark:bg-[#161B22] border-b-2 border-amber-500/60"
-            : "bg-white dark:bg-[#161B22] border-b border-slate-200/60 dark:border-white/5",
+            : "bg-white dark:bg-[#161B22] border-b border-slate-200/60 dark:border-white/5"
         )}
       >
         <div className="flex items-center gap-3">
@@ -275,11 +244,7 @@ export function Sidebar() {
                 className="h-9 w-9 rounded-xl"
                 aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
               >
-                {mobileOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
+                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
             </SheetTrigger>
             <SheetContent
@@ -292,9 +257,7 @@ export function Sidebar() {
                 <div
                   className={cn(
                     "flex items-center gap-3 px-5 py-6 border-b",
-                    inAdmin
-                      ? "border-amber-500/20"
-                      : "border-slate-100 dark:border-slate-800",
+                    inAdmin ? "border-amber-500/20" : "border-slate-100 dark:border-slate-800"
                   )}
                 >
                   <div
@@ -302,7 +265,7 @@ export function Sidebar() {
                       "size-10 rounded-xl flex items-center justify-center shadow-lg",
                       inAdmin
                         ? "bg-amber-500 shadow-amber-500/20"
-                        : "bg-emerald-600 shadow-emerald-600/20",
+                        : "bg-emerald-600 shadow-emerald-600/20"
                     )}
                   >
                     {inAdmin ? (
@@ -316,9 +279,7 @@ export function Sidebar() {
                       {inAdmin ? "Admin Panel" : "Control Finance"}
                     </h1>
                     {inAdmin && (
-                      <p className="text-xs text-amber-500 font-semibold">
-                        Administração
-                      </p>
+                      <p className="text-xs text-amber-500 font-semibold">Administração</p>
                     )}
                   </div>
                 </div>
@@ -338,7 +299,7 @@ export function Sidebar() {
                             ? inAdmin
                               ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20"
                               : "bg-emerald-600 text-white shadow-lg shadow-emerald-600/20"
-                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800",
+                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                         )}
                       >
                         <item.icon className="h-5 w-5 shrink-0" />
@@ -353,7 +314,7 @@ export function Sidebar() {
                       <div
                         className={cn(
                           "h-px my-2 mx-1",
-                          inAdmin ? "bg-emerald-500/20" : "bg-amber-500/20",
+                          inAdmin ? "bg-emerald-500/20" : "bg-amber-500/20"
                         )}
                       />
                       <Link
@@ -363,7 +324,7 @@ export function Sidebar() {
                           "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 border border-dashed",
                           inAdmin
                             ? "text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
-                            : "text-amber-500 border-amber-500/30 hover:bg-amber-500/10",
+                            : "text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
                         )}
                       >
                         <ArrowLeftRight className="h-5 w-5 shrink-0" />
@@ -377,8 +338,7 @@ export function Sidebar() {
                 <div className="p-4 space-y-1 border-t border-slate-100 dark:border-slate-800">
                   <button
                     onClick={() => {
-                      if (mounted)
-                        setTheme(theme === "dark" ? "light" : "dark");
+                      if (mounted) setTheme(theme === "dark" ? "light" : "dark");
                     }}
                     className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 w-full transition-all cursor-pointer"
                   >
@@ -387,9 +347,7 @@ export function Sidebar() {
                     ) : (
                       <Moon className="h-5 w-5" />
                     )}
-                    {mounted && theme === "dark"
-                      ? "Modo Claro"
-                      : "Modo Escuro"}
+                    {mounted && theme === "dark" ? "Modo Claro" : "Modo Escuro"}
                   </button>
                   <button
                     onClick={() => {
@@ -412,7 +370,7 @@ export function Sidebar() {
                 "size-8 rounded-lg flex items-center justify-center shadow-md",
                 inAdmin
                   ? "bg-amber-500 shadow-amber-500/20"
-                  : "bg-emerald-600 shadow-emerald-600/20",
+                  : "bg-emerald-600 shadow-emerald-600/20"
               )}
             >
               {inAdmin ? (

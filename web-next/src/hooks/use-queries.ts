@@ -77,11 +77,11 @@ export function useResumoHistorico(mesesAtras: number = 6) {
         .map((r, i) =>
           r.data
             ? {
-              mes: meses[i],
-              receitas: r.data.totalReceitas,
-              gastos: r.data.totalGastos,
-              saldo: r.data.saldo,
-            }
+                mes: meses[i],
+                receitas: r.data.totalReceitas,
+                gastos: r.data.totalGastos,
+                saldo: r.data.saldo,
+              }
             : null
         )
         .filter((d): d is NonNullable<typeof d> => d !== null),
@@ -292,8 +292,12 @@ export function useRemoverMeta() {
 export function useCriarCartao() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { nome: string; limite: number; diaFechamento: number; diaVencimento: number }) =>
-      api.cartoes.criar(data),
+    mutationFn: (data: {
+      nome: string;
+      limite: number;
+      diaFechamento: number;
+      diaVencimento: number;
+    }) => api.cartoes.criar(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cartoes });
       toast.success("Cartão criado com sucesso!");
@@ -336,8 +340,13 @@ export function useDesativarCartao() {
 export function useAdicionarLimiteExtra() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { valorAdicional: number; percentualExtra: number } }) =>
-      api.cartoes.adicionarLimiteExtra(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: { valorAdicional: number; percentualExtra: number };
+    }) => api.cartoes.adicionarLimiteExtra(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cartoes });
       toast.success("Limite extra aplicado com sucesso!");
@@ -351,8 +360,13 @@ export function useAdicionarLimiteExtra() {
 export function useResgatarLimiteExtra() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { valorResgate: number; percentualBonus: number } }) =>
-      api.cartoes.resgatarLimiteExtra(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: { valorResgate: number; percentualBonus: number };
+    }) => api.cartoes.resgatarLimiteExtra(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cartoes });
       toast.success(data?.mensagem || "Limite resgatado com sucesso!");

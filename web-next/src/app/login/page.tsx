@@ -67,9 +67,7 @@ export default function LoginPage() {
           <div className="size-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-lg shadow-black/10">
             <Wallet className="h-5 w-5 text-white" />
           </div>
-          <h2 className="text-white text-xl font-bold tracking-tight">
-            Control Finance
-          </h2>
+          <h2 className="text-white text-xl font-bold tracking-tight">Control Finance</h2>
         </header>
 
         {/* Main content */}
@@ -91,8 +89,8 @@ export default function LoginPage() {
               transition={{ duration: 0.6, delay: 0.15 }}
               className="text-emerald-100 text-base sm:text-lg lg:text-xl font-normal opacity-80 max-w-lg mx-auto lg:mx-0"
             >
-              Dashboard e Metas em um só lugar. Acompanhe seu progresso com
-              interfaces modernas e intuitivas.
+              Dashboard e Metas em um só lugar. Acompanhe seu progresso com interfaces modernas e
+              intuitivas.
             </motion.p>
           </div>
 
@@ -183,11 +181,7 @@ export default function LoginPage() {
                       tabIndex={-1}
                       aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                   {errors.senha && (
@@ -221,13 +215,8 @@ export default function LoginPage() {
               {/* Register link */}
               <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex items-center justify-center gap-2 text-sm">
-                  <span className="text-slate-500 dark:text-slate-400">
-                    Não possui uma conta?
-                  </span>
-                  <Link
-                    className="font-bold text-emerald-600 hover:underline"
-                    href="/registro"
-                  >
+                  <span className="text-slate-500 dark:text-slate-400">Não possui uma conta?</span>
+                  <Link className="font-bold text-emerald-600 hover:underline" href="/registro">
                     Criar conta gratuita
                   </Link>
                 </div>
@@ -259,9 +248,7 @@ export default function LoginPage() {
             {/* Dashboard preview */}
             <div className="auth-glass-card rounded-t-2xl p-5 flex-1 flex flex-col justify-between min-h-35 opacity-40 hover:opacity-100 transition-opacity duration-500">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-white font-semibold text-xs">
-                  Dashboard Mensal
-                </span>
+                <span className="text-white font-semibold text-xs">Dashboard Mensal</span>
                 <MoreHorizontal className="h-4 w-4 text-white/70" />
               </div>
               <div className="flex items-end gap-2 h-12">
@@ -303,8 +290,7 @@ export default function LoginPage() {
           {/* Copyright */}
           <div className="w-full lg:w-1/3 flex flex-col items-center lg:items-end justify-center h-full">
             <p className="text-white/30 text-[10px] tracking-wide mb-2 uppercase">
-              © {new Date().getFullYear()} Control Finance Inc. Todos os
-              direitos reservados.
+              © {new Date().getFullYear()} Control Finance Inc. Todos os direitos reservados.
             </p>
             <p className="text-white/40 text-[10px] flex items-center gap-1">
               <ShieldCheck className="h-3 w-3" />

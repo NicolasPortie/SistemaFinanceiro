@@ -19,11 +19,7 @@ import {
   BarChart3,
   RefreshCw,
 } from "lucide-react";
-import {
-  EmptyState,
-  ErrorState,
-  CardSkeleton,
-} from "@/components/shared/page-components";
+import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
@@ -52,12 +48,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 /* ────────────────────────────────────────────── */
 /* Helpers                                         */
@@ -65,51 +56,76 @@ import {
 
 function statusIcon(status: string) {
   switch (status) {
-    case "ok": return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
-    case "atencao": return <AlertTriangle className="h-5 w-5 text-amber-500" />;
-    case "critico": return <AlertCircle className="h-5 w-5 text-red-500" />;
-    case "excedido": return <XCircle className="h-5 w-5 text-red-600" />;
-    default: return <Gauge className="h-5 w-5 text-slate-400" />;
+    case "ok":
+      return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
+    case "atencao":
+      return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+    case "critico":
+      return <AlertCircle className="h-5 w-5 text-red-500" />;
+    case "excedido":
+      return <XCircle className="h-5 w-5 text-red-600" />;
+    default:
+      return <Gauge className="h-5 w-5 text-slate-400" />;
   }
 }
 
 function statusLabel(status: string) {
   switch (status) {
-    case "ok": return "Dentro do limite";
-    case "atencao": return "Atenção";
-    case "critico": return "Crítico";
-    case "excedido": return "Excedido";
-    default: return status;
+    case "ok":
+      return "Dentro do limite";
+    case "atencao":
+      return "Atenção";
+    case "critico":
+      return "Crítico";
+    case "excedido":
+      return "Excedido";
+    default:
+      return status;
   }
 }
 
 function statusBgColor(status: string) {
   switch (status) {
-    case "ok": return "bg-emerald-50 dark:bg-emerald-500/10";
-    case "atencao": return "bg-amber-50 dark:bg-amber-500/10";
-    case "critico": return "bg-red-50 dark:bg-red-500/10";
-    case "excedido": return "bg-red-50 dark:bg-red-500/10";
-    default: return "bg-slate-50 dark:bg-slate-800/30";
+    case "ok":
+      return "bg-emerald-50 dark:bg-emerald-500/10";
+    case "atencao":
+      return "bg-amber-50 dark:bg-amber-500/10";
+    case "critico":
+      return "bg-red-50 dark:bg-red-500/10";
+    case "excedido":
+      return "bg-red-50 dark:bg-red-500/10";
+    default:
+      return "bg-slate-50 dark:bg-slate-800/30";
   }
 }
 
 function progressColor(status: string) {
   switch (status) {
-    case "ok": return "bg-emerald-500";
-    case "atencao": return "bg-amber-500";
-    case "critico": return "bg-red-500";
-    case "excedido": return "bg-red-600";
-    default: return "bg-emerald-600";
+    case "ok":
+      return "bg-emerald-500";
+    case "atencao":
+      return "bg-amber-500";
+    case "critico":
+      return "bg-red-500";
+    case "excedido":
+      return "bg-red-600";
+    default:
+      return "bg-emerald-600";
   }
 }
 
 function statusBadgeCls(status: string) {
   switch (status) {
-    case "ok": return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800";
-    case "atencao": return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border-amber-200 dark:border-amber-800";
-    case "critico": return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-red-200 dark:border-red-800";
-    case "excedido": return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-red-200 dark:border-red-800";
-    default: return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+    case "ok":
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800";
+    case "atencao":
+      return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border-amber-200 dark:border-amber-800";
+    case "critico":
+      return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-red-200 dark:border-red-800";
+    case "excedido":
+      return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-red-200 dark:border-red-800";
+    default:
+      return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
   }
 }
 
@@ -142,7 +158,12 @@ export default function LimitesPage() {
     const valorNum = parseFloat(data.valor.replace(",", "."));
     definirLimite.mutate(
       { categoria: data.categoria, valor: valorNum },
-      { onSuccess: () => { form.reset(); setShowForm(false); } }
+      {
+        onSuccess: () => {
+          form.reset();
+          setShowForm(false);
+        },
+      }
     );
   };
 
@@ -154,9 +175,14 @@ export default function LimitesPage() {
   };
 
   // Summary stats
-  const okCount = limites.filter(l => l.status === "ok").length;
-  const alertCount = limites.filter(l => l.status === "atencao" || l.status === "critico" || l.status === "excedido").length;
-  const avgUse = limites.length > 0 ? Math.round(limites.reduce((s, l) => s + l.percentualConsumido, 0) / limites.length) : 0;
+  const okCount = limites.filter((l) => l.status === "ok").length;
+  const alertCount = limites.filter(
+    (l) => l.status === "atencao" || l.status === "critico" || l.status === "excedido"
+  ).length;
+  const avgUse =
+    limites.length > 0
+      ? Math.round(limites.reduce((s, l) => s + l.percentualConsumido, 0) / limites.length)
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -183,7 +209,10 @@ export default function LimitesPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => refetch()} className="p-2.5 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-xl transition-colors cursor-pointer">
+                <button
+                  onClick={() => refetch()}
+                  className="p-2.5 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-xl transition-colors cursor-pointer"
+                >
                   <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                 </button>
               </TooltipTrigger>
@@ -212,55 +241,91 @@ export default function LimitesPage() {
           {/* ═══ Stat Cards ═══ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             {/* Total limites */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0 }}
+              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+            >
               <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
               <div className="flex items-center justify-between relative z-10">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cadastrados</span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Cadastrados
+                </span>
                 <div className="size-9 flex items-center justify-center bg-emerald-600/10 rounded-xl">
                   <Gauge className="h-4 w-4 text-emerald-600" />
                 </div>
               </div>
               <div className="relative z-10">
-                <p className="text-2xl font-bold text-slate-800 dark:text-white">{limites.length}</p>
+                <p className="text-2xl font-bold text-slate-800 dark:text-white">
+                  {limites.length}
+                </p>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500">limites ativos</p>
               </div>
             </motion.div>
 
             {/* Dentro do limite */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+            >
               <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
               <div className="flex items-center justify-between relative z-10">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dentro do Limite</span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Dentro do Limite
+                </span>
                 <div className="size-9 flex items-center justify-center bg-emerald-500/10 rounded-xl">
                   <Shield className="h-4 w-4 text-emerald-500" />
                 </div>
               </div>
               <div className="relative z-10">
-                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{okCount}</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                  {okCount}
+                </p>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500">categorias ok</p>
               </div>
             </motion.div>
 
             {/* Em alerta */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+            >
               <div className="absolute -right-6 -bottom-6 bg-amber-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-amber-500/15 transition-all" />
               <div className="flex items-center justify-between relative z-10">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Em Alerta</span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Em Alerta
+                </span>
                 <div className="size-9 flex items-center justify-center bg-amber-500/10 rounded-xl">
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                 </div>
               </div>
               <div className="relative z-10">
-                <p className={`text-2xl font-bold ${alertCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-800 dark:text-white"}`}>{alertCount}</p>
+                <p
+                  className={`text-2xl font-bold ${alertCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-800 dark:text-white"}`}
+                >
+                  {alertCount}
+                </p>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500">precisam atenção</p>
               </div>
             </motion.div>
 
             {/* Uso médio */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300 ring-2 ring-emerald-600/20">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300 ring-2 ring-emerald-600/20"
+            >
               <div className="absolute -right-6 -bottom-6 bg-emerald-600/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-600/15 transition-all" />
               <div className="flex items-center justify-between relative z-10">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Uso Médio</span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Uso Médio
+                </span>
                 <div className="size-9 flex items-center justify-center bg-emerald-600/10 rounded-xl">
                   <BarChart3 className="h-4 w-4 text-emerald-600" />
                 </div>
@@ -292,12 +357,19 @@ export default function LimitesPage() {
                   {/* Header */}
                   <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${statusBgColor(l.status)} transition-transform duration-300 group-hover:scale-110`}>
+                      <div
+                        className={`flex h-11 w-11 items-center justify-center rounded-2xl ${statusBgColor(l.status)} transition-transform duration-300 group-hover:scale-110`}
+                      >
                         {statusIcon(l.status)}
                       </div>
                       <div>
-                        <h4 className="font-bold tracking-tight text-sm text-slate-800 dark:text-white">{l.categoriaNome}</h4>
-                        <Badge variant="secondary" className={`text-[10px] font-semibold mt-0.5 border ${statusBadgeCls(l.status)}`}>
+                        <h4 className="font-bold tracking-tight text-sm text-slate-800 dark:text-white">
+                          {l.categoriaNome}
+                        </h4>
+                        <Badge
+                          variant="secondary"
+                          className={`text-[10px] font-semibold mt-0.5 border ${statusBadgeCls(l.status)}`}
+                        >
                           {statusLabel(l.status)}
                         </Badge>
                       </div>
@@ -321,10 +393,22 @@ export default function LimitesPage() {
                   <div className="flex items-center gap-4 mb-4">
                     <div className="relative h-16 w-16 shrink-0">
                       <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">
-                        <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" strokeWidth="5" className="text-slate-200 dark:text-slate-700" />
                         <circle
-                          cx="32" cy="32" r="26" fill="none"
-                          strokeWidth="5" strokeLinecap="round"
+                          cx="32"
+                          cy="32"
+                          r="26"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="5"
+                          className="text-slate-200 dark:text-slate-700"
+                        />
+                        <circle
+                          cx="32"
+                          cy="32"
+                          r="26"
+                          fill="none"
+                          strokeWidth="5"
+                          strokeLinecap="round"
                           className={progressColor(l.status)}
                           stroke="currentColor"
                           strokeDasharray={`${Math.min(l.percentualConsumido, 100) * 1.634} 163.4`}
@@ -332,22 +416,36 @@ export default function LimitesPage() {
                         />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-sm font-extrabold tabular-nums text-slate-800 dark:text-white">{l.percentualConsumido.toFixed(0)}%</span>
+                        <span className="text-sm font-extrabold tabular-nums text-slate-800 dark:text-white">
+                          {l.percentualConsumido.toFixed(0)}%
+                        </span>
                       </div>
                     </div>
                     <div className="flex-1 space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium text-xs">Gasto</span>
-                        <span className="font-bold tabular-nums text-slate-800 dark:text-white text-sm">{formatCurrency(l.gastoAtual)}</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-medium text-xs">
+                          Gasto
+                        </span>
+                        <span className="font-bold tabular-nums text-slate-800 dark:text-white text-sm">
+                          {formatCurrency(l.gastoAtual)}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium text-xs">Limite</span>
-                        <span className="font-bold tabular-nums text-slate-800 dark:text-white text-sm">{formatCurrency(l.valorLimite)}</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-medium text-xs">
+                          Limite
+                        </span>
+                        <span className="font-bold tabular-nums text-slate-800 dark:text-white text-sm">
+                          {formatCurrency(l.valorLimite)}
+                        </span>
                       </div>
                       <div className="border-t border-slate-200 dark:border-slate-700/50 my-1" />
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium text-xs">Disponível</span>
-                        <span className={`font-bold tabular-nums text-sm ${l.valorLimite - l.gastoAtual >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                        <span className="text-slate-500 dark:text-slate-400 font-medium text-xs">
+                          Disponível
+                        </span>
+                        <span
+                          className={`font-bold tabular-nums text-sm ${l.valorLimite - l.gastoAtual >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+                        >
                           {formatCurrency(Math.max(l.valorLimite - l.gastoAtual, 0))}
                         </span>
                       </div>
@@ -367,7 +465,11 @@ export default function LimitesPage() {
           </div>
         </>
       ) : (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-panel rounded-2xl p-12">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-panel rounded-2xl p-12"
+        >
           <EmptyState
             icon={<Gauge className="h-6 w-6" />}
             title="Nenhum limite definido"
@@ -399,64 +501,106 @@ export default function LimitesPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <SheetTitle className="text-lg sm:text-xl font-semibold">Definir Limite</SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Configure um limite de gasto para uma categoria</SheetDescription>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                  Configure um limite de gasto para uma categoria
+                </SheetDescription>
               </div>
             </div>
           </SheetHeader>
 
           {/* Scrollable form body */}
           <div className="flex-1 overflow-y-auto overscroll-contain">
-            <form onSubmit={form.handleSubmit(handleSalvar)} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
+            <form
+              onSubmit={form.handleSubmit(handleSalvar)}
+              className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5"
+            >
               {/* Main fields */}
               <div className="space-y-4 rounded-2xl border border-emerald-600/[0.08] dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Categoria</Label>
-                  <Select value={categoriaWatch} onValueChange={(v) => form.setValue("categoria", v, { shouldValidate: true })}>
-                    <SelectTrigger className={`h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30 ${form.formState.errors.categoria ? "border-red-500" : ""}`}>
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Categoria
+                  </Label>
+                  <Select
+                    value={categoriaWatch}
+                    onValueChange={(v) => form.setValue("categoria", v, { shouldValidate: true })}
+                  >
+                    <SelectTrigger
+                      className={`h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30 ${form.formState.errors.categoria ? "border-red-500" : ""}`}
+                    >
                       <SelectValue placeholder="Selecione a categoria" />
                     </SelectTrigger>
                     <SelectContent>
                       {categoriasDisponiveis.map((c) => (
-                        <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
+                        <SelectItem key={c.id} value={c.nome}>
+                          {c.nome}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {form.formState.errors.categoria && <p className="text-xs text-red-500 font-medium">{form.formState.errors.categoria.message}</p>}
+                  {form.formState.errors.categoria && (
+                    <p className="text-xs text-red-500 font-medium">
+                      {form.formState.errors.categoria.message}
+                    </p>
+                  )}
                   {categoriasDisponiveis.length === 0 && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Todas as categorias já possuem limites definidos.</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                      Todas as categorias já possuem limites definidos.
+                    </p>
                   )}
                 </div>
 
                 <div className="border-t border-border/20" />
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Valor Limite (R$)</Label>
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Valor Limite (R$)
+                  </Label>
                   <div className="relative">
-                    <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-emerald-600/10 text-emerald-600">R$</div>
+                    <div className="absolute left-0 top-0 bottom-0 w-11 sm:w-12 flex items-center justify-center rounded-l-xl text-sm font-bold bg-emerald-600/10 text-emerald-600">
+                      R$
+                    </div>
                     <CurrencyInput
                       placeholder="0,00"
                       className={`h-12 sm:h-14 rounded-xl pl-12 sm:pl-14 text-xl sm:text-2xl tabular-nums font-bold border-border/40 bg-background placeholder:text-muted-foreground/25 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all ${form.formState.errors.valor ? "border-red-500" : ""}`}
                       value={form.watch("valor")}
-                      onValueChange={(v) => form.setValue("valor", v, { shouldValidate: form.formState.isSubmitted })}
+                      onValueChange={(v) =>
+                        form.setValue("valor", v, { shouldValidate: form.formState.isSubmitted })
+                      }
                     />
                   </div>
-                  {form.formState.errors.valor && <p className="text-xs text-red-500 font-medium">{form.formState.errors.valor.message}</p>}
+                  {form.formState.errors.valor && (
+                    <p className="text-xs text-red-500 font-medium">
+                      {form.formState.errors.valor.message}
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Preview */}
               {categoriaWatch && valorWatch && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-emerald-600/[0.08] dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5 space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Preview</p>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-2xl border border-emerald-600/[0.08] dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5 space-y-3"
+                >
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Preview
+                  </p>
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
                       <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-sm text-slate-800 dark:text-white">{categoriaWatch}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Limite: {formatCurrency(parseFloat(valorWatch.replace(",", ".")) || 0)}</p>
+                      <p className="font-bold text-sm text-slate-800 dark:text-white">
+                        {categoriaWatch}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Limite: {formatCurrency(parseFloat(valorWatch.replace(",", ".")) || 0)}
+                      </p>
                     </div>
-                    <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border-0">0%</Badge>
+                    <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border-0">
+                      0%
+                    </Badge>
                   </div>
                 </motion.div>
               )}
@@ -483,12 +627,19 @@ export default function LimitesPage() {
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Remover limite?</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja remover este limite? Essa ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover este limite? Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemover} loading={removerLimite.isPending} className="bg-red-600 text-white hover:bg-red-700 rounded-xl gap-2">
-              <Trash2 className="h-4 w-4" />Remover
+            <AlertDialogAction
+              onClick={handleRemover}
+              loading={removerLimite.isPending}
+              className="bg-red-600 text-white hover:bg-red-700 rounded-xl gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Remover
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -36,14 +36,12 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
       <div className="space-y-1">
-        <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl bg-linear-to-r from-foreground to-foreground/70 bg-clip-text">{title}</h1>
-        {description && (
-          <p className="text-sm text-muted-foreground/60 mt-1">{description}</p>
-        )}
+        <h1 className="text-2xl font-extrabold tracking-tight lg:text-3xl bg-linear-to-r from-foreground to-foreground/70 bg-clip-text">
+          {title}
+        </h1>
+        {description && <p className="text-sm text-muted-foreground/60 mt-1">{description}</p>}
       </div>
-      {children && (
-        <div className="flex items-center gap-2.5 mt-3 sm:mt-0">{children}</div>
-      )}
+      {children && <div className="flex items-center gap-2.5 mt-3 sm:mt-0">{children}</div>}
     </motion.div>
   );
 }
@@ -111,11 +109,7 @@ export function StatCard({
         duration: 0.55,
         ease: [0.22, 1, 0.36, 1],
       }}
-      className={cn(
-        "group card-premium p-4 sm:p-5 shine-effect",
-        colors.border,
-        className
-      )}
+      className={cn("group card-premium p-4 sm:p-5 shine-effect", colors.border, className)}
     >
       {/* Background accent gradient */}
       <div
@@ -126,10 +120,12 @@ export function StatCard({
       />
 
       {/* Decorative corner orb */}
-      <div className={cn(
-        "absolute -right-10 -top-10 h-32 w-32 rounded-full transition-all duration-700 opacity-0 group-hover:opacity-50 group-hover:-right-4 group-hover:-top-4 hidden sm:block blur-2xl",
-        trend === "up" ? "bg-emerald-500/6" : trend === "down" ? "bg-red-500/6" : "bg-primary/6"
-      )} />
+      <div
+        className={cn(
+          "absolute -right-10 -top-10 h-32 w-32 rounded-full transition-all duration-700 opacity-0 group-hover:opacity-50 group-hover:-right-4 group-hover:-top-4 hidden sm:block blur-2xl",
+          trend === "up" ? "bg-emerald-500/6" : trend === "down" ? "bg-red-500/6" : "bg-primary/6"
+        )}
+      />
 
       <div className="relative z-10 flex items-start justify-between gap-3">
         <div className="space-y-2 sm:space-y-3 min-w-0 flex-1">
@@ -141,7 +137,10 @@ export function StatCard({
                   <TooltipTrigger asChild>
                     <Info className="h-3 w-3 text-muted-foreground/70 hover:text-primary/80 transition-colors cursor-help shrink-0" />
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-55 text-xs leading-relaxed font-normal normal-case tracking-normal">
+                  <TooltipContent
+                    side="top"
+                    className="max-w-55 text-xs leading-relaxed font-normal normal-case tracking-normal"
+                  >
                     {tooltip}
                   </TooltipContent>
                 </Tooltip>
@@ -157,7 +156,9 @@ export function StatCard({
             {value}
           </p>
           {subtitle && (
-            <p className="text-[10px] sm:text-xs text-muted-foreground/60 font-medium truncate">{subtitle}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground/60 font-medium truncate">
+              {subtitle}
+            </p>
           )}
         </div>
         <div
@@ -172,10 +173,12 @@ export function StatCard({
       </div>
 
       {/* Bottom accent line */}
-      <div className={cn(
-        "absolute bottom-0 left-4 right-4 h-0.5 w-0 group-hover:w-[calc(100%-2rem)] transition-all duration-700 ease-out rounded-full",
-        colors.ring
-      )} />
+      <div
+        className={cn(
+          "absolute bottom-0 left-4 right-4 h-0.5 w-0 group-hover:w-[calc(100%-2rem)] transition-all duration-700 ease-out rounded-full",
+          colors.ring
+        )}
+      />
     </motion.div>
   );
 }
@@ -200,14 +203,10 @@ export function SectionHeader({
   return (
     <div className="flex items-center justify-between">
       <div className="section-header">
-        <div className={cn("section-header-icon", iconClassName)}>
-          {icon}
-        </div>
+        <div className={cn("section-header-icon", iconClassName)}>{icon}</div>
         <div>
           <h3 className="text-sm font-bold tracking-tight">{title}</h3>
-          {description && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">{description}</p>
-          )}
+          {description && <p className="text-[11px] text-muted-foreground mt-0.5">{description}</p>}
         </div>
       </div>
       {children}
@@ -225,13 +224,7 @@ interface EmptyStateProps {
   action?: React.ReactNode;
 }
 
-export function EmptyState({
-  icon,
-  lottie,
-  title,
-  description,
-  action,
-}: EmptyStateProps) {
+export function EmptyState({ icon, lottie, title, description, action }: EmptyStateProps) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
@@ -249,7 +242,9 @@ export function EmptyState({
         <LottieAnimation animationData={emptyBox} size="sm" className="mb-6 relative z-10" />
       )}
       <h3 className="text-base font-bold relative z-10 tracking-tight">{title}</h3>
-      <p className="mt-2.5 max-w-sm text-sm text-muted-foreground/60 leading-relaxed relative z-10">{description}</p>
+      <p className="mt-2.5 max-w-sm text-sm text-muted-foreground/60 leading-relaxed relative z-10">
+        {description}
+      </p>
       {action && <div className="mt-7 relative z-10">{action}</div>}
     </motion.div>
   );
@@ -273,12 +268,7 @@ export function ErrorState({
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-red-200 dark:border-red-900/40 bg-linear-to-b from-red-50/30 to-transparent dark:from-red-950/15 dark:to-transparent px-6 py-20 text-center"
     >
-      <LottieAnimation
-        animationData={errorWarning}
-        size="sm"
-        loop={false}
-        className="mb-5"
-      />
+      <LottieAnimation animationData={errorWarning} size="sm" loop={false} className="mb-5" />
       <h3 className="text-base font-bold">Erro ao carregar</h3>
       <p className="mt-2 max-w-sm text-sm text-muted-foreground/70 leading-relaxed">{message}</p>
       {onRetry && (
@@ -297,9 +287,7 @@ interface LoadingStateProps {
   text?: string;
 }
 
-export function LoadingState({
-  text = "Carregando dados...",
-}: LoadingStateProps) {
+export function LoadingState({ text = "Carregando dados..." }: LoadingStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-3">
       <LottieAnimation animationData={processing} size="xs" />

@@ -59,9 +59,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import {
-  ErrorState,
-} from "@/components/shared/page-components";
+import { ErrorState } from "@/components/shared/page-components";
 
 // ── Helpers ───────────────────────────────────────────────
 
@@ -85,12 +83,36 @@ const TIPO_OPTIONS: TipoContaBancaria[] = [
 
 function getTipoInfo(tipo: TipoContaBancaria) {
   switch (tipo) {
-    case "Corrente": return { icon: Building2, color: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" };
-    case "Poupanca": return { icon: PiggyBank, color: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" };
-    case "Investimento": return { icon: TrendingUp, color: "bg-violet-100 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400" };
-    case "Digital": return { icon: Smartphone, color: "bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400" };
-    case "Carteira": return { icon: Wallet, color: "bg-rose-100 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400" };
-    default: return { icon: CreditCard, color: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" };
+    case "Corrente":
+      return {
+        icon: Building2,
+        color: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+      };
+    case "Poupanca":
+      return {
+        icon: PiggyBank,
+        color: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+      };
+    case "Investimento":
+      return {
+        icon: TrendingUp,
+        color: "bg-violet-100 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400",
+      };
+    case "Digital":
+      return {
+        icon: Smartphone,
+        color: "bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400",
+      };
+    case "Carteira":
+      return {
+        icon: Wallet,
+        color: "bg-rose-100 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400",
+      };
+    default:
+      return {
+        icon: CreditCard,
+        color: "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400",
+      };
   }
 }
 
@@ -144,7 +166,10 @@ export default function ContasBancariasPage() {
     const saldo = parseFloat(form.saldo.replace(",", ".")) || 0;
 
     if (editingId) {
-      await atualizarConta.mutateAsync({ id: editingId, data: { nome: form.nome, tipo: form.tipo, saldo } });
+      await atualizarConta.mutateAsync({
+        id: editingId,
+        data: { nome: form.nome, tipo: form.tipo, saldo },
+      });
     } else {
       await criarConta.mutateAsync({ nome: form.nome, tipo: form.tipo, saldo });
     }
@@ -165,7 +190,6 @@ export default function ContasBancariasPage() {
 
   return (
     <div className="space-y-6">
-
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
@@ -189,27 +213,43 @@ export default function ContasBancariasPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="glass-panel rounded-2xl p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Saldo Total</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Saldo Total
+          </p>
           <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1 tabular-nums">
             {isLoading ? "—" : formatCurrency(stats.totalSaldo)}
           </p>
-          <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1">em {stats.totalContas} conta{stats.totalContas !== 1 ? "s" : ""}</p>
+          <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1">
+            em {stats.totalContas} conta{stats.totalContas !== 1 ? "s" : ""}
+          </p>
         </div>
 
         <div className="glass-panel rounded-2xl p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Contas Ativas</p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{isLoading ? "—" : stats.totalContas}</p>
-          <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1">registradas no sistema</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Contas Ativas
+          </p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+            {isLoading ? "—" : stats.totalContas}
+          </p>
+          <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1">
+            registradas no sistema
+          </p>
         </div>
 
         <div className="glass-panel rounded-2xl p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Maior Saldo</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Maior Saldo
+          </p>
           {isLoading || !stats.maiorSaldo ? (
             <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">—</p>
           ) : (
             <>
-              <p className="text-[15px] font-bold text-slate-900 dark:text-white mt-1 truncate">{stats.maiorSaldo.nome}</p>
-              <p className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums">{formatCurrency(stats.maiorSaldo.saldo)}</p>
+              <p className="text-[15px] font-bold text-slate-900 dark:text-white mt-1 truncate">
+                {stats.maiorSaldo.nome}
+              </p>
+              <p className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums">
+                {formatCurrency(stats.maiorSaldo.saldo)}
+              </p>
             </>
           )}
         </div>
@@ -224,9 +264,17 @@ export default function ContasBancariasPage() {
             <div className="h-14 w-14 rounded-2xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mb-4">
               <Landmark className="h-7 w-7 text-emerald-600" />
             </div>
-            <p className="text-[15px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Nenhuma conta cadastrada</p>
-            <p className="text-[13px] text-slate-400 dark:text-slate-500 mb-4">Adicione suas contas bancárias para vincular aos lançamentos</p>
-            <Button onClick={openCreate} size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl">
+            <p className="text-[15px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Nenhuma conta cadastrada
+            </p>
+            <p className="text-[13px] text-slate-400 dark:text-slate-500 mb-4">
+              Adicione suas contas bancárias para vincular aos lançamentos
+            </p>
+            <Button
+              onClick={openCreate}
+              size="sm"
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+            >
               <Plus className="h-3.5 w-3.5" /> Nova Conta
             </Button>
           </div>
@@ -238,7 +286,12 @@ export default function ContasBancariasPage() {
               style={{ gridTemplateColumns: "2fr 1.5fr 1.2fr 80px" }}
             >
               {["CONTA", "TIPO", "SALDO", "AÇÕES"].map((h) => (
-                <span key={h} className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">{h}</span>
+                <span
+                  key={h}
+                  className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500"
+                >
+                  {h}
+                </span>
               ))}
             </div>
 
@@ -255,10 +308,17 @@ export default function ContasBancariasPage() {
                     >
                       {/* Conta */}
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", tipoInfo.color)}>
+                        <div
+                          className={cn(
+                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                            tipoInfo.color
+                          )}
+                        >
                           <TipoIcon className="h-4 w-4" />
                         </div>
-                        <p className="text-[14px] font-semibold text-slate-800 dark:text-white truncate">{c.nome}</p>
+                        <p className="text-[14px] font-semibold text-slate-800 dark:text-white truncate">
+                          {c.nome}
+                        </p>
                       </div>
 
                       {/* Tipo */}
@@ -268,7 +328,14 @@ export default function ContasBancariasPage() {
                       </span>
 
                       {/* Saldo */}
-                      <span className={cn("text-[14px] font-bold tabular-nums", c.saldo >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400")}>
+                      <span
+                        className={cn(
+                          "text-[14px] font-bold tabular-nums",
+                          c.saldo >= 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-500 dark:text-red-400"
+                        )}
+                      >
                         {formatCurrency(c.saldo)}
                       </span>
 
@@ -291,15 +358,29 @@ export default function ContasBancariasPage() {
 
                     {/* Mobile card */}
                     <div className="lg:hidden flex items-center gap-3 px-4 py-3.5 hover:bg-white/40 dark:hover:bg-slate-800/20 transition-colors">
-                      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", tipoInfo.color)}>
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                          tipoInfo.color
+                        )}
+                      >
                         <TipoIcon className="h-5 w-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-bold text-slate-800 dark:text-white truncate">{c.nome}</p>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500">{TIPO_LABELS[c.tipo]}</p>
+                        <p className="text-[14px] font-bold text-slate-800 dark:text-white truncate">
+                          {c.nome}
+                        </p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                          {TIPO_LABELS[c.tipo]}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={cn("text-[13px] font-bold tabular-nums", c.saldo >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500")}>
+                        <span
+                          className={cn(
+                            "text-[13px] font-bold tabular-nums",
+                            c.saldo >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
+                          )}
+                        >
                           {formatCurrency(c.saldo)}
                         </span>
                         <DropdownMenu>
@@ -309,10 +390,16 @@ export default function ContasBancariasPage() {
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(c)} className="gap-2 cursor-pointer">
+                            <DropdownMenuItem
+                              onClick={() => openEdit(c)}
+                              className="gap-2 cursor-pointer"
+                            >
                               <Pencil className="h-3.5 w-3.5" /> Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDeleteId(c.id)} className="gap-2 text-red-600 dark:text-red-400 cursor-pointer">
+                            <DropdownMenuItem
+                              onClick={() => setDeleteId(c.id)}
+                              className="gap-2 text-red-600 dark:text-red-400 cursor-pointer"
+                            >
                               <Trash2 className="h-3.5 w-3.5" /> Remover
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -343,7 +430,9 @@ export default function ContasBancariasPage() {
                   {editingId ? "Editar Conta" : "Nova Conta Bancária"}
                 </SheetTitle>
                 <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
-                  {editingId ? "Atualize os dados da sua conta bancária." : "Adicione uma conta bancária ou carteira"}
+                  {editingId
+                    ? "Atualize os dados da sua conta bancária."
+                    : "Adicione uma conta bancária ou carteira"}
                 </SheetDescription>
               </div>
             </div>
@@ -351,7 +440,6 @@ export default function ContasBancariasPage() {
 
           <div className="flex-1 overflow-y-auto overscroll-contain">
             <form onSubmit={handleSubmit} className="px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
-
               {/* Main fields card */}
               <div className="space-y-4 rounded-2xl border border-emerald-600/8 dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
                 {/* Nome */}
@@ -428,7 +516,8 @@ export default function ContasBancariasPage() {
                 <p className="text-xs text-muted-foreground flex items-start gap-2">
                   <Info className="h-3.5 w-3.5 shrink-0 text-emerald-600/50 mt-0.5" />
                   <span>
-                    <strong>Dica:</strong> O saldo inicial será usado como ponto de partida para calcular o saldo atual baseado nos seus lançamentos.
+                    <strong>Dica:</strong> O saldo inicial será usado como ponto de partida para
+                    calcular o saldo atual baseado nos seus lançamentos.
                   </span>
                 </p>
               </div>
@@ -454,13 +543,18 @@ export default function ContasBancariasPage() {
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-700/50">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-900 dark:text-white">Remover conta?</AlertDialogTitle>
+            <AlertDialogTitle className="text-slate-900 dark:text-white">
+              Remover conta?
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500 dark:text-slate-400">
-              A conta será desativada e não aparecerá mais na lista. Os lançamentos vinculados não serão afetados.
+              A conta será desativada e não aparecerá mais na lista. Os lançamentos vinculados não
+              serão afetados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700">
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDesativar}
               loading={desativarConta.isPending}

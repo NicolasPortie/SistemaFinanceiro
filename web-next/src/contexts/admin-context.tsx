@@ -15,9 +15,7 @@ const AdminContext = createContext<AdminContextValue>({
 export function AdminContextProvider({ children }: { children: React.ReactNode }) {
   const [isAdminMode, setAdminMode] = useState(false);
   return (
-    <AdminContext.Provider value={{ isAdminMode, setAdminMode }}>
-      {children}
-    </AdminContext.Provider>
+    <AdminContext.Provider value={{ isAdminMode, setAdminMode }}>{children}</AdminContext.Provider>
   );
 }
 

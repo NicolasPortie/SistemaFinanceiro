@@ -33,7 +33,9 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
     <div className="rounded-xl border border-border/50 bg-popover px-3.5 py-2.5 shadow-lg text-sm">
       <p className="font-semibold text-foreground mb-1">{item.name}</p>
       <p className="tabular-nums text-foreground font-bold">{formatCurrency(item.value)}</p>
-      <p className="text-muted-foreground/70 text-xs mt-0.5">{item.payload.percentual.toFixed(1)}% do total</p>
+      <p className="text-muted-foreground/70 text-xs mt-0.5">
+        {item.payload.percentual.toFixed(1)}% do total
+      </p>
     </div>
   );
 }
@@ -74,8 +76,12 @@ export function CategoryPieChart({ data }: CategoryPieChartProps) {
 
       {/* Center label */}
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Total</p>
-        <p className="text-lg font-extrabold tabular-nums text-foreground leading-tight">{formatCurrency(total)}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+          Total
+        </p>
+        <p className="text-lg font-extrabold tabular-nums text-foreground leading-tight">
+          {formatCurrency(total)}
+        </p>
       </div>
     </div>
   );

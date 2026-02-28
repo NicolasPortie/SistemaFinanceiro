@@ -67,8 +67,7 @@ export default function RecuperarSenhaPage() {
   // Password match
   const novaSenha = resetForm.watch("novaSenha");
   const confirmarSenha = resetForm.watch("confirmarSenha");
-  const passwordsMatch =
-    novaSenha && confirmarSenha && novaSenha === confirmarSenha;
+  const passwordsMatch = novaSenha && confirmarSenha && novaSenha === confirmarSenha;
 
   // ── Verify digit handlers ──
   const handleVerifyDigit = (index: number, value: string) => {
@@ -87,10 +86,7 @@ export default function RecuperarSenhaPage() {
 
   const handleVerifyPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData
-      .getData("text")
-      .replace(/\D/g, "")
-      .slice(0, 6);
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     if (!pasted) return;
     const next = Array(6).fill("");
     for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
@@ -123,9 +119,7 @@ export default function RecuperarSenhaPage() {
       setStep("verify");
       toast.success("Código de recuperação enviado!");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Erro ao enviar código",
-      );
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar código");
     }
   };
 
@@ -159,9 +153,7 @@ export default function RecuperarSenhaPage() {
       setStep("done");
       toast.success("Senha redefinida com sucesso!");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Erro ao redefinir senha",
-      );
+      toast.error(err instanceof Error ? err.message : "Erro ao redefinir senha");
     }
   };
 
@@ -173,9 +165,7 @@ export default function RecuperarSenhaPage() {
       setResendTimer(59);
       toast.success("Código reenviado!");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Erro ao reenviar código",
-      );
+      toast.error(err instanceof Error ? err.message : "Erro ao reenviar código");
     }
   };
 
@@ -191,9 +181,7 @@ export default function RecuperarSenhaPage() {
           <div className="size-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-lg shadow-black/10">
             <Wallet className="h-5 w-5 text-white" />
           </div>
-          <h2 className="text-white text-xl font-bold tracking-tight">
-            Control Finance
-          </h2>
+          <h2 className="text-white text-xl font-bold tracking-tight">Control Finance</h2>
         </header>
 
         {/* Main */}
@@ -215,23 +203,19 @@ export default function RecuperarSenhaPage() {
                       <span className="text-emerald-300">acesso seguro</span>
                     </h1>
                     <p className="text-emerald-100 text-base sm:text-lg lg:text-xl font-normal opacity-70 max-w-lg mx-auto lg:mx-0 leading-relaxed">
-                      Sua segurança é nossa prioridade. Redefina sua senha em
-                      poucos passos e volte ao controle total.
+                      Sua segurança é nossa prioridade. Redefina sua senha em poucos passos e volte
+                      ao controle total.
                     </p>
                     <div className="mt-12 hidden lg:flex items-center gap-8">
                       <div className="flex flex-col">
-                        <span className="text-white text-3xl font-bold">
-                          256-bit
-                        </span>
+                        <span className="text-white text-3xl font-bold">256-bit</span>
                         <span className="text-emerald-200/50 text-xs uppercase tracking-widest font-bold">
                           Criptografia
                         </span>
                       </div>
                       <div className="w-px h-12 bg-white/10" />
                       <div className="flex flex-col">
-                        <span className="text-white text-3xl font-bold">
-                          MFA
-                        </span>
+                        <span className="text-white text-3xl font-bold">MFA</span>
                         <span className="text-emerald-200/50 text-xs uppercase tracking-widest font-bold">
                           Proteção Ativa
                         </span>
@@ -245,8 +229,8 @@ export default function RecuperarSenhaPage() {
                       <span className="text-emerald-300">controle total</span>
                     </h1>
                     <p className="text-emerald-100 text-base sm:text-lg lg:text-xl font-normal opacity-80 max-w-lg mx-auto lg:mx-0">
-                      Dashboard e Metas em um só lugar. Acompanhe seu progresso
-                      com interfaces modernas e intuitivas.
+                      Dashboard e Metas em um só lugar. Acompanhe seu progresso com interfaces
+                      modernas e intuitivas.
                     </p>
                   </>
                 )}
@@ -275,15 +259,11 @@ export default function RecuperarSenhaPage() {
                       Recuperar acesso
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400 mt-2 text-base leading-relaxed">
-                      Informe o e-mail da sua conta para receber o código de
-                      verificação
+                      Informe o e-mail da sua conta para receber o código de verificação
                     </p>
                   </div>
 
-                  <form
-                    onSubmit={emailForm.handleSubmit(onEmailSubmit)}
-                    className="space-y-6"
-                  >
+                  <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-6">
                     <div className="space-y-2">
                       <label
                         className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1"
@@ -384,9 +364,7 @@ export default function RecuperarSenhaPage() {
                           inputMode="numeric"
                           maxLength={1}
                           value={digit}
-                          onChange={(e) =>
-                            handleVerifyDigit(i, e.target.value)
-                          }
+                          onChange={(e) => handleVerifyDigit(i, e.target.value)}
                           onKeyDown={(e) => handleVerifyKeyDown(i, e)}
                           onPaste={i === 0 ? handleVerifyPaste : undefined}
                           autoComplete={i === 0 ? "one-time-code" : "off"}
@@ -451,10 +429,7 @@ export default function RecuperarSenhaPage() {
                     </p>
                   </div>
 
-                  <form
-                    onSubmit={resetForm.handleSubmit(onResetSubmit)}
-                    className="space-y-6"
-                  >
+                  <form onSubmit={resetForm.handleSubmit(onResetSubmit)} className="space-y-6">
                     {/* Verification Code */}
                     <div className="space-y-3">
                       <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1 flex items-center gap-2">
@@ -472,9 +447,7 @@ export default function RecuperarSenhaPage() {
                             inputMode="numeric"
                             maxLength={1}
                             value={digit}
-                            onChange={(e) =>
-                              handleResetDigit(i, e.target.value)
-                            }
+                            onChange={(e) => handleResetDigit(i, e.target.value)}
                             onKeyDown={(e) => handleResetKeyDown(i, e)}
                             className="h-14 w-full text-center text-xl font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 outline-none transition-all"
                           />
@@ -564,9 +537,7 @@ export default function RecuperarSenhaPage() {
                           <button
                             className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
                             type="button"
-                            onClick={() =>
-                              setShowConfPassword(!showConfPassword)
-                            }
+                            onClick={() => setShowConfPassword(!showConfPassword)}
                             tabIndex={-1}
                           >
                             {showConfPassword ? (
@@ -662,8 +633,7 @@ export default function RecuperarSenhaPage() {
                     transition={{ delay: 0.35 }}
                     className="text-slate-500 dark:text-slate-400 mt-3 text-base max-w-xs mx-auto"
                   >
-                    Sua senha foi alterada com sucesso. Agora você pode acessar
-                    sua conta.
+                    Sua senha foi alterada com sucesso. Agora você pode acessar sua conta.
                   </motion.p>
 
                   <motion.div
@@ -723,9 +693,7 @@ export default function RecuperarSenhaPage() {
                   <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">
                     Metas
                   </p>
-                  <p className="text-white text-sm font-bold">
-                    Reserva de Emergência
-                  </p>
+                  <p className="text-white text-sm font-bold">Reserva de Emergência</p>
                 </div>
               </div>
               <div className="auth-glass-card rounded-t-3xl p-6 flex items-center gap-4 flex-1 opacity-40 hover:opacity-100 transition-opacity duration-500">

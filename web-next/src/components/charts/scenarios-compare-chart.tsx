@@ -12,16 +12,36 @@ function riskColorHex(risk: string) {
   switch (risk) {
     case "Baixo":
     case "Seguro":
-      return { bg: "#10b981", text: "text-emerald-700 dark:text-emerald-400", badge: "bg-emerald-100 dark:bg-emerald-900/30" };
+      return {
+        bg: "#10b981",
+        text: "text-emerald-700 dark:text-emerald-400",
+        badge: "bg-emerald-100 dark:bg-emerald-900/30",
+      };
     case "Moderado":
-      return { bg: "#f59e0b", text: "text-amber-700 dark:text-amber-400", badge: "bg-amber-100 dark:bg-amber-900/30" };
+      return {
+        bg: "#f59e0b",
+        text: "text-amber-700 dark:text-amber-400",
+        badge: "bg-amber-100 dark:bg-amber-900/30",
+      };
     case "Arriscado":
     case "Alto":
-      return { bg: "#ef4444", text: "text-red-700 dark:text-red-400", badge: "bg-red-100 dark:bg-red-900/30" };
+      return {
+        bg: "#ef4444",
+        text: "text-red-700 dark:text-red-400",
+        badge: "bg-red-100 dark:bg-red-900/30",
+      };
     case "Crítico":
-      return { bg: "#dc2626", text: "text-red-800 dark:text-red-300", badge: "bg-red-100 dark:bg-red-900/30" };
+      return {
+        bg: "#dc2626",
+        text: "text-red-800 dark:text-red-300",
+        badge: "bg-red-100 dark:bg-red-900/30",
+      };
     default:
-      return { bg: "#6366f1", text: "text-indigo-700 dark:text-indigo-400", badge: "bg-indigo-100 dark:bg-indigo-900/30" };
+      return {
+        bg: "#6366f1",
+        text: "text-indigo-700 dark:text-indigo-400",
+        badge: "bg-indigo-100 dark:bg-indigo-900/30",
+      };
   }
 }
 
@@ -48,7 +68,9 @@ export function ScenariosCompareChart({ data, selectedParcelas }: ScenariosCompa
           >
             {/* Parcelas label */}
             <div className="w-10 text-center">
-              <span className={`text-sm font-bold ${isSelected ? "text-emerald-600" : "text-slate-700 dark:text-slate-200"}`}>
+              <span
+                className={`text-sm font-bold ${isSelected ? "text-emerald-600" : "text-slate-700 dark:text-slate-200"}`}
+              >
                 {cenario.numeroParcelas}x
               </span>
             </div>
@@ -59,7 +81,9 @@ export function ScenariosCompareChart({ data, selectedParcelas }: ScenariosCompa
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {formatCurrency(cenario.valorParcela)}/mês
                 </span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${colors.badge} ${colors.text}`}>
+                <span
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full ${colors.badge} ${colors.text}`}
+                >
                   {cenario.risco}
                 </span>
               </div>

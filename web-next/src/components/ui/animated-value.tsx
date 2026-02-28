@@ -37,7 +37,9 @@ export function AnimatedCurrency({
 
   return (
     <span ref={ref as React.Ref<HTMLSpanElement>} className={className}>
-      {sign}{prefix}{formatted}
+      {sign}
+      {prefix}
+      {formatted}
     </span>
   );
 }
@@ -70,7 +72,8 @@ export function AnimatedPercent({
       {value.toLocaleString("pt-BR", {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
-      })}%
+      })}
+      %
     </span>
   );
 }

@@ -92,7 +92,9 @@ export default function PerfilPage() {
   const [editandoRenda, setEditandoRenda] = useState(false);
   const [showSenha, setShowSenha] = useState(false);
   const [showNovaCategoria, setShowNovaCategoria] = useState(false);
-  const [editandoCategoria, setEditandoCategoria] = useState<{ id: number; nome: string } | null>(null);
+  const [editandoCategoria, setEditandoCategoria] = useState<{ id: number; nome: string } | null>(
+    null
+  );
   const [removendoCategoria, setRemovendoCategoria] = useState<number | null>(null);
   const [showExcluirConta, setShowExcluirConta] = useState(false);
   const [excluirTexto, setExcluirTexto] = useState("");
@@ -124,9 +126,7 @@ export default function PerfilPage() {
   const rendaForm = useForm<RendaMensalData>({
     resolver: zodResolver(rendaMensalSchema),
     defaultValues: {
-      rendaMensal: usuario?.rendaMensal
-        ? usuario.rendaMensal.toFixed(2).replace(".", ",")
-        : "0,00",
+      rendaMensal: usuario?.rendaMensal ? usuario.rendaMensal.toFixed(2).replace(".", ",") : "0,00",
     },
   });
 
@@ -170,12 +170,15 @@ export default function PerfilPage() {
   };
 
   const onSalvarNome = (data: AtualizarPerfilData) => {
-    atualizarPerfilMutation.mutate({ nome: data.nome }, {
-      onSuccess: async () => {
-        setEditandoNome(false);
-        await atualizarContexto();
-      },
-    });
+    atualizarPerfilMutation.mutate(
+      { nome: data.nome },
+      {
+        onSuccess: async () => {
+          setEditandoNome(false);
+          await atualizarContexto();
+        },
+      }
+    );
   };
 
   const onSalvarRenda = (data: RendaMensalData) => {
@@ -189,7 +192,7 @@ export default function PerfilPage() {
           await atualizarContexto();
           toast.success("Renda mensal atualizada!");
         },
-      },
+      }
     );
   };
 
@@ -202,24 +205,27 @@ export default function PerfilPage() {
           senhaForm.reset();
           toast.success("Senha alterada com sucesso!");
         },
-      },
+      }
     );
   };
 
   const onCriarCategoria = (data: CategoriaData) => {
-    criarCategoria.mutate({ nome: data.nome }, {
-      onSuccess: () => {
-        setShowNovaCategoria(false);
-        categoriaForm.reset();
-      },
-    });
+    criarCategoria.mutate(
+      { nome: data.nome },
+      {
+        onSuccess: () => {
+          setShowNovaCategoria(false);
+          categoriaForm.reset();
+        },
+      }
+    );
   };
 
   const onEditarCategoria = (data: CategoriaData) => {
     if (!editandoCategoria) return;
     atualizarCategoria.mutate(
       { id: editandoCategoria.id, data: { nome: data.nome } },
-      { onSuccess: () => setEditandoCategoria(null) },
+      { onSuccess: () => setEditandoCategoria(null) }
     );
   };
 
@@ -286,7 +292,9 @@ export default function PerfilPage() {
             </div>
             <div className="text-right text-sm text-slate-400 hidden sm:block">
               <p>Membro desde</p>
-              <p className="font-medium text-slate-600 dark:text-slate-300">{formatDate(usuario.criadoEm)}</p>
+              <p className="font-medium text-slate-600 dark:text-slate-300">
+                {formatDate(usuario.criadoEm)}
+              </p>
             </div>
           </div>
 
@@ -294,10 +302,14 @@ export default function PerfilPage() {
           <div className="border-t border-slate-100 dark:border-slate-700/50 pt-8 mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Left: Personal info */}
             <div className="flex flex-col gap-4">
-              <h4 className="font-semibold text-slate-700 dark:text-slate-200">Informações Pessoais</h4>
+              <h4 className="font-semibold text-slate-700 dark:text-slate-200">
+                Informações Pessoais
+              </h4>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Nome Completo</label>
+                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    Nome Completo
+                  </label>
                   <div className="flex gap-2">
                     <input
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-slate-600 dark:text-slate-300"
@@ -308,7 +320,9 @@ export default function PerfilPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    Email
+                  </label>
                   <div className="flex gap-2">
                     <input
                       className="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-slate-500 dark:text-slate-400 cursor-not-allowed"
@@ -328,7 +342,9 @@ export default function PerfilPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Renda Mensal</label>
+                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+                    Renda Mensal
+                  </label>
                   <div className="flex gap-2">
                     <div className="w-full flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2">
                       <DollarSign className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -366,7 +382,9 @@ export default function PerfilPage() {
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
                   <div>
                     <p className="font-medium text-slate-800 dark:text-slate-200">Senha</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Altere sua senha de acesso</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Altere sua senha de acesso
+                    </p>
                   </div>
                   <button
                     className="text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
@@ -415,23 +433,30 @@ export default function PerfilPage() {
                 <MessageCircle className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Bot do Telegram</h3>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                  Bot do Telegram
+                </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Receba notificações e adicione gastos rápidos pelo Telegram.
                 </p>
               </div>
               {usuario.telegramVinculado ? (
                 <Badge className="ml-auto bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-0">
-                  <Check className="h-3 w-3 mr-1" />Vinculado
+                  <Check className="h-3 w-3 mr-1" />
+                  Vinculado
                 </Badge>
               ) : (
-                <Badge variant="secondary" className="ml-auto">Pendente</Badge>
+                <Badge variant="secondary" className="ml-auto">
+                  Pendente
+                </Badge>
               )}
             </div>
 
             <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               <p className="mb-1">
-                <span className="font-semibold text-emerald-700 dark:text-emerald-400">Como funciona:</span>
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                  Como funciona:
+                </span>
               </p>
               <ul className="list-disc list-inside space-y-1 ml-1">
                 <li>Clique no botão abaixo para abrir o Telegram.</li>
@@ -464,9 +489,12 @@ export default function PerfilPage() {
                   <Shield className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-lg text-emerald-800 dark:text-emerald-300">Telegram conectado!</h4>
+                  <h4 className="font-bold text-lg text-emerald-800 dark:text-emerald-300">
+                    Telegram conectado!
+                  </h4>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
-                    Registre lançamentos, consulte saldos e faturas pelo Telegram usando linguagem natural.
+                    Registre lançamentos, consulte saldos e faturas pelo Telegram usando linguagem
+                    natural.
                   </p>
                 </div>
               </div>
@@ -478,7 +506,9 @@ export default function PerfilPage() {
                     Segurança
                   </span>
                 </div>
-                <p className="text-base font-semibold text-slate-700 dark:text-slate-200">Código de vinculação</p>
+                <p className="text-base font-semibold text-slate-700 dark:text-slate-200">
+                  Código de vinculação
+                </p>
                 <p className="text-sm text-slate-400">Gere um código para vincular seu Telegram.</p>
                 <Button
                   onClick={gerarCodigo}
@@ -498,7 +528,9 @@ export default function PerfilPage() {
                       Segurança
                     </span>
                   </div>
-                  <p className="text-base font-semibold text-slate-700 dark:text-slate-200">Seu código de vinculação</p>
+                  <p className="text-base font-semibold text-slate-700 dark:text-slate-200">
+                    Seu código de vinculação
+                  </p>
                   <p className="text-sm text-slate-400">Envie este código no bot do Telegram.</p>
                 </div>
 
@@ -543,7 +575,10 @@ export default function PerfilPage() {
 
                   <div className="flex items-center justify-center gap-3 py-2">
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400 tabular-nums">
-                      Expira em: <span className="text-slate-800 dark:text-white font-bold">{formatDate(codigoTelegram.expiraEm)}</span>
+                      Expira em:{" "}
+                      <span className="text-slate-800 dark:text-white font-bold">
+                        {formatDate(codigoTelegram.expiraEm)}
+                      </span>
                     </p>
                   </div>
                 </div>
@@ -571,8 +606,12 @@ export default function PerfilPage() {
           {/* Header */}
           <div className="p-6 border-b border-slate-200 dark:border-slate-700/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white">Categorias de Despesas</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Personalize como você organiza suas finanças.</p>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                Categorias de Despesas
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Personalize como você organiza suas finanças.
+              </p>
             </div>
             <button
               className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-600 hover:text-emerald-600 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-xl font-medium shadow-sm transition-all active:scale-95 flex items-center gap-2 text-sm"
@@ -599,13 +638,18 @@ export default function PerfilPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30 text-sm">
                 {categorias.map((cat) => (
-                  <tr key={cat.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
+                  <tr
+                    key={cat.id}
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group"
+                  >
                     <td className="p-5">
                       <div className="flex items-center gap-3">
                         <div className="size-8 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-600 shrink-0">
                           <Tag className="h-4 w-4" />
                         </div>
-                        <span className="font-medium text-slate-700 dark:text-slate-200">{cat.nome}</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-200">
+                          {cat.nome}
+                        </span>
                       </div>
                     </td>
                     <td className="p-5">
@@ -624,7 +668,9 @@ export default function PerfilPage() {
                     </td>
                     <td className="p-5 text-right">
                       {cat.padrao ? (
-                        <span className="text-slate-300 dark:text-slate-600 text-xs italic">Não editável</span>
+                        <span className="text-slate-300 dark:text-slate-600 text-xs italic">
+                          Não editável
+                        </span>
                       ) : (
                         <div className="flex items-center justify-end gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <button
@@ -678,7 +724,9 @@ export default function PerfilPage() {
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <SheetTitle className="text-lg sm:text-xl font-semibold">Editar Nome</SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Altere seu nome de exibição</SheetDescription>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                  Altere seu nome de exibição
+                </SheetDescription>
               </div>
             </div>
           </SheetHeader>
@@ -686,7 +734,9 @@ export default function PerfilPage() {
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
             <form onSubmit={nomeForm.handleSubmit(onSalvarNome)} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Nome
+                </Label>
                 <Input className="h-11 rounded-xl" {...nomeForm.register("nome")} />
                 {nomeForm.formState.errors.nome && (
                   <p className="text-xs text-red-500">{nomeForm.formState.errors.nome.message}</p>
@@ -729,7 +779,9 @@ export default function PerfilPage() {
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
             <form onSubmit={rendaForm.handleSubmit(onSalvarRenda)} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Valor (R$)</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Valor (R$)
+                </Label>
                 <div className="relative">
                   <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center rounded-l-xl text-xs font-bold bg-emerald-600/10 text-emerald-600">
                     R$
@@ -737,11 +789,15 @@ export default function PerfilPage() {
                   <CurrencyInput
                     className="h-11 rounded-xl pl-13 tabular-nums font-semibold"
                     value={rendaForm.watch("rendaMensal")}
-                    onValueChange={(v) => rendaForm.setValue("rendaMensal", v, { shouldValidate: true })}
+                    onValueChange={(v) =>
+                      rendaForm.setValue("rendaMensal", v, { shouldValidate: true })
+                    }
                   />
                 </div>
                 {rendaForm.formState.errors.rendaMensal && (
-                  <p className="text-xs text-red-500">{rendaForm.formState.errors.rendaMensal.message}</p>
+                  <p className="text-xs text-red-500">
+                    {rendaForm.formState.errors.rendaMensal.message}
+                  </p>
                 )}
               </div>
               <div className="pt-2 sm:pt-3 pb-safe">
@@ -771,7 +827,9 @@ export default function PerfilPage() {
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <SheetTitle className="text-lg sm:text-xl font-semibold">Alterar Senha</SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Informe sua senha atual e a nova senha</SheetDescription>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                  Informe sua senha atual e a nova senha
+                </SheetDescription>
               </div>
             </div>
           </SheetHeader>
@@ -779,24 +837,48 @@ export default function PerfilPage() {
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
             <form onSubmit={senhaForm.handleSubmit(onAlterarSenha)} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Senha atual</Label>
-                <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("senhaAtual")} />
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Senha atual
+                </Label>
+                <Input
+                  type="password"
+                  className="h-11 rounded-xl"
+                  {...senhaForm.register("senhaAtual")}
+                />
                 {senhaForm.formState.errors.senhaAtual && (
-                  <p className="text-xs text-red-500">{senhaForm.formState.errors.senhaAtual.message}</p>
+                  <p className="text-xs text-red-500">
+                    {senhaForm.formState.errors.senhaAtual.message}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nova senha</Label>
-                <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("novaSenha")} />
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Nova senha
+                </Label>
+                <Input
+                  type="password"
+                  className="h-11 rounded-xl"
+                  {...senhaForm.register("novaSenha")}
+                />
                 {senhaForm.formState.errors.novaSenha && (
-                  <p className="text-xs text-red-500">{senhaForm.formState.errors.novaSenha.message}</p>
+                  <p className="text-xs text-red-500">
+                    {senhaForm.formState.errors.novaSenha.message}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Confirmar nova senha</Label>
-                <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("confirmarSenha")} />
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Confirmar nova senha
+                </Label>
+                <Input
+                  type="password"
+                  className="h-11 rounded-xl"
+                  {...senhaForm.register("confirmarSenha")}
+                />
                 {senhaForm.formState.errors.confirmarSenha && (
-                  <p className="text-xs text-red-500">{senhaForm.formState.errors.confirmarSenha.message}</p>
+                  <p className="text-xs text-red-500">
+                    {senhaForm.formState.errors.confirmarSenha.message}
+                  </p>
                 )}
               </div>
               <div className="pt-2 sm:pt-3 pb-safe">
@@ -826,7 +908,9 @@ export default function PerfilPage() {
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <SheetTitle className="text-lg sm:text-xl font-semibold">Nova Categoria</SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Crie uma categoria personalizada</SheetDescription>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                  Crie uma categoria personalizada
+                </SheetDescription>
               </div>
             </div>
           </SheetHeader>
@@ -834,10 +918,18 @@ export default function PerfilPage() {
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
             <form onSubmit={categoriaForm.handleSubmit(onCriarCategoria)} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome da categoria</Label>
-                <Input className="h-11 rounded-xl" placeholder="Ex: Pets, Investimentos..." {...categoriaForm.register("nome")} />
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Nome da categoria
+                </Label>
+                <Input
+                  className="h-11 rounded-xl"
+                  placeholder="Ex: Pets, Investimentos..."
+                  {...categoriaForm.register("nome")}
+                />
                 {categoriaForm.formState.errors.nome && (
-                  <p className="text-xs text-red-500">{categoriaForm.formState.errors.nome.message}</p>
+                  <p className="text-xs text-red-500">
+                    {categoriaForm.formState.errors.nome.message}
+                  </p>
                 )}
               </div>
               <div className="pt-2 sm:pt-3 pb-safe">
@@ -856,7 +948,12 @@ export default function PerfilPage() {
       </Sheet>
 
       {/* Edit Category Sheet */}
-      <Sheet open={editandoCategoria !== null} onOpenChange={(open) => { if (!open) setEditandoCategoria(null); }}>
+      <Sheet
+        open={editandoCategoria !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditandoCategoria(null);
+        }}
+      >
         <SheetContent className="w-full sm:w-125 sm:max-w-125 overflow-hidden">
           <div className="h-1.5 w-full shrink-0 bg-linear-to-r from-emerald-600 via-emerald-400 to-teal-500 shadow-[0_2px_8px_rgba(16,185,129,0.3)]" />
 
@@ -866,23 +963,39 @@ export default function PerfilPage() {
                 <Pencil className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <SheetTitle className="text-lg sm:text-xl font-semibold">Editar Categoria</SheetTitle>
-                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">Altere o nome da categoria</SheetDescription>
+                <SheetTitle className="text-lg sm:text-xl font-semibold">
+                  Editar Categoria
+                </SheetTitle>
+                <SheetDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
+                  Altere o nome da categoria
+                </SheetDescription>
               </div>
             </div>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7 pb-8 space-y-4 sm:space-y-5">
-            <form onSubmit={editCategoriaForm.handleSubmit(onEditarCategoria)} className="space-y-4">
+            <form
+              onSubmit={editCategoriaForm.handleSubmit(onEditarCategoria)}
+              className="space-y-4"
+            >
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Nome
+                </Label>
                 <Input className="h-11 rounded-xl" {...editCategoriaForm.register("nome")} />
                 {editCategoriaForm.formState.errors.nome && (
-                  <p className="text-xs text-red-500">{editCategoriaForm.formState.errors.nome.message}</p>
+                  <p className="text-xs text-red-500">
+                    {editCategoriaForm.formState.errors.nome.message}
+                  </p>
                 )}
               </div>
               <div className="flex gap-2 pt-2 sm:pt-3 pb-safe">
-                <Button type="button" variant="outline" onClick={() => setEditandoCategoria(null)} className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditandoCategoria(null)}
+                  className="h-12 sm:h-13 rounded-xl sm:rounded-2xl flex-1 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
+                >
                   Cancelar
                 </Button>
                 <Button
@@ -900,12 +1013,16 @@ export default function PerfilPage() {
       </Sheet>
 
       {/* Delete Category Confirmation */}
-      <AlertDialog open={removendoCategoria !== null} onOpenChange={() => setRemovendoCategoria(null)}>
+      <AlertDialog
+        open={removendoCategoria !== null}
+        onOpenChange={() => setRemovendoCategoria(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remover categoria?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Os lançamentos vinculados a esta categoria não serão removidos.
+              Esta ação não pode ser desfeita. Os lançamentos vinculados a esta categoria não serão
+              removidos.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -954,7 +1071,8 @@ export default function PerfilPage() {
 
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Digite <span className="text-foreground font-bold">EXCLUIR MINHA CONTA</span> para confirmar:
+                Digite <span className="text-foreground font-bold">EXCLUIR MINHA CONTA</span> para
+                confirmar:
               </Label>
               <Input
                 value={excluirTexto}
