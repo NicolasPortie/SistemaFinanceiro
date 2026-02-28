@@ -268,7 +268,7 @@ export default function LancamentosPage() {
       {
         descricao: data.descricao,
         valor,
-        tipo: data.tipo === "despesa" ? "Gasto" : "Receita",
+        tipo: (data.tipo === "despesa" ? "Gasto" : "Receita") as "Gasto" | "Receita",
         formaPagamento,
         categoria: data.categoria || "Outros",
         numeroParcelas: parcelas,
