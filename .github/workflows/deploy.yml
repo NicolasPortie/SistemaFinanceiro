@@ -90,7 +90,7 @@ jobs:
         echo "=== Deploy ${APP_VERSION} ==="
         
         # Build novos containers com a versão da tag (permitindo uso de layers do cache do Docker)
-        APP_VERSION=${APP_VERSION} docker compose -f docker-compose.prod.yml build
+        APP_VERSION=${APP_VERSION} docker compose -f docker-compose.prod.yml build --build-arg VERSION=${APP_VERSION}
         
         # Parar containers antigos e iniciar novos
         docker compose -f docker-compose.prod.yml down
