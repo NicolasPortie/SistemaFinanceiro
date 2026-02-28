@@ -269,7 +269,7 @@ public class PrevisaoCompraServiceTests
     {
         var perfil = new PerfilFinanceiro { ReceitaMensalMedia = 5000m };
         var resultado = InvokeStatic<RecomendacaoCompra>("GerarRecomendacao",
-            NivelRisco.Baixo, 1, 500m, perfil);
+            NivelRisco.Baixo, 1, 500m, perfil.ReceitaMensalMedia);
 
         Assert.Equal(RecomendacaoCompra.Seguir, resultado);
     }
@@ -279,7 +279,7 @@ public class PrevisaoCompraServiceTests
     {
         var perfil = new PerfilFinanceiro { ReceitaMensalMedia = 5000m };
         var resultado = InvokeStatic<RecomendacaoCompra>("GerarRecomendacao",
-            NivelRisco.Medio, 6, 3000m, perfil);
+            NivelRisco.Medio, 6, 3000m, perfil.ReceitaMensalMedia);
 
         Assert.Equal(RecomendacaoCompra.AjustarParcelas, resultado);
     }
@@ -289,7 +289,7 @@ public class PrevisaoCompraServiceTests
     {
         var perfil = new PerfilFinanceiro { ReceitaMensalMedia = 5000m };
         var resultado = InvokeStatic<RecomendacaoCompra>("GerarRecomendacao",
-            NivelRisco.Medio, 1, 3000m, perfil);
+            NivelRisco.Medio, 1, 3000m, perfil.ReceitaMensalMedia);
 
         Assert.Equal(RecomendacaoCompra.Adiar, resultado);
     }
@@ -299,7 +299,7 @@ public class PrevisaoCompraServiceTests
     {
         var perfil = new PerfilFinanceiro { ReceitaMensalMedia = 5000m };
         var resultado = InvokeStatic<RecomendacaoCompra>("GerarRecomendacao",
-            NivelRisco.Alto, 1, 6000m, perfil);
+            NivelRisco.Alto, 1, 6000m, perfil.ReceitaMensalMedia);
 
         Assert.Equal(RecomendacaoCompra.ReduzirValor, resultado);
     }
@@ -309,7 +309,7 @@ public class PrevisaoCompraServiceTests
     {
         var perfil = new PerfilFinanceiro { ReceitaMensalMedia = 5000m };
         var resultado = InvokeStatic<RecomendacaoCompra>("GerarRecomendacao",
-            NivelRisco.Alto, 1, 4000m, perfil);
+            NivelRisco.Alto, 1, 4000m, perfil.ReceitaMensalMedia);
 
         Assert.Equal(RecomendacaoCompra.Adiar, resultado);
     }

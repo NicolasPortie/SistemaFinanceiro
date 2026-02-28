@@ -211,7 +211,7 @@ public class LimiteCategoriaServiceTests
 
         var resultado = _service.FormatarLimitesBot(limites);
 
-        Assert.Contains("[EXCEDIDO]", resultado);
+        Assert.Contains("🔴", resultado);
         Assert.Contains("Alimentação", resultado);
         Assert.Contains("Estourou", resultado);
     }
@@ -233,7 +233,7 @@ public class LimiteCategoriaServiceTests
 
         var resultado = _service.FormatarLimitesBot(limites);
 
-        Assert.Contains("[OK]", resultado);
+        Assert.Contains("🟢", resultado);
         Assert.Contains("Tranquilo", resultado);
         Assert.Contains("controle", resultado);
     }
@@ -255,7 +255,7 @@ public class LimiteCategoriaServiceTests
 
         var resultado = _service.FormatarLimitesBot(limites);
 
-        Assert.Contains("[CRÍTICO]", resultado);
+        Assert.Contains("🟠", resultado);
         Assert.Contains("Quase no limite", resultado);
     }
 
@@ -276,7 +276,7 @@ public class LimiteCategoriaServiceTests
 
         var resultado = _service.FormatarLimitesBot(limites);
 
-        Assert.Contains("[ATENÇÃO]", resultado);
+        Assert.Contains("🟡", resultado);
         Assert.Contains("Fique de olho", resultado);
     }
 

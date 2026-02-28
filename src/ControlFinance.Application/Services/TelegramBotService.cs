@@ -433,8 +433,15 @@ public class TelegramBotService : ITelegramBotService
         return novoCount > RateLimitMaxMensagens;
     }
 
-    public async Task<string> ProcessarMensagemAsync(long chatId, string mensagem, string nomeUsuario)
+    /// <summary>
+    /// Ponto de entrada principal para processar qualquer mensagem vinda do Telegram.
+    /// Contém lock distribuído, try/catch global e log estruturado.
+    /// </summary>
+    public async Task<string> ProcessarMensagemAsync(long chatId, string mensagem, string nomeUsuario, OrigemDado origem = OrigemDado.Texto)
     {
+        // Se a mensagem for nula/vazia, cai fora rápido
+        if (string.IsNullOrWhiteSpace(mensagem)) return "";
+
         // Rate limit por usuário — protege contra flood e esgotamento de cota IA
         if (VerificarRateLimit(chatId))
             return "⏳ Calma! Você está enviando mensagens muito rápido. Aguarde um momento e tente novamente.";
@@ -449,15 +456,13 @@ public class TelegramBotService : ITelegramBotService
         {
             // Hidratar estado do banco se necessário (sobreviver a restarts)
             await HidratarEstadoDoDbAsync(chatId);
-            try
-            {
-                return await ProcessarMensagemInternoAsync(chatId, mensagem, nomeUsuario);
-            }
-            finally
-            {
-                // Persistir estado atual no banco de dados
-                await PersistirEstadoNoDbAsync(chatId);
-            }
+            // Processamento real
+            var usuario = await ObterUsuarioVinculadoAsync(chatId); // Obter usuário aqui para passar para o interno
+            var resposta = await ProcessarMensagemInternoAsync(chatId, mensagem, nomeUsuario, usuario, origem);
+            
+            // Grava estado final das pendências no DB se houver
+            await PersistirEstadoNoDbAsync(chatId);
+            return resposta;
         }
         finally
         {
@@ -465,16 +470,21 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
-    private async Task<string> ProcessarMensagemInternoAsync(long chatId, string mensagem, string nomeUsuario)
+    /// <summary>
+    /// Lógica de negócio do processamento da mensagem, sem a preocupação de concorrência ou exceção global.
+    /// Foca no fluxo de Pendências -> Comandos Nativos -> Processamento de Linguagem Natural.
+    /// </summary>
+    private async Task<string> ProcessarMensagemInternoAsync(long chatId, string mensagem, string nomeUsuario, Usuario? usuario, OrigemDado origem)
     {
         // Limpar teclado anterior para evitar botões obsoletos
         BotTecladoHelper.RemoverTeclado(chatId);
 
+        var textoLimpo = mensagem.Trim();
+
         // Comando /vincular funciona sem conta vinculada (aceita com ou sem /)
-        if (mensagem.StartsWith("/vincular") || mensagem.Trim().ToLower().StartsWith("vincular "))
+        if (textoLimpo.StartsWith("/vincular") || textoLimpo.ToLower().StartsWith("vincular "))
             return await ProcessarVinculacaoAsync(chatId, mensagem, nomeUsuario);
 
-        var usuario = await ObterUsuarioVinculadoAsync(chatId);
         if (usuario == null)
         {
             // Tentar vincular automaticamente se a mensagem parecer um código de vinculação (somente dígitos, 6 caracteres)
@@ -516,7 +526,7 @@ public class TelegramBotService : ITelegramBotService
             return ProcessarPedidoDesvinculacao(chatId);
 
         if (mensagem.StartsWith("/"))
-            return await ProcessarComandoAsync(usuario, mensagem);
+            return await ProcessarComandoAsync(usuario, mensagem, origem);
 
         // Respostas diretas sem IA para mensagens simples (mais rápido e economiza cota)
         var respostaDireta = await TentarRespostaDirectaAsync(usuario, msgLower);
@@ -526,7 +536,7 @@ public class TelegramBotService : ITelegramBotService
         // Fallback para IA com tratamento de erro (Gemini fora do ar, rate-limit, etc.)
         try
         {
-            return await ProcessarComIAAsync(usuario, mensagem);
+            return await ProcessarComIAAsync(usuario, mensagem, origem);
         }
         catch (Exception ex)
         {
@@ -710,8 +720,8 @@ public class TelegramBotService : ITelegramBotService
                 return "Não foi possível entender o áudio. Tente enviar em texto.";
 
             // Usar o mesmo fluxo de texto para que áudio passe pelo state machine
-            // (pendentes, confirmações, respostas diretas, etc.)
-            var resultado = await ProcessarMensagemAsync(chatId, texto, nomeUsuario);
+            // (pendentes, confirmações, respostas diretas, etc.) preservando a origem de ÁUDIO.
+            var resultado = await ProcessarMensagemAsync(chatId, texto, nomeUsuario, OrigemDado.Audio);
             return $"Transcrição: \"{texto}\"\n\n{resultado}";
         }
         catch (Exception ex)
@@ -730,33 +740,13 @@ public class TelegramBotService : ITelegramBotService
         try
         {
             var texto = await _aiService.ExtrairTextoImagemAsync(imageData, mimeType);
-            if (string.IsNullOrWhiteSpace(texto))
-                return "Não foi possível extrair informações da imagem.";
+            
+            var prompt = caption != null 
+                ? $"Legenda enviada com a imagem: \"{caption}\"\n\nTexto extraído da imagem:\n{texto}" 
+                : texto;
 
-            // Enriquecer texto extraído com a legenda do usuário (contexto extra)
-            if (!string.IsNullOrWhiteSpace(caption))
-                texto = $"[Contexto do usuário: {caption}]\n\n{texto}";
-
-            // Usar lock do chat para evitar conflito com fluxo pendente
-            var chatLock = ObterChatLock(chatId);
-            await chatLock.WaitAsync();
-            try
-            {
-                await HidratarEstadoDoDbAsync(chatId);
-                try
-                {
-                    var resultado = await ProcessarComIAAsync(usuario, texto, OrigemDado.Imagem);
-                    return $"Imagem processada.\n\n{resultado}";
-                }
-                finally
-                {
-                    await PersistirEstadoNoDbAsync(chatId);
-                }
-            }
-            finally
-            {
-                chatLock.Release();
-            }
+            // Envia para o pipeline normal para decodificar, preservando a origem de IMAGEM
+            return await ProcessarMensagemAsync(chatId, prompt, nomeUsuario, OrigemDado.Imagem);
         }
         catch (Exception ex)
         {
@@ -765,7 +755,10 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
-    private async Task<string> ProcessarComIAAsync(Usuario usuario, string mensagem, OrigemDado origem = OrigemDado.Texto)
+    /// <summary>
+    /// Processamento via IA (Gemini). Constroi contexto, chama Tool Calling e roteia a itenção extraída.
+    /// </summary>
+    private async Task<string> ProcessarComIAAsync(Usuario usuario, string mensagem, OrigemDado origem)
     {
         // Montar contexto financeiro do usuário (inclui categorias reais)
         var contexto = await MontarContextoFinanceiroAsync(usuario);
@@ -1407,7 +1400,7 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
-    private async Task<string> ProcessarComandoAsync(Usuario usuario, string mensagem)
+    private async Task<string> ProcessarComandoAsync(Usuario usuario, string mensagem, OrigemDado origem)
     {
         var partes = mensagem.Split(' ', 2);
         var comando = partes[0].ToLower().Split('@')[0];
@@ -1447,13 +1440,13 @@ public class TelegramBotService : ITelegramBotService
                 "   \"já lancei 89.90?\"\n\n" +
                 "Fale naturalmente — eu entendo! 🎙️📸",
             "/simular" => await _previsaoHandler.ProcessarComandoSimularAsync(usuario, partes.Length > 1 ? partes[1] : null)
-                         ?? await ProcessarComIAAsync(usuario, mensagem),
+                         ?? await ProcessarComIAAsync(usuario, mensagem, origem),
             "/posso" => await _previsaoHandler.ProcessarComandoPossoAsync(usuario, partes.Length > 1 ? partes[1] : null)
-                        ?? await ProcessarComIAAsync(usuario, $"posso gastar {(partes.Length > 1 ? partes[1] : "")}"),
+                        ?? await ProcessarComIAAsync(usuario, $"posso gastar {(partes.Length > 1 ? partes[1] : "")}", origem),
             "/limite" => await _metaLimiteHandler.ProcessarComandoLimiteAsync(usuario, partes.Length > 1 ? partes[1] : null),
             "/limites" => await _consultaHandler.ListarLimitesFormatadoAsync(usuario),
             "/meta" => await _metaLimiteHandler.ProcessarComandoMetaAsync(usuario, partes.Length > 1 ? partes[1] : null)
-                       ?? await ProcessarComIAAsync(usuario, mensagem),
+                       ?? await ProcessarComIAAsync(usuario, mensagem, origem),
             "/metas" => await _consultaHandler.ListarMetasFormatadoAsync(usuario),
             "/desvincular" => ProcessarPedidoDesvinculacao(usuario.TelegramChatId!.Value),
             "/resumo" => await _consultaHandler.GerarResumoFormatadoAsync(usuario),
@@ -1471,7 +1464,7 @@ public class TelegramBotService : ITelegramBotService
             "/comparar" or "/comparativo" => await _consultaHandler.GerarComparativoMensalAsync(usuario),
             "/tags" => await _consultaHandler.ConsultarPorTagAsync(usuario, partes.Length > 1 ? partes[1] : ""),
             "/dividir" => partes.Length > 1
-                ? await ProcessarComIAAsync(usuario, $"dividi {partes[1]}")
+                ? await ProcessarComIAAsync(usuario, $"dividi {partes[1]}", origem)
                 : "📋 Use: /dividir VALOR PESSOAS DESCRIÇÃO\nExemplo: /dividir 120 3 jantar no restaurante",
             "/recorrentes" => await GerarRelatorioRecorrentesAsync(usuario),
             "/score" => await ProcessarComandoScoreAsync(usuario),
@@ -1482,11 +1475,11 @@ public class TelegramBotService : ITelegramBotService
                 "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
                 "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
             ),
-            "/gasto" when partes.Length > 1 => await ProcessarComIAAsync(usuario, partes[1]),
-            "/receita" when partes.Length > 1 => await ProcessarComIAAsync(usuario, $"recebi {partes[1]}"),
+            "/gasto" when partes.Length > 1 => await ProcessarComIAAsync(usuario, partes[1], origem),
+            "/receita" when partes.Length > 1 => await ProcessarComIAAsync(usuario, $"recebi {partes[1]}", origem),
             "/versao" => ObterVersaoSistema(),
             "/cancelar" => CancelarFluxoPendente(usuario.TelegramChatId!.Value),
-            _ => await ProcessarComIAAsync(usuario, mensagem) // Send unknown commands to AI instead of rejecting
+            _ => await ProcessarComIAAsync(usuario, mensagem, origem) // Send unknown commands to AI instead of rejecting
         };
     }
 
@@ -1793,7 +1786,7 @@ public class TelegramBotService : ITelegramBotService
         }
 
         // Se não conseguiu parsear, manda pra IA
-        return await ProcessarComIAAsync(usuario, $"simular compra de {parametros}");
+        return await ProcessarComIAAsync(usuario, $"simular compra de {parametros}", OrigemDado.Texto);
     }
 
     private async Task<string> ProcessarAvaliacaoGastoAsync(Usuario usuario, DadosAvaliacaoGastoIA avaliacao)
@@ -2116,7 +2109,7 @@ public class TelegramBotService : ITelegramBotService
             }
         }
 
-        return await ProcessarComIAAsync(usuario, $"posso gastar {parametros}");
+        return await ProcessarComIAAsync(usuario, $"posso gastar {parametros}", OrigemDado.Texto);
     }
 
     private async Task<string> ProcessarComandoLimiteAsync(Usuario usuario, string? parametros)
@@ -2203,7 +2196,7 @@ public class TelegramBotService : ITelegramBotService
             }
         }
 
-        return await ProcessarComIAAsync(usuario, $"meta {parametros}");
+        return await ProcessarComIAAsync(usuario, $"meta {parametros}", OrigemDado.Texto);
     }
 
     private async Task<string> ListarMetasFormatado(Usuario usuario)

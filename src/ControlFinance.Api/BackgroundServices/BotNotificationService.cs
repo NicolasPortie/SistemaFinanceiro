@@ -1,4 +1,5 @@
-﻿using ControlFinance.Application.Interfaces;
+﻿using System.Globalization;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Application.Services;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -301,7 +302,7 @@ public class BotNotificationService : BackgroundService
         {
             try
             {
-                var msg = $"📅 *O mês de {mesAtual:MMMM} está acabando!*\n\n" +
+                var msg = $"📅 *O mês de {mesAtual.ToString("MMMM", new CultureInfo("pt-BR"))} está acabando!*\n\n" +
                           "✅ Confira se todas as contas foram pagas.\n" +
                           "🚀 Amanhã começa um novo ciclo!";
 

@@ -1,3 +1,5 @@
+using ControlFinance.Domain.Enums;
+
 namespace ControlFinance.Application.Interfaces;
 
 /// <summary>
@@ -8,7 +10,7 @@ public interface ITelegramBotService
     /// <summary>
     /// Processa uma mensagem de texto do Telegram e retorna a resposta.
     /// </summary>
-    Task<string> ProcessarMensagemAsync(long chatId, string mensagem, string nomeUsuario);
+    Task<string> ProcessarMensagemAsync(long chatId, string mensagem, string nomeUsuario, OrigemDado origem = OrigemDado.Texto);
 
     /// <summary>
     /// Processa uma mensagem de áudio (voice note) do Telegram e retorna a resposta.

@@ -82,6 +82,13 @@ public class GroqAiService : IAiService
             ? "\n            REGRA PARA IMAGEM: A mensagem atual foi extraída de um comprovante. Acione ferramentas de 'registro' (registrar_lancamento ou similares), NÃO invente pagamentos de fatura se for apenas um cupom fiscal."
             : "";
 
+        var regraAudio = origem == OrigemDado.Audio
+            ? "\n            REGRA PARA ÁUDIO TRANSCRITO: Esta mensagem foi transcrita automaticamente de um áudio e PROVAVELMENTE contém erros. Você DEVE: (1) Interpretar palavras semelhantes foneticamente (ex: 'postoages' = 'postagem/posto', 'cerdito' = 'crédito', 'JetDoor' provavelmente é um nome de lugar). (2) NUNCA recusar ou pedir para repetir se conseguir deduzir a intenção — mesmo que o texto pareça estranho, tente extrair valor, descrição e forma de pagamento. (3) Se houver um número e qualquer menção a gasto/compra/pagamento, REGISTRE como lançamento. Seja agressivo na interpretação."
+            : "";
+
+        // Temperatura mais baixa para áudio (mais determinístico quando entrada é ruidosa)
+        var temperaturaLlm = origem == OrigemDado.Audio ? 0.3 : 0.7;
+
         var prompt = $$"""
             Você é o ControlFinance, um assistente financeiro pessoal no Telegram. Seja direto, profissional e objetivo. Use no máximo 1 ou 2 emojis por mensagem (apenas quando fizer sentido funcional, como ✅ para confirmação ou ⚠️ para alerta). Nunca encha a mensagem de emojis. Fale em português brasileiro de forma clara e natural.
 
@@ -95,6 +102,7 @@ public class GroqAiService : IAiService
 
             TIPO DE ENTRADA: A mensagem veio via {{origem.ToString()}}.
             {{regraImagem}}
+            {{regraAudio}}
 
             REGRA DE CATEGORIZAÇÃO (CRÍTICA):
             No contexto acima há "Mapeamentos aprendidos" com descrição → categoria que o usuário JÁ USOU. Se a descrição do lançamento atual corresponder (parcial ou exatamente) a algum mapeamento, USE a mesma categoria — esse é o padrão do usuário. Se não houver mapeamento correspondente, escolha a melhor categoria da lista "Categorias do usuário". Só use "Outros" se nenhuma categoria se aplicar.
@@ -146,13 +154,20 @@ public class GroqAiService : IAiService
 
         try
         {
-            // Opcional: Se 'origem' for imagem ou áudio, poderíamos processar antes.
-            // Para simplificar, assumimos que a 'mensagem' já é a transcrição.
+            // Tentar todas as combinações de key + modelo até obter sucesso
+            GroqToolCall? toolCall = null;
+            for (var keyIdx = 0; keyIdx < _groqApiKeys.Count && toolCall == null; keyIdx++)
+            {
+                for (var modelIdx = 0; modelIdx < _groqModels.Count && toolCall == null; modelIdx++)
+                {
+                    var tentativaResult = await ChamarGroqAsync(prompt, _groqApiKeys[keyIdx], _groqModels[modelIdx], keyIdx + 1, temperaturaLlm);
+                    if (tentativaResult?.Function != null && !string.IsNullOrWhiteSpace(tentativaResult.Function.Name))
+                        toolCall = tentativaResult;
+                    else
+                        _logger.LogWarning("Groq key #{KeyIdx} modelo {Model} não retornou tool call válida", keyIdx + 1, _groqModels[modelIdx]);
+                }
+            }
 
-            // Chamar apenas o Groq (que agora suporta tools)
-            // No futuro, podemos atualizar ChamarGeminiAsync para suportar tools da API do Gemini também.
-            var toolCall = await ChamarGroqAsync(prompt, _groqApiKeys.First());
-            
             if (toolCall == null || toolCall.Function == null || string.IsNullOrWhiteSpace(toolCall.Function.Name))
             {
                 return new RespostaIA
@@ -680,6 +695,15 @@ public class GroqAiService : IAiService
             formData.Add(audioContent, "file", $"audio.{extensao}");
             formData.Add(new StringContent("whisper-large-v3-turbo"), "model");
             formData.Add(new StringContent("pt"), "language");
+            formData.Add(new StringContent("0"), "temperature"); // Mais determinístico
+            formData.Add(new StringContent("verbose_json"), "response_format"); // Inclui avg_logprob para confiança
+            // Prompt hint: vocabulário financeiro brasileiro melhora drasticamente a transcrição
+            formData.Add(new StringContent(
+                "gastei, paguei, comprei, recebi, reais, crédito, débito, PIX, posto, combustível, " +
+                "supermercado, mercado, aluguel, fatura, parcelas, cartão, dinheiro, boleto, " +
+                "salário, conta, transferência, Nubank, Inter, Itaú, Bradesco, " +
+                "ontem, hoje, dia, mês, semana"
+            ), "prompt");
 
             var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/audio/transcriptions")
             {
@@ -687,15 +711,35 @@ public class GroqAiService : IAiService
             };
             request.Headers.Add("Authorization", $"Bearer {groqApiKey}");
 
-            var response = await _httpClient.SendAsync(request);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var response = await _httpClient.SendAsync(request, cts.Token);
+            var responseBody = await response.Content.ReadAsStringAsync(cts.Token);
 
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("Groq Whisper transcreveu áudio com sucesso (key #{KeyIndex})", keyIndex);
                 var result = JsonSerializer.Deserialize<JsonElement>(responseBody, JsonOptions);
+
+                // Verificar confiança da transcrição via avg_logprob (verbose_json)
+                if (result.TryGetProperty("segments", out var segments) && segments.GetArrayLength() > 0)
+                {
+                    var avgLogProbs = segments.EnumerateArray()
+                        .Where(s => s.TryGetProperty("avg_logprob", out _))
+                        .Select(s => s.GetProperty("avg_logprob").GetDouble())
+                        .ToList();
+                    if (avgLogProbs.Count > 0)
+                    {
+                        var mediaLogProb = avgLogProbs.Average();
+                        _logger.LogInformation("Whisper confiança avg_logprob={LogProb:F2} (key #{KeyIndex})", mediaLogProb, keyIndex);
+                        if (mediaLogProb < -1.0)
+                            _logger.LogWarning("Transcrição com baixa confiança (avg_logprob={LogProb:F2}). Resultado pode conter erros.", mediaLogProb);
+                    }
+                }
+
                 if (result.TryGetProperty("text", out var textProp))
+                {
+                    _logger.LogInformation("Groq Whisper transcreveu com sucesso (key #{KeyIndex}): \"{Texto}\"", keyIndex, textProp.GetString());
                     return textProp.GetString();
+                }
             }
 
             _logger.LogWarning("Groq Whisper falhou (key #{KeyIndex}) {StatusCode}: {Body}", keyIndex, response.StatusCode, responseBody);
@@ -874,7 +918,7 @@ public class GroqAiService : IAiService
         return null;
     }
 
-    private async Task<GroqToolCall?> ChamarGroqAsync(string prompt, string groqApiKey, string? modelo = null, int? keyIndex = null)
+    private async Task<GroqToolCall?> ChamarGroqAsync(string prompt, string groqApiKey, string? modelo = null, int? keyIndex = null, double temperatura = 0.7)
     {
         var groqModel = modelo ?? _groqModels.First();
         var requestBody = new
@@ -886,7 +930,7 @@ public class GroqAiService : IAiService
             },
             tools = GroqToolsHelper.Tools,
             tool_choice = "auto",
-            temperature = 0.7,
+            temperature = temperatura,
             max_tokens = 2048
         };
 
@@ -902,8 +946,9 @@ public class GroqAiService : IAiService
             };
             request.Headers.Add("Authorization", $"Bearer {groqApiKey}");
 
-            var response = await _httpClient.SendAsync(request);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+            var response = await _httpClient.SendAsync(request, cts.Token);
+            var responseBody = await response.Content.ReadAsStringAsync(cts.Token);
 
             if (response.IsSuccessStatusCode)
             {

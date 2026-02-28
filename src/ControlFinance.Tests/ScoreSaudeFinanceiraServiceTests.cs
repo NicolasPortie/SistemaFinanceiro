@@ -454,10 +454,9 @@ public class ScoreSaudeFinanceiraServiceTests
 
         // Barra deve conter blocos preenchidos (coloridos) e formato score/100
         Assert.True(
-            resultado.ResumoTexto.Contains("🟩") ||
-            resultado.ResumoTexto.Contains("🟨") ||
-            resultado.ResumoTexto.Contains("🟥"),
-            "Resumo deveria conter barra de progresso com blocos coloridos");
+            resultado.ResumoTexto.Contains("▓") ||
+            resultado.ResumoTexto.Contains("░"),
+            "Resumo deveria conter barra de progresso com blocos");
         Assert.Contains("/100", resultado.ResumoTexto);
     }
 
