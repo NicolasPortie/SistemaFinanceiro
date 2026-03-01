@@ -123,7 +123,6 @@ public class AdminSessaoDto
     public int Id { get; set; }
     public int UsuarioId { get; set; }
     public string UsuarioNome { get; set; } = string.Empty;
-    public string UsuarioEmail { get; set; } = string.Empty;
     public DateTime CriadoEm { get; set; }
     public DateTime ExpiraEm { get; set; }
     public string? IpCriacao { get; set; }

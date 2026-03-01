@@ -352,10 +352,9 @@ public class AdminService : IAdminService
                 Id = s.Id,
                 UsuarioId = s.UsuarioId,
                 UsuarioNome = s.Usuario?.Nome ?? "Desconhecido",
-                UsuarioEmail = s.Usuario?.Email ?? "",
                 CriadoEm = s.CriadoEm,
                 ExpiraEm = s.ExpiraEm,
-                IpCriacao = s.IpCriacao
+                IpCriacao = MaskIp(s.IpCriacao)
             }).ToList(),
             UsuariosBloqueadosLista = bloqueados.Select(u => new AdminUsuarioBloqueadoDto
             {
@@ -414,5 +413,18 @@ public class AdminService : IAdminService
         for (int i = 0; i < 8; i++)
             result[i] = chars[bytes[i] % chars.Length];
         return new string(result);
+    }
+
+    private static string? MaskIp(string? ip)
+    {
+        if (string.IsNullOrEmpty(ip)) return null;
+        var parts = ip.Split('.');
+        if (parts.Length == 4)
+            return $"{parts[0]}.{parts[1]}.***.***";
+        // IPv6: mantém os dois primeiros grupos
+        var groups = ip.Split(':');
+        if (groups.Length >= 2)
+            return string.Join(":", groups[0], groups[1]) + ":****:****:****:****";
+        return "***";
     }
 }

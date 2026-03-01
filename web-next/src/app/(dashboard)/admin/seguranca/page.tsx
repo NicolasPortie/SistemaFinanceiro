@@ -60,6 +60,22 @@ function getInitials(nome: string) {
     .toUpperCase();
 }
 
+function maskNome(nome: string) {
+  if (!nome) return "";
+  const visible = nome.slice(0, 2);
+  return visible + "*".repeat(Math.max(0, nome.length - 2));
+}
+
+function maskIp(ip: string | null) {
+  if (!ip) return "—";
+  const parts = ip.split(".");
+  if (parts.length === 4) return `${parts[0]}.${parts[1]}.***.***`;
+  // IPv6: mask last 4 segments
+  const v6 = ip.split(":");
+  if (v6.length > 4) return v6.slice(0, 4).join(":") + ":****:****:****:****".slice(0, (8 - 4) * 5);
+  return ip.slice(0, Math.ceil(ip.length / 2)) + "***";
+}
+
 function isExpired(s: AdminSessao) {
   return new Date(s.expiraEm) < new Date();
 }
@@ -122,7 +138,7 @@ export default function AdminSegurancaPage() {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return sessoes;
     return sessoes.filter(
-      (s) => s.usuarioNome.toLowerCase().includes(q) || s.usuarioEmail.toLowerCase().includes(q)
+      (s) => s.usuarioNome.toLowerCase().includes(q)
     );
   }, [data?.sessoes, searchQuery]);
 
@@ -357,10 +373,7 @@ export default function AdminSegurancaPage() {
                             {getInitials(s.usuarioNome)}
                           </div>
                           <div>
-                            <p className="text-sm font-semibold leading-tight">{s.usuarioNome}</p>
-                            <p className="text-xs text-muted-foreground/60 mt-0.5">
-                              {s.usuarioEmail}
-                            </p>
+                            <p className="text-sm font-semibold leading-tight">{maskNome(s.usuarioNome)}</p>
                           </div>
                         </div>
                       </td>
@@ -368,7 +381,7 @@ export default function AdminSegurancaPage() {
                       {/* IP */}
                       <td className="px-6 py-4">
                         <p className="text-xs text-muted-foreground font-mono">
-                          {s.ipCriacao || "—"}
+                          {maskIp(s.ipCriacao)}
                         </p>
                       </td>
 

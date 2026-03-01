@@ -5,7 +5,7 @@ import { api, type AdminDashboardData } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageShell } from "@/components/shared/page-components";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import {
   Users,
@@ -387,94 +387,22 @@ export default function AdminDashboardPage() {
         </div>
       </section>
 
-      {/* ── Bottom row: chart + recent registrations ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Bar chart */}
-        <motion.div {...fadeUp(0.85)} className="lg:col-span-2 glass-panel rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-base font-bold">Atividade de Cadastros</h2>
-            <span className="text-xs text-muted-foreground/50 bg-muted/30 px-2.5 py-1 rounded-lg">
-              Últimos 30 dias
-            </span>
+      {/* ── Bottom row: chart ── */}
+      <motion.div {...fadeUp(0.85)} className="glass-panel rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-base font-bold">Atividade de Cadastros</h2>
+          <span className="text-xs text-muted-foreground/50 bg-muted/30 px-2.5 py-1 rounded-lg">
+            Últimos 30 dias
+          </span>
+        </div>
+        {data.cadastrosPorDia.length > 0 ? (
+          <BarChart data={data.cadastrosPorDia} />
+        ) : (
+          <div className="h-44 flex items-center justify-center">
+            <p className="text-sm text-muted-foreground/40">Sem cadastros no período</p>
           </div>
-          {data.cadastrosPorDia.length > 0 ? (
-            <BarChart data={data.cadastrosPorDia} />
-          ) : (
-            <div className="h-44 flex items-center justify-center">
-              <p className="text-sm text-muted-foreground/40">Sem cadastros no período</p>
-            </div>
-          )}
-        </motion.div>
-
-        {/* Recent registrations */}
-        <motion.div {...fadeUp(0.9)} className="glass-panel rounded-2xl p-6 flex flex-col">
-          <h2 className="text-base font-bold mb-4">Cadastros Recentes</h2>
-          <div className="overflow-y-auto flex-1 space-y-2 pr-1">
-            {data.cadastrosPorDia.length === 0 && (
-              <p className="text-sm text-muted-foreground/40 text-center py-8">
-                Nenhum cadastro recente
-              </p>
-            )}
-            <AnimatePresence>
-              {[...data.cadastrosPorDia]
-                .reverse()
-                .slice(0, 8)
-                .map((d, i) => {
-                  const date = new Date(d.data + "T00:00:00");
-                  const label = date.toLocaleDateString("pt-BR", {
-                    weekday: "short",
-                    day: "2-digit",
-                    month: "short",
-                  });
-                  const isFirst = i === 0;
-                  return (
-                    <motion.div
-                      key={d.data}
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.95 + i * 0.06 }}
-                      className="flex items-center justify-between p-3 rounded-xl bg-muted/20 hover:bg-muted/35 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                            isFirst
-                              ? "bg-emerald-500/20 text-emerald-500"
-                              : "bg-muted/60 text-muted-foreground"
-                          )}
-                        >
-                          {String(date.getDate()).padStart(2, "0")}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{label}</p>
-                          <p className="text-xs text-muted-foreground/50">
-                            Cadastro {d.quantidade > 1 ? `(${d.quantidade}x)` : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={cn(
-                          "px-2 py-0.5 rounded-md text-xs font-semibold",
-                          isFirst
-                            ? "bg-emerald-500/10 text-emerald-500"
-                            : "bg-muted/60 text-muted-foreground"
-                        )}
-                      >
-                        +{d.quantidade}
-                      </span>
-                    </motion.div>
-                  );
-                })}
-            </AnimatePresence>
-          </div>
-          {data.cadastrosPorDia.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-border/30 text-center">
-              <span className="text-xs text-primary font-semibold">Ver histórico completo</span>
-            </div>
-          )}
-        </motion.div>
-      </div>
+        )}
+      </motion.div>
     </PageShell>
   );
 }

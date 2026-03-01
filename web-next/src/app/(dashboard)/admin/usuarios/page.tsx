@@ -86,6 +86,26 @@ function getInitials(nome: string) {
     .toUpperCase();
 }
 
+function maskNome(nome: string) {
+  if (!nome) return "";
+  const visible = nome.slice(0, 2);
+  const rest = nome.slice(2);
+  return visible + "*".repeat(Math.max(0, rest.length));
+}
+
+function maskEmail(email: string) {
+  if (!email) return "";
+  const [local, domain] = email.split("@");
+  if (!domain) return email;
+  const visibleLocal = local.slice(0, 2);
+  const maskedLocal = visibleLocal + "*".repeat(Math.max(0, local.length - 2));
+  const domainParts = domain.split(".");
+  const ext = domainParts[domainParts.length - 1];
+  const domainName = domainParts.slice(0, -1).join(".");
+  const maskedDomain = "*".repeat(Math.max(1, domainName.length)) + "." + ext;
+  return maskedLocal + "@" + maskedDomain;
+}
+
 const PAGE_SIZE = 10;
 
 const isBloqueado = (u: AdminUsuario) => !!u.bloqueadoAte && new Date(u.bloqueadoAte) > new Date();
@@ -464,7 +484,7 @@ export default function AdminUsuariosPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-semibold leading-tight">{u.nome}</p>
+                            <p className="text-sm font-semibold leading-tight">{maskNome(u.nome)}</p>
                             {isSelf(u) && (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20">
                                 Você
@@ -478,7 +498,7 @@ export default function AdminUsuariosPage() {
 
                     {/* Email */}
                     <td className="px-4 py-4">
-                      <p className="text-sm text-muted-foreground font-mono">{u.email}</p>
+                      <p className="text-sm text-muted-foreground font-mono">{maskEmail(u.email)}</p>
                       {u.telegramVinculado && (
                         <span className="inline-flex items-center gap-1 text-[10px] text-sky-500 mt-0.5">
                           <Send className="h-2.5 w-2.5" />

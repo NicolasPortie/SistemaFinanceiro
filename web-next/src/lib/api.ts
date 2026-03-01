@@ -918,7 +918,6 @@ export interface AdminSessao {
   id: number;
   usuarioId: number;
   usuarioNome: string;
-  usuarioEmail: string;
   criadoEm: string;
   expiraEm: string;
   ipCriacao: string | null;
