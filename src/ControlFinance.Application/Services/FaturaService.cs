@@ -157,7 +157,10 @@ public class FaturaService : IFaturaService
             DataVencimento = fatura.DataVencimento,
             Total = fatura.Total,
             Status = fatura.Status.ToString(),
-            Parcelas = fatura.Parcelas.Select(p => new ParcelaResumoDto
+            Parcelas = fatura.Parcelas
+                .OrderByDescending(p => (p.Lancamento?.Data ?? p.DataVencimento).Date)
+                .ThenByDescending(p => p.Lancamento?.CriadoEm ?? DateTime.MinValue)
+                .Select(p => new ParcelaResumoDto
             {
                 Descricao = p.Lancamento?.Descricao ?? "",
                 Categoria = p.Lancamento?.Categoria?.Nome ?? "",
