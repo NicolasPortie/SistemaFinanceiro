@@ -290,4 +290,57 @@ public class GroqAiServiceTests
         // Valor NÃO deve ser alterado (já é o total correto)
         Assert.Equal(75.90m, result.Lancamento.Valor);
     }
+
+    [Theory]
+    [InlineData("nao_informado")]
+    [InlineData("pix")]
+    [InlineData("debito")]
+    public async Task ProcessarMensagemCompletaAsync_ParceladoSemCredito_AutoSetaCredito(string formaPagIa)
+    {
+        // Arrange: IA retorna parcelas > 1 mas forma de pagamento incorreta
+        // "parcelado em 2x" é sempre crédito por definição
+        SetupGroqResponse("registrar_lancamento", new
+        {
+            valor = 120.00m,
+            descricao = "compras online",
+            categoria = "Compras",
+            formaPagamento = formaPagIa,
+            tipo = "gasto",
+            numeroParcelas = 2
+        });
+
+        // Act
+        var result = await _aiService.ProcessarMensagemCompletaAsync(
+            "fiz uma compra parcelada de 120 reais em duas vezes de compras online", "contexto");
+
+        // Assert
+        Assert.NotNull(result?.Lancamento);
+        Assert.Equal(2, result.Lancamento.NumeroParcelas);
+        Assert.Equal("credito", result.Lancamento.FormaPagamento);
+        Assert.Equal(120.00m, result.Lancamento.Valor);
+    }
+
+    [Fact]
+    public async Task ProcessarMensagemCompletaAsync_ParcelaUnica_NaoForcaCredito()
+    {
+        // Arrange: parcela == 1, não deve forçar crédito
+        SetupGroqResponse("registrar_lancamento", new
+        {
+            valor = 50.00m,
+            descricao = "lanche",
+            categoria = "Alimentação",
+            formaPagamento = "nao_informado",
+            tipo = "gasto",
+            numeroParcelas = 1
+        });
+
+        // Act
+        var result = await _aiService.ProcessarMensagemCompletaAsync(
+            "gastei 50 reais no lanche", "contexto");
+
+        // Assert
+        Assert.NotNull(result?.Lancamento);
+        Assert.Equal(1, result.Lancamento.NumeroParcelas);
+        Assert.Equal("nao_informado", result.Lancamento.FormaPagamento);
+    }
 }

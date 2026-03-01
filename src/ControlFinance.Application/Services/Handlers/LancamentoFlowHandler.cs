@@ -120,6 +120,14 @@ public class LancamentoFlowHandler : ILancamentoHandler
                               formaPag == "nao_informado" ||
                               formaPag == "nao informado";
 
+        // Parcelado é sempre crédito — pular pergunta de forma de pagamento
+        if (formaPagAusente && dados.NumeroParcelas > 1)
+        {
+            dados.FormaPagamento = "credito";
+            formaPag = "credito";
+            formaPagAusente = false;
+        }
+
         if (formaPagAusente)
         {
             pendente.Estado = EstadoPendente.AguardandoFormaPagamento;
@@ -436,6 +444,14 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
         var formaPag = pendente.Dados.FormaPagamento?.ToLower();
         var formaPagAusente = string.IsNullOrWhiteSpace(formaPag) || formaPag is "nao_informado" or "nao informado";
+
+        // Parcelado é sempre crédito — pular pergunta de forma de pagamento
+        if (formaPagAusente && pendente.Dados.NumeroParcelas > 1)
+        {
+            pendente.Dados.FormaPagamento = "credito";
+            formaPag = "credito";
+            formaPagAusente = false;
+        }
 
         if (formaPagAusente)
         {

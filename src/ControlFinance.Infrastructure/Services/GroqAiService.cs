@@ -229,14 +229,21 @@ public class GroqAiService : IAiService
                     result.Intencao = "registrar";
                     result.Resposta = "Vou registrar isso!";
                     var numParcelas = GetInt("numeroParcelas");
+                    var formaPagAi = GetStr("formaPagamento") ?? "nao_informado";
+                    var numParcelasNorm = numParcelas <= 0 ? 1 : numParcelas;
+
+                    // Parcelado é sempre crédito — se a IA não detectou, forçar
+                    if (numParcelasNorm > 1 && formaPagAi is "nao_informado" or "nao informado" or "pix" or "debito")
+                        formaPagAi = "credito";
+
                     result.Lancamento = new DadosLancamento
                     {
                         Valor = GetDec("valor"),
                         Descricao = GetStr("descricao") ?? "Lancamento",
                         Categoria = GetStr("categoria") ?? "Outros",
-                        FormaPagamento = GetStr("formaPagamento") ?? "nao_informado",
+                        FormaPagamento = formaPagAi,
                         Tipo = GetStr("tipo") ?? "gasto",
-                        NumeroParcelas = numParcelas <= 0 ? 1 : numParcelas,
+                        NumeroParcelas = numParcelasNorm,
                         Data = DateTime.TryParse(GetStr("data"), out var dt) ? dt : DateTime.UtcNow.AddHours(-3)
                     };
                     break;
