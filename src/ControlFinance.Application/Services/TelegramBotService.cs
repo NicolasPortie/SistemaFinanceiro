@@ -1374,7 +1374,7 @@ public class TelegramBotService : ITelegramBotService
         // Buscar lançamentos do mês atual nessa categoria
         var hoje = DateTime.UtcNow;
         var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var fimMes = inicioMes.AddMonths(1).AddDays(-1);
+        var fimMes = inicioMes.AddMonths(1);
 
         var lancamentos = await _lancamentoRepo.ObterPorUsuarioETipoAsync(
             usuario.Id, TipoLancamento.Gasto, inicioMes, fimMes);
@@ -2460,7 +2460,7 @@ public class TelegramBotService : ITelegramBotService
     {
         var hoje = DateTime.UtcNow;
         var inicioJanela = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
-        var fimJanela = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1).AddDays(-1);
+        var fimJanela = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1);
 
         var receitas = await _lancamentoRepo.ObterPorUsuarioETipoAsync(usuario.Id, TipoLancamento.Receita, inicioJanela, fimJanela);
         var salarios = receitas

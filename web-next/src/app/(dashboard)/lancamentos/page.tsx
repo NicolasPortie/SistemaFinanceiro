@@ -184,8 +184,10 @@ function useMonthSelector() {
   };
 
   const firstDay = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
-  const lastDay = `${year}-${String(month + 1).padStart(2, "0")}-${lastDayOfMonth}`;
+  // Use o primeiro dia do mês seguinte para que o filtro "< ate" inclua o último dia inteiro
+  const nextMonth = month === 11 ? 0 : month + 1;
+  const nextYear = month === 11 ? year + 1 : year;
+  const lastDay = `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}-01`;
 
   return { mesParam, label, isCurrentMonth, prev, next, reset, firstDay, lastDay };
 }

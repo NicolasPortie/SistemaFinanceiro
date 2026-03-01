@@ -52,7 +52,7 @@ public class LancamentosController : BaseAuthController
         if (!string.IsNullOrEmpty(mes) && DateTime.TryParse($"{mes}-01", out var mesDate))
         {
             var inicio = new DateTime(mesDate.Year, mesDate.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-            var fim = inicio.AddMonths(1).AddDays(-1);
+            var fim = inicio.AddMonths(1); // primeiro dia do mês seguinte (filtro usa <)
             resumo = await _resumoService.GerarResumoAsync(UsuarioId, inicio, fim);
         }
         else if (periodo == "semanal")
