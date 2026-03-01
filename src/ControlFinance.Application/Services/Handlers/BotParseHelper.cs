@@ -176,9 +176,9 @@ public static class BotParseHelper
         {
             var agora = DateTime.UtcNow;
             if (dataExata.Year < 2000)
-                dataExata = new DateTime(agora.Year, dataExata.Month, dataExata.Day, agora.Hour, agora.Minute, agora.Second, DateTimeKind.Utc);
+                dataExata = new DateTime(agora.Year, dataExata.Month, dataExata.Day, 12, 0, 0, DateTimeKind.Utc);
             else
-                dataExata = new DateTime(dataExata.Year, dataExata.Month, dataExata.Day, agora.Hour, agora.Minute, agora.Second, DateTimeKind.Utc);
+                dataExata = new DateTime(dataExata.Year, dataExata.Month, dataExata.Day, 12, 0, 0, DateTimeKind.Utc);
             dataUtc = dataExata;
             return true;
         }
@@ -193,7 +193,7 @@ public static class BotParseHelper
             {
                 var agora = DateTime.UtcNow;
                 var diaReal = Math.Min(dia, DateTime.DaysInMonth(agora.Year, mes));
-                dataUtc = new DateTime(agora.Year, mes, diaReal, agora.Hour, agora.Minute, agora.Second, DateTimeKind.Utc);
+                dataUtc = new DateTime(agora.Year, mes, diaReal, 12, 0, 0, DateTimeKind.Utc);
                 return true;
             }
         }
@@ -204,7 +204,7 @@ public static class BotParseHelper
         {
             var agora = DateTime.UtcNow;
             var diaReal = Math.Min(diaNum, DateTime.DaysInMonth(agora.Year, agora.Month));
-            dataUtc = new DateTime(agora.Year, agora.Month, diaReal, agora.Hour, agora.Minute, agora.Second, DateTimeKind.Utc);
+            dataUtc = new DateTime(agora.Year, agora.Month, diaReal, 12, 0, 0, DateTimeKind.Utc);
             return true;
         }
 
@@ -226,7 +226,7 @@ public static class BotParseHelper
             {
                 var agora = DateTime.UtcNow;
                 var diaReal = Math.Min(diaMes, DateTime.DaysInMonth(agora.Year, mesNum));
-                dataUtc = new DateTime(agora.Year, mesNum, diaReal, agora.Hour, agora.Minute, agora.Second, DateTimeKind.Utc);
+                dataUtc = new DateTime(agora.Year, mesNum, diaReal, 12, 0, 0, DateTimeKind.Utc);
                 return true;
             }
         }

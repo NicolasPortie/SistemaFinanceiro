@@ -7,8 +7,27 @@ namespace ControlFinance.Domain.Interfaces;
 public interface IAiService
 {
     Task<RespostaIA> ProcessarMensagemCompletaAsync(string mensagem, string contextoFinanceiro, OrigemDado origem = OrigemDado.Texto);
-    Task<string> TranscreverAudioAsync(byte[] audioData, string mimeType);
+    Task<ResultadoTranscricao> TranscreverAudioAsync(byte[] audioData, string mimeType);
     Task<string> ExtrairTextoImagemAsync(byte[] imageData, string mimeType);
+}
+
+/// <summary>
+/// Resultado da transcrição de áudio com metadados de confiança.
+/// </summary>
+public class ResultadoTranscricao
+{
+    public string Texto { get; set; } = string.Empty;
+    /// <summary>
+    /// Média do avg_logprob dos segmentos Whisper. Quanto mais próximo de 0, melhor.
+    /// Valores abaixo de -1.0 indicam baixa confiança.
+    /// </summary>
+    public double Confianca { get; set; }
+    /// <summary>
+    /// Duração estimada do áudio em segundos (quando disponível via verbose_json).
+    /// </summary>
+    public double DuracaoSegundos { get; set; }
+    public bool BaixaConfianca => Confianca < -1.0;
+    public bool Sucesso => !string.IsNullOrWhiteSpace(Texto);
 }
 
 public class RespostaIA

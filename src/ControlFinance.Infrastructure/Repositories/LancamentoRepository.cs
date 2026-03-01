@@ -43,7 +43,7 @@ public class LancamentoRepository : ILancamentoRepository
         if (ate.HasValue)
             query = query.Where(l => l.Data < ate.Value);
 
-        return await query.OrderByDescending(l => l.Data).ThenByDescending(l => l.CriadoEm).ToListAsync();
+        return await query.OrderByDescending(l => l.Data.Date).ThenByDescending(l => l.CriadoEm).ToListAsync();
     }
 
     public async Task<List<Lancamento>> ObterPorUsuarioETipoAsync(int usuarioId, TipoLancamento tipo, DateTime? de = null, DateTime? ate = null)
@@ -58,7 +58,7 @@ public class LancamentoRepository : ILancamentoRepository
         if (ate.HasValue)
             query = query.Where(l => l.Data < ate.Value);
 
-        return await query.OrderByDescending(l => l.Data).ThenByDescending(l => l.CriadoEm).ToListAsync();
+        return await query.OrderByDescending(l => l.Data.Date).ThenByDescending(l => l.CriadoEm).ToListAsync();
     }
 
     public async Task<(List<Lancamento> Itens, int Total)> ObterPorUsuarioPaginadoAsync(
@@ -76,7 +76,7 @@ public class LancamentoRepository : ILancamentoRepository
 
         var total = await query.CountAsync();
         var itens = await query
-            .OrderByDescending(l => l.Data)
+            .OrderByDescending(l => l.Data.Date)
             .ThenByDescending(l => l.CriadoEm)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
@@ -100,7 +100,7 @@ public class LancamentoRepository : ILancamentoRepository
 
         var total = await query.CountAsync();
         var itens = await query
-            .OrderByDescending(l => l.Data)
+            .OrderByDescending(l => l.Data.Date)
             .ThenByDescending(l => l.CriadoEm)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
@@ -146,7 +146,7 @@ public class LancamentoRepository : ILancamentoRepository
 
         var total = await query.CountAsync();
         var itens = await query
-            .OrderByDescending(l => l.Data)
+            .OrderByDescending(l => l.Data.Date)
             .ThenByDescending(l => l.CriadoEm)
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)

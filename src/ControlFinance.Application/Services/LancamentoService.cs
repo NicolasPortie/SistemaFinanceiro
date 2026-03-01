@@ -68,13 +68,9 @@ public class LancamentoService : ILancamentoService
         if (dataLanc.Kind == DateTimeKind.Unspecified)
             dataLanc = DateTime.SpecifyKind(dataLanc, DateTimeKind.Utc);
 
-        // Se só veio a data sem hora (meia-noite), usar hora atual para ordenação correta
-        if (dataLanc.TimeOfDay == TimeSpan.Zero)
-        {
-            var agora = DateTime.UtcNow;
-            dataLanc = new DateTime(dataLanc.Year, dataLanc.Month, dataLanc.Day,
-                agora.Hour, agora.Minute, agora.Second, DateTimeKind.Utc);
-        }
+        // Normalizar: usar apenas a data (sem hora) para evitar problemas de ordenação.
+        // A ordenação por dia é feita via Data.Date no repositório, e CriadoEm serve de tiebreaker.
+        dataLanc = new DateTime(dataLanc.Year, dataLanc.Month, dataLanc.Day, 12, 0, 0, DateTimeKind.Utc);
 
         var lancamento = new Lancamento
         {

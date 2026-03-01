@@ -15,6 +15,7 @@ public class GroqAiService : IAiService
     private readonly HttpClient _httpClient;
     private readonly List<string> _groqApiKeys;
     private readonly List<string> _groqModels;
+    private readonly string _whisperModel;
     private readonly ILogger<GroqAiService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -33,6 +34,7 @@ public class GroqAiService : IAiService
         var groqFallbacks = config["Groq:FallbackModels"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
         _groqModels = new List<string> { groqPrimary };
         _groqModels.AddRange(groqFallbacks);
+        _whisperModel = config["Groq:WhisperModel"] ?? "whisper-large-v3-turbo";
         
         if (_groqApiKeys.Count == 0)
             throw new ArgumentException("Configure ao menos uma chave em Groq:ApiKey ou Groq:ApiKeys.");
@@ -41,6 +43,7 @@ public class GroqAiService : IAiService
         providers.AddRange(_groqModels.Select(m => $"groq:{m}"));
 
         _logger.LogInformation("IA modelos configurados: {Models}", string.Join(" -> ", providers));
+        _logger.LogInformation("Whisper modelo: {WhisperModel}", _whisperModel);
         _logger.LogInformation("Groq keys configuradas: {Count}", _groqApiKeys.Count);
     }
 
@@ -658,20 +661,156 @@ public class GroqAiService : IAiService
         return valores;
     }
 
-    public async Task<string> TranscreverAudioAsync(byte[] audioData, string mimeType)
+    public async Task<ResultadoTranscricao> TranscreverAudioAsync(byte[] audioData, string mimeType)
     {
+        // Normalizar MIME types inválidos
+        mimeType = NormalizarMimeType(mimeType);
+
+        // Estimativa de duração para log (OGG/opus ~1KB/s, MP3 ~16KB/s)
+        var duracaoEstimadaSeg = EstimarDuracaoAudio(audioData.Length, mimeType);
+        _logger.LogInformation("Áudio recebido: {Tamanho}KB, MIME={Mime}, duração estimada={Duracao:F0}s", audioData.Length / 1024, mimeType, duracaoEstimadaSeg);
+
+        // Timeout dinâmico baseado na duração estimada (mínimo 30s, +2s por segundo de áudio)
+        var timeoutSegundos = Math.Max(30, (int)(duracaoEstimadaSeg * 2) + 15);
+
         for (var i = 0; i < _groqApiKeys.Count; i++)
         {
-            var whisperResult = await TranscreverViaGroqWhisperAsync(audioData, mimeType, _groqApiKeys[i], i + 1);
-            if (!string.IsNullOrWhiteSpace(whisperResult))
-                return whisperResult;
+            var resultado = await TranscreverViaGroqWhisperAsync(audioData, mimeType, _groqApiKeys[i], i + 1, timeoutSegundos);
+            if (resultado != null && resultado.Sucesso)
+            {
+                resultado.DuracaoSegundos = duracaoEstimadaSeg;
+
+                // Detectar silêncio/alucinação: transcrição muito curta para áudio longo
+                if (DetectarSilencioOuAlucinacao(resultado.Texto, duracaoEstimadaSeg))
+                {
+                    _logger.LogWarning("Possível silêncio ou alucinação detectada: texto=\"{Texto}\" para áudio de {Duracao:F0}s", resultado.Texto, duracaoEstimadaSeg);
+                    resultado.Confianca = Math.Min(resultado.Confianca, -1.5); // Forçar baixa confiança
+                }
+
+                return resultado;
+            }
         }
 
         _logger.LogWarning("Falha ao transcrever áudio via Groq Whisper. Nenhuma chave disponível obteve sucesso.");
-        return string.Empty;
+        return new ResultadoTranscricao();
     }
 
-    private async Task<string?> TranscreverViaGroqWhisperAsync(byte[] audioData, string mimeType, string groqApiKey, int keyIndex)
+    /// <summary>
+    /// Normaliza MIME types inválidos ou não-padronizados para valores aceitos pela API.
+    /// </summary>
+    private static string NormalizarMimeType(string mimeType)
+    {
+        return mimeType switch
+        {
+            "audio/m4a" => "audio/mp4",           // audio/m4a não existe na RFC; m4a é container MP4
+            "audio/x-m4a" => "audio/mp4",
+            "audio/x-wav" => "audio/wav",
+            "audio/mp3" => "audio/mpeg",           // mp3 → mpeg (padrão IANA)
+            _ => mimeType
+        };
+    }
+
+    /// <summary>
+    /// Estima a duração do áudio em segundos baseado no tamanho e formato.
+    /// Valores aproximados — usados apenas para timeout e detecção de silêncio.
+    /// </summary>
+    private static double EstimarDuracaoAudio(int tamanhoBytes, string mimeType)
+    {
+        // Bitrates médios aproximados por formato
+        double bytesPerSecond = mimeType switch
+        {
+            "audio/ogg" => 4_000,    // Opus ~32kbps
+            "audio/mpeg" => 16_000,  // MP3 ~128kbps
+            "audio/wav" => 88_200,   // WAV 44.1kHz 16-bit mono
+            "audio/webm" => 4_000,   // Opus ~32kbps
+            "audio/mp4" => 8_000,    // AAC ~64kbps
+            _ => 6_000               // Fallback conservador
+        };
+        return tamanhoBytes / bytesPerSecond;
+    }
+
+    /// <summary>
+    /// Detecta possíveis alucinações do Whisper (texto repetitivo, muito curto para duração, ou padrões conhecidos).
+    /// </summary>
+    private static bool DetectarSilencioOuAlucinacao(string texto, double duracaoEstimadaSeg)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return true;
+
+        var textoLimpo = texto.Trim().ToLowerInvariant();
+
+        // Silêncio: áudio > 5s mas transcrição tem menos de 3 palavras
+        if (duracaoEstimadaSeg > 5 && textoLimpo.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length < 3)
+            return true;
+
+        // Alucinações conhecidas do Whisper: texto repetitivo
+        var palavras = textoLimpo.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (palavras.Length >= 6)
+        {
+            var distinctRatio = (double)palavras.Distinct().Count() / palavras.Length;
+            if (distinctRatio < 0.3) // Mais de 70% das palavras são repetidas
+                return true;
+        }
+
+        // Padrões comuns de alucinação do Whisper em silêncio
+        var padroesFalsos = new[]
+        {
+            "obrigado por assistir", "inscreva-se", "legendas pela comunidade",
+            "thank you for watching", "subscribe", "like and subscribe",
+            "music", "aplausos", "risos"
+        };
+        if (padroesFalsos.Any(p => textoLimpo.Contains(p)))
+            return true;
+
+        return false;
+    }
+
+    private async Task<ResultadoTranscricao?> TranscreverViaGroqWhisperAsync(byte[] audioData, string mimeType, string groqApiKey, int keyIndex, int timeoutSegundos)
+    {
+        // Retry com backoff exponencial: até 3 tentativas
+        const int maxRetries = 3;
+        for (int tentativa = 1; tentativa <= maxRetries; tentativa++)
+        {
+            try
+            {
+                var resultado = await ExecutarWhisperRequestAsync(audioData, mimeType, groqApiKey, keyIndex, timeoutSegundos);
+                if (resultado != null)
+                    return resultado;
+
+                // Se retornou null (falha não-transiente), não faz retry
+                break;
+            }
+            catch (TaskCanceledException) when (tentativa < maxRetries)
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, tentativa)); // 2s, 4s
+                _logger.LogWarning("Timeout na tentativa {Tentativa}/{Max} (key #{KeyIndex}). Retry em {Delay}s...", tentativa, maxRetries, keyIndex, delay.TotalSeconds);
+                await Task.Delay(delay);
+            }
+            catch (HttpRequestException ex) when (tentativa < maxRetries && IsTransientError(ex))
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, tentativa));
+                _logger.LogWarning(ex, "Erro transiente na tentativa {Tentativa}/{Max} (key #{KeyIndex}). Retry em {Delay}s...", tentativa, maxRetries, keyIndex, delay.TotalSeconds);
+                await Task.Delay(delay);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Erro ao chamar Groq Whisper para transcrição (key #{KeyIndex}, tentativa {Tentativa})", keyIndex, tentativa);
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static bool IsTransientError(HttpRequestException ex)
+    {
+        // 429 (rate limit), 500, 502, 503, 504 são transientes
+        return ex.StatusCode is System.Net.HttpStatusCode.TooManyRequests
+            or System.Net.HttpStatusCode.InternalServerError
+            or System.Net.HttpStatusCode.BadGateway
+            or System.Net.HttpStatusCode.ServiceUnavailable
+            or System.Net.HttpStatusCode.GatewayTimeout;
+    }
+
+    private async Task<ResultadoTranscricao?> ExecutarWhisperRequestAsync(byte[] audioData, string mimeType, string groqApiKey, int keyIndex, int timeoutSegundos)
     {
         try
         {
@@ -680,12 +819,9 @@ public class GroqAiService : IAiService
             {
                 "audio/ogg" => "ogg",
                 "audio/mpeg" => "mp3",
-                "audio/mp3" => "mp3",
                 "audio/wav" => "wav",
-                "audio/x-wav" => "wav",
                 "audio/webm" => "webm",
                 "audio/mp4" => "mp4",
-                "audio/m4a" => "m4a",
                 _ => "ogg"
             };
 
@@ -693,16 +829,22 @@ public class GroqAiService : IAiService
             var audioContent = new ByteArrayContent(audioData);
             audioContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(mimeType);
             formData.Add(audioContent, "file", $"audio.{extensao}");
-            formData.Add(new StringContent("whisper-large-v3-turbo"), "model");
+            formData.Add(new StringContent(_whisperModel), "model");
             formData.Add(new StringContent("pt"), "language");
             formData.Add(new StringContent("0"), "temperature"); // Mais determinístico
             formData.Add(new StringContent("verbose_json"), "response_format"); // Inclui avg_logprob para confiança
-            // Prompt hint: vocabulário financeiro brasileiro melhora drasticamente a transcrição
+            // Prompt hint: vocabulário financeiro brasileiro expandido — melhora drasticamente a transcrição
             formData.Add(new StringContent(
                 "gastei, paguei, comprei, recebi, reais, crédito, débito, PIX, posto, combustível, " +
                 "supermercado, mercado, aluguel, fatura, parcelas, cartão, dinheiro, boleto, " +
-                "salário, conta, transferência, Nubank, Inter, Itaú, Bradesco, " +
-                "ontem, hoje, dia, mês, semana"
+                "salário, conta, transferência, Nubank, Inter, Itaú, Bradesco, Santander, Caixa, " +
+                "ontem, hoje, dia, mês, semana, parcelar, à vista, cashback, estorno, " +
+                "categoria, limite, meta, orçamento, despesa, receita, saldo, extrato, " +
+                "uber, ifood, spotify, netflix, amazon, mercado livre, shopee, " +
+                "luz, água, internet, telefone, gás, condomínio, IPTU, IPVA, seguro, " +
+                "farmácia, academia, restaurante, padaria, lanche, café, gasolina, etanol, " +
+                "investimento, poupança, CDB, tesouro, dividendo, rendimento, " +
+                "excluir, remover, apagar, cancelar, consultar, quanto, total, resumo"
             ), "prompt");
 
             var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/audio/transcriptions")
@@ -711,13 +853,14 @@ public class GroqAiService : IAiService
             };
             request.Headers.Add("Authorization", $"Bearer {groqApiKey}");
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSegundos));
             var response = await _httpClient.SendAsync(request, cts.Token);
             var responseBody = await response.Content.ReadAsStringAsync(cts.Token);
 
             if (response.IsSuccessStatusCode)
             {
                 var result = JsonSerializer.Deserialize<JsonElement>(responseBody, JsonOptions);
+                var resultado = new ResultadoTranscricao();
 
                 // Verificar confiança da transcrição via avg_logprob (verbose_json)
                 if (result.TryGetProperty("segments", out var segments) && segments.GetArrayLength() > 0)
@@ -728,22 +871,46 @@ public class GroqAiService : IAiService
                         .ToList();
                     if (avgLogProbs.Count > 0)
                     {
-                        var mediaLogProb = avgLogProbs.Average();
-                        _logger.LogInformation("Whisper confiança avg_logprob={LogProb:F2} (key #{KeyIndex})", mediaLogProb, keyIndex);
-                        if (mediaLogProb < -1.0)
-                            _logger.LogWarning("Transcrição com baixa confiança (avg_logprob={LogProb:F2}). Resultado pode conter erros.", mediaLogProb);
+                        resultado.Confianca = avgLogProbs.Average();
+                        _logger.LogInformation("Whisper confiança avg_logprob={LogProb:F2} (key #{KeyIndex})", resultado.Confianca, keyIndex);
+                        if (resultado.BaixaConfianca)
+                            _logger.LogWarning("Transcrição com baixa confiança (avg_logprob={LogProb:F2}). Resultado pode conter erros.", resultado.Confianca);
                     }
+
+                    // Extrair duração real do áudio dos segmentos
+                    var ultimoEnd = segments.EnumerateArray()
+                        .Where(s => s.TryGetProperty("end", out _))
+                        .Select(s => s.GetProperty("end").GetDouble())
+                        .DefaultIfEmpty(0)
+                        .Max();
+                    if (ultimoEnd > 0)
+                        resultado.DuracaoSegundos = ultimoEnd;
                 }
 
                 if (result.TryGetProperty("text", out var textProp))
                 {
-                    _logger.LogInformation("Groq Whisper transcreveu com sucesso (key #{KeyIndex}): \"{Texto}\"", keyIndex, textProp.GetString());
-                    return textProp.GetString();
+                    resultado.Texto = textProp.GetString() ?? string.Empty;
+                    _logger.LogInformation("Groq Whisper transcreveu com sucesso (key #{KeyIndex}): \"{Texto}\"", keyIndex, resultado.Texto);
+                    return resultado;
                 }
+            }
+
+            // Verificar se é erro transiente para permitir retry
+            if ((int)response.StatusCode >= 500 || response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                throw new HttpRequestException($"Groq Whisper retornou {response.StatusCode}", null, response.StatusCode);
             }
 
             _logger.LogWarning("Groq Whisper falhou (key #{KeyIndex}) {StatusCode}: {Body}", keyIndex, response.StatusCode, responseBody);
             return null;
+        }
+        catch (TaskCanceledException)
+        {
+            throw; // Propagar para retry
+        }
+        catch (HttpRequestException)
+        {
+            throw; // Propagar para retry
         }
         catch (Exception ex)
         {

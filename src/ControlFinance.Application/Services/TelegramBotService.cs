@@ -715,20 +715,84 @@ public class TelegramBotService : ITelegramBotService
 
         try
         {
-            var texto = await _aiService.TranscreverAudioAsync(audioData, mimeType);
-            if (string.IsNullOrWhiteSpace(texto))
+            var transcricao = await _aiService.TranscreverAudioAsync(audioData, mimeType);
+            if (!transcricao.Sucesso)
                 return "Não foi possível entender o áudio. Tente enviar em texto.";
+
+            var texto = transcricao.Texto;
+
+            // Normalizar valores monetários comuns da fala para formato numérico
+            texto = NormalizarValoresMonetariosFala(texto);
 
             // Usar o mesmo fluxo de texto para que áudio passe pelo state machine
             // (pendentes, confirmações, respostas diretas, etc.) preservando a origem de ÁUDIO.
             var resultado = await ProcessarMensagemAsync(chatId, texto, nomeUsuario, OrigemDado.Audio);
-            return $"Transcrição: \"{texto}\"\n\n{resultado}";
+
+            // Montar resposta com transcrição e aviso de confiança se necessário
+            var resposta = $"🎤 Transcrição: \"{texto}\"\n\n{resultado}";
+
+            if (transcricao.BaixaConfianca)
+                resposta += "\n\n⚠️ _A transcrição pode conter erros. Se algo ficou errado, envie o comando em texto._";
+
+            return resposta;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao processar áudio");
             return "Erro ao processar o áudio. Tente novamente.";
         }
+    }
+
+    /// <summary>
+    /// Normaliza valores monetários comuns da fala brasileira para formato numérico.
+    /// Ex: "cem reais" → "R$ 100", "vinte e cinco" → "25", "mil e quinhentos" → "1500"
+    /// </summary>
+    private static string NormalizarValoresMonetariosFala(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return texto;
+
+        // Mapear valores por extenso para numéricos (padrões mais comuns em áudio financeiro)
+        var substituicoes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Centenas
+            { "cem reais", "R$ 100" },
+            { "duzentos reais", "R$ 200" },
+            { "trezentos reais", "R$ 300" },
+            { "quatrocentos reais", "R$ 400" },
+            { "quinhentos reais", "R$ 500" },
+            { "seiscentos reais", "R$ 600" },
+            { "setecentos reais", "R$ 700" },
+            { "oitocentos reais", "R$ 800" },
+            { "novecentos reais", "R$ 900" },
+            // Milhares
+            { "mil reais", "R$ 1000" },
+            { "mil e quinhentos reais", "R$ 1500" },
+            { "dois mil reais", "R$ 2000" },
+            { "três mil reais", "R$ 3000" },
+            { "cinco mil reais", "R$ 5000" },
+            { "dez mil reais", "R$ 10000" },
+            // Dezenas
+            { "dez reais", "R$ 10" },
+            { "vinte reais", "R$ 20" },
+            { "trinta reais", "R$ 30" },
+            { "quarenta reais", "R$ 40" },
+            { "cinquenta reais", "R$ 50" },
+            { "sessenta reais", "R$ 60" },
+            { "setenta reais", "R$ 70" },
+            { "oitenta reais", "R$ 80" },
+            { "noventa reais", "R$ 90" },
+        };
+
+        foreach (var (extenso, numerico) in substituicoes)
+        {
+            texto = System.Text.RegularExpressions.Regex.Replace(
+                texto, 
+                System.Text.RegularExpressions.Regex.Escape(extenso), 
+                numerico, 
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+
+        return texto;
     }
 
     public async Task<string> ProcessarImagemAsync(long chatId, byte[] imageData, string mimeType, string nomeUsuario, string? caption = null)
