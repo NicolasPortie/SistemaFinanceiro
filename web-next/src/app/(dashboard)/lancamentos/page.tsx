@@ -49,6 +49,7 @@ import {
   MessageSquare,
   Globe,
   Image as ImageIcon,
+  FileUp,
 } from "lucide-react";
 import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
@@ -713,7 +714,7 @@ export default function LancamentosPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="glass-panel rounded-2xl overflow-hidden"
+        className="glass-panel rounded-2xl overflow-x-auto"
       >
         {/* Table header */}
         <div className="hidden lg:grid lg:grid-cols-[40px_2fr_1fr_1fr_1fr_0.8fr_1fr_50px] gap-4 items-center px-6 py-3.5 border-b border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-800/30">
@@ -861,6 +862,8 @@ export default function LancamentosPage() {
                           <ImageIcon className="h-3.5 w-3.5 text-violet-500" />
                         ) : l.origem === "Audio" ? (
                           <MessageSquare className="h-3.5 w-3.5 text-sky-500" />
+                        ) : l.origem === "Importacao" ? (
+                          <FileUp className="h-3.5 w-3.5 text-emerald-500" />
                         ) : (
                           <Globe className="h-3.5 w-3.5 text-slate-400" />
                         )}
@@ -869,7 +872,9 @@ export default function LancamentosPage() {
                             ? "Imagem"
                             : l.origem === "Audio"
                               ? "Áudio"
-                              : "Texto"}
+                              : l.origem === "Importacao"
+                                ? "Importação"
+                                : "Texto"}
                         </span>
                       </div>
 

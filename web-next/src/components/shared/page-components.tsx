@@ -230,7 +230,7 @@ export function EmptyState({ icon, lottie, title, description, action }: EmptySt
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/40 bg-linear-to-b from-muted/20 via-muted/5 to-transparent px-8 py-24 text-center"
+      className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/40 bg-linear-to-b from-muted/20 via-muted/5 to-transparent px-4 sm:px-8 py-14 sm:py-24 text-center"
     >
       {lottie ? (
         <LottieAnimation animationData={lottie} size="sm" className="mb-6 relative z-10" />

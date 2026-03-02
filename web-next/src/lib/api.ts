@@ -799,6 +799,55 @@ export const api = {
       }),
   },
 
+  importacao: {
+    upload: async (
+      arquivo: File,
+      tipoImportacao: string,
+      contaBancariaId?: number,
+      cartaoCreditoId?: number,
+      banco?: string,
+      forcarReimportacao?: boolean
+    ): Promise<ImportacaoPreview> => {
+      const formData = new FormData();
+      formData.append("arquivo", arquivo);
+      formData.append("TipoImportacao", String(tipoImportacao));
+      if (contaBancariaId) formData.append("ContaBancariaId", String(contaBancariaId));
+      if (cartaoCreditoId) formData.append("CartaoCreditoId", String(cartaoCreditoId));
+      if (banco) formData.append("Banco", banco);
+      if (forcarReimportacao) formData.append("ForcarReimportacao", "true");
+
+      // File upload needs FormData — bypass the JSON request() helper
+      const csrfToken = await obterCsrfToken();
+      const headers: Record<string, string> = {};
+      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
+      const res = await fetch(`${API_BASE}/importacao/upload`, {
+        method: "POST",
+        headers,
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.erro || err?.mensagem || `Erro ${res.status}`);
+      }
+
+      return res.json();
+    },
+
+    confirmar: (data: ConfirmarImportacaoRequest) =>
+      request<ImportacaoResultado>("/importacao/confirmar", { method: "POST", body: data }),
+
+    historico: (pagina?: number, tamanhoPagina?: number) => {
+      const params = new URLSearchParams();
+      if (pagina) params.set("pagina", String(pagina));
+      if (tamanhoPagina) params.set("tamanhoPagina", String(tamanhoPagina));
+      const qs = params.toString();
+      return request<ImportacaoHistorico[]>(`/importacao/historico${qs ? `?${qs}` : ""}`);
+    },
+  },
+
   admin: {
     dashboard: () => request<AdminDashboardData>("/admin/dashboard"),
 
@@ -937,4 +986,83 @@ export interface AdminSegurancaResumo {
   tentativasLoginFalhadas: number;
   sessoes: AdminSessao[];
   usuariosBloqueadosLista: AdminUsuarioBloqueado[];
+}
+
+// ── Importação de Extratos ─────────────────────────────────
+
+export type FormatoArquivo = "CSV" | "XLSX" | "OFX" | "PDF";
+export type TipoImportacao = "Extrato" | "Fatura";
+export type StatusImportacao = "Processado" | "Confirmado" | "Falhou";
+export type StatusTransacaoImportada = "Normal" | "Suspeita" | "Duplicata" | "Ignorada";
+export type TipoTransacao = "Debito" | "Credito" | "Indefinido";
+
+export interface TransacaoImportada {
+  indiceOriginal: number;
+  data: string;
+  descricao: string;
+  valor: number;
+  tipoTransacao: TipoTransacao;
+  status: StatusTransacaoImportada;
+  categoriaSugerida: string | null;
+  categoriaId: number | null;
+  flags: string[];
+  motivoStatus: string | null;
+  selecionada: boolean;
+  numeroParcela: number | null;
+  totalParcelas: number | null;
+  lancamentosSimilaresIds: number[];
+}
+
+export interface ImportacaoPreview {
+  importacaoHistoricoId: number;
+  bancoDetectado: string;
+  formatoArquivo: FormatoArquivo;
+  tipoImportacao: TipoImportacao;
+  cartaoCreditoId: number | null;
+  cartaoCreditoNome: string | null;
+  mesesDetectados: string[];
+  transacoes: TransacaoImportada[];
+  totalTransacoes: number;
+  totalDuplicatas: number;
+  totalIgnoradas: number;
+  totalSuspeitas: number;
+  avisos: string[];
+  arquivoJaImportado: boolean;
+  dataImportacaoAnterior: string | null;
+}
+
+export interface TransacaoOverride {
+  indiceOriginal: number;
+  data?: string;
+  descricao?: string;
+  valor?: number;
+  categoria?: string;
+  categoriaId?: number;
+}
+
+export interface ConfirmarImportacaoRequest {
+  importacaoHistoricoId: number;
+  indicesSelecionados: number[];
+  overrides: TransacaoOverride[];
+}
+
+export interface ImportacaoResultado {
+  totalImportadas: number;
+  totalDuplicatasIgnoradas: number;
+  totalIgnoradas: number;
+  totalErros: number;
+  erros: string[];
+  lancamentosCriadosIds: number[];
+}
+
+export interface ImportacaoHistorico {
+  id: number;
+  nomeArquivo: string;
+  formatoArquivo: FormatoArquivo;
+  tipoImportacao: TipoImportacao;
+  bancoDetectado: string;
+  qtdTransacoesEncontradas: number;
+  qtdTransacoesImportadas: number;
+  status: StatusImportacao;
+  criadoEm: string;
 }

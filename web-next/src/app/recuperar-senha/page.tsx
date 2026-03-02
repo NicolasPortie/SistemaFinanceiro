@@ -170,7 +170,7 @@ export default function RecuperarSenhaPage() {
   };
 
   return (
-    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased min-h-screen overflow-y-auto relative">
+    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased min-h-screen overflow-x-hidden overflow-y-auto relative">
       {/* Background blurs */}
       <div className="absolute top-[-10%] left-[-5%] w-200 h-200 bg-emerald-600/30 rounded-full blur-[160px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-150 h-150 bg-teal-500/15 rounded-full blur-[140px] pointer-events-none" />
@@ -353,7 +353,7 @@ export default function RecuperarSenhaPage() {
                     }}
                     className="space-y-8"
                   >
-                    <div className="flex justify-between gap-2 lg:gap-3">
+                    <div className="flex justify-between gap-1 sm:gap-2 lg:gap-3">
                       {verifyDigits.map((digit, i) => (
                         <input
                           key={i}
@@ -369,7 +369,7 @@ export default function RecuperarSenhaPage() {
                           onPaste={i === 0 ? handleVerifyPaste : undefined}
                           autoComplete={i === 0 ? "one-time-code" : "off"}
                           autoFocus={i === 0}
-                          className="w-10 h-12 sm:w-12 sm:h-14 lg:w-14 lg:h-16 text-center text-xl sm:text-2xl font-bold bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-4 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all"
+                          className="flex-1 max-w-10 aspect-square sm:max-w-14 lg:max-w-16 h-auto text-center text-base sm:text-xl lg:text-2xl font-bold bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-4 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all"
                         />
                       ))}
                     </div>
@@ -436,7 +436,7 @@ export default function RecuperarSenhaPage() {
                         <ShieldCheck className="h-3.5 w-3.5" />
                         Código de Verificação
                       </label>
-                      <div className="grid grid-cols-6 gap-2">
+                      <div className="grid grid-cols-6 gap-1 sm:gap-2">
                         {resetDigits.map((digit, i) => (
                           <input
                             key={i}
@@ -449,7 +449,7 @@ export default function RecuperarSenhaPage() {
                             value={digit}
                             onChange={(e) => handleResetDigit(i, e.target.value)}
                             onKeyDown={(e) => handleResetKeyDown(i, e)}
-                            className="h-14 w-full text-center text-xl font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 outline-none transition-all"
+                            className="h-12 sm:h-14 w-full text-center text-lg sm:text-xl font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 outline-none transition-all"
                           />
                         ))}
                       </div>

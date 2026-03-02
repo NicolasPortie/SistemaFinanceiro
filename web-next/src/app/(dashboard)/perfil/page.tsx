@@ -473,7 +473,7 @@ export default function PerfilPage() {
           </div>
 
           {/* Right: code panel */}
-          <div className="w-full md:w-100 lg:w-120 bg-white/60 dark:bg-slate-800/40 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-lg border border-white/50 dark:border-slate-700/30 flex flex-col gap-6 relative overflow-hidden backdrop-blur-xl">
+          <div className="w-full md:max-w-100 lg:max-w-120 bg-white/60 dark:bg-slate-800/40 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-lg border border-white/50 dark:border-slate-700/30 flex flex-col gap-6 relative overflow-hidden backdrop-blur-xl">
             <div className="absolute -top-16 -right-16 size-48 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
 
             {usuario.telegramVinculado ? (
@@ -530,14 +530,14 @@ export default function PerfilPage() {
 
                 {/* OTP boxes */}
                 <div className="my-4">
-                  <div className="flex justify-center items-center gap-3 sm:gap-4">
+                  <div className="flex justify-center items-center gap-1.5 sm:gap-3 flex-wrap">
                     {codigoTelegram.codigo.split("").map((char, i, arr) => (
                       <span key={i}>
-                        <div className="w-12 h-14 sm:w-14 sm:h-16 text-center text-3xl font-mono font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl shadow-sm text-slate-800 dark:text-white flex items-center justify-center select-all">
+                        <div className="w-9 h-11 sm:w-12 sm:h-14 text-center text-2xl sm:text-3xl font-mono font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl shadow-sm text-slate-800 dark:text-white flex items-center justify-center select-all">
                           {char}
                         </div>
                         {i === Math.floor(arr.length / 2) - 1 && (
-                          <div className="w-4 h-1 bg-slate-200 dark:bg-slate-600 rounded-full mx-1 inline-block" />
+                          <div className="w-3 sm:w-4 h-1 bg-slate-200 dark:bg-slate-600 rounded-full mx-0.5 sm:mx-1 inline-block" />
                         )}
                       </span>
                     ))}
@@ -624,10 +624,10 @@ export default function PerfilPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/50 dark:bg-slate-800/30 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700/50">
-                  <th className="p-5 w-1/3">Nome da Categoria</th>
-                  <th className="p-5">Tipo</th>
-                  <th className="p-5">Criada em</th>
-                  <th className="p-5 text-right">Ações</th>
+                  <th className="p-3 sm:p-5 w-1/3">Nome da Categoria</th>
+                  <th className="p-3 sm:p-5">Tipo</th>
+                  <th className="p-3 sm:p-5 hidden sm:table-cell">Criada em</th>
+                  <th className="p-3 sm:p-5 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30 text-sm">
@@ -636,7 +636,7 @@ export default function PerfilPage() {
                     key={cat.id}
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group"
                   >
-                    <td className="p-5">
+                    <td className="p-3 sm:p-5">
                       <div className="flex items-center gap-3">
                         <div className="size-8 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-600 shrink-0">
                           <Tag className="h-4 w-4" />
@@ -646,7 +646,7 @@ export default function PerfilPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="p-5">
+                    <td className="p-3 sm:p-5">
                       {cat.padrao ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400">
                           Padrão do Sistema
@@ -657,10 +657,10 @@ export default function PerfilPage() {
                         </span>
                       )}
                     </td>
-                    <td className="p-5 text-slate-500 dark:text-slate-400">
+                    <td className="p-3 sm:p-5 text-slate-500 dark:text-slate-400 hidden sm:table-cell">
                       {cat.padrao ? "--" : "--"}
                     </td>
-                    <td className="p-5 text-right">
+                    <td className="p-3 sm:p-5 text-right">
                       {cat.padrao ? (
                         <span className="text-slate-300 dark:text-slate-600 text-xs italic">
                           Não editável

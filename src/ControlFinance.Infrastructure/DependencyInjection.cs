@@ -50,6 +50,11 @@ public static class DependencyInjection
         // Codigo Verificacao
         services.AddScoped<ICodigoVerificacaoRepository, CodigoVerificacaoRepository>();
 
+        // Importação de Extratos
+        services.AddScoped<IImportacaoHistoricoRepository, ImportacaoHistoricoRepository>();
+        services.AddScoped<IRegraCategorizacaoRepository, RegraCategorizacaoRepository>();
+        services.AddScoped<IMapeamentoCategorizacaoRepository, MapeamentoCategorizacaoRepository>();
+
         // AI Service (Groq)
         services.AddHttpClient<IAiService, GroqAiService>();
 

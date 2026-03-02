@@ -1,0 +1,109 @@
+﻿Execu├º├úo de teste para C:\Projetos\ControlFinance\src\ControlFinance.Tests\bin\Debug\net10.0\ControlFinance.Tests.dll (.NETCoreApp,Version=v10.0)
+Vers├úo do VSTest 18.0.1 (x64)
+
+Iniciando execu├º├úo de teste, espere...
+1 arquivos de teste no total corresponderam ao padr├úo especificado.
+  Com falha ControlFinance.Tests.PrevisaoCompraServiceTests.GerarRecomendacao_RiscoAlto_ValorMenorQueReceita_Adiar [1 ms]
+  Mensagem de erro:
+   System.ArgumentException : Object of type 'ControlFinance.Domain.Entities.PerfilFinanceiro' cannot be converted to type 'System.Decimal'.
+  Rastreamento de pilha:
+     at System.RuntimeType.CheckValue(Object& value, Binder binder, CultureInfo culture, BindingFlags invokeAttr)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at System.Reflection.MethodBase.Invoke(Object obj, Object[] parameters)
+   at ControlFinance.Tests.PrevisaoCompraServiceTests.InvokeStatic[T](String methodName, Object[] args) in C:\Projetos\ControlFinance\src\ControlFinance.Tests\PrevisaoCompraServiceTests.cs:line 23
+   at ControlFinance.Tests.PrevisaoCompraServiceTests.GerarRecomendacao_RiscoAlto_ValorMenorQueReceita_Adiar() in C:\Projetos\ControlFinance\src\ControlFinance.Tests\PrevisaoCompraServiceTests.cs:line 311
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Com falha ControlFinance.Tests.PrevisaoCompraServiceTests.GerarRecomendacao_RiscoAlto_ValorMaiorQueReceita_ReduzirValor [< 1 ms]
+  Mensagem de erro:
+   System.ArgumentException : Object of type 'ControlFinance.Domain.Entities.PerfilFinanceiro' cannot be converted to type 'System.Decimal'.
+  Rastreamento de pilha:
+     at System.RuntimeType.CheckValue(Object& value, Binder binder, CultureInfo culture, BindingFlags invokeAttr)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at System.Reflection.MethodBase.Invoke(Object obj, Object[] parameters)
+   at ControlFinance.Tests.PrevisaoCompraServiceTests.InvokeStatic[T](String methodName, Object[] args) in C:\Projetos\ControlFinance\src\ControlFinance.Tests\PrevisaoCompraServiceTests.cs:line 23
+   at ControlFinance.Tests.PrevisaoCompraServiceTests.GerarRecomendacao_RiscoAlto_ValorMaiorQueReceita_ReduzirValor() in C:\Projetos\ControlFinance\src\ControlFinance.Tests\PrevisaoCompraServiceTests.cs:line 301
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Com falha ControlFinance.Tests.PrevisaoCompraServiceTests.GerarRecomendacao_RiscoBaixo_Seguir [< 1 ms]
+  Mensagem de erro:
+   System.ArgumentException : Object of type 'ControlFinance.Domain.Entities.PerfilFinanceiro' cannot be converted to type 'System.Decimal'.
+  Rastreamento de pilha:
+     at System.RuntimeType.CheckValue(Object& value, Binder binder, CultureInfo culture, BindingFlags invokeAttr)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at System.Reflection.MethodBase.Invoke(Object obj, Object[] parameters)
+   at ControlFinance.Tests.PrevisaoCompraServiceTests.InvokeStatic[T](String methodName, Object[] args) in C:\Projetos\ControlFinance\src\ControlFinance.Tests\PrevisaoCompraServiceTests.cs:line 23
+   at ControlFinance.Tests.PrevisaoCompraServiceTests.GerarRecomendacao_RiscoBaixo_Seguir() in C:\Projetos\ControlFinance\src\ControlFinance.Tests\PrevisaoCompraServiceTests.cs:line 271
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Com falha ControlFinance.Tests.PrevisaoCompraServiceTests.GerarRecomendacao_RiscoMedio_AVista_Adiar [< 1 ms]
+  Mensagem de erro:
+   System.ArgumentException : Object of type 'ControlFinance.Domain.Entities.PerfilFinanceiro' cannot be converted to type 'System.Decimal'.
+  Rastreamento de pilha:
+     at System.RuntimeType.CheckValue(Object& value, Binder binder, CultureInfo culture, BindingFlags invokeAttr)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at System.Reflection.MethodBase.Invoke(Object obj, Object[] parameters)
+   at ControlFinance.Tests.PrevisaoCompraServiceTests.InvokeStatic[T](String methodName, Object[] args) in C:\Projetos\ControlFinance\src\ControlFinance.Tests\PrevisaoCompraServiceTests.cs:line 23
+   at ControlFinance.Tests.PrevisaoCompraServiceTests.GerarRecomendacao_RiscoMedio_AVista_Adiar() in C:\Projetos\ControlFinance\src\ControlFinance.Tests\PrevisaoCompraServiceTests.cs:line 291
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Com falha ControlFinance.Tests.PrevisaoCompraServiceTests.GerarRecomendacao_RiscoMedio_Parcelado_AjustarParcelas [< 1 ms]
+  Mensagem de erro:
+   System.ArgumentException : Object of type 'ControlFinance.Domain.Entities.PerfilFinanceiro' cannot be converted to type 'System.Decimal'.
+  Rastreamento de pilha:
+     at System.RuntimeType.CheckValue(Object& value, Binder binder, CultureInfo culture, BindingFlags invokeAttr)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at System.Reflection.MethodBase.Invoke(Object obj, Object[] parameters)
+   at ControlFinance.Tests.PrevisaoCompraServiceTests.InvokeStatic[T](String methodName, Object[] args) in C:\Projetos\ControlFinance\src\ControlFinance.Tests\PrevisaoCompraServiceTests.cs:line 23
+   at ControlFinance.Tests.PrevisaoCompraServiceTests.GerarRecomendacao_RiscoMedio_Parcelado_AjustarParcelas() in C:\Projetos\ControlFinance\src\ControlFinance.Tests\PrevisaoCompraServiceTests.cs:line 281
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Com falha ControlFinance.Tests.LimiteCategoriaServiceTests.FormatarLimites_StatusOk_EmojiVerde [6 ms]
+  Mensagem de erro:
+   Assert.Contains() Failure: Sub-string not found
+String:    "­ƒÅÀ´©Å *Seus Limites Mensais*\n\n­ƒƒó *Lazer*\n  "┬À┬À┬À
+Not found: "[OK]"
+  Rastreamento de pilha:
+     at ControlFinance.Tests.LimiteCategoriaServiceTests.FormatarLimites_StatusOk_EmojiVerde() in C:\Projetos\ControlFinance\src\ControlFinance.Tests\LimiteCategoriaServiceTests.cs:line 236
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Com falha ControlFinance.Tests.LimiteCategoriaServiceTests.FormatarLimites_StatusAtencao_EmojiInfo [< 1 ms]
+  Mensagem de erro:
+   Assert.Contains() Failure: Sub-string not found
+String:    "­ƒÅÀ´©Å *Seus Limites Mensais*\n\n­ƒƒí *Compras*\n"┬À┬À┬À
+Not found: "[ATEN├ç├âO]"
+  Rastreamento de pilha:
+     at ControlFinance.Tests.LimiteCategoriaServiceTests.FormatarLimites_StatusAtencao_EmojiInfo() in C:\Projetos\ControlFinance\src\ControlFinance.Tests\LimiteCategoriaServiceTests.cs:line 279
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Com falha ControlFinance.Tests.LimiteCategoriaServiceTests.FormatarLimites_StatusExcedido_EmojiVermelho [< 1 ms]
+  Mensagem de erro:
+   Assert.Contains() Failure: Sub-string not found
+String:    "­ƒÅÀ´©Å *Seus Limites Mensais*\n\n­ƒö┤ *Alimenta├º"┬À┬À┬À
+Not found: "[EXCEDIDO]"
+  Rastreamento de pilha:
+     at ControlFinance.Tests.LimiteCategoriaServiceTests.FormatarLimites_StatusExcedido_EmojiVermelho() in C:\Projetos\ControlFinance\src\ControlFinance.Tests\LimiteCategoriaServiceTests.cs:line 214
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Com falha ControlFinance.Tests.LimiteCategoriaServiceTests.FormatarLimites_StatusCritico_EmojiAmarelo [< 1 ms]
+  Mensagem de erro:
+   Assert.Contains() Failure: Sub-string not found
+String:    "­ƒÅÀ´©Å *Seus Limites Mensais*\n\n­ƒƒá *Transport"┬À┬À┬À
+Not found: "[CR├ìTICO]"
+  Rastreamento de pilha:
+     at ControlFinance.Tests.LimiteCategoriaServiceTests.FormatarLimites_StatusCritico_EmojiAmarelo() in C:\Projetos\ControlFinance\src\ControlFinance.Tests\LimiteCategoriaServiceTests.cs:line 258
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Com falha ControlFinance.Tests.ScoreSaudeFinanceiraServiceTests.Calcular_ResumoContemBarraProgresso [3 ms]
+  Mensagem de erro:
+   Resumo deveria conter barra de progresso com blocos coloridos
+  Rastreamento de pilha:
+     at ControlFinance.Tests.ScoreSaudeFinanceiraServiceTests.Calcular_ResumoContemBarraProgresso() in C:\Projetos\ControlFinance\src\ControlFinance.Tests\ScoreSaudeFinanceiraServiceTests.cs:line 456
+--- End of stack trace from previous location ---
+
+Com falha! ÔÇô Com falha:    10, Aprovado:   284, Ignorado:     0, Total:   294, Dura├º├úo: 262 ms - ControlFinance.Tests.dll (net10.0)

@@ -44,6 +44,7 @@ if (encryptionKeyDecoded.Length < 32 ||
     throw new InvalidOperationException("Encryption:Key não configurada ou fraca (mínimo 32 bytes decodificados). Configure via variáveis de ambiente ou User Secrets. Gere com EncryptionHelper.GenerateKey().");
 
 // === Configuração das camadas ===
+builder.Services.AddMemoryCache();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 

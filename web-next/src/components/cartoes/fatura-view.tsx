@@ -61,7 +61,7 @@ export function FaturaSection({ fatura, defaultOpen }: FaturaSectionProps) {
 
       {open && fatura.parcelas.length > 0 && (
         <div className="border-t border-border/40 overflow-x-auto">
-          <table className="w-full text-sm min-w-[320px]">
+          <table className="w-full text-sm">
             <thead>
               <tr className="text-[11px] uppercase tracking-wider text-muted-foreground bg-muted/30">
                 <th className="text-left font-medium px-4 py-2">Lançamento</th>

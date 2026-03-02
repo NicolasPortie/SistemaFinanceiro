@@ -1,6 +1,10 @@
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Application.Services;
 using ControlFinance.Application.Services.Handlers;
+using ControlFinance.Application.Services.Importacao;
+using ControlFinance.Application.Services.Importacao.BancoProfiles;
+using ControlFinance.Application.Services.Importacao.Categorizacao;
+using ControlFinance.Application.Services.Importacao.Parsers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ControlFinance.Application;
@@ -40,6 +44,19 @@ public static class DependencyInjection
         // TelegramBotService — registrado via interface para testabilidade
         // ConsumirTeclado permanece estático (acessado diretamente via TelegramBotService.ConsumirTeclado)
         services.AddScoped<ITelegramBotService, TelegramBotService>();
+
+        // Importação de Extratos
+        services.AddScoped<IImportacaoService, ImportacaoService>();
+        services.AddScoped<INormalizacaoService, NormalizacaoService>();
+        services.AddScoped<IImportacaoHistoricoService, ImportacaoHistoricoService>();
+        services.AddScoped<IBancoProfileDetector, BancoProfileDetector>();
+        services.AddScoped<ICategorizadorImportacaoService, CategorizadorImportacaoService>();
+
+        // Parsers (Strategy pattern — registrados como IFileParser)
+        services.AddScoped<IFileParser, CsvFileParser>();
+        services.AddScoped<IFileParser, OfxFileParser>();
+        services.AddScoped<IFileParser, XlsxFileParser>();
+        services.AddScoped<IFileParser, PdfFileParser>();
 
         return services;
     }

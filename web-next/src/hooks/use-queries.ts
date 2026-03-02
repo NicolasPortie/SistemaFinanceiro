@@ -20,6 +20,7 @@ import {
   type AvaliarGastoRequest,
   type CriarContaBancariaRequest,
   type AtualizarContaBancariaRequest,
+  type ConfirmarImportacaoRequest,
 } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -47,6 +48,7 @@ export const queryKeys = {
   usuario: ["usuario-perfil"] as const,
   lembretes: (apenasAtivos?: boolean) => ["lembretes", apenasAtivos ?? true] as const,
   contasBancarias: ["contas-bancarias"] as const,
+  importacaoHistorico: ["importacao-historico"] as const,
 };
 
 // ── Dashboard ──────────────────────────────────────────────
@@ -590,6 +592,59 @@ export function useAvaliarGasto() {
     mutationFn: (data: AvaliarGastoRequest) => api.decisao.avaliar(data),
     onError: (err: Error) => {
       toast.error(err.message || "Erro ao avaliar gasto");
+    },
+  });
+}
+
+// ── Importação de Extratos ─────────────────────────────────
+export function useImportacaoHistorico() {
+  return useQuery({
+    queryKey: queryKeys.importacaoHistorico,
+    queryFn: () => api.importacao.historico(),
+    staleTime: STALE_2_MIN,
+    gcTime: GC_10_MIN,
+  });
+}
+
+export function useUploadImportacao() {
+  return useMutation({
+    mutationFn: (params: {
+      arquivo: File;
+      tipoImportacao: string;
+      contaBancariaId?: number;
+      cartaoCreditoId?: number;
+      banco?: string;
+      forcarReimportacao?: boolean;
+    }) =>
+      api.importacao.upload(
+        params.arquivo,
+        params.tipoImportacao,
+        params.contaBancariaId,
+        params.cartaoCreditoId,
+        params.banco,
+        params.forcarReimportacao
+      ),
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao processar arquivo");
+    },
+  });
+}
+
+export function useConfirmarImportacao() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ConfirmarImportacaoRequest) => api.importacao.confirmar(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["resumo"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.importacaoHistorico });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cartoes });
+      // Invalidate all fatura queries (any cartão)
+      queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fatura" });
+      toast.success("Importação confirmada com sucesso!");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao confirmar importação");
     },
   });
 }

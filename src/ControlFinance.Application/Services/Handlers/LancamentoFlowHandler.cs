@@ -1262,14 +1262,14 @@ public class LancamentoFlowHandler : ILancamentoHandler
     {
         var mapeamento = new Dictionary<string, string[]>
         {
-            ["Alimentação"] = new[] { "mercado", "supermercado", "restaurante", "lanche", "comida", "almoço", "jantar", "café", "padaria", "ifood", "pizza", "hamburger", "açougue", "feira", "hortifruti", "rappi", "mcdonald", "burger", "sushi", "churrasco", "sorvete", "doceria", "confeitaria", "bebida", "cerveja" },
-            ["Transporte"] = new[] { "uber", "99", "ônibus", "gasolina", "combustível", "estacionamento", "pedágio", "metrô", "taxi", "posto", "oficina", "99pop", "99taxi", "indriver", "multa", "ipva", "seguro auto", "moto", "bicicleta" },
-            ["Moradia"] = new[] { "aluguel", "condomínio", "luz", "água", "gás", "iptu", "internet", "energia", "seguro residencial", "reforma", "mudança", "mobília", "móvel" },
-            ["Saúde"] = new[] { "farmácia", "remédio", "médico", "consulta", "hospital", "plano de saúde", "dentista", "exame", "academia", "suplemento", "psicólogo", "terapia", "cirurgia", "vacina", "drogaria" },
-            ["Lazer"] = new[] { "cinema", "netflix", "spotify", "jogo", "viagem", "bar", "festa", "show", "ingresso", "passeio", "parque", "teatro", "museu", "camping" },
-            ["Educação"] = new[] { "curso", "faculdade", "escola", "livro", "mensalidade", "material escolar", "udemy", "alura", "rocketseat", "apostila", "treinamento" },
-            ["Vestuário"] = new[] { "roupa", "sapato", "tênis", "calça", "camisa", "blusa", "vestido", "loja", "americanas", "renner", "riachuelo", "c&a", "zara", "shein", "shopee", "acessório", "meia", "cueca", "calcinha", "sutiã", "bermuda", "jaqueta", "casaco" },
-            ["Assinaturas"] = new[] { "assinatura", "plano", "streaming", "disney", "hbo", "prime", "amazon", "apple", "youtube premium", "deezer", "globoplay", "starplus" },
+            ["Alimentação"] = new[] { "mercado", "supermercado", "restaurante", "lanche", "comida", "almoço", "jantar", "café", "padaria", "ifood", "pizza", "hamburger", "açougue", "feira", "hortifruti", "rappi", "mcdonald", "burger", "sushi", "churrasco", "sorvete", "doceria", "confeitaria", "bebida", "cerveja", "atacadão", "assaí", "carrefour", "pão de açúcar", "extra", "big", "bretas", "sams club", "costco", "hortifruit", "sacolão", "pastelaria", "lanchonete", "subway", "habibs", "giraffas", "bobs", "kfc", "popeyes", "outback", "madero", "spoleto", "coco bambu", "comercio de bebida" },
+            ["Transporte"] = new[] { "uber", "99", "ônibus", "gasolina", "combustível", "estacionamento", "pedágio", "metrô", "taxi", "posto", "oficina", "99pop", "99taxi", "indriver", "multa", "ipva", "seguro auto", "moto", "bicicleta", "viarondon", "auto posto", "shell", "ipiranga", "petrobras", "br mania", "trevo", "recarga transporte" },
+            ["Moradia"] = new[] { "aluguel", "condomínio", "luz", "água", "gás", "iptu", "internet", "energia", "seguro residencial", "reforma", "mudança", "mobília", "móvel", "cpfl", "enel", "cemig", "celesc", "sabesp", "copasa", "sanepar", "kotas" },
+            ["Saúde"] = new[] { "farmácia", "remédio", "médico", "consulta", "hospital", "plano de saúde", "dentista", "exame", "academia", "suplemento", "psicólogo", "terapia", "cirurgia", "vacina", "drogaria", "raia", "drogasil", "droga raia", "panvel", "pague menos", "ultrafarma", "ótica", "otica" },
+            ["Lazer"] = new[] { "cinema", "netflix", "spotify", "jogo", "viagem", "bar", "festa", "show", "ingresso", "passeio", "parque", "teatro", "museu", "camping", "xbox", "playstation", "steam", "nuuvem", "twitch" },
+            ["Educação"] = new[] { "curso", "faculdade", "escola", "livro", "mensalidade", "material escolar", "udemy", "alura", "rocketseat", "apostila", "treinamento", "cursinho", "pós-graduação", "mba" },
+            ["Vestuário"] = new[] { "roupa", "sapato", "tênis", "calça", "camisa", "blusa", "vestido", "loja", "americanas", "renner", "riachuelo", "c&a", "zara", "shein", "shopee", "acessório", "meia", "cueca", "calcinha", "sutiã", "bermuda", "jaqueta", "casaco", "centauro", "netshoes", "decathlon" },
+            ["Assinaturas"] = new[] { "assinatura", "plano", "streaming", "disney", "hbo", "prime", "amazon", "apple", "youtube premium", "deezer", "globoplay", "starplus", "paramount", "crunchyroll", "max" },
         };
 
         foreach (var (categoria, palavras) in mapeamento)

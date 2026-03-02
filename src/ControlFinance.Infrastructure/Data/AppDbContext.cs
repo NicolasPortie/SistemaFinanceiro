@@ -44,6 +44,9 @@ public class AppDbContext : DbContext
     public DbSet<PagamentoCiclo> PagamentosCiclo => Set<PagamentoCiclo>();
     public DbSet<LogLembreteTelegram> LogsLembreteTelegram => Set<LogLembreteTelegram>();
     public DbSet<LogDecisao> LogsDecisao => Set<LogDecisao>();
+    public DbSet<ImportacaoHistorico> ImportacoesHistorico => Set<ImportacaoHistorico>();
+    public DbSet<RegraCategorizacao> RegrasCategorizacao => Set<RegraCategorizacao>();
+    public DbSet<MapeamentoCategorizacao> MapeamentosCategorizacao => Set<MapeamentoCategorizacao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -755,6 +758,72 @@ public class AppDbContext : DbContext
             entity.Property(e => e.TentativasVerificacao).HasColumnName("tentativas_verificacao").HasDefaultValue(0);
 
             entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        // === ImportacaoHistorico ===
+        modelBuilder.Entity<ImportacaoHistorico>(entity =>
+        {
+            entity.ToTable("importacoes_historico");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.ContaBancariaId).HasColumnName("conta_bancaria_id");
+            entity.Property(e => e.CartaoCreditoId).HasColumnName("cartao_credito_id");
+            entity.Property(e => e.NomeArquivo).HasColumnName("nome_arquivo").HasMaxLength(500);
+            entity.Property(e => e.TamanhoBytes).HasColumnName("tamanho_bytes");
+            entity.Property(e => e.HashSha256).HasColumnName("hash_sha256").HasMaxLength(64);
+            entity.Property(e => e.TipoImportacao).HasColumnName("tipo_importacao");
+            entity.Property(e => e.BancoDetectado).HasColumnName("banco_detectado").HasMaxLength(100);
+            entity.Property(e => e.FormatoArquivo).HasColumnName("formato_arquivo");
+            entity.Property(e => e.QtdTransacoesEncontradas).HasColumnName("qtd_transacoes_encontradas");
+            entity.Property(e => e.QtdTransacoesImportadas).HasColumnName("qtd_transacoes_importadas");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.Erros).HasColumnName("erros");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+
+            entity.HasOne(e => e.Usuario).WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ContaBancaria).WithMany().HasForeignKey(e => e.ContaBancariaId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.CartaoCredito).WithMany().HasForeignKey(e => e.CartaoCreditoId).OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => new { e.UsuarioId, e.HashSha256 });
+        });
+
+        // === RegraCategorizacao ===
+        modelBuilder.Entity<RegraCategorizacao>(entity =>
+        {
+            entity.ToTable("regras_categorizacao");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Padrao).HasColumnName("padrao").HasMaxLength(200);
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
+            entity.Property(e => e.Prioridade).HasColumnName("prioridade");
+            entity.Property(e => e.Ativo).HasColumnName("ativo");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+
+            entity.HasOne(e => e.Usuario).WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Categoria).WithMany().HasForeignKey(e => e.CategoriaId).OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.UsuarioId);
+        });
+
+        // === MapeamentoCategorizacao ===
+        modelBuilder.Entity<MapeamentoCategorizacao>(entity =>
+        {
+            entity.ToTable("mapeamentos_categorizacao");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.DescricaoNormalizada).HasColumnName("descricao_normalizada").HasMaxLength(500);
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
+            entity.Property(e => e.Contagem).HasColumnName("contagem");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em");
+
+            entity.HasOne(e => e.Usuario).WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Categoria).WithMany().HasForeignKey(e => e.CategoriaId).OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.UsuarioId, e.DescricaoNormalizada }).IsUnique();
         });
 
         // Converter global: forçar todas as propriedades DateTime para UTC

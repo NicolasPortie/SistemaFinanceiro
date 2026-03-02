@@ -385,7 +385,7 @@ export default function AdminConvitesPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="glass-panel rounded-2xl p-10 flex flex-col items-center justify-center text-center"
+            className="glass-panel rounded-2xl p-6 sm:p-10 flex flex-col items-center justify-center text-center"
           >
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4">
               <Gift className="h-7 w-7" />

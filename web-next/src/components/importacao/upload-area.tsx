@@ -1,0 +1,315 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { Upload, FileText, FileSpreadsheet, X, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { useCartoes, useContasBancarias } from "@/hooks/use-queries";
+import { motion, AnimatePresence } from "framer-motion";
+
+const ACCEPTED_EXTENSIONS = [".csv", ".ofx", ".xlsx", ".xls", ".pdf"];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+const FORMAT_LABELS: Record<string, { label: string; icon: string }> = {
+  ".csv": { label: "CSV", icon: "📄" },
+  ".ofx": { label: "OFX", icon: "🏦" },
+  ".xlsx": { label: "Excel", icon: "📊" },
+  ".xls": { label: "Excel", icon: "📊" },
+  ".pdf": { label: "PDF", icon: "📕" },
+};
+
+interface UploadAreaProps {
+  onUpload: (params: {
+    arquivo: File;
+    tipoImportacao: string;
+    contaBancariaId?: number;
+    cartaoCreditoId?: number;
+    banco?: string;
+    forcarReimportacao?: boolean;
+  }) => void;
+  isLoading: boolean;
+}
+
+export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
+  const [file, setFile] = useState<File | null>(null);
+  const [tipoImportacao, setTipoImportacao] = useState<string>("Extrato");
+  const [contaBancariaId, setContaBancariaId] = useState<string>("");
+  const [cartaoCreditoId, setCartaoCreditoId] = useState<string>("");
+  const [dragOver, setDragOver] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [forcarReimportacao, setForcarReimportacao] = useState(false);
+
+  const { data: cartoes } = useCartoes();
+  const { data: contas } = useContasBancarias();
+
+  const cartoesAtivos = cartoes?.filter((c) => c.ativo) ?? [];
+  const contasAtivas = contas?.filter((c) => c.ativo) ?? [];
+
+  const validateFile = useCallback((f: File): string | null => {
+    const ext = "." + f.name.split(".").pop()?.toLowerCase();
+    if (!ACCEPTED_EXTENSIONS.includes(ext)) {
+      return `Formato não suportado. Use: ${ACCEPTED_EXTENSIONS.join(", ")}`;
+    }
+    if (f.size > MAX_FILE_SIZE) {
+      return `Arquivo muito grande (${(f.size / 1024 / 1024).toFixed(1)}MB). Máximo: 5MB.`;
+    }
+    return null;
+  }, []);
+
+  const handleFile = useCallback(
+    (f: File) => {
+      const error = validateFile(f);
+      if (error) {
+        setFileError(error);
+        setFile(null);
+        return;
+      }
+      setFileError(null);
+      setFile(f);
+
+      // Auto-detect tipo: se for OFX, provavelmente é extrato
+      const ext = "." + f.name.split(".").pop()?.toLowerCase();
+      if (ext === ".ofx") setTipoImportacao("Extrato");
+    },
+    [validateFile]
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const f = e.dataTransfer.files[0];
+      if (f) handleFile(f);
+    },
+    [handleFile]
+  );
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const f = e.target.files?.[0];
+      if (f) handleFile(f);
+    },
+    [handleFile]
+  );
+
+  const handleSubmit = () => {
+    if (!file) return;
+
+    const isFatura = tipoImportacao === "Fatura";
+
+    // Fatura requer cartão
+    if (isFatura && !cartaoCreditoId) return;
+
+    onUpload({
+      arquivo: file,
+      tipoImportacao,
+      contaBancariaId: contaBancariaId ? parseInt(contaBancariaId) : undefined,
+      cartaoCreditoId: cartaoCreditoId ? parseInt(cartaoCreditoId) : undefined,
+      forcarReimportacao,
+    });
+  };
+
+  const fileExt = file ? "." + file.name.split(".").pop()?.toLowerCase() : null;
+  const formatInfo = fileExt ? FORMAT_LABELS[fileExt] : null;
+
+  return (
+    <div className="space-y-6">
+      {/* Drop Zone */}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        className={cn(
+          "relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all duration-200 cursor-pointer",
+          dragOver
+            ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
+            : file
+              ? "border-emerald-300 bg-emerald-50/30 dark:border-emerald-700 dark:bg-emerald-950/10"
+              : "border-muted-foreground/25 hover:border-muted-foreground/40 bg-muted/30"
+        )}
+        onClick={() => document.getElementById("file-input")?.click()}
+      >
+        <input
+          id="file-input"
+          type="file"
+          accept={ACCEPTED_EXTENSIONS.join(",")}
+          onChange={handleFileInput}
+          className="hidden"
+        />
+
+        <AnimatePresence mode="wait">
+          {file ? (
+            <motion.div
+              key="file-selected"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="flex flex-col items-center gap-3"
+            >
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                <FileText className="h-8 w-8" />
+                <span className="text-lg font-medium">{file.name}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span>{formatInfo?.icon} {formatInfo?.label}</span>
+                <span>•</span>
+                <span>{(file.size / 1024).toFixed(0)} KB</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFile(null);
+                  setFileError(null);
+                }}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Remover
+              </Button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="drop-hint"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center gap-3"
+            >
+              <Upload className="h-10 w-10 text-muted-foreground/50" />
+              <div className="text-center">
+                <p className="text-sm font-medium">Arraste o arquivo aqui ou clique para selecionar</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  CSV, OFX, XLSX ou PDF • Máximo 5MB
+                </p>
+              </div>
+              <div className="flex gap-2 mt-2">
+                {Object.entries(FORMAT_LABELS)
+                  .filter(([ext]) => ext !== ".xls")
+                  .map(([ext, info]) => (
+                    <span
+                      key={ext}
+                      className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs"
+                    >
+                      {info.icon} {info.label}
+                    </span>
+                  ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* File Error */}
+      <AnimatePresence>
+        {fileError && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {fileError}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Options */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Tipo */}
+        <div className="space-y-2">
+          <Label>Tipo de importação</Label>
+          <Select value={tipoImportacao} onValueChange={setTipoImportacao}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Extrato">Extrato Bancário</SelectItem>
+              <SelectItem value="Fatura">Fatura de Cartão</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Conta bancária (for extrato) */}
+        {tipoImportacao === "Extrato" && contasAtivas.length > 0 && (
+          <div className="space-y-2">
+            <Label>Conta bancária (opcional)</Label>
+            <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Auto-detectar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Auto-detectar</SelectItem>
+                {contasAtivas.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Cartão (for fatura) */}
+        {tipoImportacao === "Fatura" && (
+          <div className="space-y-2">
+            <Label>Cartão de crédito</Label>
+            <Select value={cartaoCreditoId} onValueChange={setCartaoCreditoId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o cartão" />
+              </SelectTrigger>
+              <SelectContent>
+                {cartoesAtivos.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+
+      {/* Forçar reimportação */}
+      {file && (
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={forcarReimportacao}
+            onChange={(e) => setForcarReimportacao(e.target.checked)}
+            className="rounded border-muted-foreground"
+          />
+          Forçar reimportação (ignorar arquivo já importado)
+        </label>
+      )}
+
+      {/* Submit */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleSubmit}
+          disabled={!file || isLoading || (tipoImportacao === "Fatura" && !cartaoCreditoId)}
+          className="min-w-45"
+        >
+          {isLoading ? (
+            <>
+              <FileSpreadsheet className="mr-2 h-4 w-4 animate-spin" />
+              Processando...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Processar Arquivo
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}

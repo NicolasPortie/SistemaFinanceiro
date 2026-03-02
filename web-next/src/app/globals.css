@@ -236,6 +236,13 @@
     outline-offset: 2px;
   }
 
+  /* Prevent horizontal overflow on mobile */
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
   /* Smooth scrollbar */
   ::-webkit-scrollbar {
     width: 6px;

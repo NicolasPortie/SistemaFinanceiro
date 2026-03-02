@@ -504,6 +504,88 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.ToTable("faturas", (string)null);
                 });
 
+            modelBuilder.Entity("ControlFinance.Domain.Entities.ImportacaoHistorico", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BancoDetectado")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("banco_detectado");
+
+                    b.Property<int?>("CartaoCreditoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("cartao_credito_id");
+
+                    b.Property<int?>("ContaBancariaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("conta_bancaria_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Erros")
+                        .HasColumnType("text")
+                        .HasColumnName("erros");
+
+                    b.Property<int>("FormatoArquivo")
+                        .HasColumnType("integer")
+                        .HasColumnName("formato_arquivo");
+
+                    b.Property<string>("HashSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hash_sha256");
+
+                    b.Property<string>("NomeArquivo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("nome_arquivo");
+
+                    b.Property<int>("QtdTransacoesEncontradas")
+                        .HasColumnType("integer")
+                        .HasColumnName("qtd_transacoes_encontradas");
+
+                    b.Property<int>("QtdTransacoesImportadas")
+                        .HasColumnType("integer")
+                        .HasColumnName("qtd_transacoes_importadas");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<long>("TamanhoBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tamanho_bytes");
+
+                    b.Property<int>("TipoImportacao")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo_importacao");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CartaoCreditoId");
+
+                    b.HasIndex("ContaBancariaId");
+
+                    b.HasIndex("UsuarioId", "HashSha256");
+
+                    b.ToTable("importacoes_historico", (string)null);
+                });
+
             modelBuilder.Entity("ControlFinance.Domain.Entities.Lancamento", b =>
                 {
                     b.Property<int>("Id")
@@ -831,6 +913,51 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("logs_lembrete_telegram", (string)null);
+                });
+
+            modelBuilder.Entity("ControlFinance.Domain.Entities.MapeamentoCategorizacao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<int>("CategoriaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("categoria_id");
+
+                    b.Property<int>("Contagem")
+                        .HasColumnType("integer")
+                        .HasColumnName("contagem");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("DescricaoNormalizada")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descricao_normalizada");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
+
+                    b.HasIndex("UsuarioId", "DescricaoNormalizada")
+                        .IsUnique();
+
+                    b.ToTable("mapeamentos_categorizacao", (string)null);
                 });
 
             modelBuilder.Entity("ControlFinance.Domain.Entities.MetaFinanceira", b =>
@@ -1307,6 +1434,50 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.ToTable("registros_pendentes", (string)null);
                 });
 
+            modelBuilder.Entity("ControlFinance.Domain.Entities.RegraCategorizacao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ativo");
+
+                    b.Property<int>("CategoriaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("categoria_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Padrao")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("padrao");
+
+                    b.Property<int>("Prioridade")
+                        .HasColumnType("integer")
+                        .HasColumnName("prioridade");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("regras_categorizacao", (string)null);
+                });
+
             modelBuilder.Entity("ControlFinance.Domain.Entities.SimulacaoCompra", b =>
                 {
                     b.Property<int>("Id")
@@ -1680,6 +1851,31 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.Navigation("CartaoCredito");
                 });
 
+            modelBuilder.Entity("ControlFinance.Domain.Entities.ImportacaoHistorico", b =>
+                {
+                    b.HasOne("ControlFinance.Domain.Entities.CartaoCredito", "CartaoCredito")
+                        .WithMany()
+                        .HasForeignKey("CartaoCreditoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ControlFinance.Domain.Entities.ContaBancaria", "ContaBancaria")
+                        .WithMany()
+                        .HasForeignKey("ContaBancariaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ControlFinance.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CartaoCredito");
+
+                    b.Navigation("ContaBancaria");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("ControlFinance.Domain.Entities.Lancamento", b =>
                 {
                     b.HasOne("ControlFinance.Domain.Entities.Categoria", "Categoria")
@@ -1773,6 +1969,25 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("ControlFinance.Domain.Entities.MapeamentoCategorizacao", b =>
+                {
+                    b.HasOne("ControlFinance.Domain.Entities.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControlFinance.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("ControlFinance.Domain.Entities.MetaFinanceira", b =>
                 {
                     b.HasOne("ControlFinance.Domain.Entities.Categoria", "Categoria")
@@ -1859,6 +2074,25 @@ namespace ControlFinance.Infrastructure.Data.Migrations
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ControlFinance.Domain.Entities.RegraCategorizacao", b =>
+                {
+                    b.HasOne("ControlFinance.Domain.Entities.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ControlFinance.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
 
                     b.Navigation("Usuario");
                 });

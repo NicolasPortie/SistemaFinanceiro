@@ -368,7 +368,7 @@ export default function AdminUsuariosPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.07, ease: [0.22, 1, 0.36, 1] as const }}
             whileHover={{ y: -2 }}
-            className="bg-card rounded-2xl p-6 border border-border/60 shadow-sm relative overflow-hidden"
+            className="bg-card rounded-2xl p-4 sm:p-6 border border-border/60 shadow-sm relative overflow-hidden"
           >
             <div
               className={cn(
@@ -445,7 +445,150 @@ export default function AdminUsuariosPage() {
         transition={{ delay: 0.3, ease: [0.22, 1, 0.36, 1] as const }}
         className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden"
       >
-        <div className="overflow-x-auto">
+        {/* Mobile card layout */}
+        <div className="lg:hidden divide-y divide-border/40">
+          <AnimatePresence>
+            {paginated.map((u, i) => (
+              <motion.div
+                key={u.id}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 6 }}
+                transition={{ delay: i * 0.025 }}
+                className={cn(
+                  "p-4 space-y-3 transition-colors",
+                  !u.ativo && "opacity-60"
+                )}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={cn(
+                        "shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-xs",
+                        getAvatarColor(u.id)
+                      )}
+                    >
+                      {getInitials(u.nome)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-semibold leading-tight truncate">{maskNome(u.nome)}</p>
+                        {isSelf(u) && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20 shrink-0">
+                            Você
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{maskEmail(u.email)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 rounded-lg text-muted-foreground/60 hover:text-foreground"
+                      onClick={() => setSelectedUser(u)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {!isSelf(u) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-lg text-muted-foreground/60 hover:text-foreground"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-64 rounded-xl p-1.5 shadow-lg border border-border/80"
+                        >
+                          <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-2 pb-0.5 pt-1">
+                            Ações
+                          </DropdownMenuLabel>
+                          <DropdownMenuItem
+                            className="gap-2.5 rounded-lg text-emerald-600 dark:text-emerald-500 cursor-pointer"
+                            onClick={() => {
+                              setExtendTarget(u);
+                              setExtendDias(30);
+                            }}
+                          >
+                            <ShieldCheck className="h-4 w-4" />
+                            Estender Acesso
+                          </DropdownMenuItem>
+                          {u.ativo ? (
+                            <DropdownMenuItem
+                              className="gap-2.5 rounded-lg text-muted-foreground cursor-pointer"
+                              onClick={() =>
+                                confirm(
+                                  `Desativar a conta de ${u.nome}?`,
+                                  "A conta será desabilitada.",
+                                  () => desativar.mutate(u.id),
+                                  "destructive"
+                                )
+                              }
+                            >
+                              <UserX className="h-4 w-4" />
+                              Desativar conta
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              className="gap-2.5 rounded-lg text-emerald-600 cursor-pointer"
+                              onClick={() => desativar.mutate(u.id)}
+                            >
+                              <UserCheck className="h-4 w-4" />
+                              Reativar conta
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {getRoleBadge(u.role)}
+                  {getStatusBadge(u)}
+                  {u.telegramVinculado && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-sky-500 px-2 py-0.5 bg-sky-500/10 rounded-full">
+                      <Send className="h-2.5 w-2.5" />
+                      Telegram
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Cadastro: {formatDate(u.criadoEm)}</span>
+                  {u.acessoExpiraEm && (
+                    <span className={cn(
+                      "flex items-center gap-1",
+                      new Date(u.acessoExpiraEm) < new Date() ? "text-red-500" : ""
+                    )}>
+                      <CalendarClock className="h-3 w-3" />
+                      {new Date(u.acessoExpiraEm) < new Date() ? "Expirou " : "Expira "}
+                      {formatDate(u.acessoExpiraEm)}
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {paginated.length === 0 && (
+            <div className="px-4 py-14 text-center">
+              <Users className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">
+                {searchQuery
+                  ? "Nenhum usuário corresponde à busca."
+                  : "Nenhum usuário encontrado."}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-275">
             <thead>
               <tr className="border-b border-border/60 bg-muted/20 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
@@ -860,7 +1003,7 @@ function UserDetailDialog({
         className="sm:max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0"
       >
         {/* Header */}
-        <div className="relative bg-linear-to-br from-emerald-600/10 via-emerald-500/5 to-transparent border-b border-border/40 px-6 pt-12 pb-5">
+        <div className="relative bg-linear-to-br from-emerald-600/10 via-emerald-500/5 to-transparent border-b border-border/40 px-5 sm:px-6 pt-8 sm:pt-12 pb-5">
           <DialogTitle className="sr-only">Perfil de {u?.nome}</DialogTitle>
           <div className="flex items-start gap-4">
             <div
@@ -896,7 +1039,7 @@ function UserDetailDialog({
             ) : (
               <>
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                   {[
                     {
                       label: "Lançamentos",

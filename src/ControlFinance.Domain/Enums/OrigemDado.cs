@@ -4,5 +4,6 @@ public enum OrigemDado
 {
     Texto = 1,
     Audio = 2,
-    Imagem = 3
+    Imagem = 3,
+    Importacao = 4
 }

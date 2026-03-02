@@ -237,7 +237,7 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+        <div className="flex items-center gap-3 w-full md:w-auto justify-end flex-wrap">
           {health && health.label !== "Sem dados" && (
             <div
               className={cn(
@@ -479,7 +479,7 @@ export default function DashboardPage() {
                               className="size-2.5 rounded-full shrink-0"
                               style={{ backgroundColor: seg.color }}
                             />
-                            <span className="text-slate-600 dark:text-slate-400 font-medium truncate max-w-24">
+                            <span className="text-slate-600 dark:text-slate-400 font-medium truncate max-w-32 sm:max-w-24">
                               {seg.categoria}
                             </span>
                           </div>
@@ -701,7 +701,7 @@ export default function DashboardPage() {
                   <div>
                     <div className="flex justify-between text-[11px] mb-2 font-medium">
                       <span className="text-slate-500 dark:text-slate-400">Limite Utilizado</span>
-                      <span className="font-bold text-slate-800 dark:text-white">
+                      <span className="font-bold text-slate-800 dark:text-white truncate text-right">
                         {formatCurrency(firstCard.limiteUsado)} / {formatCurrency(firstCard.limite)}
                       </span>
                     </div>

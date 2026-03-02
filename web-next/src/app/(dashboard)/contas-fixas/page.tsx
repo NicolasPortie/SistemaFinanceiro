@@ -1008,8 +1008,8 @@ export default function ContasFixasPage() {
 
         {/* Pagination */}
         {filtered.length > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-800/50">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 dark:border-slate-800/50">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               Mostrando{" "}
               <span className="font-semibold text-slate-700 dark:text-slate-300">
                 {Math.min(page * PAGE_SIZE + 1, filtered.length)}–

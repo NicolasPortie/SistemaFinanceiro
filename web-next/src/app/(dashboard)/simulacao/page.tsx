@@ -872,8 +872,8 @@ export default function ConsultorFinanceiroPage() {
                         <th className="p-4 w-1/3">Item</th>
                         <th className="p-4">Valor</th>
                         <th className="p-4">Veredito</th>
-                        <th className="p-4">Folga Mensal</th>
-                        <th className="p-4">Pior Mês</th>
+                        <th className="p-4 hidden sm:table-cell">Folga Mensal</th>
+                        <th className="p-4 hidden sm:table-cell">Pior Mês</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30 text-sm">
@@ -901,10 +901,10 @@ export default function ConsultorFinanceiroPage() {
                               {h.risco}
                             </span>
                           </td>
-                          <td className="p-4 text-slate-600 dark:text-slate-300 tabular-nums">
+                          <td className="p-4 text-slate-600 dark:text-slate-300 tabular-nums hidden sm:table-cell">
                             {formatCurrency(h.folgaMensalMedia)}
                           </td>
-                          <td className="p-4 text-slate-500 dark:text-slate-400">{h.piorMes}</td>
+                          <td className="p-4 text-slate-500 dark:text-slate-400 hidden sm:table-cell">{h.piorMes}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1061,7 +1061,7 @@ function RapidaResult({ data, onReset }: { data: DecisaoGastoResult; onReset: ()
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
                 Gastos no mês
               </p>
-              <p className="text-sm font-bold text-slate-800 dark:text-white">
+              <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white truncate">
                 {formatCurrency(data.gastoAcumuladoMes)}
               </p>
               <p className="text-[10px] text-slate-400 dark:text-slate-500">
@@ -1072,7 +1072,7 @@ function RapidaResult({ data, onReset }: { data: DecisaoGastoResult; onReset: ()
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
                 Disponível
               </p>
-              <p className="text-sm font-bold text-slate-800 dark:text-white">
+              <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white truncate">
                 {formatCurrency(data.saldoLivreMes)}
               </p>
               <p className="text-[10px] text-slate-400 dark:text-slate-500">
@@ -1098,7 +1098,7 @@ function RapidaResult({ data, onReset }: { data: DecisaoGastoResult; onReset: ()
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
                   Estimativa/dia
                 </p>
-                <p className="text-sm font-bold text-slate-800 dark:text-white">
+                <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white truncate">
                   ~
                   {formatCurrency(
                     (data.saldoLivreMes - data.valorCompra) / Math.max(1, data.diasRestantesMes)

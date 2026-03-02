@@ -316,14 +316,47 @@ public class TelegramController : ControllerBase
             if (ms.Length == 0)
                 return "❌ Áudio vazio. Tente novamente.";
 
+            // Verificar duração informada pelo Telegram (se disponível)
+            if (message.Voice.Duration > 300) // 5 minutos
+                return "❌ Áudio muito longo (máx 5 minutos). Envie um áudio mais curto ou use texto.";
+
             var audioData = ms.ToArray();
-            return await botService.ProcessarAudioAsync(chatId, audioData, "audio/ogg", nomeUsuario);
+
+            // Para áudios longos, manter o indicador de "digitando..." ativo periodicamente
+            using var typingCts = new CancellationTokenSource();
+            var typingTask = ManterTypingAtivoAsync(chatId, typingCts.Token);
+            try
+            {
+                return await botService.ProcessarAudioAsync(chatId, audioData, "audio/ogg", nomeUsuario);
+            }
+            finally
+            {
+                typingCts.Cancel();
+                try { await typingTask; } catch { /* ignorar cancelamento */ }
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao baixar áudio do Telegram");
             return "❌ Erro ao processar o áudio.";
         }
+    }
+
+    /// <summary>
+    /// Envia periodicamente o indicador "digitando..." enquanto o processamento de áudio está em andamento.
+    /// O Telegram cancela o indicador após ~5 segundos, então reenviamos a cada 4s.
+    /// </summary>
+    private async Task ManterTypingAtivoAsync(long chatId, CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                await Task.Delay(4000, ct);
+                await EnviarTypingAsync(chatId);
+            }
+        }
+        catch (OperationCanceledException) { /* esperado */ }
     }
 
     private async Task<string> ProcessarAudioArquivo(Message message, ITelegramBotService botService)
@@ -355,14 +388,30 @@ public class TelegramController : ControllerBase
 
             var audioData = ms.ToArray();
 
-            // Determinar MIME type
+            // Verificar duração informada pelo Telegram (se disponível)
+            if (message.Audio.Duration > 300) // 5 minutos
+                return "❌ Áudio muito longo (máx 5 minutos). Envie um áudio mais curto ou use texto.";
+
+            // Determinar MIME type (normalizar extensões para MIME types válidos)
             var mimeType = message.Audio.MimeType ?? "audio/mpeg";
             if (file.FilePath.EndsWith(".ogg")) mimeType = "audio/ogg";
             else if (file.FilePath.EndsWith(".mp3")) mimeType = "audio/mpeg";
             else if (file.FilePath.EndsWith(".wav")) mimeType = "audio/wav";
-            else if (file.FilePath.EndsWith(".m4a")) mimeType = "audio/m4a";
+            else if (file.FilePath.EndsWith(".m4a")) mimeType = "audio/mp4"; // m4a é container MP4
+            else if (file.FilePath.EndsWith(".webm")) mimeType = "audio/webm";
 
-            return await botService.ProcessarAudioAsync(chatId, audioData, mimeType, nomeUsuario);
+            // Manter typing ativo durante processamento
+            using var typingCts = new CancellationTokenSource();
+            var typingTask = ManterTypingAtivoAsync(chatId, typingCts.Token);
+            try
+            {
+                return await botService.ProcessarAudioAsync(chatId, audioData, mimeType, nomeUsuario);
+            }
+            finally
+            {
+                typingCts.Cancel();
+                try { await typingTask; } catch { /* ignorar cancelamento */ }
+            }
         }
         catch (Exception ex)
         {
@@ -398,9 +447,23 @@ public class TelegramController : ControllerBase
             if (ms.Length == 0)
                 return "❌ Vídeo circular vazio.";
 
+            // Verificar duração informada pelo Telegram
+            if (message.VideoNote.Duration > 300)
+                return "❌ Vídeo circular muito longo (máx 5 minutos).";
+
             var audioData = ms.ToArray();
-            // Video notes são MP4 (MPEG-4)
-            return await botService.ProcessarAudioAsync(chatId, audioData, "audio/mp4", nomeUsuario);
+            // Video notes são MP4 (MPEG-4) — manter typing ativo
+            using var typingCts = new CancellationTokenSource();
+            var typingTask = ManterTypingAtivoAsync(chatId, typingCts.Token);
+            try
+            {
+                return await botService.ProcessarAudioAsync(chatId, audioData, "audio/mp4", nomeUsuario);
+            }
+            finally
+            {
+                typingCts.Cancel();
+                try { await typingTask; } catch { /* ignorar cancelamento */ }
+            }
         }
         catch (Exception ex)
         {

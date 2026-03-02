@@ -283,7 +283,7 @@ export default function ContasBancariasPage() {
       </div>
 
       {/* Table */}
-      <div className="glass-panel rounded-2xl overflow-hidden">
+      <div className="glass-panel rounded-2xl overflow-x-auto">
         {isLoading ? (
           <div className="p-8 text-center text-slate-400">Carregando...</div>
         ) : contas.length === 0 ? (

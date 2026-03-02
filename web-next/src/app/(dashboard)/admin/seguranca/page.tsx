@@ -252,7 +252,7 @@ export default function AdminSegurancaPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.07, ease: [0.22, 1, 0.36, 1] as const }}
             whileHover={{ y: -2 }}
-            className="bg-card rounded-2xl p-6 border border-border/60 shadow-sm relative overflow-hidden"
+            className="bg-card rounded-2xl p-4 sm:p-6 border border-border/60 shadow-sm relative overflow-hidden"
           >
             <div
               className={cn(
@@ -333,7 +333,85 @@ export default function AdminSegurancaPage() {
         transition={{ delay: 0.3, ease: [0.22, 1, 0.36, 1] as const }}
         className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden"
       >
-        <div className="overflow-x-auto">
+        {/* Mobile card layout */}
+        <div className="lg:hidden divide-y divide-border/40">
+          <AnimatePresence>
+            {paginated.map((s, i) => {
+              const expired = isExpired(s);
+              return (
+                <motion.div
+                  key={s.id}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 6 }}
+                  transition={{ delay: i * 0.025 }}
+                  className={cn(
+                    "p-4 space-y-3 transition-colors",
+                    expired && "opacity-60"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={cn(
+                          "shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-xs",
+                          getAvatarColor(s.usuarioId)
+                        )}
+                      >
+                        {getInitials(s.usuarioNome)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold leading-tight truncate">{maskNome(s.usuarioNome)}</p>
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">{maskIp(s.ipCriacao)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {expired ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-500/10 text-gray-600 dark:text-gray-400">
+                          Expirada
+                        </span>
+                      ) : (
+                        <>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Ativa
+                          </span>
+                          <button
+                            onClick={() => setRevogarAlvo(s)}
+                            className="text-muted-foreground/50 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+                            title="Encerrar Sessão"
+                          >
+                            <Power className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Início: {formatDate(s.criadoEm)}</span>
+                    <span className={cn(expired ? "text-red-500" : "")}>
+                      {getTimeRemaining(s.expiraEm)}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+
+          {paginated.length === 0 && (
+            <div className="px-4 py-14 text-center">
+              <Wifi className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">
+                {searchQuery
+                  ? "Nenhuma sessão corresponde à busca."
+                  : "Nenhuma sessão ativa no momento."}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-border/60 bg-muted/20 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
@@ -456,11 +534,11 @@ export default function AdminSegurancaPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </div>{/* /hidden lg:block */}
 
         {/* ── Pagination ── */}
         {filtered.length > 0 && (
-          <div className="border-t border-border/40 px-6 py-4 flex items-center justify-between gap-2 flex-wrap">
+          <div className="border-t border-border/40 px-3 sm:px-6 py-4 flex items-center justify-between gap-2 flex-wrap">
             <p className="text-sm text-muted-foreground hidden sm:block">
               Mostrando <span className="font-semibold text-foreground">{startItem}</span> a{" "}
               <span className="font-semibold text-foreground">{endItem}</span> de{" "}

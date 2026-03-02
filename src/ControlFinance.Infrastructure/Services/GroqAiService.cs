@@ -37,7 +37,10 @@ public class GroqAiService : IAiService
         _whisperModel = config["Groq:WhisperModel"] ?? "whisper-large-v3-turbo";
         
         if (_groqApiKeys.Count == 0)
-            throw new ArgumentException("Configure ao menos uma chave em Groq:ApiKey ou Groq:ApiKeys.");
+        {
+            _logger.LogWarning("Nenhuma chave Groq configurada (Groq:ApiKey / Groq:ApiKeys). Funcionalidades de IA estarão indisponíveis.");
+            return;
+        }
 
         var providers = new List<string>();
         providers.AddRange(_groqModels.Select(m => $"groq:{m}"));
@@ -74,8 +77,15 @@ public class GroqAiService : IAiService
             .ToList();
     }
 
+    private void ValidarChavesConfiguradas()
+    {
+        if (_groqApiKeys.Count == 0)
+            throw new InvalidOperationException("Serviço de IA indisponível: configure ao menos uma chave em Groq:ApiKey ou Groq:ApiKeys no appsettings.");
+    }
+
     public async Task<RespostaIA> ProcessarMensagemCompletaAsync(string mensagem, string contextoFinanceiro, OrigemDado origem = OrigemDado.Texto)
     {
+        ValidarChavesConfiguradas();
         var dataHoje = DateTime.UtcNow.AddHours(-3).ToString("yyyy-MM-dd");
         var diaSemana = DateTime.UtcNow.AddHours(-3).ToString("dddd", new System.Globalization.CultureInfo("pt-BR"));
         var horaAtual = DateTime.UtcNow.AddHours(-3).ToString("HH:mm");
@@ -670,6 +680,7 @@ public class GroqAiService : IAiService
 
     public async Task<ResultadoTranscricao> TranscreverAudioAsync(byte[] audioData, string mimeType)
     {
+        ValidarChavesConfiguradas();
         // Normalizar MIME types inválidos
         mimeType = NormalizarMimeType(mimeType);
 
@@ -928,6 +939,7 @@ public class GroqAiService : IAiService
 
     public async Task<string> ExtrairTextoImagemAsync(byte[] imageData, string mimeType)
     {
+        ValidarChavesConfiguradas();
         var base64Image = Convert.ToBase64String(imageData);
         var prompt = "Extraia todos os valores, itens e informacoes financeiras desta imagem (nota fiscal, cupom, recibo). Retorne em texto simples e organizado.";
 

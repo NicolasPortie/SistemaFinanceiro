@@ -27,6 +27,7 @@ import {
   KeyRound,
   ShieldAlert,
   ArrowLeftRight,
+  FileUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -39,6 +40,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const userNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/lancamentos", label: "Lançamentos", icon: Receipt },
+  { href: "/importacao", label: "Importar", icon: FileUp },
   { href: "/cartoes", label: "Cartões", icon: CreditCard },
   { href: "/contas-bancarias", label: "Contas", icon: Landmark },
   { href: "/contas-fixas", label: "Contas Fixas", icon: CalendarClock },
@@ -247,7 +249,7 @@ export function Sidebar() {
           </Button>
           <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
             <DialogContent
-              className="fixed inset-y-0 left-0 w-72 p-0 rounded-none border-r-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl data-[state=open]:slide-in-from-left sm:max-w-72 [&>button]:hidden"
+              className="fixed inset-y-0 left-0 w-[min(72vw,18rem)] p-0 rounded-none border-r-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl data-[state=open]:slide-in-from-left sm:max-w-72 [&>button]:hidden"
             >
               <DialogTitle className="sr-only">Menu de navegação</DialogTitle>
               <div className="flex h-full flex-col">
