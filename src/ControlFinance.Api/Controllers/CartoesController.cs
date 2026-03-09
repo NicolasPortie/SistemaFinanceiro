@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Exceptions;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
+using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +18,14 @@ public class CartoesController : BaseAuthController
     private readonly ICartaoCreditoRepository _cartaoRepo;
     private readonly IFaturaService _faturaService;
     private readonly IResumoService _resumoService;
+    private readonly IFeatureGateService _featureGate;
 
-    public CartoesController(ICartaoCreditoRepository cartaoRepo, IFaturaService faturaService, IResumoService resumoService)
+    public CartoesController(ICartaoCreditoRepository cartaoRepo, IFaturaService faturaService, IResumoService resumoService, IFeatureGateService featureGate)
     {
         _cartaoRepo = cartaoRepo;
         _faturaService = faturaService;
         _resumoService = resumoService;
+        _featureGate = featureGate;
     }
 
     [HttpGet]
@@ -62,6 +66,12 @@ public class CartoesController : BaseAuthController
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] CriarCartaoRequest request)
     {
+        // ── Feature Gate: limite de cartões ──
+        var cartoesAtual = await _cartaoRepo.ObterPorUsuarioAsync(UsuarioId);
+        var gate = await _featureGate.VerificarLimiteAsync(UsuarioId, Recurso.CartoesCredito, cartoesAtual.Count);
+        if (!gate.Permitido)
+            throw new FeatureGateException(gate.Mensagem!, Recurso.CartoesCredito, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
+
         var cartao = await _cartaoRepo.CriarAsync(new CartaoCredito
         {
             Nome = request.Nome,
@@ -116,6 +126,20 @@ public class CartoesController : BaseAuthController
         }
 
         return Ok(resultado);
+    }
+
+    [HttpPatch("fatura/{faturaId}/paga")]
+    public async Task<IActionResult> TogglePagaFatura(int faturaId)
+    {
+        try
+        {
+            var novoPaga = await _faturaService.TogglePagaFaturaAsync(faturaId, UsuarioId);
+            return Ok(new { paga = novoPaga });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return NotFound(new { erro = "Fatura não encontrada." });
+        }
     }
 
     [HttpPut("{id}")]

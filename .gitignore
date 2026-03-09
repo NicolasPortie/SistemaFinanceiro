@@ -56,6 +56,20 @@ dist/
 *.tsbuildinfo
 next-env.d.ts
 
+## Local cleanup artifacts
+*.bak
+diff.txt
+test_errors.txt
+test_errors_utf8.txt
+old_globals.css
+temp.css
+web-next/lint_output.txt
+web-next/lint.json
+web-next/dev.err.log
+web-next/dev.out.log
+/screenshots/
+/baileys-reference/
+
 ## Local env files
 .env*.local
 

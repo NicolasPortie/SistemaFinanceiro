@@ -27,6 +27,19 @@ public class UsuarioRepository : IUsuarioRepository
             .ToListAsync();
     }
 
+    public async Task<Usuario?> ObterPorWhatsAppPhoneAsync(string phone)
+    {
+        return await _context.Usuarios
+            .FirstOrDefaultAsync(u => u.WhatsAppPhone == phone);
+    }
+
+    public async Task<List<Usuario>> ObterTodosComWhatsAppAsync()
+    {
+        return await _context.Usuarios
+            .Where(u => u.Ativo && u.WhatsAppVinculado && u.WhatsAppPhone != null)
+            .ToListAsync();
+    }
+
     public async Task<Usuario?> ObterPorIdAsync(int id)
     {
         return await _context.Usuarios.FindAsync(id);
@@ -38,10 +51,34 @@ public class UsuarioRepository : IUsuarioRepository
             .FirstOrDefaultAsync(u => u.Email == email.ToLower());
     }
 
+    public async Task<Usuario?> ObterPorAppleIdAsync(string appleId)
+    {
+        return await _context.Usuarios
+            .FirstOrDefaultAsync(u => u.AppleId == appleId);
+    }
+
     public async Task<bool> EmailExisteAsync(string email)
     {
         return await _context.Usuarios
             .AnyAsync(u => u.Email == email.ToLower());
+    }
+
+    public async Task<bool> CpfExisteAsync(string cpf)
+    {
+        return await _context.Usuarios
+            .AnyAsync(u => u.Cpf == cpf);
+    }
+
+    public async Task<Usuario?> ObterPorCelularAsync(string celular)
+    {
+        return await _context.Usuarios
+            .FirstOrDefaultAsync(u => u.Celular == celular);
+    }
+
+    public async Task<bool> CelularExisteAsync(string celular)
+    {
+        return await _context.Usuarios
+            .AnyAsync(u => u.Celular == celular);
     }
 
     public async Task<Usuario> CriarAsync(Usuario usuario)

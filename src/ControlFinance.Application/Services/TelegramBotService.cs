@@ -8,6 +8,7 @@ using ControlFinance.Application.Interfaces;
 using ControlFinance.Application.Services.Handlers;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
+using ControlFinance.Domain.Helpers;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -20,7 +21,6 @@ public class TelegramBotService : ITelegramBotService
     private readonly IUsuarioRepository _usuarioRepo;
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
-    private readonly ICodigoVerificacaoRepository _codigoRepo;
     private readonly IAiService _aiService;
     private readonly ILancamentoService _lancamentoService;
     private readonly IResumoService _resumoService;
@@ -46,14 +46,12 @@ public class TelegramBotService : ITelegramBotService
     private readonly IPerfilComportamentalService _perfilComportamentalService;
     private readonly IVerificacaoDuplicidadeService _duplicidadeService;
     private readonly IEventoSazonalService _eventoSazonalService;
+    private readonly IFeatureGateService _featureGate;
+    private readonly IChatEngineService _chatEngine;
     private readonly ILogger<TelegramBotService> _logger;
 
     // Cache de desvinculações pendentes de confirmação
     private static readonly ConcurrentDictionary<long, DateTime> _desvinculacaoPendente = new();
-    // Cache de exclusões pendentes de confirmação
-    private static readonly ConcurrentDictionary<long, ExclusaoPendente> _exclusaoPendente = new();
-    // Cache de seleções de exclusão pendentes (lista de lançamentos para o usuário escolher)
-    private static readonly ConcurrentDictionary<long, SelecaoExclusaoPendente> _selecaoExclusaoPendente = new();
     // Semáforos por chat para evitar processamento concorrente que corrompe o estado
     private static readonly ConcurrentDictionary<long, SemaphoreSlim> _chatLocks = new();
     // Rate limit por usuário: máximo de mensagens por janela de tempo
@@ -64,6 +62,8 @@ public class TelegramBotService : ITelegramBotService
     private static DateTime _ultimaLimpeza = DateTime.UtcNow;
     private static readonly TimeSpan _intervaloLimpeza = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan _ttlPendente = TimeSpan.FromMinutes(30);
+    // Contador de mensagens diárias por usuário (chatId → (count, date))
+    private static readonly ConcurrentDictionary<long, (int Count, DateTime Date)> _mensagensDiarias = new();
 
     /// <summary>
     /// Limpa entradas expiradas dos caches estáticos para evitar memory leak.
@@ -83,26 +83,10 @@ public class TelegramBotService : ITelegramBotService
                 _desvinculacaoPendente.TryRemove(kv.Key, out _);
         }
 
-        // Limpar exclusões expiradas
-        foreach (var kv in _exclusaoPendente)
-        {
-            if (agora - kv.Value.CriadoEm > _ttlPendente)
-                _exclusaoPendente.TryRemove(kv.Key, out _);
-        }
-
-        // Limpar seleções de exclusão expiradas
-        foreach (var kv in _selecaoExclusaoPendente)
-        {
-            if (agora - kv.Value.CriadoEm > _ttlPendente)
-                _selecaoExclusaoPendente.TryRemove(kv.Key, out _);
-        }
-
         // Limpar semáforos de chats que não têm pendências ativas e cujo semáforo está livre
         foreach (var kv in _chatLocks)
         {
             if (!_desvinculacaoPendente.ContainsKey(kv.Key) &&
-                !_exclusaoPendente.ContainsKey(kv.Key) &&
-                !_selecaoExclusaoPendente.ContainsKey(kv.Key) &&
                 kv.Value.CurrentCount > 0)
             {
                 if (_chatLocks.TryRemove(kv.Key, out var sem))
@@ -116,21 +100,6 @@ public class TelegramBotService : ITelegramBotService
             if (agora - kv.Value.WindowStart > RateLimitJanela)
                 _rateLimits.TryRemove(kv.Key, out _);
         }
-    }
-
-    private class ExclusaoPendente
-    {
-        public Domain.Entities.Lancamento Lancamento { get; set; } = null!;
-        public int UsuarioId { get; set; }
-        public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
-    }
-
-    /// <summary>Cache de lançamentos apresentados ao usuário para escolha antes da exclusão</summary>
-    private class SelecaoExclusaoPendente
-    {
-        public List<Domain.Entities.Lancamento> Opcoes { get; set; } = new();
-        public int UsuarioId { get; set; }
-        public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     }
 
     /// <summary>DTO leve para serializar ExclusaoPendente no banco (evita serializar entidade EF inteira)</summary>
@@ -158,7 +127,6 @@ public class TelegramBotService : ITelegramBotService
         IUsuarioRepository usuarioRepo,
         ICategoriaRepository categoriaRepo,
         ICartaoCreditoRepository cartaoRepo,
-        ICodigoVerificacaoRepository codigoRepo,
         IAiService aiService,
         ILancamentoService lancamentoService,
         IResumoService resumoService,
@@ -184,13 +152,14 @@ public class TelegramBotService : ITelegramBotService
         IPerfilComportamentalService perfilComportamentalService,
         IVerificacaoDuplicidadeService duplicidadeService,
         IEventoSazonalService eventoSazonalService,
+        IFeatureGateService featureGate,
+        IChatEngineService chatEngine,
         IConfiguration configuration,
         ILogger<TelegramBotService> logger)
     {
         _usuarioRepo = usuarioRepo;
         _categoriaRepo = categoriaRepo;
         _cartaoRepo = cartaoRepo;
-        _codigoRepo = codigoRepo;
         _aiService = aiService;
         _lancamentoService = lancamentoService;
         _resumoService = resumoService;
@@ -216,6 +185,8 @@ public class TelegramBotService : ITelegramBotService
         _perfilComportamentalService = perfilComportamentalService;
         _duplicidadeService = duplicidadeService;
         _eventoSazonalService = eventoSazonalService;
+        _featureGate = featureGate;
+        _chatEngine = chatEngine;
         _sistemaWebUrl = configuration["Cors:AllowedOrigins:1"] ?? "https://finance.nicolasportie.com";
         _logger = logger;
     }
@@ -226,7 +197,7 @@ public class TelegramBotService : ITelegramBotService
     /// </summary>
     private async Task HidratarEstadoDoDbAsync(long chatId)
     {
-        if (_lancamentoHandler.TemPendente(chatId) || _desvinculacaoPendente.ContainsKey(chatId) || _exclusaoPendente.ContainsKey(chatId) || _selecaoExclusaoPendente.ContainsKey(chatId))
+        if (_lancamentoHandler.TemPendente(chatId) || _desvinculacaoPendente.ContainsKey(chatId) || _chatEngine.TemExclusaoPendente(chatId) || _chatEngine.TemSelecaoPendente(chatId))
             return;
 
         try
@@ -251,12 +222,7 @@ public class TelegramBotService : ITelegramBotService
                         var lancamento = await _lancamentoRepo.ObterPorIdAsync(excData.LancamentoId);
                         if (lancamento != null)
                         {
-                            _exclusaoPendente[chatId] = new ExclusaoPendente
-                            {
-                                Lancamento = lancamento,
-                                UsuarioId = excData.UsuarioId,
-                                CriadoEm = conversa.CriadoEm
-                            };
+                            _chatEngine.RestaurarEstadoExclusao(chatId, lancamento, excData.UsuarioId);
                         }
                         else
                         {
@@ -277,12 +243,7 @@ public class TelegramBotService : ITelegramBotService
                         }
                         if (opcoes.Count > 0)
                         {
-                            _selecaoExclusaoPendente[chatId] = new SelecaoExclusaoPendente
-                            {
-                                Opcoes = opcoes,
-                                UsuarioId = selData.UsuarioId,
-                                CriadoEm = conversa.CriadoEm
-                            };
+                            _chatEngine.RestaurarEstadoSelecao(chatId, opcoes, selData.UsuarioId);
                         }
                         else
                         {
@@ -335,17 +296,15 @@ public class TelegramBotService : ITelegramBotService
                 return;
             }
 
-            if (_exclusaoPendente.TryGetValue(chatId, out var exclusao))
+            var exclusaoData = _chatEngine.ExportarExclusaoPendente(chatId);
+            if (exclusaoData != null)
             {
-                var excData = new ExclusaoPersistencia
-                {
-                    LancamentoId = exclusao.Lancamento.Id,
-                    UsuarioId = exclusao.UsuarioId
-                };
+                var (lancamentoId, usuarioId) = exclusaoData.Value;
+                var excData = new ExclusaoPersistencia { LancamentoId = lancamentoId, UsuarioId = usuarioId };
                 await _conversaRepo.SalvarAsync(new ConversaPendente
                 {
                     ChatId = chatId,
-                    UsuarioId = exclusao.UsuarioId,
+                    UsuarioId = usuarioId,
                     Tipo = "Exclusao",
                     DadosJson = JsonSerializer.Serialize(excData, _jsonPersistOpts),
                     Estado = "AguardandoConfirmacao",
@@ -354,17 +313,15 @@ public class TelegramBotService : ITelegramBotService
                 return;
             }
 
-            if (_selecaoExclusaoPendente.TryGetValue(chatId, out var selecao))
+            var selecaoData = _chatEngine.ExportarSelecaoPendente(chatId);
+            if (selecaoData != null)
             {
-                var selData = new SelecaoExclusaoPersistencia
-                {
-                    LancamentoIds = selecao.Opcoes.Select(l => l.Id).ToList(),
-                    UsuarioId = selecao.UsuarioId
-                };
+                var (lancamentoIds, selUsuarioId) = selecaoData.Value;
+                var selData = new SelecaoExclusaoPersistencia { LancamentoIds = lancamentoIds, UsuarioId = selUsuarioId };
                 await _conversaRepo.SalvarAsync(new ConversaPendente
                 {
                     ChatId = chatId,
-                    UsuarioId = selecao.UsuarioId,
+                    UsuarioId = selUsuarioId,
                     Tipo = "SelecaoExclusao",
                     DadosJson = JsonSerializer.Serialize(selData, _jsonPersistOpts),
                     Estado = "AguardandoSelecao",
@@ -389,6 +346,15 @@ public class TelegramBotService : ITelegramBotService
     public static List<List<(string Label, string Data)>>? ConsumirTeclado(long chatId)
     {
         return BotTecladoHelper.ConsumirTeclado(chatId);
+    }
+
+    /// <summary>
+    /// Consome (remove e retorna) se há solicitação de contato pendente para um chat.
+    /// Usado pelo controller para enviar ReplyKeyboard com request_contact.
+    /// </summary>
+    public static bool ConsumirSolicitacaoContato(long chatId)
+    {
+        return BotTecladoHelper.ConsumirSolicitacaoContato(chatId);
     }
 
     /// <summary>
@@ -458,6 +424,17 @@ public class TelegramBotService : ITelegramBotService
             await HidratarEstadoDoDbAsync(chatId);
             // Processamento real
             var usuario = await ObterUsuarioVinculadoAsync(chatId); // Obter usuário aqui para passar para o interno
+
+            // ── Feature Gate: limite de mensagens Telegram por dia ──
+            if (usuario is not null)
+            {
+                var msgHoje = ObterContadorMensagensDiarias(chatId);
+                var gate = await _featureGate.VerificarLimiteAsync(usuario.Id, Domain.Enums.Recurso.TelegramMensagensDia, msgHoje);
+                if (!gate.Permitido)
+                    return $"🔒 Limite diário atingido ({gate.UsoAtual}/{gate.Limite} mensagens). Faça upgrade para continuar usando o Falcon via Telegram.";
+                IncrementarContadorMensagensDiarias(chatId);
+            }
+
             var resposta = await ProcessarMensagemInternoAsync(chatId, mensagem, nomeUsuario, usuario, origem);
             
             // Grava estado final das pendências no DB se houver
@@ -476,123 +453,33 @@ public class TelegramBotService : ITelegramBotService
     /// </summary>
     private async Task<string> ProcessarMensagemInternoAsync(long chatId, string mensagem, string nomeUsuario, Usuario? usuario, OrigemDado origem)
     {
-        // Limpar teclado anterior para evitar botões obsoletos
         BotTecladoHelper.RemoverTeclado(chatId);
-
         var textoLimpo = mensagem.Trim();
-
-        // Comando /vincular funciona sem conta vinculada (aceita com ou sem /)
-        if (textoLimpo.StartsWith("/vincular") || textoLimpo.ToLower().StartsWith("vincular "))
-            return await ProcessarVinculacaoAsync(chatId, mensagem, nomeUsuario);
 
         if (usuario == null)
         {
-            // Tentar vincular automaticamente se a mensagem parecer um código de vinculação (somente dígitos, 6 caracteres)
-            var msgTrimmed = mensagem.Trim();
-            if (msgTrimmed.Length == 6 && msgTrimmed.All(char.IsDigit))
-                return await ProcessarVinculacaoAsync(chatId, $"vincular {msgTrimmed}", nomeUsuario);
-
+            // Solicitar compartilhamento de contato para auto-link pelo celular
+            BotTecladoHelper.SolicitarContato(chatId);
             return "🔗 *Conta não vinculada*\n\n" +
-                   "Para começar, siga estes passos:\n\n" +
-                   "1️⃣ Crie sua conta em finance.nicolasportie.com\n" +
-                   "2️⃣ No seu perfil, gere um código de vinculação\n" +
-                   "3️⃣ Envie aqui o código de 6 dígitos";
+                   "📱 Toque no botão *\"Compartilhar contato\"* abaixo para vincular automaticamente!\n\n" +
+                   "O celular do seu Telegram será comparado com o cadastro em finance.nicolasportie.com.";
         }
 
-        // Verificar confirmação de desvinculação pendente
+        // Desvinculação pendente (Telegram-only)
         var respostaDesvinc = await ProcessarConfirmacaoDesvinculacaoAsync(chatId, usuario, mensagem);
-        if (respostaDesvinc != null)
-            return respostaDesvinc;
+        if (respostaDesvinc != null) return respostaDesvinc;
 
-        // Verificar confirmação de exclusão pendente
-        var respostaExclusao = await ProcessarConfirmacaoExclusaoAsync(chatId, usuario, mensagem);
-        if (respostaExclusao != null)
-            return respostaExclusao;
-
-        // Verificar seleção de lançamento para exclusão pendente
-        var respostaSelecao = await ProcessarSelecaoExclusaoAsync(chatId, usuario, mensagem);
-        if (respostaSelecao != null)
-            return respostaSelecao;
-
-        // Verificar se há lançamento pendente em etapas (forma, cartão, categoria, confirmação)
-        var respostaEtapa = await _lancamentoHandler.ProcessarEtapaPendenteAsync(chatId, usuario, mensagem);
-        if (respostaEtapa != null)
-            return respostaEtapa;
-
-        // Linguagem natural: desvincular
+        // Desvinculação por linguagem natural (Telegram-only)
         var msgLower = mensagem.Trim().ToLower();
         if (msgLower.Contains("desvincul") || msgLower.Contains("desconectar") ||
             msgLower is "desvincular" or "desvincular conta" or "desconectar telegram")
             return ProcessarPedidoDesvinculacao(chatId);
 
+        // Slash commands (Telegram-only)
         if (mensagem.StartsWith("/"))
-            return await ProcessarComandoAsync(usuario, mensagem, origem);
+            return await ProcessarComandoAsync(chatId, usuario, mensagem, origem);
 
-        // Respostas diretas sem IA para mensagens simples (mais rápido e economiza cota)
-        var respostaDireta = await TentarRespostaDirectaAsync(usuario, msgLower);
-        if (respostaDireta != null)
-            return respostaDireta;
-
-        // Fallback para IA com tratamento de erro (Gemini fora do ar, rate-limit, etc.)
-        try
-        {
-            return await ProcessarComIAAsync(usuario, mensagem, origem);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao processar mensagem via IA para usuário {Nome}", usuario.Nome);
-            return "⚠️ Estou com dificuldades para processar sua mensagem agora.\n\n" +
-                   "Tente novamente em alguns instantes ou diga algo como:\n" +
-                   "📌 \"resumo\" • \"fatura\" • \"ajuda\"";
-        }
-    }
-
-    /// <summary>
-    /// Tenta responder diretamente sem chamar IA para mensagens simples (saudações, ajuda, consultas diretas).
-    /// Retorna null se a mensagem precisa de IA.
-    /// </summary>
-    private async Task<string?> TentarRespostaDirectaAsync(Usuario usuario, string msgLower)
-    {
-        // Saudações simples
-        if (msgLower is "oi" or "olá" or "ola" or "hey" or "eae" or "e aí" or "e ai" or "fala" or "salve"
-            or "bom dia" or "boa tarde" or "boa noite" or "hello" or "hi" or "opa")
-        {
-            var saudacao = DateTime.UtcNow.AddHours(-3).Hour switch
-            {
-                >= 5 and < 12 => "Bom dia",
-                >= 12 and < 18 => "Boa tarde",
-                _ => "Boa noite"
-            };
-            return $"{saudacao}, *{usuario.Nome}*! 👋\n\n" +
-                   "Como posso te ajudar?\n\n" +
-                   "📌 \"Gastei 50 no mercado\"\n" +
-                   "📌 \"Resumo financeiro\"\n" +
-                   "📌 \"Fatura do cartão\"\n" +
-                   "📌 \"Posso gastar 200 em roupas?\"\n\n" +
-                   "Ou diga *ajuda* para ver tudo que posso fazer.";
-        }
-
-        // Ajuda
-        if (msgLower is "ajuda" or "help" or "socorro" or "comandos" or "menu"
-            or "o que voce faz" or "o que você faz" or "como funciona")
-        {
-            return "📋 *O que posso fazer por você:*\n\n" +
-                   "💵 *Lançamentos*\n" +
-                   "    \"Gastei 30 no almoço\" ou \"Recebi 1500 de salário\"\n\n" +
-                   "📊 *Resumo* — \"como estou esse mês?\"\n" +
-                   "💳 *Fatura* — \"minha fatura\" ou \"fatura do Nubank\"\n" +
-                   "🏷️ *Categorias* — \"minhas categorias\"\n" +
-                   "🎯 *Metas* — \"minhas metas\"\n" +
-                   "📏 *Limites* — \"meus limites\"\n" +
-                   "🤔 *Decisão* — \"posso gastar X em Y?\"\n" +
-                   "🔮 *Simulação* — \"se eu comprar X de R$ Y em Zx?\"\n" +
-                   "🔔 *Lembretes* — \"meus lembretes\"\n" +
-                   "🎙️ *Áudio* — Envie áudio que eu transcrevo\n" +
-                   "📸 *Imagem* — Envie foto de nota fiscal\n\n" +
-                   "Fale naturalmente — eu entendo! 😊";
-        }
-
-        // Intentos de gestão no estilo cadastro/edição/exclusão devem ir para o Web
+        // Gestão no web (Telegram-only — no InApp o usuário JÁ está no web)
         if (EhMensagemGestaoNoWeb(msgLower))
         {
             _logger.LogInformation("Resposta direta: gestao_web | Usuário: {Nome}", usuario.Nome);
@@ -603,138 +490,21 @@ public class TelegramBotService : ITelegramBotService
             );
         }
 
-        // Excluir lançamento (fast-path sem IA)
-        if (EhPedidoExclusaoLancamento(msgLower))
-        {
-            _logger.LogInformation("Resposta direta: excluir_lancamento | Usuário: {Nome}", usuario.Nome);
-            var descricaoExtrair = ExtrairDescricaoExclusao(msgLower);
-            return await ProcessarExcluirLancamentoAsync(usuario, descricaoExtrair);
-        }
-
-        // Agradecimento
-        if (msgLower is "obrigado" or "obrigada" or "valeu" or "vlw" or "thanks" or "brigado" or "brigada"
-            or "obg" or "muito obrigado" or "muito obrigada")
-        {
-            return "De nada! 😊 Estou sempre por aqui quando precisar.";
-        }
-
-        // Consultas diretas que não precisam de IA
-        if (msgLower is "resumo" or "resumo financeiro" or "meu resumo" or "como estou" or "como to")
-        {
-            _logger.LogInformation("Resposta direta: ver_resumo | Usuário: {Nome}", usuario.Nome);
-            return await _consultaHandler.GerarResumoFormatadoAsync(usuario);
-        }
-
-        if (msgLower is "fatura" or "fatura do cartão" or "fatura do cartao" or "ver fatura" or "fatura atual" or "minha fatura")
-        {
-            _logger.LogInformation("Resposta direta: ver_fatura | Usuário: {Nome}", usuario.Nome);
-            return await _consultaHandler.GerarFaturaFormatadaAsync(usuario, detalhada: false);
-        }
-
-        if (msgLower is "minhas faturas" or "listar faturas" or "todas faturas" or "todas as faturas" or "faturas pendentes")
-        {
-            _logger.LogInformation("Resposta direta: listar_faturas | Usuário: {Nome}", usuario.Nome);
-            return await _consultaHandler.GerarTodasFaturasFormatadaAsync(usuario);
-        }
-
-        if (msgLower is "fatura detalhada" or "detalhar fatura" or "fatura completa")
-        {
-            _logger.LogInformation("Resposta direta: ver_fatura_detalhada | Usuário: {Nome}", usuario.Nome);
-            return await _consultaHandler.GerarFaturaFormatadaAsync(usuario, detalhada: true);
-        }
-
-        if (msgLower is "categorias" or "ver categorias" or "minhas categorias" or "listar categorias")
-        {
-            _logger.LogInformation("Resposta direta: ver_categorias | Usuário: {Nome}", usuario.Nome);
-            return await _consultaHandler.ListarCategoriasAsync(usuario);
-        }
-
-        if (msgLower is "limites" or "ver limites" or "meus limites" or "listar limites")
-        {
-            _logger.LogInformation("Resposta direta: consultar_limites | Usuário: {Nome}", usuario.Nome);
-            return await _consultaHandler.ListarLimitesFormatadoAsync(usuario);
-        }
-
-        if (msgLower is "metas" or "ver metas" or "minhas metas" or "listar metas")
-        {
-            _logger.LogInformation("Resposta direta: consultar_metas | Usuário: {Nome}", usuario.Nome);
-            return await _consultaHandler.ListarMetasFormatadoAsync(usuario);
-        }
-
-        if (msgLower.Contains("salario mensal") || msgLower.Contains("salário mensal")
-            || msgLower.Contains("quanto recebo por mes") || msgLower.Contains("quanto recebo por mês"))
-        {
-            _logger.LogInformation("Resposta direta: salario_mensal | Usuário: {Nome}", usuario.Nome);
-            return await _consultaHandler.ConsultarSalarioMensalAsync(usuario);
-        }
-
-        // "paguei lembrete N" — marcar ciclo como pago (antes do bloco genérico de lembrete)
-        var pagueiLembreteMatch = System.Text.RegularExpressions.Regex.Match(
-            msgLower, @"paguei\s+(?:o\s+)?lembrete\s+(\d+)");
-        if (pagueiLembreteMatch.Success)
-        {
-            _logger.LogInformation("Resposta direta: pagar_lembrete#{Id} | Usuário: {Nome}",
-                pagueiLembreteMatch.Groups[1].Value, usuario.Nome);
-            return await _lembreteHandler.ProcessarComandoLembreteAsync(
-                usuario, "pago " + pagueiLembreteMatch.Groups[1].Value);
-        }
-
-        if (msgLower.StartsWith("lembrete") || msgLower.StartsWith("lembrar ") || msgLower.StartsWith("conta fixa")
-            || msgLower.Contains("contas fixas") || msgLower.Contains("meus lembretes")
-            || msgLower.Contains("minhas contas") || msgLower.Contains("quais são minhas contas"))
-        {
-            _logger.LogInformation("Resposta direta: lembrete | Usuário: {Nome}", usuario.Nome);
-            return await _lembreteHandler.ProcessarComandoLembreteAsync(usuario, null);
-        }
-
-        // Comparativo mensal (nova funcionalidade)
-        if (msgLower.Contains("comparar") || msgLower.Contains("comparativo") ||
-            msgLower.Contains("este mes vs") || msgLower.Contains("este mês vs") ||
-            msgLower.Contains("mes passado") || msgLower.Contains("mês passado"))
-        {
-            _logger.LogInformation("Resposta direta: comparar_meses | Usuário: {Nome}", usuario.Nome);
-            return await _consultaHandler.GerarComparativoMensalAsync(usuario);
-        }
-
-        // Consulta por tag (nova funcionalidade)
-        if (msgLower.StartsWith("#") || msgLower.StartsWith("tag ") || msgLower.StartsWith("tags"))
-        {
-            _logger.LogInformation("Resposta direta: consultar_tag | Usuário: {Nome}", usuario.Nome);
-            var tag = msgLower.StartsWith("tag ") ? msgLower[4..].Trim() : msgLower.Trim();
-            return await _consultaHandler.ConsultarPorTagAsync(usuario, tag);
-        }
-
-        return null;
+        // ── Delegar processamento ao motor compartilhado (ChatEngine) ──
+        var resposta = await _chatEngine.ProcessarMensagemAsync(chatId, usuario, mensagem, origem);
+        return ConverterMarkdownParaTelegram(resposta);
     }
 
     public async Task<string> ProcessarAudioAsync(long chatId, byte[] audioData, string mimeType, string nomeUsuario)
     {
         var usuario = await ObterUsuarioVinculadoAsync(chatId);
         if (usuario == null)
-            return "Vincule sua conta primeiro. Acesse finance.nicolasportie.com, gere o código de vinculação e envie aqui no bot.";
+            return "📱 Vincule sua conta primeiro — compartilhe seu contato no chat para vincular automaticamente pelo celular.";
 
         try
         {
-            var transcricao = await _aiService.TranscreverAudioAsync(audioData, mimeType);
-            if (!transcricao.Sucesso)
-                return "Não foi possível entender o áudio. Tente enviar em texto.";
-
-            var texto = transcricao.Texto;
-
-            // Normalizar valores monetários comuns da fala para formato numérico
-            texto = NormalizarValoresMonetariosFala(texto);
-
-            // Usar o mesmo fluxo de texto para que áudio passe pelo state machine
-            // (pendentes, confirmações, respostas diretas, etc.) preservando a origem de ÁUDIO.
-            var resultado = await ProcessarMensagemAsync(chatId, texto, nomeUsuario, OrigemDado.Audio);
-
-            // Montar resposta com transcrição e aviso de confiança se necessário
-            var resposta = $"🎤 Transcrição: \"{texto}\"\n\n{resultado}";
-
-            if (transcricao.BaixaConfianca)
-                resposta += "\n\n⚠️ _A transcrição pode conter erros. Se algo ficou errado, envie o comando em texto._";
-
-            return resposta;
+            var resposta = await _chatEngine.ProcessarAudioAsync(chatId, usuario, audioData, mimeType);
+            return ConverterMarkdownParaTelegram(resposta);
         }
         catch (Exception ex)
         {
@@ -743,74 +513,16 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
-    /// <summary>
-    /// Normaliza valores monetários comuns da fala brasileira para formato numérico.
-    /// Ex: "cem reais" → "R$ 100", "vinte e cinco" → "25", "mil e quinhentos" → "1500"
-    /// </summary>
-    private static string NormalizarValoresMonetariosFala(string texto)
-    {
-        if (string.IsNullOrWhiteSpace(texto)) return texto;
-
-        // Mapear valores por extenso para numéricos (padrões mais comuns em áudio financeiro)
-        var substituicoes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            // Centenas
-            { "cem reais", "R$ 100" },
-            { "duzentos reais", "R$ 200" },
-            { "trezentos reais", "R$ 300" },
-            { "quatrocentos reais", "R$ 400" },
-            { "quinhentos reais", "R$ 500" },
-            { "seiscentos reais", "R$ 600" },
-            { "setecentos reais", "R$ 700" },
-            { "oitocentos reais", "R$ 800" },
-            { "novecentos reais", "R$ 900" },
-            // Milhares
-            { "mil reais", "R$ 1000" },
-            { "mil e quinhentos reais", "R$ 1500" },
-            { "dois mil reais", "R$ 2000" },
-            { "três mil reais", "R$ 3000" },
-            { "cinco mil reais", "R$ 5000" },
-            { "dez mil reais", "R$ 10000" },
-            // Dezenas
-            { "dez reais", "R$ 10" },
-            { "vinte reais", "R$ 20" },
-            { "trinta reais", "R$ 30" },
-            { "quarenta reais", "R$ 40" },
-            { "cinquenta reais", "R$ 50" },
-            { "sessenta reais", "R$ 60" },
-            { "setenta reais", "R$ 70" },
-            { "oitenta reais", "R$ 80" },
-            { "noventa reais", "R$ 90" },
-        };
-
-        foreach (var (extenso, numerico) in substituicoes)
-        {
-            texto = System.Text.RegularExpressions.Regex.Replace(
-                texto, 
-                System.Text.RegularExpressions.Regex.Escape(extenso), 
-                numerico, 
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        }
-
-        return texto;
-    }
-
     public async Task<string> ProcessarImagemAsync(long chatId, byte[] imageData, string mimeType, string nomeUsuario, string? caption = null)
     {
         var usuario = await ObterUsuarioVinculadoAsync(chatId);
         if (usuario == null)
-            return "Vincule sua conta primeiro. Acesse finance.nicolasportie.com, gere o código de vinculação e envie aqui no bot.";
+            return "📱 Vincule sua conta primeiro — compartilhe seu contato no chat para vincular automaticamente pelo celular.";
 
         try
         {
-            var texto = await _aiService.ExtrairTextoImagemAsync(imageData, mimeType);
-            
-            var prompt = caption != null 
-                ? $"Legenda enviada com a imagem: \"{caption}\"\n\nTexto extraído da imagem:\n{texto}" 
-                : texto;
-
-            // Envia para o pipeline normal para decodificar, preservando a origem de IMAGEM
-            return await ProcessarMensagemAsync(chatId, prompt, nomeUsuario, OrigemDado.Imagem);
+            var resposta = await _chatEngine.ProcessarImagemAsync(chatId, usuario, imageData, mimeType, caption);
+            return ConverterMarkdownParaTelegram(resposta);
         }
         catch (Exception ex)
         {
@@ -819,342 +531,40 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
-    /// <summary>
-    /// Processamento via IA (Gemini). Constroi contexto, chama Tool Calling e roteia a itenção extraída.
-    /// </summary>
-    private async Task<string> ProcessarComIAAsync(Usuario usuario, string mensagem, OrigemDado origem)
+    public async Task<string> ProcessarContatoAsync(long chatId, string phoneNumber, string nomeUsuario)
     {
-        // Montar contexto financeiro do usuário (inclui categorias reais)
-        var contexto = await MontarContextoFinanceiroAsync(usuario);
+        // Verificar se já está vinculado
+        var existente = await _usuarioRepo.ObterPorTelegramChatIdAsync(chatId);
+        if (existente != null)
+            return $"✅ Seu Telegram já está vinculado à conta de *{existente.Nome}*!";
 
-        // Uma única chamada ao Gemini que faz tudo
-        var resposta = await _aiService.ProcessarMensagemCompletaAsync(mensagem, contexto, origem);
+        // Normalizar telefone do contato
+        var celularNormalizado = CelularHelper.Normalizar(phoneNumber);
+        if (string.IsNullOrEmpty(celularNormalizado))
+            return "❌ Número de telefone inválido. Tente compartilhar seu contato novamente.";
 
-        _logger.LogInformation("IA Intenção: {Intencao} | Usuário: {Nome}", resposta.Intencao, usuario.Nome);
+        // Buscar usuário pelo celular cadastrado
+        var usuario = await _usuarioRepo.ObterPorCelularAsync(celularNormalizado);
+        if (usuario == null)
+            return "❌ Não encontrei uma conta com esse número.\n\n" +
+                   "Cadastre-se em *finance.nicolasportie.com* e informe seu celular para vincular automaticamente.";
 
-        // Se a IA identificou um lançamento financeiro, iniciar fluxo em etapas
-        if (resposta.Intencao == "registrar" && resposta.Lancamento != null)
-        {
-            return await _lancamentoHandler.IniciarFluxoAsync(usuario, resposta.Lancamento, origem);
-        }
+        // Auto-vincular Telegram
+        usuario.TelegramChatId = chatId;
+        usuario.TelegramVinculado = true;
+        if (!string.IsNullOrEmpty(nomeUsuario) && usuario.Nome == usuario.Email)
+            usuario.Nome = nomeUsuario;
+        await _usuarioRepo.AtualizarAsync(usuario);
 
-        // Se a IA identificou previsão de compra
-        if (resposta.Intencao == "prever_compra" && resposta.Simulacao != null)
-        {
-            return await _previsaoHandler.ProcessarPrevisaoCompraAsync(usuario, resposta.Simulacao);
-        }
+        _logger.LogInformation("Telegram auto-vinculado via contato: {Email} → ChatId {ChatId}", usuario.Email, chatId);
 
-        // Se a IA identificou avaliação rápida de gasto ("posso gastar X?")
-        if (resposta.Intencao == "avaliar_gasto" && resposta.AvaliacaoGasto != null)
-        {
-            return await _previsaoHandler.ProcessarAvaliacaoGastoAsync(usuario, resposta.AvaliacaoGasto);
-        }
-
-        // Se a IA identificou configuração de limite
-        if (resposta.Intencao == "configurar_limite" && resposta.Limite != null)
-        {
-            return await _metaLimiteHandler.ProcessarConfigurarLimiteAsync(usuario, resposta.Limite);
-        }
-
-        // Se a IA identificou criação de conta fixa (Lembrete) via Linguagem Natural
-        if (resposta.Intencao == "criar_conta_fixa" && resposta.ContaFixa != null)
-        {
-            return await _lembreteHandler.ProcessarCriarContaFixaIAAsync(usuario, resposta.ContaFixa);
-        }
-
-        // Se a IA identificou criação de meta
-        if (resposta.Intencao == "criar_meta" && resposta.Meta != null)
-        {
-            return await _metaLimiteHandler.ProcessarCriarMetaAsync(usuario, resposta.Meta);
-        }
-
-        // Se a IA identificou aporte ou saque em meta
-        if ((resposta.Intencao == "aportar_meta" || resposta.Intencao == "sacar_meta") && resposta.AporteMeta != null)
-        {
-            return await _metaLimiteHandler.ProcessarAportarMetaAsync(usuario, resposta.AporteMeta);
-        }
-
-        // Se a IA identificou divisão de gasto
-        if (resposta.Intencao == "dividir_gasto" && resposta.DivisaoGasto != null)
-        {
-            return await _lancamentoHandler.ProcessarDivisaoGastoAsync(usuario, resposta.DivisaoGasto, origem);
-        }
-
-        // Se a IA identificou verificação de duplicidade ("já lancei?", "já registrei?")
-        if (resposta.Intencao == "verificar_duplicidade" && resposta.VerificacaoDuplicidade != null)
-        {
-            // GUARD: se a mensagem NÃO tem "?" e contém keywords de afirmação (gasto, despesa, pagamento, etc.)
-            // é provavelmente uma classificação errada — tratar como "registrar"
-            var msgNorm = mensagem.ToLowerInvariant();
-            var ehAfirmacao = !msgNorm.Contains('?')
-                && (msgNorm.StartsWith("gasto") || msgNorm.StartsWith("despesa") || msgNorm.StartsWith("pagamento")
-                    || msgNorm.Contains("gastei") || msgNorm.Contains("paguei") || msgNorm.Contains("comprei"));
-            if (ehAfirmacao && resposta.VerificacaoDuplicidade.Valor > 0)
-            {
-                _logger.LogWarning("Reclassificando 'verificar_duplicidade' como 'registrar' (msg afirmativa): {Msg}", mensagem);
-                var lancamentoRecuperado = new DadosLancamento
-                {
-                    Valor = resposta.VerificacaoDuplicidade.Valor,
-                    Descricao = resposta.VerificacaoDuplicidade.Descricao ?? string.Empty,
-                    Categoria = resposta.VerificacaoDuplicidade.Categoria ?? "Outros",
-                    FormaPagamento = "nao_informado",
-                    Tipo = "gasto",
-                    NumeroParcelas = 1,
-                    Data = DateTime.UtcNow
-                };
-                return await _lancamentoHandler.IniciarFluxoAsync(usuario, lancamentoRecuperado, origem);
-            }
-
-            return await ProcessarVerificacaoDuplicidadeIAAsync(usuario, resposta.VerificacaoDuplicidade);
-        }
-
-        // Cadastro/edição/exclusão de cartão: orientação para Web
-        if (resposta.Intencao is "cadastrar_cartao" or "editar_cartao" or "excluir_cartao")
-            return MensagemGestaoNoWeb(
-                usuario.TelegramChatId,
-                "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
-                "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
-            );
-
-        // Qualquer outro CRUD que o bot não executa deve ser orientado para o Web
-        var orientacaoCrudWeb = TentarOrientarCrudNoWeb(usuario, resposta.Intencao);
-        if (orientacaoCrudWeb != null)
-            return orientacaoCrudWeb;
-
-        if (resposta.Intencao == "excluir_lancamento")
-        {
-            return await ProcessarExcluirLancamentoAsync(usuario, resposta.Resposta);
-        }
-
-        if (resposta.Intencao == "criar_categoria" && !string.IsNullOrWhiteSpace(resposta.Resposta))
-        {
-            return await CriarCategoriaViaBot(usuario, resposta.Resposta);
-        }
-
-        // Se a IA identificou mudança de categoria do último lançamento
-        if (resposta.Intencao == "categorizar_ultimo" && !string.IsNullOrWhiteSpace(resposta.Resposta))
-        {
-            return await ProcessarCategorizarUltimoAsync(usuario, resposta.Resposta);
-        }
-
-        if (resposta.Intencao == "pagar_fatura" && resposta.PagamentoFatura != null)
-        {
-            return await ProcessarPagarFaturaAsync(usuario, resposta.PagamentoFatura);
-        }
-
-        // Para intenções que precisam de dados do sistema
-        return resposta.Intencao?.ToLower() switch
-        {
-            "ver_resumo" => await _consultaHandler.GerarResumoFormatadoAsync(usuario),
-            "ver_fatura" => await _consultaHandler.GerarFaturaFormatadaAsync(usuario, detalhada: false, filtroCartao: resposta.Cartao?.Nome),
-            "ver_fatura_detalhada" => await _consultaHandler.GerarFaturaFormatadaAsync(usuario, detalhada: true, filtroCartao: resposta.Cartao?.Nome),
-            "listar_faturas" => await _consultaHandler.GerarTodasFaturasFormatadaAsync(usuario),
-            "detalhar_categoria" => await _consultaHandler.DetalharCategoriaAsync(usuario, resposta.Resposta),
-            "ver_categorias" => await _consultaHandler.ListarCategoriasAsync(usuario),
-            "consultar_limites" => await _consultaHandler.ListarLimitesFormatadoAsync(usuario),
-            "consultar_metas" => await _consultaHandler.ListarMetasFormatadoAsync(usuario),
-            "comparar_meses" => await _consultaHandler.GerarComparativoMensalAsync(usuario),
-            "consultar_tag" => await _consultaHandler.ConsultarPorTagAsync(usuario, resposta.Resposta ?? ""),
-            "ver_recorrentes" => await GerarRelatorioRecorrentesAsync(usuario),
-            "ver_score" => await ProcessarComandoScoreAsync(usuario),
-            "ver_perfil" => await ProcessarComandoPerfilAsync(usuario),
-            "ver_sazonalidade" => await ProcessarComandoSazonalidadeAsync(usuario, null),
-            "ver_extrato" => await _consultaHandler.GerarExtratoFormatadoAsync(usuario),
-            "ver_lembretes" => await _lembreteHandler.ProcessarComandoLembreteAsync(usuario, null),
-            "ver_salario" => await _consultaHandler.ConsultarSalarioMensalAsync(usuario),
-            "cadastrar_cartao" => MensagemGestaoNoWeb(
-                usuario.TelegramChatId,
-                "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
-                "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
-            ),
-            "editar_cartao" => MensagemGestaoNoWeb(
-                usuario.TelegramChatId,
-                "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
-                "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
-            ),
-            "excluir_cartao" => MensagemGestaoNoWeb(
-                usuario.TelegramChatId,
-                "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
-                "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
-            ),
-            _ => resposta.Resposta // Resposta conversacional da IA (saudação, ajuda, conversa, etc.)
-        };
-    }
-
-    private async Task<string> ProcessarPagarFaturaAsync(Usuario usuario, DadosPagamentoFaturaIA dados)
-    {
-        try
-        {
-            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
-            if (!cartoes.Any())
-                return MensagemGestaoNoWeb(
-                    usuario.TelegramChatId,
-                    "Você ainda não tem cartão cadastrado para pagar fatura.",
-                    "Acesse o menu *Cartões* no sistema web, cadastre o cartão e depois volte aqui para consultar e pagar a fatura."
-                );
-
-            CartaoCredito? cartao = null;
-            
-            // 1. Tentar achar o cartão
-            if (!string.IsNullOrWhiteSpace(dados.Cartao))
-            {
-                cartao = cartoes.FirstOrDefault(c => c.Nome.Contains(dados.Cartao, StringComparison.OrdinalIgnoreCase));
-            }
-
-            // Se não achou ou não foi informado
-            if (cartao == null)
-            {
-                if (cartoes.Count == 1)
-                {
-                    cartao = cartoes.First();
-                }
-                else
-                {
-                    // Perguntar qual cartão
-                    var nomes = string.Join(", ", cartoes.Select(c => c.Nome));
-                    return $"Qual cartão você pagou? Tenho estes: {nomes}. Diga por exemplo: 'Paguei fatura do Nubank'.";
-                }
-            }
-
-            // 2. Achar a fatura (Prioridade: Fechada não paga > Atual aberta)
-            var hoje = DateTime.UtcNow;
-            var faturas = await _faturaRepo.ObterPorCartaoAsync(cartao.Id);
-            
-            // Buscar primeira fatura FECHADA e NÃO PAGA
-            var faturaPagar = faturas
-                .Where(f => f.Status == StatusFatura.Fechada)
-                .OrderBy(f => f.DataVencimento)
-                .FirstOrDefault();
-
-            // Se não tem fechada, pode ser antecipação da atual (Aberta)
-            if (faturaPagar == null)
-            {
-                faturaPagar = faturas.FirstOrDefault(f => f.Status == StatusFatura.Aberta);
-            }
-
-            if (faturaPagar == null)
-                return $"Não há faturas pendentes para o cartão *{cartao.Nome}*.";
-
-            // 3. Pagar a fatura (Regime de Competência — modelo Mobills/Organizze)
-            //
-            // IMPORTANTE: NÃO criar novo Lançamento de gasto aqui!
-            // O gasto já foi registrado no momento da COMPRA (quando o usuário disse
-            // "gastei 500 no cartão"). Criar outro lançamento aqui causaria duplicação.
-            //
-            // No regime de competência:
-            //   - Compra: registra o gasto (saldo diminui)
-            //   - Pagamento da fatura: apenas "baixa" a dívida do cartão (muda status)
-            //
-            // Isso é equivalente a uma TRANSFERÊNCIA (conta → cartão), não um novo gasto.
-            var valorFatura = faturaPagar.Total;
-
-            if (dados.Valor.HasValue && dados.Valor.Value > 0 && dados.Valor.Value < valorFatura * 0.95m)
-            {
-                // Pagamento parcial — apenas informar, não marca como paga
-                return $"Você informou R$ {dados.Valor.Value:N2}, mas a fatura do *{cartao.Nome}* é R$ {valorFatura:N2}.\n\n" +
-                       $"Para pagar a fatura completa, diga: \"Paguei a fatura do {cartao.Nome}\".";
-            }
-
-            // Quitar a fatura (marca como Paga + parcelas como pagas)
-            await _faturaService.PagarFaturaAsync(faturaPagar.Id);
-            await _perfilService.InvalidarAsync(usuario.Id);
-
-            return $"*Fatura Paga com Sucesso*\n\n" +
-                   $"Cartão: {cartao.Nome}\n" +
-                   $"Mês: {faturaPagar.MesReferencia:MM/yyyy}\n" +
-                   $"Valor: R$ {valorFatura:N2}\n\n" +
-                   $"O limite do seu cartão foi restaurado.\n" +
-                   $"_O gasto já foi contabilizado quando você fez a compra (regime de competência)._";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao processar pagamento de fatura");
-            return "Erro ao processar o pagamento da fatura.";
-        }
-    }
-
-
-    private async Task<string> MontarContextoFinanceiroAsync(Usuario usuario)
-    {
-        try
-        {
-            var resumo = await _resumoService.GerarResumoMensalAsync(usuario.Id);
-            var ctx = $"Nome: {usuario.Nome}. ";
-            ctx += $"Total gastos do mês: R$ {resumo.TotalGastos:N2}. ";
-            ctx += $"Total receitas do mês: R$ {resumo.TotalReceitas:N2}. ";
-            ctx += $"Saldo: R$ {resumo.Saldo:N2}. ";
-
-            if (resumo.GastosPorCategoria.Any())
-            {
-                ctx += "Gastos por categoria: ";
-                ctx += string.Join(", ", resumo.GastosPorCategoria.Select(c => $"{c.Categoria}: R$ {c.Total:N2}"));
-                ctx += ". ";
-            }
-
-            var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
-            if (cartoes.Any())
-            {
-                ctx += "Cartões: " + string.Join(", ", cartoes.Select(c => c.Nome));
-                ctx += ". ";
-            }
-            else
-            {
-                ctx += "Sem cartões cadastrados. ";
-            }
-
-            // Memória histórica de longo prazo (útil para IA dar conselhos)
-            try 
-            {
-                var historico = await _resumoService.GerarContextoHistoricoGastoAsync(usuario.Id);
-                if (!string.IsNullOrWhiteSpace(historico))
-                {
-                    ctx += historico + " ";
-                }
-            }
-            catch (Exception ex)
-            {
-                 _logger.LogWarning(ex, "Falha ao gerar o contexto histórico para montagem do prompt.");
-            }
-
-            // Incluir categorias do usuário para a IA usar
-            var categorias = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
-            if (categorias.Any())
-            {
-                ctx += "Categorias do usuário: " + string.Join(", ", categorias.Select(c => c.Nome));
-                ctx += ". ";
-            }
-
-            // Memória de categorização: mapeamentos descrição → categoria aprendidos do histórico
-            try
-            {
-                var mapeamentos = await _lancamentoRepo.ObterMapeamentoDescricaoCategoriaAsync(usuario.Id);
-                if (mapeamentos.Count > 0)
-                {
-                    ctx += "Mapeamentos aprendidos (descrição → categoria que o usuário JA USOU): ";
-                    ctx += string.Join(", ", mapeamentos.Select(m => $"{m.Descricao} → {m.Categoria}"));
-                    ctx += ". ";
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Falha ao gerar mapeamentos de categorização histórica.");
-            }
-
-            return ctx;
-        }
-        catch
-        {
-            return $"Nome: {usuario.Nome}. Sem dados financeiros ainda (usuário novo).";
-        }
-    }
-
-    private async Task<string> GerarResumoFormatado(Usuario usuario)
-    {
-        var resumo = await _resumoService.GerarResumoMensalAsync(usuario.Id);
-        if (usuario.TelegramChatId.HasValue)
-            BotTecladoHelper.DefinirTeclado(usuario.TelegramChatId.Value,
-                new[] { ("Ver análise detalhada", $"url:{_sistemaWebUrl}/dashboard") });
-        return _resumoService.FormatarResumo(resumo);
+        return $"✅ *Vinculado com sucesso!*\n\n" +
+               $"Olá, *{usuario.Nome}*! Seu celular bateu com o da sua conta.\n\n" +
+               "💬 Exemplos do que posso fazer:\n\n" +
+               "📌 \"gastei 50 no mercado\"\n" +
+               "📌 \"recebi 3000 de salário\"\n" +
+               "📌 \"quanto gastei esse mês?\"\n\n" +
+               "🎙️ Aceito *texto*, *áudio* e *foto de cupom*.";
     }
 
     private async Task<string> GerarFaturaFormatada(
@@ -1464,7 +874,7 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
-    private async Task<string> ProcessarComandoAsync(Usuario usuario, string mensagem, OrigemDado origem)
+    private async Task<string> ProcessarComandoAsync(long chatId, Usuario usuario, string mensagem, OrigemDado origem)
     {
         var partes = mensagem.Split(' ', 2);
         var comando = partes[0].ToLower().Split('@')[0];
@@ -1504,13 +914,13 @@ public class TelegramBotService : ITelegramBotService
                 "   \"já lancei 89.90?\"\n\n" +
                 "Fale naturalmente — eu entendo! 🎙️📸",
             "/simular" => await _previsaoHandler.ProcessarComandoSimularAsync(usuario, partes.Length > 1 ? partes[1] : null)
-                         ?? await ProcessarComIAAsync(usuario, mensagem, origem),
+                         ?? ConverterMarkdownParaTelegram(await _chatEngine.ProcessarMensagemAsync(chatId, usuario, mensagem, origem)),
             "/posso" => await _previsaoHandler.ProcessarComandoPossoAsync(usuario, partes.Length > 1 ? partes[1] : null)
-                        ?? await ProcessarComIAAsync(usuario, $"posso gastar {(partes.Length > 1 ? partes[1] : "")}", origem),
+                        ?? ConverterMarkdownParaTelegram(await _chatEngine.ProcessarMensagemAsync(chatId, usuario, $"posso gastar {(partes.Length > 1 ? partes[1] : "")}", origem)),
             "/limite" => await _metaLimiteHandler.ProcessarComandoLimiteAsync(usuario, partes.Length > 1 ? partes[1] : null),
             "/limites" => await _consultaHandler.ListarLimitesFormatadoAsync(usuario),
             "/meta" => await _metaLimiteHandler.ProcessarComandoMetaAsync(usuario, partes.Length > 1 ? partes[1] : null)
-                       ?? await ProcessarComIAAsync(usuario, mensagem, origem),
+                       ?? ConverterMarkdownParaTelegram(await _chatEngine.ProcessarMensagemAsync(chatId, usuario, mensagem, origem)),
             "/metas" => await _consultaHandler.ListarMetasFormatadoAsync(usuario),
             "/desvincular" => ProcessarPedidoDesvinculacao(usuario.TelegramChatId!.Value),
             "/resumo" => await _consultaHandler.GerarResumoFormatadoAsync(usuario),
@@ -1528,7 +938,7 @@ public class TelegramBotService : ITelegramBotService
             "/comparar" or "/comparativo" => await _consultaHandler.GerarComparativoMensalAsync(usuario),
             "/tags" => await _consultaHandler.ConsultarPorTagAsync(usuario, partes.Length > 1 ? partes[1] : ""),
             "/dividir" => partes.Length > 1
-                ? await ProcessarComIAAsync(usuario, $"dividi {partes[1]}", origem)
+                ? ConverterMarkdownParaTelegram(await _chatEngine.ProcessarMensagemAsync(chatId, usuario, $"dividi {partes[1]}", origem))
                 : "📋 Use: /dividir VALOR PESSOAS DESCRIÇÃO\nExemplo: /dividir 120 3 jantar no restaurante",
             "/recorrentes" => await GerarRelatorioRecorrentesAsync(usuario),
             "/score" => await ProcessarComandoScoreAsync(usuario),
@@ -1539,11 +949,11 @@ public class TelegramBotService : ITelegramBotService
                 "Para cadastrar, editar ou excluir cartão, use o sistema web no menu *Cartões*.",
                 "Depois me chame aqui para consultar fatura, pagar fatura ou registrar compras."
             ),
-            "/gasto" when partes.Length > 1 => await ProcessarComIAAsync(usuario, partes[1], origem),
-            "/receita" when partes.Length > 1 => await ProcessarComIAAsync(usuario, $"recebi {partes[1]}", origem),
+            "/gasto" when partes.Length > 1 => ConverterMarkdownParaTelegram(await _chatEngine.ProcessarMensagemAsync(chatId, usuario, partes[1], origem)),
+            "/receita" when partes.Length > 1 => ConverterMarkdownParaTelegram(await _chatEngine.ProcessarMensagemAsync(chatId, usuario, $"recebi {partes[1]}", origem)),
             "/versao" => ObterVersaoSistema(),
             "/cancelar" => CancelarFluxoPendente(usuario.TelegramChatId!.Value),
-            _ => await ProcessarComIAAsync(usuario, mensagem, origem) // Send unknown commands to AI instead of rejecting
+            _ => ConverterMarkdownParaTelegram(await _chatEngine.ProcessarMensagemAsync(chatId, usuario, mensagem, origem))
         };
     }
 
@@ -1561,19 +971,14 @@ public class TelegramBotService : ITelegramBotService
     }
 
     /// <summary>
-    /// Cancela qualquer fluxo pendente (exclusão, desvinculação, lançamento) para o chat.
+    /// Cancela qualquer fluxo pendente (desvinculação, lançamento) para o chat.
+    /// Exclusão/seleção agora são gerenciadas pelo ChatEngine.
     /// </summary>
     private string CancelarFluxoPendente(long chatId)
     {
         var cancelou = false;
 
         if (_desvinculacaoPendente.TryRemove(chatId, out _))
-            cancelou = true;
-
-        if (_exclusaoPendente.TryRemove(chatId, out _))
-            cancelou = true;
-
-        if (_selecaoExclusaoPendente.TryRemove(chatId, out _))
             cancelou = true;
 
         if (_lancamentoHandler.TemPendente(chatId))
@@ -1606,44 +1011,6 @@ public class TelegramBotService : ITelegramBotService
         var temAcao = termosAcao.Any(msgLower.Contains);
         var temEntidade = termosEntidade.Any(msgLower.Contains);
         return temAcao && temEntidade;
-    }
-
-    /// <summary>Detecta se a mensagem é um pedido de exclusão de lançamento (fast-path sem IA)</summary>
-    private static bool EhPedidoExclusaoLancamento(string msgLower)
-    {
-        var termosAcao = new[] { "excluir", "apagar", "remover", "deletar" };
-        var termosEntidade = new[] { "lancamento", "lançamento", "gasto", "despesa", "receita", "ultimo", "último" };
-
-        var temAcao = termosAcao.Any(msgLower.Contains);
-        var temEntidade = termosEntidade.Any(msgLower.Contains);
-        return temAcao && temEntidade;
-    }
-
-    /// <summary>Extrai a descrição do lançamento a excluir, ou keywords especiais como "ultimo"</summary>
-    private static string? ExtrairDescricaoExclusao(string msgLower)
-    {
-        // Detectar "último"/"ultimo"
-        if (msgLower.Contains("ultimo") || msgLower.Contains("último"))
-            return "__ultimo__";
-
-        // Tentar extrair nome após verbo: "excluir riot games" => "riot games"
-        var verbos = new[] { "excluir ", "apagar ", "remover ", "deletar " };
-        foreach (var verbo in verbos)
-        {
-            var idx = msgLower.IndexOf(verbo, StringComparison.Ordinal);
-            if (idx < 0) continue;
-            var resto = msgLower[(idx + verbo.Length)..].Trim();
-            // Remover termos genéricos que não são descrições
-            var ignorar = new[] { "lancamento", "lançamento", "gasto", "despesa", "receita", "o", "a", "um", "uma", "esse", "este", "aquele" };
-            var palavras = resto.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                .Where(p => !ignorar.Contains(p))
-                .ToArray();
-            var desc = string.Join(' ', palavras).Trim();
-            if (!string.IsNullOrWhiteSpace(desc))
-                return desc;
-        }
-
-        return null; // Sem descrição específica → vai mostrar lista
     }
 
     private string? TentarOrientarCrudNoWeb(Usuario usuario, string? intencao)
@@ -1790,69 +1157,6 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
-    private async Task<string> ProcessarComandoSimularAsync(Usuario usuario, string? parametros)
-    {
-        if (string.IsNullOrWhiteSpace(parametros))
-        {
-            return "🔍 *Simulação de Compra*\n\n" +
-                   "Fale naturalmente! Exemplos:\n\n" +
-                   "💬 \"Se eu comprar uma TV de 3000 em 10x?\"\n" +
-                   "💬 \"Quero comprar um celular de 4500, como fica?\"\n" +
-                   "💬 \"Dá pra parcelar uma viagem de 8000 em 12x?\"\n\n" +
-                   "Se preferir, escreva assim: \"simular TV 5000 10x\"";
-        }
-
-        // Parse rápido: simular NomeItem Valor Parcelas
-        var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-        {
-            var descricao = parts[0];
-            if (decimal.TryParse(parts[1].Replace(",", "."), System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out var valor))
-            {
-                var parcelas = 1;
-                if (parts.Length >= 3)
-                {
-                    var parcelaStr = parts[2].Replace("x", "").Replace("X", "");
-                    int.TryParse(parcelaStr, out parcelas);
-                    if (parcelas < 1) parcelas = 1;
-                }
-
-                var formaPag = parcelas > 1 ? "credito" : "pix";
-
-                int? cartaoId = null;
-                if (formaPag == "credito")
-                {
-                    var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(usuario.Id);
-                    if (cartoes.Any()) cartaoId = cartoes.First().Id;
-                }
-
-                var request = new SimularCompraRequestDto
-                {
-                    Descricao = descricao,
-                    Valor = valor,
-                    FormaPagamento = formaPag,
-                    NumeroParcelas = parcelas,
-                    CartaoCreditoId = cartaoId
-                };
-
-                try
-                {
-                    var resultado = await _previsaoService.SimularAsync(usuario.Id, request);
-                    return resultado.ResumoTexto;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Erro ao simular compra via comando");
-                    return "❌ Erro ao simular. Tente novamente.";
-                }
-            }
-        }
-
-        // Se não conseguiu parsear, manda pra IA
-        return await ProcessarComIAAsync(usuario, $"simular compra de {parametros}", OrigemDado.Texto);
-    }
-
     private async Task<string> ProcessarAvaliacaoGastoAsync(Usuario usuario, DadosAvaliacaoGastoIA avaliacao)
     {
         try
@@ -1967,307 +1271,6 @@ public class TelegramBotService : ITelegramBotService
             "A exclusão de cartão é feita no sistema web, no menu *Cartões*.",
             "Se precisar remover um cartão, faça por lá e depois volte aqui para continuar."
         ));
-
-    private async Task<string> ProcessarExcluirLancamentoAsync(Usuario usuario, string? descricao)
-    {
-        try
-        {
-            var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(usuario.Id);
-            var recentes = lancamentos
-                .OrderByDescending(l => l.Data)
-                .ThenByDescending(l => l.CriadoEm)
-                .Take(20)
-                .ToList();
-
-            if (!recentes.Any())
-                return "📭 Você não tem lançamentos registrados.";
-
-            var chatId = usuario.TelegramChatId!.Value;
-
-            // "excluir último" → seleciona o mais recente automaticamente
-            if (descricao == "__ultimo__")
-            {
-                var ultimo = recentes.First();
-                return PedirConfirmacaoExclusao(chatId, usuario.Id, ultimo);
-            }
-
-            // Busca por descrição
-            Domain.Entities.Lancamento? lancamento = null;
-            if (!string.IsNullOrWhiteSpace(descricao))
-            {
-                lancamento = recentes.FirstOrDefault(l =>
-                    l.Descricao.Contains(descricao, StringComparison.OrdinalIgnoreCase) ||
-                    descricao.Contains(l.Descricao, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (lancamento != null)
-                return PedirConfirmacaoExclusao(chatId, usuario.Id, lancamento);
-
-            // Não encontrou ou não especificou → mostrar lista dos últimos 5 para o usuário escolher
-            var topN = recentes.Take(5).ToList();
-            _selecaoExclusaoPendente[chatId] = new SelecaoExclusaoPendente
-            {
-                Opcoes = topN,
-                UsuarioId = usuario.Id
-            };
-
-            var texto = string.IsNullOrWhiteSpace(descricao)
-                ? "*Qual lançamento deseja excluir?*\n\nEscolha um dos últimos lançamentos:\n\n"
-                : $"Não encontrei \"{descricao}\". Escolha um dos últimos:\n\n";
-
-            var botoes = new List<(string Label, string Data)>();
-            for (int i = 0; i < topN.Count; i++)
-            {
-                var l = topN[i];
-                var emoji = l.Tipo == TipoLancamento.Receita ? "💰" : "💸";
-                texto += $"{i + 1}️⃣ {emoji} {l.Descricao} — R$ {l.Valor:N2} ({l.Data:dd/MM})\n";
-                botoes.Add(($"{i + 1}️⃣ {l.Descricao}", $"{i + 1}"));
-            }
-
-            botoes.Add(("❌ Cancelar", "cancelar"));
-
-            // Montar teclado com 1 botão por linha
-            var linhas = botoes.Select(b => new[] { b }).ToArray();
-            DefinirTeclado(chatId, linhas);
-
-            return texto;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao excluir lançamento");
-            return "❌ Erro ao excluir o lançamento. Tente novamente.";
-        }
-    }
-
-    /// <summary>Coloca o lançamento em estado de confirmação de exclusão e retorna a mensagem</summary>
-    private string PedirConfirmacaoExclusao(long chatId, int usuarioId, Domain.Entities.Lancamento lancamento)
-    {
-        _exclusaoPendente[chatId] = new ExclusaoPendente
-        {
-            Lancamento = lancamento,
-            UsuarioId = usuarioId
-        };
-
-        var emoji = lancamento.Tipo == TipoLancamento.Receita ? "💰" : "💸";
-        DefinirTeclado(chatId,
-            new[] { ("✅ Confirmar exclusão", "sim"), ("❌ Cancelar", "cancelar") }
-        );
-        return $"*Confirma a exclusão deste lançamento?*\n\n" +
-               $"{emoji} {lancamento.Descricao}\n" +
-               $"R$ {lancamento.Valor:N2}\n" +
-               $"{lancamento.Data:dd/MM/yyyy}";
-    }
-
-    /// <summary>Processa a seleção numerada de um lançamento para exclusão</summary>
-    private async Task<string?> ProcessarSelecaoExclusaoAsync(long chatId, Usuario usuario, string mensagem)
-    {
-        // Limpar expirados
-        foreach (var kv in _selecaoExclusaoPendente)
-        {
-            if ((DateTime.UtcNow - kv.Value.CriadoEm).TotalMinutes > 30)
-                _selecaoExclusaoPendente.TryRemove(kv.Key, out _);
-        }
-
-        if (!_selecaoExclusaoPendente.TryGetValue(chatId, out var selecao))
-            return null;
-
-        var msg = mensagem.Trim().ToLower();
-
-        if (BotParseHelper.EhCancelamento(msg))
-        {
-            _selecaoExclusaoPendente.TryRemove(chatId, out _);
-            return "Exclusão cancelada.";
-        }
-
-        if (int.TryParse(msg, out var idx) && idx >= 1 && idx <= selecao.Opcoes.Count)
-        {
-            var escolhido = selecao.Opcoes[idx - 1];
-            _selecaoExclusaoPendente.TryRemove(chatId, out _);
-            return PedirConfirmacaoExclusao(chatId, selecao.UsuarioId, escolhido);
-        }
-
-        // Não entendeu — re-mostrar
-        var texto = "⚠️ Não entendi. Escolha o número do lançamento:\n\n";
-        var botoes = new List<(string Label, string Data)>();
-        for (int i = 0; i < selecao.Opcoes.Count; i++)
-        {
-            var l = selecao.Opcoes[i];
-            var emoji = l.Tipo == TipoLancamento.Receita ? "💰" : "💸";
-            texto += $"{i + 1}️⃣ {emoji} {l.Descricao} — R$ {l.Valor:N2} ({l.Data:dd/MM})\n";
-            botoes.Add(($"{i + 1}️⃣ {l.Descricao}", $"{i + 1}"));
-        }
-        botoes.Add(("❌ Cancelar", "cancelar"));
-        var linhas = botoes.Select(b => new[] { b }).ToArray();
-        DefinirTeclado(chatId, linhas);
-        return texto;
-    }
-
-    private async Task<string?> ProcessarConfirmacaoExclusaoAsync(long chatId, Usuario usuario, string mensagem)
-    {
-        // Limpar expirados (30 min)
-        foreach (var kv in _exclusaoPendente)
-        {
-            if ((DateTime.UtcNow - kv.Value.CriadoEm).TotalMinutes > 30)
-                _exclusaoPendente.TryRemove(kv.Key, out _);
-        }
-
-        if (!_exclusaoPendente.TryGetValue(chatId, out var pendente))
-            return null;
-
-        var msg = mensagem.Trim().ToLower();
-
-        if (BotParseHelper.EhConfirmacao(msg))
-        {
-            _exclusaoPendente.TryRemove(chatId, out _);
-            try
-            {
-                await _lancamentoRepo.RemoverAsync(pendente.Lancamento.Id);
-                await _perfilService.InvalidarAsync(pendente.UsuarioId);
-
-                var emoji = pendente.Lancamento.Tipo == TipoLancamento.Receita ? "💰" : "💸";
-                return $"Lançamento excluído.\n\n{emoji} {pendente.Lancamento.Descricao}\nR$ {pendente.Lancamento.Valor:N2}\n{pendente.Lancamento.Data:dd/MM/yyyy}";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao excluir lançamento");
-                return "❌ Erro ao excluir o lançamento. Tente novamente.";
-            }
-        }
-
-        if (BotParseHelper.EhCancelamento(msg))
-        {
-            _exclusaoPendente.TryRemove(chatId, out _);
-            return "Exclusão cancelada. O lançamento foi mantido.";
-        }
-
-        // Não reconheceu — re-perguntar
-        DefinirTeclado(chatId,
-            new[] { ("✅ Confirmar exclusão", "sim"), ("❌ Cancelar", "cancelar") }
-        );
-        return "⚠️ Não entendi. Deseja confirmar a exclusão ou cancelar?";
-    }
-
-    private async Task<string> ProcessarComandoPossoAsync(Usuario usuario, string? parametros)
-    {
-        if (string.IsNullOrWhiteSpace(parametros))
-            return "❓ *Posso gastar?*\n\nExemplo: \"posso 50 lanche\"\nOu fale naturalmente: \"posso gastar 80 no iFood?\"";
-
-        // Parse: posso 50 lanche
-        var parts = parametros.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 1 && decimal.TryParse(parts[0].Replace(",", "."),
-            System.Globalization.NumberStyles.Any,
-            System.Globalization.CultureInfo.InvariantCulture, out var valor))
-        {
-            var descricao = parts.Length > 1 ? parts[1] : null;
-            var rapida = await _decisaoService.DeveUsarRespostaRapidaAsync(usuario.Id, valor, false);
-
-            if (rapida)
-            {
-                var resultado = await _decisaoService.AvaliarGastoRapidoAsync(usuario.Id, valor, descricao, null);
-                return resultado.ResumoTexto;
-            }
-            else
-            {
-                return await _decisaoService.AvaliarCompraCompletaAsync(
-                    usuario.Id, valor, descricao ?? "Compra", null, 1);
-            }
-        }
-
-        return await ProcessarComIAAsync(usuario, $"posso gastar {parametros}", OrigemDado.Texto);
-    }
-
-    private async Task<string> ProcessarComandoLimiteAsync(Usuario usuario, string? parametros)
-    {
-        if (string.IsNullOrWhiteSpace(parametros))
-            return "📊 *Limites por Categoria*\n\nExemplo: \"limite Alimentação 800\"\nOu: \"limitar lazer em 500\"\n\nPara ver todos, diga: \"listar limites\".";
-
-        var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2 && decimal.TryParse(parts[^1].Replace(",", "."),
-            System.Globalization.NumberStyles.Any,
-            System.Globalization.CultureInfo.InvariantCulture, out var valor))
-        {
-            var categoria = string.Join(" ", parts[..^1]);
-            try
-            {
-                var resultado = await _limiteService.DefinirLimiteAsync(usuario.Id,
-                    new DefinirLimiteDto { Categoria = categoria, Valor = valor });
-                return $"✅ Limite definido!\n🏷️ {resultado.CategoriaNome}: R$ {resultado.ValorLimite:N2}/mês\n📊 Gasto atual: R$ {resultado.GastoAtual:N2} ({resultado.PercentualConsumido:N0}%)";
-            }
-            catch (InvalidOperationException ex)
-            {
-                return $"❌ {ex.Message}";
-            }
-        }
-
-        return "❌ Formato inválido.\nExemplo: \"limite Alimentação 800\"";
-    }
-
-    private async Task<string> ListarLimitesFormatado(Usuario usuario)
-    {
-        var limites = await _limiteService.ListarLimitesAsync(usuario.Id);
-        return _limiteService.FormatarLimitesBot(limites);
-    }
-
-    private async Task<string> ProcessarComandoMetaAsync(Usuario usuario, string? parametros)
-    {
-        if (string.IsNullOrWhiteSpace(parametros))
-            return "🎯 *Metas Financeiras*\n\n" +
-                   "Para criar, diga algo como: \"meta criar Viagem 5000 12/2026\"\n" +
-                   "Para atualizar: \"meta atualizar [id] [valor]\"\n" +
-                   "Para listar: \"listar metas\"\n\n" +
-                   "Ou fale naturalmente: \"quero juntar 10 mil até dezembro\"";
-
-        var parts = parametros.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var acao = parts[0].ToLower();
-
-        if (acao == "criar" && parts.Length >= 4)
-        {
-            var nome = parts[1];
-            if (decimal.TryParse(parts[2].Replace(",", "."),
-                System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out var valorAlvo))
-            {
-                DateTime prazo;
-                if (DateTime.TryParseExact(parts[3], new[] { "MM/yyyy", "M/yyyy" },
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
-                {
-                    prazo = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
-                }
-                else
-                {
-                    return "❌ Prazo inválido. Use MM/aaaa (ex: 12/2026)";
-                }
-
-                var dto = new CriarMetaDto { Nome = nome, ValorAlvo = valorAlvo, Prazo = prazo };
-                var resultado = await _metaService.CriarMetaAsync(usuario.Id, dto);
-                return $"🎯 Meta criada!\n📌 *{resultado.Nome}*\n💰 R$ {resultado.ValorAlvo:N2}\n📅 {resultado.Prazo:MM/yyyy}\n💵 R$ {resultado.ValorMensalNecessario:N2}/mês";
-            }
-        }
-
-        if (acao == "atualizar" && parts.Length >= 3)
-        {
-            if (int.TryParse(parts[1], out var metaId) &&
-                decimal.TryParse(parts[2].Replace(",", "."),
-                    System.Globalization.NumberStyles.Any,
-                    System.Globalization.CultureInfo.InvariantCulture, out var novoValor))
-            {
-                var resultado = await _metaService.AtualizarMetaAsync(usuario.Id, metaId,
-                    new AtualizarMetaDto { ValorAtual = novoValor });
-                if (resultado != null)
-                    return $"✅ Meta *{resultado.Nome}* atualizada!\n💰 R$ {resultado.ValorAtual:N2} / R$ {resultado.ValorAlvo:N2} ({resultado.PercentualConcluido:N0}%)";
-                return "❌ Meta não encontrada.";
-            }
-        }
-
-        return await ProcessarComIAAsync(usuario, $"meta {parametros}", OrigemDado.Texto);
-    }
-
-    private async Task<string> ListarMetasFormatado(Usuario usuario)
-    {
-        var metas = await _metaService.ListarMetasAsync(usuario.Id);
-        return _metaService.FormatarMetasBot(metas);
-    }
 
     private async Task<string> ProcessarComandoLembreteAsync(Usuario usuario, string? parametros)
     {
@@ -2515,59 +1518,6 @@ public class TelegramBotService : ITelegramBotService
         return await _usuarioRepo.ObterPorTelegramChatIdAsync(chatId);
     }
 
-    private async Task<string> ProcessarVinculacaoAsync(long chatId, string mensagem, string nomeUsuario)
-    {
-        // Verificar se já está vinculado
-        var existente = await _usuarioRepo.ObterPorTelegramChatIdAsync(chatId);
-        if (existente != null)
-            return $"✅ Seu Telegram já está vinculado à conta de {existente.Nome}!";
-
-        var partes = mensagem.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (partes.Length < 2)
-            return "❌ Envie o código de vinculação!\n\nBasta enviar o código de 6 dígitos gerado no seu perfil em finance.nicolasportie.com";
-
-        var codigo = partes[1].Trim();
-
-        // Buscar código válido em todos os usuários
-        // Precisamos encontrar o usuário que gerou esse código
-        var usuarios = await BuscarUsuarioPorCodigoAsync(codigo);
-        if (usuarios == null)
-            return "❌ Código inválido ou expirado.\n\nGere um novo código no seu perfil em finance.nicolasportie.com";
-
-        var (usuario, codigoVerificacao) = usuarios.Value;
-
-        // Vincular Telegram
-        usuario.TelegramChatId = chatId;
-        usuario.TelegramVinculado = true;
-        if (!string.IsNullOrEmpty(nomeUsuario) && usuario.Nome == usuario.Email)
-            usuario.Nome = nomeUsuario;
-        await _usuarioRepo.AtualizarAsync(usuario);
-
-        // Marcar código como usado
-        await _codigoRepo.MarcarComoUsadoAsync(codigoVerificacao.Id);
-
-        _logger.LogInformation("Telegram vinculado: {Email} → ChatId {ChatId}", usuario.Email, chatId);
-
-        return $"✅ *Vinculado com sucesso!*\n\n" +
-               $"Olá, *{usuario.Nome}*! Agora você pode usar o bot.\n\n" +
-               $"💬 Exemplos do que posso fazer:\n\n" +
-               $"📌 \"gastei 50 no mercado\"\n" +
-               $"📌 \"recebi 3000 de salário\"\n" +
-               $"📌 \"quanto gastei esse mês?\"\n\n" +
-               $"🎙️ Aceito *texto*, *áudio* e *foto de cupom*.";
-    }
-
-    private async Task<(Usuario, CodigoVerificacao)?> BuscarUsuarioPorCodigoAsync(string codigo)
-    {
-        var codigoVerificacao = await _codigoRepo.ObterValidoPorCodigoAsync(
-            codigo, TipoCodigoVerificacao.VinculacaoTelegram);
-
-        if (codigoVerificacao?.Usuario == null)
-            return null;
-
-        return (codigoVerificacao.Usuario, codigoVerificacao);
-    }
-
     private async Task<string> ProcessarAportarMetaAsync(Usuario usuario, DadosAporteMetaIA aporte)
     {
         try
@@ -2603,86 +1553,6 @@ public class TelegramBotService : ITelegramBotService
         {
             _logger.LogError(ex, "Erro ao processar aporte na meta");
             return "❌ Erro ao atualizar a meta. Tente novamente.";
-        }
-    }
-
-    private async Task<string> ProcessarCategorizarUltimoAsync(Usuario usuario, string novaCategoria)
-    {
-        try
-        {
-            var hoje = DateTime.UtcNow;
-            var inicio = hoje.AddDays(-7); 
-            var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(usuario.Id, inicio, hoje.AddDays(1));
-
-            if (!lancamentos.Any())
-                return "📭 Nenhum lançamento recente encontrado.";
-
-            var ultimo = lancamentos.MaxBy(l => l.CriadoEm);
-
-            if (ultimo == null) return "📭 Nenhum lançamento recente encontrado.";
-
-            var cat = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, novaCategoria);
-            if (cat == null)
-            {
-                 var todas = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
-                 cat = todas.FirstOrDefault(c => c.Nome.Contains(novaCategoria, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (cat == null)
-            {
-                 var todas = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
-                 var nomes = string.Join(", ", todas.Take(10).Select(c => c.Nome));
-                 return $"❌ Categoria *{novaCategoria}* não encontrada.\nCategorias disponíveis: {nomes}...";
-            }
-
-            ultimo.CategoriaId = cat.Id;
-            
-            await _lancamentoRepo.AtualizarAsync(ultimo);
-            await _perfilService.InvalidarAsync(usuario.Id);
-
-            return $"✅ Categoria alterada para *{cat.Nome}*\n\n{ultimo.Descricao}\nR$ {ultimo.Valor:N2}\n{ultimo.Data:dd/MM/yyyy}";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao categorizar último lançamento");
-            return "❌ Erro ao atualizar categoria.";
-        }
-    }
-
-    private async Task<string> CriarCategoriaViaBot(Usuario usuario, string nomeCategoria)
-    {
-        try
-        {
-            var nome = System.Globalization.CultureInfo.CurrentCulture.TextInfo
-                .ToTitleCase(nomeCategoria.Trim().ToLower());
-
-            if (nome.Length < 2 || nome.Length > 50)
-                return "❌ O nome da categoria deve ter entre 2 e 50 caracteres.";
-
-            // Verificar se já existe
-            var existente = await _categoriaRepo.ObterPorNomeAsync(usuario.Id, nome);
-            if (existente != null)
-                return $"⚠️ A categoria *{existente.Nome}* já existe!";
-
-            var todas = await _categoriaRepo.ObterPorUsuarioAsync(usuario.Id);
-            existente = todas.FirstOrDefault(c =>
-                c.Nome.Equals(nome, StringComparison.OrdinalIgnoreCase));
-            if (existente != null)
-                return $"⚠️ A categoria *{existente.Nome}* já existe!";
-
-            await _categoriaRepo.CriarAsync(new Categoria
-            {
-                Nome = nome,
-                UsuarioId = usuario.Id,
-                Padrao = false
-            });
-
-            return $"✅ Categoria *{nome}* criada.\n\nDisponível para uso nos próximos lançamentos.";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao criar categoria via bot");
-            return "❌ Erro ao criar a categoria. Tente novamente.";
         }
     }
 
@@ -2781,34 +1651,6 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
-    /// <summary>Verificação de duplicidade via linguagem natural (IA)</summary>
-    private async Task<string> ProcessarVerificacaoDuplicidadeIAAsync(Usuario usuario, DadosVerificacaoDuplicidadeIA dados)
-    {
-        try
-        {
-            var valor = dados.Valor > 0 ? dados.Valor : 0m;
-            var categoria = !string.IsNullOrWhiteSpace(dados.Categoria) ? dados.Categoria : null;
-
-            // Se a IA não extraiu valor nem categoria/descrição, retorna orientação
-            if (valor == 0 && categoria == null && string.IsNullOrWhiteSpace(dados.Descricao))
-            {
-                return "Não consegui identificar o que verificar.\n\n" +
-                       "Exemplos:\n" +
-                       "• \"já lancei 89.90?\"\n" +
-                       "• \"já registrei o mercado?\"\n" +
-                       "• \"será que já paguei a conta de luz?\"";
-            }
-
-            var resultado = await _duplicidadeService.VerificarAsync(usuario.Id, valor, categoria);
-            return resultado.ResumoTexto;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao verificar duplicidade via IA para {Usuario}", usuario.Nome);
-            return "❌ Erro ao verificar lançamentos.";
-        }
-    }
-
     /// <summary>Comando /sazonalidade — Eventos Sazonais</summary>
     private async Task<string> ProcessarComandoSazonalidadeAsync(Usuario usuario, string? parametros)
     {
@@ -2891,5 +1733,30 @@ public class TelegramBotService : ITelegramBotService
             _logger.LogError(ex, "Erro ao processar sazonalidade para {Usuario}", usuario.Nome);
             return "❌ Erro ao processar eventos sazonais.";
         }
+    }
+
+    // ── Contador de mensagens diárias por chatId ─────────────────────
+
+    private static int ObterContadorMensagensDiarias(long chatId)
+    {
+        var hoje = DateTime.UtcNow.Date;
+        if (_mensagensDiarias.TryGetValue(chatId, out var entry) && entry.Date == hoje)
+            return entry.Count;
+        return 0;
+    }
+
+    private static void IncrementarContadorMensagensDiarias(long chatId)
+    {
+        var hoje = DateTime.UtcNow.Date;
+        _mensagensDiarias.AddOrUpdate(chatId,
+            _ => (1, hoje),
+            (_, existing) => existing.Date == hoje ? (existing.Count + 1, hoje) : (1, hoje));
+    }
+
+    // ── Conversão de markdown (**bold** → *bold*) para Telegram ──────
+    private static string ConverterMarkdownParaTelegram(string texto)
+    {
+        if (string.IsNullOrEmpty(texto)) return texto;
+        return System.Text.RegularExpressions.Regex.Replace(texto, @"\*\*(.+?)\*\*", "*$1*");
     }
 }

@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs.Importacao;
+using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Application.Services.Importacao;
 using ControlFinance.Application.Services.Importacao.BancoProfiles;
@@ -123,6 +124,77 @@ public class ImportacaoServiceTests
         Assert.Equal("TESTVALUE", result);
     }
 
+    [Theory]
+    [InlineData("PAGAMENTO")]
+    [InlineData("PGTO")]
+    [InlineData("PAGAMENTO REALIZADO")]
+    public void Normalizacao_PagamentoGenerico_MarcaTransferenciaInterna(string descricao)
+    {
+        var service = new NormalizacaoService(CreateLogger<NormalizacaoService>());
+        var rawList = new List<RawTransacaoImportada>
+        {
+            new()
+            {
+                IndiceOriginal = 0,
+                DataRaw = "01/01/2024",
+                DescricaoRaw = descricao,
+                ValorRaw = "500,00"
+            }
+        };
+
+        var result = service.Normalizar(rawList);
+
+        Assert.Single(result);
+        Assert.Contains("transferencia_interna", result[0].Flags);
+    }
+
+    [Theory]
+    [InlineData("PAGAMENTO EM 09 FEV")]
+    [InlineData("PGTO EM 09 FEV")]
+    public void Normalizacao_PagamentoComData_MarcaTransferenciaInternaENaoForcaDebito(string descricao)
+    {
+        var service = new NormalizacaoService(CreateLogger<NormalizacaoService>());
+        var rawList = new List<RawTransacaoImportada>
+        {
+            new()
+            {
+                IndiceOriginal = 0,
+                DataRaw = "01/01/2024",
+                DescricaoRaw = descricao,
+                ValorRaw = "-500,00"
+            }
+        };
+
+        var result = service.Normalizar(rawList);
+
+        Assert.Single(result);
+        Assert.Contains("transferencia_interna", result[0].Flags);
+        Assert.Equal(TipoTransacao.Indefinido, result[0].TipoTransacao);
+    }
+
+    [Theory]
+    [InlineData("CRÉDITO ROTATIVO")]
+    [InlineData("CREDITO ROTATIVO")]
+    public void Normalizacao_CreditoRotativo_NaoClassificaComoDebito(string descricao)
+    {
+        var service = new NormalizacaoService(CreateLogger<NormalizacaoService>());
+        var rawList = new List<RawTransacaoImportada>
+        {
+            new()
+            {
+                IndiceOriginal = 0,
+                DataRaw = "01/01/2024",
+                DescricaoRaw = descricao,
+                ValorRaw = "-120,00"
+            }
+        };
+
+        var result = service.Normalizar(rawList);
+
+        Assert.Single(result);
+        Assert.Equal(TipoTransacao.Indefinido, result[0].TipoTransacao);
+    }
+
     [Fact]
     public void Normalizacao_Normalizar_ProcessesRawTransactions()
     {
@@ -230,6 +302,51 @@ public class ImportacaoServiceTests
         var result = service.Normalizar(rawList);
         Assert.Single(result);
         Assert.Contains(expectedFlag, result[0].Flags);
+    }
+
+    [Theory]
+    [InlineData("PAGAMENTO FATURA")]
+    [InlineData("PAGAMENTO FATURA PIX")]
+    [InlineData("PGTO FATURA")]
+    [InlineData("PGTO FATURA PIX")]
+    [InlineData("PAG FATURA")]
+    [InlineData("PAGAMENTO DE FATURA")]
+    [InlineData("PAGAMENTO DA FATURA")]
+    [InlineData("PAGAMENTO CARTAO")]
+    [InlineData("PAGAMENTO CARTÃO")]
+    [InlineData("PGTO CARTAO")]
+    [InlineData("PGTO CARTÃO")]
+    [InlineData("PAGAMENTO MINIMO")]
+    [InlineData("PAGAMENTO MÍNIMO")]
+    [InlineData("PGTO MINIMO")]
+    [InlineData("PAGAMENTO PARCIAL")]
+    [InlineData("CREDITO PAGAMENTO")]
+    [InlineData("CRÉDITO PAGAMENTO")]
+    [InlineData("PAGAMENTO FATURA TED")]
+    [InlineData("PAGAMENTO FATURA BOLETO")]
+    [InlineData("PAGAMENTO FATURA DEBITO")]
+    [InlineData("COFRINHO")]
+    [InlineData("DINHEIRO GUARDADO")]
+    [InlineData("DINHEIRO RESGATADO")]
+    [InlineData("TRANSFERENCIA ENTRE CONTAS")]
+    [InlineData("TRANSFERÊNCIA ENTRE CONTAS")]
+    public void Normalizacao_TransferenciaInterna_FlagDetection(string descricao)
+    {
+        var service = new NormalizacaoService(CreateLogger<NormalizacaoService>());
+        var rawList = new List<RawTransacaoImportada>
+        {
+            new()
+            {
+                IndiceOriginal = 0,
+                DataRaw = "01/01/2024",
+                DescricaoRaw = descricao,
+                ValorRaw = "-100,00"
+            }
+        };
+
+        var result = service.Normalizar(rawList);
+        Assert.Single(result);
+        Assert.Contains("transferencia_interna", result[0].Flags);
     }
 
     [Fact]
@@ -1006,6 +1123,193 @@ Cartão";
 
     #region MarcarDuplicatasFaturaAsync
 
+    [Fact]
+    public async Task ProcessarUploadAsync_Fatura_UsaDiaFechamentoParaMesesDetectados()
+    {
+        var parser = new Mock<IFileParser>();
+        parser.SetupGet(p => p.Formato).Returns(FormatoArquivo.CSV);
+        parser.Setup(p => p.PodeProcessar("fatura.csv", It.IsAny<Stream>())).Returns(true);
+        parser.Setup(p => p.ParseAsync(It.IsAny<Stream>(), "fatura.csv", null))
+            .ReturnsAsync(new ParseResult
+            {
+                Sucesso = true,
+                BancoDetectado = "Nubank",
+                Transacoes = new List<RawTransacaoImportada>
+                {
+                    new() { IndiceOriginal = 0, DataRaw = "04/01/2026", DescricaoRaw = "RESTAURANTE", ValorRaw = "100,00" },
+                    new() { IndiceOriginal = 1, DataRaw = "06/01/2026", DescricaoRaw = "MERCADO", ValorRaw = "200,00" }
+                }
+            });
+
+        var categorizador = new Mock<ICategorizadorImportacaoService>();
+        categorizador.Setup(c => c.CategorizarAsync(It.IsAny<int>(), It.IsAny<List<TransacaoNormalizada>>()))
+            .ReturnsAsync((int _, List<TransacaoNormalizada> normalizadas) =>
+                normalizadas.Select(t => new TransacaoImportadaDto
+                {
+                    IndiceOriginal = t.IndiceOriginal,
+                    Data = t.Data,
+                    Descricao = t.Descricao,
+                    DescricaoOriginal = t.DescricaoOriginal,
+                    Valor = t.Valor,
+                    TipoTransacao = t.TipoTransacao,
+                    Flags = t.Flags,
+                    Selecionada = t.Valida,
+                    Status = StatusTransacaoImportada.Normal,
+                    CategoriaId = 1,
+                    CategoriaSugerida = "Outras"
+                }).ToList());
+
+        var historicoService = new Mock<IImportacaoHistoricoService>();
+        historicoService.Setup(h => h.VerificarHashAsync(It.IsAny<int>(), It.IsAny<string>()))
+            .ReturnsAsync((ImportacaoHistorico?)null);
+        historicoService.Setup(h => h.CriarHistoricoAsync(It.IsAny<ImportacaoHistorico>()))
+            .ReturnsAsync(new ImportacaoHistorico { Id = 99 });
+
+        var cartaoRepo = new Mock<ICartaoCreditoRepository>();
+        cartaoRepo.Setup(r => r.ObterPorIdAsync(1))
+            .ReturnsAsync(new CartaoCredito { Id = 1, Nome = "Nubank", DiaFechamento = 5, UsuarioId = 1 });
+
+        var categoriaRepo = new Mock<ICategoriaRepository>();
+        categoriaRepo.Setup(r => r.ObterPorUsuarioAsync(1))
+            .ReturnsAsync(new List<Categoria> { new() { Id = 1, Nome = "Outras", UsuarioId = 1 } });
+
+        var lancamentoRepo = new Mock<ILancamentoRepository>();
+        lancamentoRepo.Setup(r => r.ObterPorUsuarioAsync(It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .ReturnsAsync(new List<Lancamento>());
+
+        var featureGate = new Mock<IFeatureGateService>();
+        featureGate.Setup(fg => fg.VerificarAcessoAsync(1, Recurso.ImportacaoExtratos))
+            .ReturnsAsync(FeatureGateResult.Permitir(-1));
+
+        var service = new ImportacaoService(
+            parsers: new[] { parser.Object },
+            normalizacao: new NormalizacaoService(CreateLogger<NormalizacaoService>()),
+            categorizador: categorizador.Object,
+            historicoService: historicoService.Object,
+            lancamentoRepo: lancamentoRepo.Object,
+            categoriaRepo: categoriaRepo.Object,
+            faturaRepo: Mock.Of<IFaturaRepository>(),
+            cartaoRepo: cartaoRepo.Object,
+            parcelaRepo: Mock.Of<IParcelaRepository>(),
+            unitOfWork: Mock.Of<IUnitOfWork>(),
+            cache: new MemoryCache(new MemoryCacheOptions()),
+            featureGate: featureGate.Object,
+            logger: Mock.Of<ILogger<ImportacaoService>>());
+
+        using var stream = ToStream("csv content");
+        var request = new ImportacaoUploadRequest { TipoImportacao = TipoImportacao.Fatura, CartaoCreditoId = 1 };
+
+        var preview = await service.ProcessarUploadAsync(1, stream, "fatura.csv", request);
+
+        Assert.Equal(5, preview.CartaoDiaFechamento);
+        Assert.Equal("Nubank", preview.CartaoCreditoNome);
+        Assert.Equal("2026-01", preview.MesFaturaPadrao);
+        Assert.Equal(new List<string> { "2026-01", "2026-02" }, preview.MesesDetectados);
+    }
+
+    [Fact]
+    public async Task ConfirmarImportacaoAsync_Fatura_ComOverrideMesFatura_UsaMesEscolhidoPeloUsuario()
+    {
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var lancamentoRepo = new Mock<ILancamentoRepository>();
+        var categoriaRepo = new Mock<ICategoriaRepository>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var historicoService = new Mock<IImportacaoHistoricoService>();
+        var cartaoRepo = new Mock<ICartaoCreditoRepository>();
+        var faturaRepo = new Mock<IFaturaRepository>();
+        var parcelaRepo = new Mock<IParcelaRepository>();
+
+        categoriaRepo.Setup(r => r.ObterPorUsuarioAsync(1))
+            .ReturnsAsync(new List<Categoria>
+            {
+                new() { Id = 1, Nome = "Outras", Padrao = true, UsuarioId = 1 }
+            });
+
+        lancamentoRepo.Setup(r => r.CriarAsync(It.IsAny<Lancamento>()))
+            .ReturnsAsync((Lancamento l) => { l.Id = 999; return l; });
+
+        unitOfWork.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
+        unitOfWork.Setup(u => u.CommitAsync()).Returns(Task.CompletedTask);
+        historicoService.Setup(h => h.AtualizarStatusAsync(It.IsAny<int>(), It.IsAny<StatusImportacao>(), It.IsAny<int>(), It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        cartaoRepo.Setup(r => r.ObterPorIdAsync(1))
+            .ReturnsAsync(new CartaoCredito { Id = 1, Nome = "Nubank", DiaFechamento = 5, UsuarioId = 1 });
+
+        faturaRepo.Setup(r => r.ObterOuCriarFaturaAsync(1, It.IsAny<DateTime>()))
+            .ReturnsAsync((int _, DateTime mesRef) => new Fatura
+            {
+                Id = 100 + mesRef.Month,
+                CartaoCreditoId = 1,
+                MesReferencia = mesRef,
+                DataVencimento = mesRef.AddMonths(1)
+            });
+
+        parcelaRepo.Setup(r => r.CriarVariasAsync(It.IsAny<IEnumerable<Parcela>>()))
+            .Returns(Task.CompletedTask);
+
+        var service = new ImportacaoService(
+            parsers: Array.Empty<IFileParser>(),
+            normalizacao: new NormalizacaoService(Mock.Of<ILogger<NormalizacaoService>>()),
+            categorizador: Mock.Of<ICategorizadorImportacaoService>(),
+            historicoService: historicoService.Object,
+            lancamentoRepo: lancamentoRepo.Object,
+            categoriaRepo: categoriaRepo.Object,
+            faturaRepo: faturaRepo.Object,
+            cartaoRepo: cartaoRepo.Object,
+            parcelaRepo: parcelaRepo.Object,
+            unitOfWork: unitOfWork.Object,
+            cache: cache,
+            featureGate: Mock.Of<IFeatureGateService>(),
+            logger: Mock.Of<ILogger<ImportacaoService>>());
+
+        var preview = new ImportacaoPreviewDto
+        {
+            CartaoCreditoId = 1,
+            CartaoCreditoNome = "Nubank",
+            CartaoDiaFechamento = 5,
+            MesFaturaPadrao = "2026-01",
+            TipoImportacao = TipoImportacao.Fatura,
+            Transacoes = new List<TransacaoImportadaDto>
+            {
+                new()
+                {
+                    IndiceOriginal = 0,
+                    Data = new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc),
+                    Descricao = "COMPRA TESTE",
+                    Valor = -100m,
+                    Status = StatusTransacaoImportada.Normal,
+                    Selecionada = true,
+                    CategoriaId = 1,
+                    NumeroParcela = 1,
+                    TotalParcelas = 1
+                }
+            }
+        };
+
+        cache.Set("importacao_preview_1_50", preview, TimeSpan.FromMinutes(30));
+
+        var request = new ConfirmarImportacaoRequest
+        {
+            ImportacaoHistoricoId = 50,
+            IndicesSelecionados = new List<int> { 0 },
+            Overrides = new List<TransacaoOverrideDto>
+            {
+                new()
+                {
+                    IndiceOriginal = 0,
+                    MesFaturaReferencia = "2026-02"
+                }
+            }
+        };
+
+        var resultado = await service.ConfirmarImportacaoAsync(1, request);
+
+        Assert.Equal(1, resultado.TotalImportadas);
+        faturaRepo.Verify(r => r.ObterOuCriarFaturaAsync(1,
+            It.Is<DateTime>(d => d.Year == 2026 && d.Month == 2 && d.Day == 1)), Times.AtLeastOnce);
+    }
+
     private ImportacaoService CreateImportacaoService(
         Mock<ICartaoCreditoRepository>? cartaoRepo = null,
         Mock<IFaturaRepository>? faturaRepo = null,
@@ -1023,6 +1327,7 @@ Cartão";
             parcelaRepo: parcelaRepo?.Object ?? Mock.Of<IParcelaRepository>(),
             unitOfWork: Mock.Of<IUnitOfWork>(),
             cache: new MemoryCache(new MemoryCacheOptions()),
+            featureGate: Mock.Of<IFeatureGateService>(),
             logger: Mock.Of<ILogger<ImportacaoService>>());
     }
 
@@ -1332,6 +1637,7 @@ Cartão";
             parcelaRepo: Mock.Of<IParcelaRepository>(),
             unitOfWork: unitOfWork.Object,
             cache: cache,
+            featureGate: Mock.Of<IFeatureGateService>(),
             logger: Mock.Of<ILogger<ImportacaoService>>());
 
         var preview = new ImportacaoPreviewDto
@@ -1410,6 +1716,7 @@ Cartão";
             parcelaRepo: Mock.Of<IParcelaRepository>(),
             unitOfWork: unitOfWork.Object,
             cache: cache,
+            featureGate: Mock.Of<IFeatureGateService>(),
             logger: Mock.Of<ILogger<ImportacaoService>>());
 
         var preview = new ImportacaoPreviewDto

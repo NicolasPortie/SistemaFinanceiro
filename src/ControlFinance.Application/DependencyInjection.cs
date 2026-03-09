@@ -26,6 +26,10 @@ public static class DependencyInjection
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IAnomaliaGastoService, AnomaliaGastoService>();
         services.AddScoped<IReceitaRecorrenteService, ReceitaRecorrenteService>();
+        services.AddScoped<IAssinaturaService, AssinaturaService>();
+        services.AddScoped<IFeatureGateService, FeatureGateService>();
+        services.AddScoped<IPlanoConfigService, PlanoConfigService>();
+        services.AddScoped<IFamiliaService, FamiliaService>();
 
         // Serviços de inteligência (§4-§10)
         services.AddScoped<IScoreSaudeFinanceiraService, ScoreSaudeFinanceiraService>();
@@ -44,6 +48,15 @@ public static class DependencyInjection
         // TelegramBotService — registrado via interface para testabilidade
         // ConsumirTeclado permanece estático (acessado diretamente via TelegramBotService.ConsumirTeclado)
         services.AddScoped<ITelegramBotService, TelegramBotService>();
+
+        // WhatsApp Bot — espelha Telegram mas usa phone como identificador
+        services.AddScoped<IWhatsAppBotService, WhatsAppBotService>();
+
+        // Chat Engine — motor compartilhado multi-canal (InApp, Telegram, WhatsApp)
+        services.AddScoped<IChatEngineService, ChatEngineService>();
+
+        // Suporte — chatbot de atendimento ao cliente com IA
+        services.AddScoped<ISupportChatService, SupportChatService>();
 
         // Importação de Extratos
         services.AddScoped<IImportacaoService, ImportacaoService>();

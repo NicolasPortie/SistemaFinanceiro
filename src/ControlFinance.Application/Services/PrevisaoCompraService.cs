@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Exceptions;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -24,6 +25,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
     private readonly IEventoSazonalService _eventoSazonalService;
     private readonly IScoreSaudeFinanceiraService _scoreService;
     private readonly IImpactoMetaService _impactoMetaService;
+    private readonly IFeatureGateService _featureGate;
     private readonly ILogger<PrevisaoCompraService> _logger;
 
     private const int HorizontePrevisaoMeses = 12;
@@ -39,6 +41,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         IEventoSazonalService eventoSazonalService,
         IScoreSaudeFinanceiraService scoreService,
         IImpactoMetaService impactoMetaService,
+        IFeatureGateService featureGate,
         ILogger<PrevisaoCompraService> logger)
     {
         _perfilService = perfilService;
@@ -51,6 +54,7 @@ public class PrevisaoCompraService : IPrevisaoCompraService
         _eventoSazonalService = eventoSazonalService;
         _scoreService = scoreService;
         _impactoMetaService = impactoMetaService;
+        _featureGate = featureGate;
         _logger = logger;
     }
 
@@ -59,6 +63,11 @@ public class PrevisaoCompraService : IPrevisaoCompraService
     /// </summary>
     public async Task<SimulacaoResultadoDto> SimularAsync(int usuarioId, SimularCompraRequestDto request)
     {
+        // ── Feature Gate: Simulação de compras ──
+        var gate = await _featureGate.VerificarAcessoAsync(usuarioId, Recurso.SimulacaoCompras);
+        if (!gate.Permitido)
+            throw new FeatureGateException(gate.Mensagem!, Recurso.SimulacaoCompras, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
+
         var perfil = await _perfilService.ObterOuCalcularAsync(usuarioId);
         var dataPrevista = request.DataPrevista ?? DateTime.UtcNow;
         if (dataPrevista.Kind == DateTimeKind.Unspecified)

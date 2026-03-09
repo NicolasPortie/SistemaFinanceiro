@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Exceptions;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -15,17 +16,20 @@ public class LimiteCategoriaService : ILimiteCategoriaService
     private readonly ILimiteCategoriaRepository _limiteRepo;
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ILancamentoRepository _lancamentoRepo;
+    private readonly IFeatureGateService _featureGate;
     private readonly ILogger<LimiteCategoriaService> _logger;
 
     public LimiteCategoriaService(
         ILimiteCategoriaRepository limiteRepo,
         ICategoriaRepository categoriaRepo,
         ILancamentoRepository lancamentoRepo,
+        IFeatureGateService featureGate,
         ILogger<LimiteCategoriaService> logger)
     {
         _limiteRepo = limiteRepo;
         _categoriaRepo = categoriaRepo;
         _lancamentoRepo = lancamentoRepo;
+        _featureGate = featureGate;
         _logger = logger;
     }
 
@@ -34,6 +38,11 @@ public class LimiteCategoriaService : ILimiteCategoriaService
     /// </summary>
     public async Task<LimiteCategoriaDto> DefinirLimiteAsync(int usuarioId, DefinirLimiteDto dto)
     {
+        // ── Feature Gate: limites por categoria ──
+        var gate = await _featureGate.VerificarAcessoAsync(usuarioId, Recurso.LimitesCategoria);
+        if (!gate.Permitido)
+            throw new FeatureGateException(gate.Mensagem!, Recurso.LimitesCategoria, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
+
         var categoria = await _categoriaRepo.ObterPorNomeAsync(usuarioId, dto.Categoria);
         if (categoria == null)
             throw new InvalidOperationException($"Categoria '{dto.Categoria}' não encontrada.");

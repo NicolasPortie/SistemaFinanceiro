@@ -1,120 +1,76 @@
-# ControlFinance 💰
+# ControlFinance
 
-Assistente financeiro pessoal via Telegram com interpretação de linguagem natural usando IA (Gemini).
+Plataforma de controle financeiro com backend ASP.NET, frontend Next.js e integracoes por Telegram e WhatsApp.
 
-## Stack
+## Estrutura do projeto
 
-- **Backend:** C# / ASP.NET 8 Web API
-- **ORM:** Entity Framework Core 8
-- **Banco:** PostgreSQL 16
-- **Bot:** Telegram Bot API (Webhooks)
-- **IA:** Google Gemini (interpretação, OCR, transcrição)
-
-## Estrutura do Projeto
-
-```
+```text
 src/
-├── ControlFinance.Api/            # Web API, controllers, background services
-├── ControlFinance.Application/    # Serviços, DTOs, regras de negócio
-├── ControlFinance.Domain/         # Entidades, enums, interfaces
-└── ControlFinance.Infrastructure/ # EF Core, repositórios, Gemini service
+  ControlFinance.Api/             # API, controllers e background services
+  ControlFinance.Application/     # casos de uso, DTOs e regras de negocio
+  ControlFinance.Domain/          # entidades, enums e interfaces
+  ControlFinance.Infrastructure/  # EF Core, repositorios e servicos externos
+  ControlFinance.Tests/           # testes automatizados
+web-next/                         # frontend Next.js
+whatsapp-bridge/                  # bridge do WhatsApp via Baileys
+docs/
+  product/                        # documentacao ativa do produto
+  assets/                         # logos e referencias visuais fora do runtime
+  examples/                       # arquivos de exemplo usados em fluxos reais
+  marketing/                      # materiais editoriais
 ```
 
-## Pré-requisitos
+## Documentacao ativa
 
-- [.NET SDK 8+](https://dotnet.microsoft.com/download)
-- [Docker](https://docs.docker.com/get-docker/) (para PostgreSQL)
-- Token do Telegram Bot (via [@BotFather](https://t.me/BotFather))
-- Chave da API Gemini ([Google AI Studio](https://aistudio.google.com/))
-- Conta de e-mail no Hostinger (SMTP)
-- [ngrok](https://ngrok.com/) (para webhook em dev local)
+- `docs/product/contexto.md`: visao geral do produto e direcao atual
+- `docs/product/TELAS.md`: fonte de verdade das telas e fluxos
+- `docs/product/FAMILIA.md`: especificacao vigente do plano familia
+- `docs/product/MODELAGEM.md`: modelagem e contratos tecnicos
+- `docs/product/IMPORTACAO_EXTRATOS.md`: especificacao funcional da importacao
+- `docs/product/IMPORTACAO_IMPLEMENTACAO.md`: relatorio tecnico da importacao
+- `docs/product/CHATBOT_INAPP.md`: especificacao do chat in-app
+- `docs/product/WHATSAPP_BAILEYS.md`: planejamento da integracao WhatsApp
+- `docs/product/SUPORTE_CHATBOT.md`: operacao e suporte do chatbot
 
-## Setup Rápido
+Artefatos temporarios, capturas locais, backups e clones de referencia nao devem ficar na raiz do repositorio.
 
-### 1. Subir o PostgreSQL
+## Pre-requisitos
 
-```bash
-docker-compose up -d
-```
+- .NET SDK 8+
+- Node.js 22+
+- Docker
+- PostgreSQL 16 (via Docker no ambiente local)
 
-### 2. Configurar credenciais
+## Execucao local
 
-Edite `src/ControlFinance.Api/appsettings.Development.json`:
+1. Suba a infraestrutura:
 
-```json
-{
-  "Telegram": {
-    "BotToken": "SEU_TOKEN_DO_BOTFATHER",
-    "WebhookUrl": "https://SEU_NGROK.ngrok-free.app/api/telegram/webhook"
-  },
-  "Gemini": {
-    "ApiKey": "SUA_CHAVE_GEMINI"
-  },
-  "Email": {
-    "Enabled": true,
-    "FromEmail": "sistema@nicolasportie.com",
-    "FromName": "ControlFinance",
-    "Smtp": {
-      "Host": "smtp.hostinger.com",
-      "Port": 465,
-      "Username": "contato@nicolasportie.com",
-      "Password": "SENHA_SMTP"
-    }
-  }
-}
-```
+   ```bash
+   docker compose up -d
+   ```
 
-### 3. Rodar a aplicação
+2. Configure `src/ControlFinance.Api/appsettings.Development.json` com as credenciais necessarias.
 
-```bash
-cd src/ControlFinance.Api
-dotnet run
-```
+3. Rode os servicos conforme necessario:
 
-A migration é aplicada automaticamente no startup.
+   ```bash
+   dotnet run --project src/ControlFinance.Api/ControlFinance.Api.csproj
+   ```
 
-### 4. Configurar Webhook (dev local)
+   ```bash
+   cd web-next
+   npm install
+   npm run dev
+   ```
 
-```bash
-# Em outro terminal
-ngrok http 5000
-```
+   ```bash
+   cd whatsapp-bridge
+   npm install
+   npm run dev
+   ```
 
-Copie a URL HTTPS do ngrok e coloque em `WebhookUrl` no appsettings.
+## Validacao
 
-### 5. Testar
-
-Abra o Telegram, encontre seu bot e envie `/start` 🚀
-
-## Comandos do Bot
-
-| Comando | Descrição |
-|---------|-----------|
-| `/start` | Mensagem de boas-vindas |
-| `/gasto [desc]` | Registrar gasto |
-| `/receita [desc]` | Registrar receita |
-| `/resumo` | Resumo semanal |
-| `/fatura` | Ver fatura do cartão |
-| `/categorias` | Listar categorias |
-| `/cartao [nome] [limite] [dia]` | Cadastrar cartão |
-| `/ajuda` | Ver ajuda completa |
-
-## Linguagem Natural
-
-O bot entende mensagens como:
-- "paguei 45 no mercado no débito"
-- "pix de 120 do aluguel"
-- "ifood 89,90 no crédito em 3x"
-- "recebi 5000 de salário"
-
-## Funcionalidades
-
-- ✅ Registro de gastos e receitas
-- ✅ PIX, débito e crédito
-- ✅ Parcelamentos com distribuição automática em faturas
-- ✅ Controle de cartão de crédito com ciclo de fatura
-- ✅ Categorização automática via IA
-- ✅ Resumo semanal automático
-- ✅ Entrada por texto, áudio e imagem (OCR)
-- ✅ Swagger UI para debug (`/swagger` em dev)
-- ✅ Health check (`/health`)
+- `dotnet test src/ControlFinance.Tests/ControlFinance.Tests.csproj`
+- `cd web-next && npm run validate`
+- `cd whatsapp-bridge && npm run build`

@@ -7,6 +7,7 @@ using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
+using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -22,6 +23,7 @@ public class AuthService : IAuthService
     private readonly IEmailService _emailService;
     private readonly ICodigoConviteRepository _codigoConviteRepo;
     private readonly IRegistroPendenteRepository _registroPendenteRepo;
+    private readonly IAssinaturaService _assinaturaService;
     private readonly IConfiguration _config;
     private readonly ILogger<AuthService> _logger;
 
@@ -33,6 +35,7 @@ public class AuthService : IAuthService
         ICodigoConviteRepository codigoConviteRepo,
         IRegistroPendenteRepository registroPendenteRepo,
         IEmailService emailService,
+        IAssinaturaService assinaturaService,
         IConfiguration config,
         ILogger<AuthService> logger)
     {
@@ -43,20 +46,13 @@ public class AuthService : IAuthService
         _codigoConviteRepo = codigoConviteRepo;
         _registroPendenteRepo = registroPendenteRepo;
         _emailService = emailService;
+        _assinaturaService = assinaturaService;
         _config = config;
         _logger = logger;
     }
 
     public async Task<(RegistroPendenteResponseDto? Response, string? Erro)> RegistrarAsync(RegistrarUsuarioDto dto, string? ipAddress = null)
     {
-        // Validar código de convite
-        var codigoConvite = await _codigoConviteRepo.ObterPorCodigoAsync(dto.CodigoConvite.Trim());
-        if (codigoConvite == null || !codigoConvite.PodeSerUsado())
-        {
-            _logger.LogWarning("Tentativa de registro com código de convite inválido. IP: {IP}", ipAddress);
-            return (null, "Código de convite inválido ou expirado.");
-        }
-
         var erroSenha = ValidarForcaSenha(dto.Senha);
         if (erroSenha != null)
             return (null, erroSenha);
@@ -77,7 +73,6 @@ public class AuthService : IAuthService
             // Atualizar registro pendente existente
             pendente.Nome = SanitizarTexto(dto.Nome);
             pendente.SenhaHash = HashSenha(dto.Senha);
-            pendente.CodigoConvite = dto.CodigoConvite.Trim();
             pendente.CodigoVerificacao = codigoVerificacao;
             pendente.ExpiraEm = expiraEm;
             pendente.TentativasVerificacao = 0;
@@ -91,7 +86,6 @@ public class AuthService : IAuthService
                 Email = emailNormalizado,
                 Nome = SanitizarTexto(dto.Nome),
                 SenhaHash = HashSenha(dto.Senha),
-                CodigoConvite = dto.CodigoConvite.Trim(),
                 CodigoVerificacao = codigoVerificacao,
                 ExpiraEm = expiraEm,
                 TentativasVerificacao = 0
@@ -147,14 +141,6 @@ public class AuthService : IAuthService
             return (null, $"Código incorreto. {restantes} tentativa(s) restante(s).");
         }
 
-        // Revalidar convite (pode ter sido usado enquanto aguardava verificação)
-        var codigoConvite = await _codigoConviteRepo.ObterPorCodigoAsync(pendente.CodigoConvite);
-        if (codigoConvite == null || !codigoConvite.PodeSerUsado())
-        {
-            await _registroPendenteRepo.RemoverAsync(pendente.Id);
-            return (null, "Código de convite expirado ou já utilizado. Solicite um novo convite.");
-        }
-
         // Revalidar email
         if (await _usuarioRepo.EmailExisteAsync(emailNormalizado))
         {
@@ -169,18 +155,11 @@ public class AuthService : IAuthService
             Email = emailNormalizado,
             SenhaHash = pendente.SenhaHash,
             EmailConfirmado = true,
-            Ativo = true,
-            AcessoExpiraEm = codigoConvite.DuracaoAcessoDias.HasValue
-                ? DateTime.UtcNow.AddDays(codigoConvite.DuracaoAcessoDias.Value)
-                : null
+            Ativo = true
         };
 
         await _usuarioRepo.CriarAsync(usuario);
         await _categoriaRepo.CriarCategoriasIniciais(usuario.Id);
-
-        // Registrar uso do convite
-        codigoConvite.RegistrarUso(usuario.Id);
-        await _codigoConviteRepo.AtualizarAsync(codigoConvite);
 
         // Limpar registro pendente
         await _registroPendenteRepo.RemoverAsync(pendente.Id);
@@ -296,9 +275,210 @@ public class AuthService : IAuthService
         return (response, null);
     }
 
-    public async Task<(AuthResponseDto? Response, string? Erro)> RefreshAsync(string refreshTokenStr, string? ipAddress = null)
+    public async Task<(AuthResponseDto? Response, string? Erro)> LoginGoogleAsync(string idToken, string? ipAddress = null, string? celular = null)
     {
-        var storedToken = await _refreshTokenRepo.ObterPorTokenAsync(refreshTokenStr);
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            var settings = new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { _config["Google:ClientId"] }
+            };
+            payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
+        }
+        catch (InvalidJwtException)
+        {
+            return (null, "Token do Google inválido ou expirado.");
+        }
+        
+        var emailNormalizado = payload.Email.ToLower().Trim();
+        var usuario = await _usuarioRepo.ObterPorEmailAsync(emailNormalizado);
+
+        if (usuario != null)
+        {
+            if (usuario.BloqueadoAte.HasValue && usuario.BloqueadoAte.Value > DateTime.UtcNow)
+            {
+                var minutosRestantes = (int)(usuario.BloqueadoAte.Value - DateTime.UtcNow).TotalMinutes + 1;
+                return (null, $"Conta temporariamente bloqueada. Tente novamente em {minutosRestantes} minutos.");
+            }
+
+            if (!usuario.Ativo)
+                return (null, "Conta desativada. Entre em contato com o suporte.");
+
+            if (string.IsNullOrEmpty(usuario.GoogleId))
+            {
+                usuario.GoogleId = payload.Subject;
+                await _usuarioRepo.AtualizarAsync(usuario);
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(celular))
+            {
+                return (null, "Cadastro incompleto. O número de celular é obrigatório para prosseguir.");
+            }
+
+            usuario = new Usuario
+            {
+                Nome = payload.Name ?? "Usuário Google",
+                Email = emailNormalizado,
+                SenhaHash = null,
+                GoogleId = payload.Subject,
+                Celular = celular,
+                EmailConfirmado = true,
+                Ativo = true,
+                Role = RoleUsuario.Usuario
+            };
+
+            await _usuarioRepo.CriarAsync(usuario);
+            await _categoriaRepo.CriarCategoriasIniciais(usuario.Id);
+
+            try
+            {
+                await _assinaturaService.IniciarTrialAsync(usuario.Id, TipoPlano.Gratuito);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao iniciar trial para usuário {UserId}.", usuario.Id);
+            }
+
+            _logger.LogInformation("Novo usuário registrado via Google: {UserId}", usuario.Id);
+        }
+
+        if (usuario.TentativasLoginFalhadas > 0 || usuario.BloqueadoAte.HasValue)
+        {
+            usuario.TentativasLoginFalhadas = 0;
+            usuario.BloqueadoAte = null;
+            await _usuarioRepo.AtualizarAsync(usuario);
+        }
+
+        _logger.LogInformation("Login Google realizado: {UserId}", usuario.Id);
+
+        var response = await GerarTokenResponseAsync(usuario, ipAddress);
+        return (response, null);
+    }
+
+    public async Task<(AuthResponseDto? Response, string? Erro)> LoginAppleAsync(
+        string idToken, string? ipAddress = null, string? celular = null, string? nome = null)
+    {
+        // Validar o ID Token da Apple via JWKS
+        System.Security.Claims.ClaimsPrincipal principal;
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var appleClientId = _config["Apple:ClientId"];
+
+            // Buscar chaves públicas da Apple
+            using var httpClient = new System.Net.Http.HttpClient();
+            var jwksJson = await httpClient.GetStringAsync("https://appleid.apple.com/auth/keys");
+            var jwks = new Microsoft.IdentityModel.Tokens.JsonWebKeySet(jwksJson);
+
+            var validationParams = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidIssuer = "https://appleid.apple.com",
+                ValidAudience = appleClientId,
+                IssuerSigningKeys = jwks.GetSigningKeys(),
+                ValidateIssuerSigningKey = true,
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true
+            };
+
+            principal = handler.ValidateToken(idToken, validationParams, out _);
+        }
+        catch (Exception ex) when (ex is SecurityTokenException or SecurityTokenValidationException)
+        {
+            return (null, "Token da Apple inválido ou expirado.");
+        }
+
+        var appleSubject = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                        ?? principal.FindFirst("sub")?.Value;
+        var emailClaim = principal.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                      ?? principal.FindFirst("email")?.Value;
+
+        if (string.IsNullOrEmpty(appleSubject))
+            return (null, "Token da Apple não contém identificador de usuário.");
+
+        // Tentar encontrar por AppleId primeiro, depois por email
+        var usuario = await _usuarioRepo.ObterPorAppleIdAsync(appleSubject);
+
+        if (usuario == null && !string.IsNullOrEmpty(emailClaim))
+        {
+            var emailNormalizado = emailClaim.ToLower().Trim();
+            usuario = await _usuarioRepo.ObterPorEmailAsync(emailNormalizado);
+        }
+
+        if (usuario != null)
+        {
+            if (usuario.BloqueadoAte.HasValue && usuario.BloqueadoAte.Value > DateTime.UtcNow)
+            {
+                var minutosRestantes = (int)(usuario.BloqueadoAte.Value - DateTime.UtcNow).TotalMinutes + 1;
+                return (null, $"Conta temporariamente bloqueada. Tente novamente em {minutosRestantes} minutos.");
+            }
+
+            if (!usuario.Ativo)
+                return (null, "Conta desativada. Entre em contato com o suporte.");
+
+            if (string.IsNullOrEmpty(usuario.AppleId))
+            {
+                usuario.AppleId = appleSubject;
+                await _usuarioRepo.AtualizarAsync(usuario);
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(celular))
+            {
+                return (null, "Cadastro incompleto. O número de celular é obrigatório para prosseguir.");
+            }
+
+            var emailNormalizado = !string.IsNullOrEmpty(emailClaim)
+                ? emailClaim.ToLower().Trim()
+                : $"apple_{appleSubject}@privaterelay.appleid.com";
+
+            usuario = new Usuario
+            {
+                Nome = nome ?? "Usuário Apple",
+                Email = emailNormalizado,
+                SenhaHash = null,
+                AppleId = appleSubject,
+                Celular = celular,
+                EmailConfirmado = true,
+                Ativo = true,
+                Role = RoleUsuario.Usuario
+            };
+
+            await _usuarioRepo.CriarAsync(usuario);
+            await _categoriaRepo.CriarCategoriasIniciais(usuario.Id);
+
+            try
+            {
+                await _assinaturaService.IniciarTrialAsync(usuario.Id, TipoPlano.Gratuito);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao iniciar trial para usuário {UserId}.", usuario.Id);
+            }
+
+            _logger.LogInformation("Novo usuário registrado via Apple: {UserId}", usuario.Id);
+        }
+
+        if (usuario.TentativasLoginFalhadas > 0 || usuario.BloqueadoAte.HasValue)
+        {
+            usuario.TentativasLoginFalhadas = 0;
+            usuario.BloqueadoAte = null;
+            await _usuarioRepo.AtualizarAsync(usuario);
+        }
+
+        _logger.LogInformation("Login Apple realizado: {UserId}", usuario.Id);
+
+        var response = await GerarTokenResponseAsync(usuario, ipAddress);
+        return (response, null);
+    }
+
+    public async Task<(AuthResponseDto? Response, string? Erro)> RefreshAsync(string refreshToken, string? ipAddress = null)
+    {
+        var storedToken = await _refreshTokenRepo.ObterPorTokenAsync(refreshToken);
 
         if (storedToken == null)
             return (null, "Refresh token inválido.");
@@ -342,38 +522,6 @@ public class AuthService : IAuthService
         _logger.LogInformation("Todos os tokens revogados para usuário {UserId}", usuarioId);
     }
 
-    public async Task<(CodigoTelegramResponseDto? Response, string? Erro)> GerarCodigoTelegramAsync(int usuarioId)
-    {
-        var usuario = await _usuarioRepo.ObterPorIdAsync(usuarioId);
-        if (usuario == null)
-            return (null, "Usuário não encontrado.");
-
-        if (usuario.TelegramVinculado)
-            return (null, "Telegram já está vinculado à sua conta.");
-
-        await _codigoRepo.InvalidarAnterioresAsync(usuarioId, TipoCodigoVerificacao.VinculacaoTelegram);
-
-        var codigo = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-        var expiraEm = DateTime.UtcNow.AddMinutes(10);
-
-        await _codigoRepo.CriarAsync(new CodigoVerificacao
-        {
-            Codigo = codigo,
-            UsuarioId = usuarioId,
-            Tipo = TipoCodigoVerificacao.VinculacaoTelegram,
-            ExpiraEm = expiraEm
-        });
-
-        _logger.LogInformation("Código Telegram gerado para usuário {UserId}", usuarioId);
-
-        return (new CodigoTelegramResponseDto
-        {
-            Codigo = codigo,
-            ExpiraEm = expiraEm,
-            Instrucoes = $"Envie o código {codigo} para o bot @facilita_finance_bot no Telegram. O código expira em 10 minutos."
-        }, null);
-    }
-
     private static UsuarioDto MapearParaDto(Usuario usuario) => new()
     {
         Id = usuario.Id,
@@ -406,11 +554,18 @@ public class AuthService : IAuthService
 
         if (!string.IsNullOrWhiteSpace(dto.NovaSenha))
         {
-            if (string.IsNullOrWhiteSpace(dto.SenhaAtual))
-                return (null, "Senha atual é obrigatória para alterar a senha.");
+            if (string.IsNullOrEmpty(usuario.SenhaHash))
+            {
+                // Usuário é do Google e não tem senha - permitir definir senha sem senha atual
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(dto.SenhaAtual))
+                    return (null, "Senha atual é obrigatória para alterar a senha.");
 
-            if (!VerificarSenha(dto.SenhaAtual, usuario.SenhaHash))
-                return (null, "Senha atual incorreta.");
+                if (!VerificarSenha(dto.SenhaAtual, usuario.SenhaHash))
+                    return (null, "Senha atual incorreta.");
+            }
 
             var erroSenha = ValidarForcaSenha(dto.NovaSenha);
             if (erroSenha != null)

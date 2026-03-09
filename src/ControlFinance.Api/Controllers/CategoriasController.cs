@@ -1,6 +1,9 @@
 using System.Security.Claims;
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Exceptions;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
+using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +16,12 @@ namespace ControlFinance.Api.Controllers;
 public class CategoriasController : BaseAuthController
 {
     private readonly ICategoriaRepository _categoriaRepo;
+    private readonly IFeatureGateService _featureGate;
 
-    public CategoriasController(ICategoriaRepository categoriaRepo)
+    public CategoriasController(ICategoriaRepository categoriaRepo, IFeatureGateService featureGate)
     {
         _categoriaRepo = categoriaRepo;
+        _featureGate = featureGate;
     }
 
     [HttpGet]
@@ -40,6 +45,13 @@ public class CategoriasController : BaseAuthController
         var existente = await _categoriaRepo.ObterPorNomeAsync(UsuarioId, request.Nome);
         if (existente != null)
             return BadRequest(new { erro = "Já existe uma categoria com esse nome." });
+
+        // ── Feature Gate: categorias customizadas ──
+        var categoriasAtual = await _categoriaRepo.ObterPorUsuarioAsync(UsuarioId);
+        var customCount = categoriasAtual.Count(c => !c.Padrao);
+        var gate = await _featureGate.VerificarLimiteAsync(UsuarioId, Recurso.CategoriasCustomizadas, customCount);
+        if (!gate.Permitido)
+            throw new FeatureGateException(gate.Mensagem!, Recurso.CategoriasCustomizadas, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
 
         var categoria = await _categoriaRepo.CriarAsync(new Categoria
         {

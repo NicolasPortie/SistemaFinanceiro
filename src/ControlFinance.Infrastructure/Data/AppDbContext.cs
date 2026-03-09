@@ -47,6 +47,21 @@ public class AppDbContext : DbContext
     public DbSet<ImportacaoHistorico> ImportacoesHistorico => Set<ImportacaoHistorico>();
     public DbSet<RegraCategorizacao> RegrasCategorizacao => Set<RegraCategorizacao>();
     public DbSet<MapeamentoCategorizacao> MapeamentosCategorizacao => Set<MapeamentoCategorizacao>();
+    public DbSet<Assinatura> Assinaturas => Set<Assinatura>();
+    public DbSet<PlanoConfig> PlanosConfig => Set<PlanoConfig>();
+    public DbSet<RecursoPlano> RecursosPlano => Set<RecursoPlano>();
+
+    // ── Família ──
+    public DbSet<Familia> Familias => Set<Familia>();
+    public DbSet<ConviteFamilia> ConvitesFamilia => Set<ConviteFamilia>();
+    public DbSet<RecursoFamiliar> RecursosFamiliar => Set<RecursoFamiliar>();
+    public DbSet<OrcamentoFamiliar> OrcamentosFamiliar => Set<OrcamentoFamiliar>();
+    // ── Chat InApp (Falcon Chat) ──
+    public DbSet<ConversaChat> ConversasChat => Set<ConversaChat>();
+    public DbSet<MensagemChat> MensagensChat => Set<MensagemChat>();
+
+    // ── WhatsApp ──
+    public DbSet<SessaoWhatsApp> SessoesWhatsApp => Set<SessaoWhatsApp>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,8 +82,13 @@ public class AppDbContext : DbContext
                 .HasConversion(deterministicConverter); // 🔒 PII criptografado
             entity.Property(e => e.SenhaHash).HasColumnName("senha_hash").HasMaxLength(500);
             entity.Property(e => e.EmailConfirmado).HasColumnName("email_confirmado");
+            entity.Property(e => e.GoogleId).HasColumnName("google_id").IsRequired(false);
+            entity.Property(e => e.AppleId).HasColumnName("apple_id").IsRequired(false);
             entity.Property(e => e.TelegramChatId).HasColumnName("telegram_chat_id");
             entity.Property(e => e.TelegramVinculado).HasColumnName("telegram_vinculado");
+            entity.Property(e => e.WhatsAppPhone).HasColumnName("whatsapp_phone").HasMaxLength(20).IsRequired(false);
+            entity.Property(e => e.WhatsAppVinculado).HasColumnName("whatsapp_vinculado");
+            entity.Property(e => e.Celular).HasColumnName("celular").HasMaxLength(20).IsRequired(false);
             entity.Property(e => e.Nome).HasColumnName("nome").HasMaxLength(200);
             entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
             entity.Property(e => e.Ativo).HasColumnName("ativo");
@@ -76,10 +96,17 @@ public class AppDbContext : DbContext
             entity.Property(e => e.BloqueadoAte).HasColumnName("bloqueado_ate");
             entity.Property(e => e.AcessoExpiraEm).HasColumnName("acesso_expira_em").IsRequired(false);
             entity.Property(e => e.RendaMensal).HasColumnName("renda_mensal").HasColumnType("numeric(18,2)").IsRequired(false);
+            entity.Property(e => e.Cpf).HasColumnName("cpf").HasMaxLength(600)
+                .HasConversion(deterministicConverter).IsRequired(false); // 🔒 PII criptografado
             entity.Property(e => e.Role).HasColumnName("role").HasDefaultValue(Domain.Enums.RoleUsuario.Usuario);
 
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.TelegramChatId).IsUnique().HasFilter("telegram_chat_id IS NOT NULL");
+            entity.HasIndex(e => e.WhatsAppPhone).IsUnique().HasFilter("whatsapp_phone IS NOT NULL");
+            entity.HasIndex(e => e.Celular).IsUnique().HasFilter("celular IS NOT NULL");
+            entity.HasIndex(e => e.Cpf).IsUnique().HasFilter("cpf IS NOT NULL");
+            entity.HasIndex(e => e.GoogleId).IsUnique().HasFilter("google_id IS NOT NULL");
+            entity.HasIndex(e => e.AppleId).IsUnique().HasFilter("apple_id IS NOT NULL");
         });
 
         // === CodigoConvite ===
@@ -142,11 +169,17 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Nome).HasColumnName("nome").HasMaxLength(100);
             entity.Property(e => e.Padrao).HasColumnName("padrao");
             entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.FamiliaId).HasColumnName("familia_id").IsRequired(false);
 
             entity.HasOne(e => e.Usuario)
                   .WithMany(u => u.Categorias)
                   .HasForeignKey(e => e.UsuarioId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Familia)
+                  .WithMany(f => f.CategoriasCompartilhadas)
+                  .HasForeignKey(e => e.FamiliaId)
+                  .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(e => new { e.UsuarioId, e.Nome }).IsUnique();
         });
@@ -430,6 +463,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Prioridade).HasColumnName("prioridade");
             entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
             entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em");
+            entity.Property(e => e.FamiliaId).HasColumnName("familia_id").IsRequired(false);
 
             entity.HasOne(e => e.Usuario)
                   .WithMany(u => u.MetasFinanceiras)
@@ -439,6 +473,11 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.Categoria)
                   .WithMany()
                   .HasForeignKey(e => e.CategoriaId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Familia)
+                  .WithMany(f => f.MetasConjuntas)
+                  .HasForeignKey(e => e.FamiliaId)
                   .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(e => e.UsuarioId);
@@ -471,6 +510,9 @@ public class AppDbContext : DbContext
             entity.Property(e => e.DiasAntecedenciaLembrete).HasColumnName("dias_antecedencia_lembrete").HasDefaultValue(3);
             entity.Property(e => e.HorarioInicioLembrete).HasColumnName("horario_inicio_lembrete");
             entity.Property(e => e.HorarioFimLembrete).HasColumnName("horario_fim_lembrete");
+
+            // Família
+            entity.Property(e => e.CompartilhadoFamilia).HasColumnName("compartilhado_familia").HasDefaultValue(false);
 
             entity.HasOne(e => e.Usuario)
                   .WithMany(u => u.LembretesPagamento)
@@ -756,6 +798,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
             entity.Property(e => e.ExpiraEm).HasColumnName("expira_em");
             entity.Property(e => e.TentativasVerificacao).HasColumnName("tentativas_verificacao").HasDefaultValue(0);
+            entity.Property(e => e.Celular).HasColumnName("celular").HasMaxLength(20);
 
             entity.HasIndex(e => e.Email).IsUnique();
         });
@@ -824,6 +867,218 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.Categoria).WithMany().HasForeignKey(e => e.CategoriaId).OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => new { e.UsuarioId, e.DescricaoNormalizada }).IsUnique();
+        });
+
+        // === Assinatura ===
+        modelBuilder.Entity<Assinatura>(entity =>
+        {
+            entity.ToTable("assinaturas");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Plano).HasColumnName("plano");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.ValorMensal).HasColumnName("valor_mensal").HasColumnType("numeric(18,2)");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.InicioTrial).HasColumnName("inicio_trial");
+            entity.Property(e => e.FimTrial).HasColumnName("fim_trial");
+            entity.Property(e => e.ProximaCobranca).HasColumnName("proxima_cobranca").IsRequired(false);
+            entity.Property(e => e.CanceladoEm).HasColumnName("cancelado_em").IsRequired(false);
+            entity.Property(e => e.StripeCustomerId).HasColumnName("stripe_customer_id").HasMaxLength(200).IsRequired(false);
+            entity.Property(e => e.StripeSubscriptionId).HasColumnName("stripe_subscription_id").HasMaxLength(200).IsRequired(false);
+            entity.Property(e => e.StripePriceId).HasColumnName("stripe_price_id").HasMaxLength(200).IsRequired(false);
+            entity.Property(e => e.MaxMembros).HasColumnName("max_membros").HasDefaultValue(1);
+
+            entity.HasOne(e => e.Usuario).WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => e.UsuarioId).IsUnique();
+            entity.HasIndex(e => e.StripeCustomerId).HasFilter("stripe_customer_id IS NOT NULL");
+            entity.HasIndex(e => e.StripeSubscriptionId).HasFilter("stripe_subscription_id IS NOT NULL");
+        });
+
+        // ── PlanoConfig ──
+        modelBuilder.Entity<PlanoConfig>(entity =>
+        {
+            entity.ToTable("planos_config");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Tipo).HasColumnName("tipo");
+            entity.Property(e => e.Nome).HasColumnName("nome").HasMaxLength(100);
+            entity.Property(e => e.Descricao).HasColumnName("descricao").HasMaxLength(500);
+            entity.Property(e => e.PrecoMensal).HasColumnName("preco_mensal").HasColumnType("numeric(18,2)");
+            entity.Property(e => e.Ativo).HasColumnName("ativo").HasDefaultValue(true);
+            entity.Property(e => e.TrialDisponivel).HasColumnName("trial_disponivel").HasDefaultValue(false);
+            entity.Property(e => e.DiasGratis).HasColumnName("dias_gratis").HasDefaultValue(0);
+            entity.Property(e => e.Ordem).HasColumnName("ordem").HasDefaultValue(0);
+            entity.Property(e => e.Destaque).HasColumnName("destaque").HasDefaultValue(false);
+            entity.Property(e => e.StripePriceId).HasColumnName("stripe_price_id").HasMaxLength(200).IsRequired(false);
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em").IsRequired(false);
+
+            entity.HasIndex(e => e.Tipo).IsUnique();
+        });
+
+        // ── RecursoPlano ──
+        modelBuilder.Entity<RecursoPlano>(entity =>
+        {
+            entity.ToTable("recursos_plano");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.PlanoConfigId).HasColumnName("plano_config_id");
+            entity.Property(e => e.Recurso).HasColumnName("recurso");
+            entity.Property(e => e.Limite).HasColumnName("limite");
+            entity.Property(e => e.DescricaoLimite).HasColumnName("descricao_limite").HasMaxLength(200).IsRequired(false);
+
+            entity.HasOne(e => e.PlanoConfig).WithMany(p => p.Recursos).HasForeignKey(e => e.PlanoConfigId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.PlanoConfigId, e.Recurso }).IsUnique();
+        });
+
+        // ── Familia ──
+        modelBuilder.Entity<Familia>(entity =>
+        {
+            entity.ToTable("familias");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TitularId).HasColumnName("titular_id");
+            entity.Property(e => e.MembroId).HasColumnName("membro_id").IsRequired(false);
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em").IsRequired(false);
+
+            entity.HasOne(e => e.Titular)
+                  .WithMany()
+                  .HasForeignKey(e => e.TitularId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Membro)
+                  .WithMany()
+                  .HasForeignKey(e => e.MembroId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.TitularId).IsUnique();
+            entity.HasIndex(e => e.MembroId).IsUnique().HasFilter("membro_id IS NOT NULL");
+        });
+
+        // ── ConviteFamilia ──
+        modelBuilder.Entity<ConviteFamilia>(entity =>
+        {
+            entity.ToTable("convites_familia");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.FamiliaId).HasColumnName("familia_id");
+            entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(600)
+                .HasConversion(deterministicConverter); // 🔒 PII criptografado
+            entity.Property(e => e.Token).HasColumnName("token").HasMaxLength(200);
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.ExpiraEm).HasColumnName("expira_em");
+
+            entity.HasOne(e => e.Familia)
+                  .WithMany(f => f.Convites)
+                  .HasForeignKey(e => e.FamiliaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.Token).IsUnique();
+        });
+
+        // ── RecursoFamiliar ──
+        modelBuilder.Entity<RecursoFamiliar>(entity =>
+        {
+            entity.ToTable("recursos_familiar");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.FamiliaId).HasColumnName("familia_id");
+            entity.Property(e => e.Recurso).HasColumnName("recurso");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.SolicitadoEm).HasColumnName("solicitado_em").IsRequired(false);
+            entity.Property(e => e.AceitoEm).HasColumnName("aceito_em").IsRequired(false);
+            entity.Property(e => e.DesativadoEm).HasColumnName("desativado_em").IsRequired(false);
+
+            entity.HasOne(e => e.Familia)
+                  .WithMany(f => f.Recursos)
+                  .HasForeignKey(e => e.FamiliaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.FamiliaId, e.Recurso }).IsUnique();
+        });
+
+        // ── OrcamentoFamiliar ──
+        modelBuilder.Entity<OrcamentoFamiliar>(entity =>
+        {
+            entity.ToTable("orcamentos_familiar");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.FamiliaId).HasColumnName("familia_id");
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
+            entity.Property(e => e.ValorLimite).HasColumnName("valor_limite").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Ativo).HasColumnName("ativo").HasDefaultValue(true);
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em").IsRequired(false);
+
+            entity.HasOne(e => e.Familia)
+                  .WithMany(f => f.Orcamentos)
+                  .HasForeignKey(e => e.FamiliaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Categoria)
+                  .WithMany()
+                  .HasForeignKey(e => e.CategoriaId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.FamiliaId, e.CategoriaId }).IsUnique();
+        });
+
+        // === ConversaChat (Falcon Chat) ===
+        modelBuilder.Entity<ConversaChat>(entity =>
+        {
+            entity.ToTable("conversas_chat");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Titulo).HasColumnName("titulo").HasMaxLength(200);
+            entity.Property(e => e.Canal).HasColumnName("canal");
+            entity.Property(e => e.Ativa).HasColumnName("ativa");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em");
+
+            entity.HasOne(e => e.Usuario)
+                  .WithMany()
+                  .HasForeignKey(e => e.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.UsuarioId, e.Ativa });
+        });
+
+        // === MensagemChat ===
+        modelBuilder.Entity<MensagemChat>(entity =>
+        {
+            entity.ToTable("mensagens_chat");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ConversaId).HasColumnName("conversa_id");
+            entity.Property(e => e.Conteudo).HasColumnName("conteudo");
+            entity.Property(e => e.Papel).HasColumnName("papel").HasMaxLength(20);
+            entity.Property(e => e.Origem).HasColumnName("origem");
+            entity.Property(e => e.TranscricaoOriginal).HasColumnName("transcricao_original");
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+
+            entity.HasOne(e => e.Conversa)
+                  .WithMany(c => c.Mensagens)
+                  .HasForeignKey(e => e.ConversaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.ConversaId);
+        });
+
+        // === SessaoWhatsApp ===
+        modelBuilder.Entity<SessaoWhatsApp>(entity =>
+        {
+            entity.ToTable("sessoes_whatsapp");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("disconnected");
+            entity.Property(e => e.PhoneNumber).HasColumnName("phone_number").HasMaxLength(20).IsRequired(false);
+            entity.Property(e => e.ConnectedAt).HasColumnName("connected_at").IsRequired(false);
+            entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em");
         });
 
         // Converter global: forçar todas as propriedades DateTime para UTC

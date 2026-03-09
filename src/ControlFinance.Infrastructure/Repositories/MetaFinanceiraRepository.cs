@@ -31,6 +31,15 @@ public class MetaFinanceiraRepository : IMetaFinanceiraRepository
         return await query.OrderByDescending(m => m.CriadoEm).ToListAsync();
     }
 
+    public async Task<List<MetaFinanceira>> ObterPorFamiliaIdAsync(int familiaId)
+    {
+        return await _context.MetasFinanceiras
+            .Include(m => m.Categoria)
+            .Where(m => m.FamiliaId == familiaId)
+            .OrderByDescending(m => m.CriadoEm)
+            .ToListAsync();
+    }
+
     public async Task<MetaFinanceira> CriarAsync(MetaFinanceira meta)
     {
         _context.MetasFinanceiras.Add(meta);

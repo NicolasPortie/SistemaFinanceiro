@@ -31,7 +31,9 @@ public class ImportacaoHistoricoRepository : IImportacaoHistoricoRepository
     {
         return await _context.ImportacoesHistorico
             .AsNoTracking()
-            .Where(h => h.UsuarioId == usuarioId && h.HashSha256 == hashSha256)
+            .Where(h => h.UsuarioId == usuarioId
+                && h.HashSha256 == hashSha256
+                && h.Status == Domain.Enums.StatusImportacao.Confirmado)
             .OrderByDescending(h => h.CriadoEm)
             .FirstOrDefaultAsync();
     }

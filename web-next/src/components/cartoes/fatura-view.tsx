@@ -1,11 +1,12 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { useFaturas } from "@/hooks/use-queries";
+import { useFaturas, useTogglePagaFatura } from "@/hooks/use-queries";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { FaturaResumo } from "@/lib/api";
-import { Loader2, ChevronDown, ChevronUp, Receipt } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Receipt, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface FaturaSectionProps {
   fatura: FaturaResumo;
@@ -14,6 +15,7 @@ interface FaturaSectionProps {
 
 export function FaturaSection({ fatura, defaultOpen }: FaturaSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const togglePaga = useTogglePagaFatura();
   const vencida = new Date(fatura.dataVencimento) < new Date() && fatura.status !== "Paga";
   const statusLabel = vencida ? "Vencida" : fatura.status;
   const statusClass = vencida
@@ -51,6 +53,21 @@ export function FaturaSection({ fatura, defaultOpen }: FaturaSectionProps) {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold tabular-nums">{formatCurrency(fatura.total)}</span>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); togglePaga.mutate(fatura.faturaId); }}
+            disabled={togglePaga.isPending}
+            title={fatura.status === "Paga" ? "Marcar como não paga" : "Marcar como paga"}
+            className={cn(
+              "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-all",
+              fatura.status === "Paga"
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                : "bg-transparent border-border/50 text-muted-foreground hover:border-emerald-400 hover:text-emerald-600"
+            )}
+          >
+            {fatura.status === "Paga" && <Check className="h-3 w-3" />}
+            {fatura.status === "Paga" ? "Paga" : "Marcar paga"}
+          </button>
           {open ? (
             <ChevronUp className="h-4 w-4 text-muted-foreground" />
           ) : (

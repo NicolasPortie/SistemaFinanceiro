@@ -11,4 +11,9 @@ public class RegistroPendente
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime ExpiraEm { get; set; }
     public int TentativasVerificacao { get; set; }
+
+    /// <summary>
+    /// Celular normalizado (DDI+DDD+número). Obrigatório desde v1.21.
+    /// </summary>
+    public string Celular { get; set; } = string.Empty;
 }

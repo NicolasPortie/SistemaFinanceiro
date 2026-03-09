@@ -1,0 +1,21 @@
+  Determinando os projetos a serem restaurados...
+c:\Projetos\ControlFinance\src\ControlFinance.Application\ControlFinance.Application.csproj : warning NU1902: O pacote 'MimeKit' 4.8.0 tem uma moderado vulnerabilidade de gravidade conhecida, https://github.com/advisories/GHSA-g7hc-96xr-gvvx
+c:\Projetos\ControlFinance\src\ControlFinance.Infrastructure\ControlFinance.Infrastructure.csproj : warning NU1902: O pacote 'MimeKit' 4.8.0 tem uma moderado vulnerabilidade de gravidade conhecida, https://github.com/advisories/GHSA-g7hc-96xr-gvvx [c:\Projetos\ControlFinance\src\ControlFinance.Application\ControlFinance.Application.csproj]
+  Todos os projetos estão atualizados para restauração.
+c:\Projetos\ControlFinance\src\ControlFinance.Application\ControlFinance.Application.csproj : warning NU1902: O pacote 'MimeKit' 4.8.0 tem uma moderado vulnerabilidade de gravidade conhecida, https://github.com/advisories/GHSA-g7hc-96xr-gvvx
+c:\Projetos\ControlFinance\src\ControlFinance.Infrastructure\ControlFinance.Infrastructure.csproj : warning NU1902: O pacote 'MimeKit' 4.8.0 tem uma moderado vulnerabilidade de gravidade conhecida, https://github.com/advisories/GHSA-g7hc-96xr-gvvx
+  ControlFinance.Domain -> c:\Projetos\ControlFinance\src\ControlFinance.Domain\bin\Debug\net10.0\ControlFinance.Domain.dll
+  ControlFinance.Infrastructure -> c:\Projetos\ControlFinance\src\ControlFinance.Infrastructure\bin\Debug\net10.0\ControlFinance.Infrastructure.dll
+c:\Projetos\ControlFinance\src\ControlFinance.Application\Services\AuthService.cs(7,43): error CS0234: O nome de tipo ou namespace "Background" não existe no namespace "ControlFinance.Application.Services" (você está sem uma referência de assembly?) [c:\Projetos\ControlFinance\src\ControlFinance.Application\ControlFinance.Application.csproj]
+
+FALHA da compilação.
+
+c:\Projetos\ControlFinance\src\ControlFinance.Application\ControlFinance.Application.csproj : warning NU1902: O pacote 'MimeKit' 4.8.0 tem uma moderado vulnerabilidade de gravidade conhecida, https://github.com/advisories/GHSA-g7hc-96xr-gvvx
+c:\Projetos\ControlFinance\src\ControlFinance.Infrastructure\ControlFinance.Infrastructure.csproj : warning NU1902: O pacote 'MimeKit' 4.8.0 tem uma moderado vulnerabilidade de gravidade conhecida, https://github.com/advisories/GHSA-g7hc-96xr-gvvx [c:\Projetos\ControlFinance\src\ControlFinance.Application\ControlFinance.Application.csproj]
+c:\Projetos\ControlFinance\src\ControlFinance.Application\ControlFinance.Application.csproj : warning NU1902: O pacote 'MimeKit' 4.8.0 tem uma moderado vulnerabilidade de gravidade conhecida, https://github.com/advisories/GHSA-g7hc-96xr-gvvx
+c:\Projetos\ControlFinance\src\ControlFinance.Infrastructure\ControlFinance.Infrastructure.csproj : warning NU1902: O pacote 'MimeKit' 4.8.0 tem uma moderado vulnerabilidade de gravidade conhecida, https://github.com/advisories/GHSA-g7hc-96xr-gvvx
+c:\Projetos\ControlFinance\src\ControlFinance.Application\Services\AuthService.cs(7,43): error CS0234: O nome de tipo ou namespace "Background" não existe no namespace "ControlFinance.Application.Services" (você está sem uma referência de assembly?) [c:\Projetos\ControlFinance\src\ControlFinance.Application\ControlFinance.Application.csproj]
+    4 Aviso(s)
+    1 Erro(s)
+
+Tempo Decorrido 00:00:01.16

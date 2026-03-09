@@ -1,5 +1,6 @@
 using System.Globalization;
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Exceptions;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -18,6 +19,7 @@ public class LembretesController : BaseAuthController
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ILancamentoService _lancamentoService;
     private readonly IPagamentoCicloRepository _pagamentoCicloRepo;
+    private readonly IFeatureGateService _featureGate;
     private static readonly TimeZoneInfo BrasiliaTimeZone =
         TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows()
             ? "E. South America Standard Time"
@@ -27,12 +29,14 @@ public class LembretesController : BaseAuthController
         ILembretePagamentoRepository repo,
         ICategoriaRepository categoriaRepo,
         ILancamentoService lancamentoService,
-        IPagamentoCicloRepository pagamentoCicloRepo)
+        IPagamentoCicloRepository pagamentoCicloRepo,
+        IFeatureGateService featureGate)
     {
         _repo = repo;
         _categoriaRepo = categoriaRepo;
         _lancamentoService = lancamentoService;
         _pagamentoCicloRepo = pagamentoCicloRepo;
+        _featureGate = featureGate;
     }
 
     /// <summary>
@@ -116,6 +120,12 @@ public class LembretesController : BaseAuthController
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] CriarLembreteRequest request)
     {
+        // ── Feature Gate: limite de contas fixas ──
+        var lembretesAtual = await _repo.ObterPorUsuarioAsync(UsuarioId, apenasAtivos: true);
+        var gate = await _featureGate.VerificarLimiteAsync(UsuarioId, Recurso.ContasFixas, lembretesAtual.Count);
+        if (!gate.Permitido)
+            throw new FeatureGateException(gate.Mensagem!, Recurso.ContasFixas, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
+
         if (string.IsNullOrWhiteSpace(request.Descricao))
             return BadRequest(new { erro = "Descrição é obrigatória." });
 

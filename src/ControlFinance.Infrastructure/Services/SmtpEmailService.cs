@@ -136,6 +136,28 @@ public class SmtpEmailService : IEmailService
         }
     }
 
+    public async Task<bool> EnviarEmailGenericoAsync(
+        string emailDestino,
+        string nomeDestino,
+        string assunto,
+        string conteudoTexto,
+        CancellationToken cancellationToken = default)
+    {
+        var htmlBody = $"<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;\">"
+            + $"<h2 style=\"color:#0f172a;\">{System.Net.WebUtility.HtmlEncode(assunto)}</h2>"
+            + $"<div style=\"white-space:pre-wrap;color:#334155;line-height:1.6;\">{System.Net.WebUtility.HtmlEncode(conteudoTexto)}</div>"
+            + $"<hr style=\"border:none;border-top:1px solid #e2e8f0;margin:24px 0;\">"
+            + $"<p style=\"color:#94a3b8;font-size:12px;\">Enviado via Ravier — Suporte</p></div>";
+
+        return await EnviarEmailAsync(
+            emailDestino,
+            nomeDestino,
+            assunto,
+            htmlBody,
+            conteudoTexto,
+            cancellationToken);
+    }
+
     // ── Email templates ─────────────────────────────────────────────
 
     private static string Wrapper(string conteudo)

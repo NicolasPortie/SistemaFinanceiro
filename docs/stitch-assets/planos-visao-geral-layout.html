@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Control Finance - Gestão de Convites</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --ivory-bg: #F9F9F7;
+            --pure-white: #FFFFFF;
+            --deep-navy: #0F172A;
+            --charcoal: #334155;
+            --emerald-accent: #10B981;
+            --gold-accent: #B89332;
+            --border-soft: rgba(15, 23, 42, 0.06);
+            --shadow-elegant: 0 10px 30px -10px rgba(0, 0, 0, 0.04), 0 4px 12px -4px rgba(0, 0, 0, 0.02);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--ivory-bg);
+            color: var(--deep-navy);
+            -webkit-font-smoothing: antialiased;
+        }
+        .serif-italic {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+        }
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+        .glass-card {
+            background: var(--pure-white);
+            border: 1px solid var(--border-soft);
+            box-shadow: var(--shadow-elegant);
+        }
+        .nav-link {
+            @apply text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all px-2 py-1;
+        }
+        .nav-link.active {
+            @apply text-slate-900 border-b-2 border-emerald-500;
+        }
+        .falcon-glow {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 20;
+        }
+        .badge {
+            @apply px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider;
+        }
+        .badge-pending { @apply bg-amber-50 text-amber-600 border border-amber-100; }
+        .badge-accepted { @apply bg-emerald-50 text-emerald-600 border border-emerald-100; }
+        .badge-expired { @apply bg-rose-50 text-rose-600 border border-rose-100; }
+        .invitation-item {
+            @apply cursor-pointer transition-all border-l-4 border-transparent hover:bg-slate-50/80;
+        }
+        .invitation-item.active {
+            @apply bg-white border-emerald-500 shadow-sm;
+        }
+        .log-dot {
+            @apply w-1.5 h-1.5 rounded-full bg-slate-300 relative;
+        }
+        .log-line {
+            @apply absolute left-[3px] top-4 w-[1px] h-10 bg-slate-100;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden selection:bg-emerald-100 selection:text-emerald-900">
+<div class="noise-overlay"></div>
+<header class="h-16 flex-shrink-0 flex items-center justify-between px-10 bg-white border-b border-[var(--border-soft)] z-50">
+<div class="flex items-center gap-12">
+<span class="font-bold text-[var(--deep-navy)] tracking-tighter text-2xl serif-italic">Control<span class="font-light text-slate-300 not-italic">F</span></span>
+<nav class="flex items-center gap-8 ml-4">
+<a class="nav-link" href="#">Tesouraria</a>
+<a class="nav-link" href="#">Planos</a>
+<a class="nav-link active" href="#">Convites</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3 px-4 py-1.5 bg-slate-50 border border-slate-100 rounded-full">
+<div class="w-5 h-5 rounded-full bg-[var(--deep-navy)] flex items-center justify-center text-[7px] font-bold text-white">AD</div>
+<span class="text-[9px] font-semibold text-[var(--deep-navy)] whitespace-nowrap">Admin Master</span>
+</div>
+<button class="bg-[var(--deep-navy)] text-white px-5 py-2 rounded-full text-[9px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all falcon-glow">
+            Novo Convite
+        </button>
+</div>
+</header>
+<main class="flex-1 overflow-hidden flex">
+<aside class="w-96 bg-white border-r border-slate-100 flex flex-col overflow-hidden">
+<div class="p-6 border-b border-slate-50">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-xl serif-italic text-[var(--deep-navy)]">Sent Invitations</h2>
+<span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">24 Total</span>
+</div>
+<div class="relative">
+<input class="w-full bg-slate-50 border-none rounded-xl px-4 py-2.5 text-[11px] placeholder:text-slate-300 focus:ring-1 focus:ring-emerald-500" placeholder="Search by email..." type="text"/>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg">search</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto hide-scrollbar">
+<div class="invitation-item active p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-[var(--deep-navy)] text-sm truncate max-w-[180px]">arthur.silva@empresa.com</h3>
+<span class="badge badge-pending">Pending</span>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-[10px] font-medium text-slate-500">Plan:</span>
+<span class="text-[10px] font-bold text-emerald-600 uppercase tracking-tight">Professional</span>
+</div>
+<div class="mt-3 flex items-center justify-between text-[9px] text-slate-400">
+<span>Sent 2 hours ago</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</div>
+</div>
+<div class="invitation-item p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-slate-600 text-sm truncate max-w-[180px]">contato@startup.io</h3>
+<span class="badge badge-accepted">Accepted</span>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-[10px] font-medium text-slate-500">Plan:</span>
+<span class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Business</span>
+</div>
+<div class="mt-3 flex items-center justify-between text-[9px] text-slate-400">
+<span>Sent May 12, 2023</span>
+</div>
+</div>
+<div class="invitation-item p-5 opacity-70">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-slate-600 text-sm truncate max-w-[180px]">rh@globalcorp.net</h3>
+<span class="badge badge-expired">Expired</span>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-[10px] font-medium text-slate-500">Plan:</span>
+<span class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Professional</span>
+</div>
+<div class="mt-3 flex items-center justify-between text-[9px] text-slate-400">
+<span>Expired 1 day ago</span>
+</div>
+</div>
+<div class="invitation-item p-5">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-slate-600 text-sm truncate max-w-[180px]">juliana.m@freelance.br</h3>
+<span class="badge badge-pending">Pending</span>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-[10px] font-medium text-slate-500">Plan:</span>
+<span class="text-[10px] font-bold text-slate-600 uppercase tracking-tight">Basic</span>
+</div>
+<div class="mt-3 flex items-center justify-between text-[9px] text-slate-400">
+<span>Sent 3 days ago</span>
+</div>
+</div>
+</div>
+<div class="p-6 bg-slate-50/50 border-t border-slate-100">
+<div class="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+<span>Monthly Limit</span>
+<span>15 / 100</span>
+</div>
+<div class="w-full h-1 bg-slate-200 rounded-full mt-2 overflow-hidden">
+<div class="w-[15%] h-full bg-emerald-500"></div>
+</div>
+</div>
+</aside>
+<section class="flex-1 overflow-y-auto bg-[var(--ivory-bg)] p-10 hide-scrollbar">
+<div class="max-w-4xl mx-auto space-y-8">
+<div class="flex items-center justify-between">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Invitation Details</span>
+<span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: #INV-9283</span>
+</div>
+<h1 class="text-3xl serif-italic text-[var(--deep-navy)]">arthur.silva@empresa.com</h1>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-5 py-2 bg-white border border-slate-200 rounded-full text-[10px] font-bold uppercase tracking-widest text-slate-600 hover:border-rose-500 hover:text-rose-500 transition-all">
+<span class="material-symbols-outlined text-sm">cancel</span> Revoke
+                    </button>
+<button class="flex items-center gap-2 px-5 py-2 bg-[var(--deep-navy)] text-white rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg">
+<span class="material-symbols-outlined text-sm">send</span> Resend Invitation
+                    </button>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-6">
+<div class="glass-card rounded-[2rem] p-6 col-span-2">
+<h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">person</span> Recipient Info
+                    </h3>
+<div class="grid grid-cols-2 gap-8">
+<div>
+<span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Target Email</span>
+<p class="text-sm font-semibold text-slate-700">arthur.silva@empresa.com</p>
+</div>
+<div>
+<span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Assigned Plan</span>
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-emerald-600">Professional</span>
+<span class="text-[9px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-bold">ANNUAL</span>
+</div>
+</div>
+<div class="col-span-2">
+<span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Secure Invitation Link</span>
+<div class="flex items-center gap-2 mt-1">
+<code class="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-[10px] text-slate-500 flex-1 truncate">https://app.controlf.com/join?ref=298x-a82k-invite-code</code>
+<button class="p-2 hover:bg-slate-50 rounded-lg text-slate-400 transition-colors">
+<span class="material-symbols-outlined text-lg">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="glass-card rounded-[2rem] p-6">
+<h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">schedule</span> Status &amp; Expiry
+                    </h3>
+<div class="space-y-6">
+<div>
+<span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Current Status</span>
+<span class="px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-[10px] font-bold uppercase border border-amber-100">Waiting Response</span>
+</div>
+<div>
+<span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Expires in</span>
+<p class="text-sm font-bold text-slate-700">48 Hours</p>
+<p class="text-[10px] text-slate-400">May 25, 2023 at 14:00</p>
+</div>
+</div>
+</div>
+</div>
+<div class="glass-card rounded-[2rem] p-8">
+<h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">history</span> Activity Log
+                </h3>
+<div class="space-y-10 pl-2">
+<div class="relative flex gap-6">
+<div class="log-line"></div>
+<div class="log-dot bg-emerald-500 ring-4 ring-emerald-50"></div>
+<div>
+<div class="flex items-center gap-3 mb-1">
+<span class="text-[11px] font-bold text-slate-700">Invitation Sent</span>
+<span class="text-[10px] text-slate-400 font-medium">Today, 10:15 AM</span>
+</div>
+<p class="text-[11px] text-slate-500">Invitation email was successfully delivered to the recipient address.</p>
+</div>
+</div>
+<div class="relative flex gap-6">
+<div class="log-line"></div>
+<div class="log-dot"></div>
+<div>
+<div class="flex items-center gap-3 mb-1">
+<span class="text-[11px] font-bold text-slate-700">Workspace Generated</span>
+<span class="text-[10px] text-slate-400 font-medium">Today, 10:14 AM</span>
+</div>
+<p class="text-[11px] text-slate-500">Security token and workspace environment pre-configured for the Professional plan.</p>
+</div>
+</div>
+<div class="relative flex gap-6">
+<div class="log-dot"></div>
+<div>
+<div class="flex items-center gap-3 mb-1">
+<span class="text-[11px] font-bold text-slate-700">Invitation Created</span>
+<span class="text-[10px] text-slate-400 font-medium">Today, 10:14 AM</span>
+</div>
+<p class="text-[11px] text-slate-500">Created by <span class="font-semibold text-slate-600 underline">Admin Master</span></p>
+</div>
+</div>
+</div>
+</div>
+<div class="glass-card rounded-[2rem] p-8">
+<h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">settings_suggest</span> Invitation Rules
+                </h3>
+<div class="flex gap-10">
+<label class="flex items-center gap-3 cursor-pointer group">
+<input checked="" class="rounded text-emerald-500 focus:ring-emerald-500 border-slate-200 w-5 h-5" type="checkbox"/>
+<div>
+<span class="text-sm font-semibold text-slate-700 group-hover:text-emerald-600 transition-colors">Auto-Reminders</span>
+<p class="text-[10px] text-slate-400">Send nudge after 24h</p>
+</div>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input checked="" class="rounded text-slate-500 focus:ring-slate-500 border-slate-200 w-5 h-5" type="checkbox"/>
+<div>
+<span class="text-sm font-semibold text-slate-700 group-hover:text-slate-600 transition-colors">One-Time Link</span>
+<p class="text-[10px] text-slate-400">Invalidate after first access</p>
+</div>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded text-amber-500 focus:ring-amber-500 border-slate-200 w-5 h-5" type="checkbox"/>
+<div>
+<span class="text-sm font-semibold text-slate-700 group-hover:text-amber-600 transition-colors">Bypass Approval</span>
+<p class="text-[10px] text-slate-400">Auto-whitelist domain</p>
+</div>
+</label>
+</div>
+</div>
+</div>
+</section>
+</main>
+
+</body></html>

@@ -74,9 +74,8 @@ public class LancamentoFlowHandler : ILancamentoHandler
     public void RemoverPendente(long chatId) => _pendentes.TryRemove(chatId, out _);
 
     /// <inheritdoc />
-    public async Task<string> IniciarFluxoAsync(Usuario usuario, DadosLancamento dados, OrigemDado origem)
+    public async Task<string> IniciarFluxoAsync(long chatId, Usuario usuario, DadosLancamento dados, OrigemDado origem)
     {
-        var chatId = usuario.TelegramChatId!.Value;
 
         if (dados.Valor <= 0)
             return "❌ O valor precisa ser maior que zero. Pode repetir o valor do lançamento?";
@@ -353,7 +352,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
     }
 
     /// <inheritdoc />
-    public async Task<string> ProcessarDivisaoGastoAsync(Usuario usuario, DadosDivisaoGastoIA dados, OrigemDado origem)
+    public async Task<string> ProcessarDivisaoGastoAsync(long chatId, Usuario usuario, DadosDivisaoGastoIA dados, OrigemDado origem)
     {
         if (dados.ValorTotal <= 0)
             return "❌ O valor total precisa ser maior que zero.";
@@ -374,7 +373,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             Data = dados.Data ?? DateTime.UtcNow
         };
 
-        var resultado = await IniciarFluxoAsync(usuario, dadosLancamento, origem);
+        var resultado = await IniciarFluxoAsync(chatId, usuario, dadosLancamento, origem);
 
         var resumo = $"Conta dividida por *{dados.NumeroPessoas} pessoas*\n" +
                      $"Total: R$ {dados.ValorTotal:N2}\n" +

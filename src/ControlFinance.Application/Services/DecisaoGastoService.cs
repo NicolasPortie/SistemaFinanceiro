@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Exceptions;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -30,6 +31,7 @@ public class DecisaoGastoService : IDecisaoGastoService
     private readonly IPerfilComportamentalService _perfilComportamentalService;
     private readonly IImpactoMetaService _impactoMetaService;
     private readonly ILogDecisaoRepository _logDecisaoRepo;
+    private readonly IFeatureGateService _featureGate;
     private readonly ILogger<DecisaoGastoService> _logger;
 
     // Thresholds configuráveis
@@ -49,6 +51,7 @@ public class DecisaoGastoService : IDecisaoGastoService
         IPerfilComportamentalService perfilComportamentalService,
         IImpactoMetaService impactoMetaService,
         ILogDecisaoRepository logDecisaoRepo,
+        IFeatureGateService featureGate,
         ILogger<DecisaoGastoService> logger)
     {
         _perfilService = perfilService;
@@ -63,6 +66,7 @@ public class DecisaoGastoService : IDecisaoGastoService
         _perfilComportamentalService = perfilComportamentalService;
         _impactoMetaService = impactoMetaService;
         _logDecisaoRepo = logDecisaoRepo;
+        _featureGate = featureGate;
         _logger = logger;
     }
 
@@ -102,6 +106,11 @@ public class DecisaoGastoService : IDecisaoGastoService
     public async Task<DecisaoGastoResultDto> AvaliarGastoRapidoAsync(
         int usuarioId, decimal valor, string? descricao, string? categoriaNome)
     {
+        // ── Feature Gate: Consultor IA ──
+        var gate = await _featureGate.VerificarAcessoAsync(usuarioId, Recurso.ConsultorIA);
+        if (!gate.Permitido)
+            throw new FeatureGateException(gate.Mensagem!, Recurso.ConsultorIA, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
+
         var perfil = await _perfilService.ObterOuCalcularAsync(usuarioId);
         var hoje = DateTime.UtcNow;
         var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -313,6 +322,11 @@ public class DecisaoGastoService : IDecisaoGastoService
     public async Task<string> AvaliarCompraCompletaAsync(
         int usuarioId, decimal valor, string descricao, string? formaPagamento, int parcelas)
     {
+        // ── Feature Gate: Consultor IA ──
+        var gate = await _featureGate.VerificarAcessoAsync(usuarioId, Recurso.ConsultorIA);
+        if (!gate.Permitido)
+            throw new FeatureGateException(gate.Mensagem!, Recurso.ConsultorIA, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
+
         var perfil = await _perfilService.ObterOuCalcularAsync(usuarioId);
         var hoje = DateTime.UtcNow;
         var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);

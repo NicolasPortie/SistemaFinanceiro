@@ -27,6 +27,11 @@ public class LembretePagamento
     public bool LembreteTelegramAtivo { get; set; } = true;
     public string? PeriodKeyAtual { get; set; } // "YYYY-MM" do ciclo corrente
 
+    /// <summary>
+    /// Se true, esta conta fixa aparece para o parceiro na família e ambos recebem notificação.
+    /// </summary>
+    public bool CompartilhadoFamilia { get; set; }
+
     // Configuração de lembrete inteligente
     public int DiasAntecedenciaLembrete { get; set; } = 3; // D-3 por padrão
     public TimeSpan HorarioInicioLembrete { get; set; } = new(9, 0, 0); // 09:00 Brasília

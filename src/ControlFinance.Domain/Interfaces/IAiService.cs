@@ -9,7 +9,24 @@ public interface IAiService
     Task<RespostaIA> ProcessarMensagemCompletaAsync(string mensagem, string contextoFinanceiro, OrigemDado origem = OrigemDado.Texto);
     Task<ResultadoTranscricao> TranscreverAudioAsync(byte[] audioData, string mimeType);
     Task<string> ExtrairTextoImagemAsync(byte[] imageData, string mimeType);
+
+    /// <summary>
+    /// Reescreve uma resposta formatada (estilo Telegram/relatório) como texto natural
+    /// e conversacional para uso no chat web (InApp).
+    /// </summary>
+    Task<string> HumanizarRespostaAsync(string mensagemUsuario, string dadosFormatados);
+
+    /// <summary>
+    /// Chat completion simples com histórico de mensagens (sem tool calling).
+    /// Usado pelo chatbot de suporte.
+    /// </summary>
+    Task<string?> ChatCompletionAsync(IReadOnlyList<MensagemChatIA> mensagens, double temperatura = 0.7, int maxTokens = 1024);
 }
+
+/// <summary>
+/// Mensagem para chat completion multi-turn.
+/// </summary>
+public record MensagemChatIA(string Role, string Content);
 
 /// <summary>
 /// Resultado da transcrição de áudio com metadados de confiança.

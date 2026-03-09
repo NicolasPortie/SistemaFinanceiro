@@ -1,15 +1,10 @@
 "use client";
 
+import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type AdminCodigoConvite } from "@/lib/api";
-import { formatDate } from "@/lib/format";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 import {
+  Search,
   Plus,
   Trash2,
   Copy,
@@ -17,13 +12,23 @@ import {
   CheckCircle2,
   XCircle,
   Users,
-  Send,
-  CalendarClock,
+  Link2,
   Timer,
   ShieldCheck,
-  Gift,
+  Loader2,
+  Send,
 } from "lucide-react";
-import { useState } from "react";
+import { toast } from "sonner";
+
+import { api, type AdminCodigoConvite } from "@/lib/api";
+import { formatDate } from "@/lib/format";
+import { ErrorState } from "@/components/shared/page-components";
+import { DialogShellHeader } from "@/components/shared/dialog-shell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -41,30 +46,81 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  PageShell,
-  PageHeader,
-  ErrorState,
-  CardSkeleton,
-} from "@/components/shared/page-components";
 import { cn } from "@/lib/utils";
 
-// -- Helpers --------------------------------
+// ── Helpers ─────────────────────────────────────────────────
 
 function formatDuration(dias: number | null): string {
   if (!dias) return "Permanente";
   if (dias >= 365) {
     const anos = Math.floor(dias / 365);
     const mesesRestantes = Math.floor((dias % 365) / 30);
-    return mesesRestantes > 0 ? `${anos} ano(s) e ${mesesRestantes} mês(es)` : `${anos} ano(s)`;
+    return mesesRestantes > 0
+      ? `${anos} ano(s) e ${mesesRestantes} mês(es)`
+      : `${anos} ano(s)`;
   }
   if (dias >= 30) {
     const meses = Math.floor(dias / 30);
     const diasRestantes = dias % 30;
-    return diasRestantes > 0 ? `${meses} mês(es) e ${diasRestantes} dia(s)` : `${meses} mês(es)`;
+    return diasRestantes > 0
+      ? `${meses} mês(es) e ${diasRestantes} dia(s)`
+      : `${meses} mês(es)`;
   }
   return `${dias} dia(s)`;
+}
+
+function getStatus(c: AdminCodigoConvite) {
+  if (c.usado && !c.ilimitado)
+    return {
+      label: "Usado",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      border: "border-emerald-100",
+      darkBg: "dark:bg-emerald-500/10",
+      darkBorder: "dark:border-emerald-500/20",
+      icon: CheckCircle2,
+    };
+  if (c.expirado)
+    return {
+      label: "Expirado",
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+      border: "border-rose-100",
+      darkBg: "dark:bg-rose-500/10",
+      darkBorder: "dark:border-rose-500/20",
+      icon: XCircle,
+    };
+  if (c.usosRealizados > 0 && !c.usado)
+    return {
+      label: "Em Uso",
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      border: "border-amber-100",
+      darkBg: "dark:bg-amber-500/10",
+      darkBorder: "dark:border-amber-500/20",
+      icon: Users,
+    };
+  return {
+    label: "Disponível",
+    color: "text-emerald-600",
+    bg: "bg-emerald-50",
+    border: "border-emerald-100",
+    darkBg: "dark:bg-emerald-500/10",
+    darkBorder: "dark:border-emerald-500/20",
+    icon: Clock,
+  };
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Agora";
+  if (mins < 60) return `${mins}min atrás`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h atrás`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d atrás`;
+  return formatDate(dateStr);
 }
 
 const PRESETS_ACESSO = [
@@ -84,14 +140,16 @@ const PRESETS_EXPIRACAO = [
   { label: "30 dias", value: 720 },
 ];
 
-// -- Main Component -------------------------
+// ── Page ────────────────────────────────────────────────────
 
 export default function AdminConvitesPage() {
   const queryClient = useQueryClient();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
-  // Form state
+  // Create form state
   const [descricao, setDescricao] = useState("");
   const [horasValidade, setHorasValidade] = useState(48);
   const [codigoPermanente, setCodigoPermanente] = useState(false);
@@ -102,7 +160,6 @@ export default function AdminConvitesPage() {
   const {
     data: convites,
     isLoading,
-    isError,
     error,
   } = useQuery({
     queryKey: ["admin", "convites"],
@@ -120,10 +177,12 @@ export default function AdminConvitesPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "convites"] });
       if (data.length === 1) {
-        navigator.clipboard.writeText(data[0].codigo).catch(() => { });
-        toast.success(`Código gerado e copiado: ${data[0].codigo}`);
+        const link = `${window.location.origin}/registro?convite=${data[0].codigo}`;
+        navigator.clipboard.writeText(link).catch(() => {});
+        toast.success("Link gerado e copiado!");
+        setSelectedId(data[0].id);
       } else {
-        toast.success(`${data.length} códigos gerados com sucesso!`);
+        toast.success(`${data.length} links gerados com sucesso!`);
       }
       handleCloseCreate();
     },
@@ -134,7 +193,8 @@ export default function AdminConvitesPage() {
     mutationFn: (id: number) => api.admin.convites.remover(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "convites"] });
-      toast.success("Código removido");
+      toast.success("Link removido");
+      if (removingId === selectedId) setSelectedId(null);
       setRemovingId(null);
     },
     onError: (err: Error) => toast.error(err.message),
@@ -152,295 +212,495 @@ export default function AdminConvitesPage() {
 
   const copiarCodigo = async (codigo: string) => {
     try {
-      await navigator.clipboard.writeText(codigo);
-      toast.success("Código copiado!");
+      const link = `${window.location.origin}/registro?convite=${codigo}`;
+      await navigator.clipboard.writeText(link);
+      toast.success("Link copiado!");
     } catch {
       toast.error("Erro ao copiar");
     }
   };
 
-  const getStatus = (c: AdminCodigoConvite) => {
-    if (c.usado && !c.ilimitado)
-      return {
-        label: "Usado",
-        color: "text-emerald-500",
-        bg: "bg-emerald-500/10",
-        border: "border-emerald-500/20",
-        icon: CheckCircle2,
-      };
-    if (c.expirado)
-      return {
-        label: "Expirado",
-        color: "text-red-500",
-        bg: "bg-red-500/10",
-        border: "border-red-500/20",
-        icon: XCircle,
-      };
-    if (c.usosRealizados > 0 && !c.usado)
-      return {
-        label: "Em uso",
-        color: "text-amber-500",
-        bg: "bg-amber-500/10",
-        border: "border-amber-500/20",
-        icon: Users,
-      };
-    return {
-      label: "Disponível",
-      color: "text-emerald-500",
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/20",
-      icon: Clock,
-    };
-  };
+  // Auto-select first on load
+  const autoSelectedRef = useRef(false);
+  if (convites?.length && selectedId === null && !autoSelectedRef.current) {
+    autoSelectedRef.current = true;
+    setSelectedId(convites[0].id);
+  }
+
+  const selectedConvite = convites?.find((c) => c.id === selectedId) ?? null;
+
+  // Sidebar filtering
+  const sortedConvites = useMemo(() => {
+    if (!convites) return [];
+    let list = [...convites].sort(
+      (a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
+    );
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (c) =>
+          c.codigo.toLowerCase().includes(q) ||
+          c.descricao?.toLowerCase().includes(q) ||
+          c.criadoPorNome.toLowerCase().includes(q) ||
+          c.usadoPorNome?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [convites, searchQuery]);
 
   const ativos = convites?.filter((c) => !c.usado && !c.expirado) ?? [];
-  const usados = convites?.filter((c) => c.usado) ?? [];
-  const expirados = convites?.filter((c) => c.expirado && !c.usado) ?? [];
 
+
+  // ── Loading ──────────────
   if (isLoading) {
     return (
-      <PageShell>
-        <PageHeader title="Convites" description="Gerencie os convites para novos usuários" />
-        <CardSkeleton count={4} />
-      </PageShell>
+      <div className="flex h-full">
+        <aside className="w-96 shrink-0 hidden lg:block bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 p-6">
+          <Skeleton className="h-6 w-40 mb-4" />
+          <Skeleton className="h-10 w-full mb-6 rounded-xl" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full mb-3 rounded-xl" />
+          ))}
+        </aside>
+        <div className="flex-1 p-4 sm:p-6 lg:p-10">
+          <Skeleton className="h-10 w-80 mb-8" />
+          <Skeleton className="h-64 w-full rounded-[2rem]" />
+        </div>
+      </div>
     );
   }
 
-  if (isError) {
+  if (error) {
     return (
-      <PageShell>
-        <PageHeader title="Convites" description="Gerencie os convites para novos usuários" />
+      <div className="flex items-center justify-center h-full">
         <ErrorState
-          message={error?.message ?? "Erro ao carregar convites"}
-          onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "convites"] })}
+          message="Erro ao carregar convites."
+          onRetry={() =>
+            queryClient.invalidateQueries({ queryKey: ["admin", "convites"] })
+          }
         />
-      </PageShell>
+      </div>
     );
   }
 
   return (
-    <PageShell>
-      <PageHeader title="Convites" description="Gere códigos para convidar pessoas ao sistema">
-        <Button
-          onClick={() => setShowCreate(true)}
-          className="gap-2 h-10 rounded-xl font-bold shadow-premium btn-premium"
-        >
-          <Plus className="h-4 w-4" />
-          Gerar Convite
-        </Button>
-      </PageHeader>
-
-      {/* Summary Cards */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-        {[
-          {
-            label: "Disponíveis",
-            value: ativos.length,
-            color: "text-emerald-500",
-            bg: "bg-emerald-500/10",
-            icon: Send,
-          },
-          {
-            label: "Usados",
-            value: usados.length,
-            color: "text-emerald-500",
-            bg: "bg-emerald-500/10",
-            icon: CheckCircle2,
-          },
-          {
-            label: "Expirados",
-            value: expirados.length,
-            color: "text-red-500",
-            bg: "bg-red-500/10",
-            icon: XCircle,
-          },
-        ].map((item) => (
-          <motion.div
-            key={item.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-panel rounded-2xl p-4 flex items-center gap-3"
-          >
-            <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", item.bg)}>
-              <item.icon className={cn("h-4.5 w-4.5", item.color)} />
+    <>
+      <div className="flex h-full min-h-0">
+        {/* ── Sidebar ── */}
+        <aside className="w-96 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 hidden lg:flex flex-col overflow-hidden">
+          <div className="p-6 border-b border-slate-50 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl serif-italic">Convites Enviados</h2>
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded">
+                {convites?.length ?? 0} Total
+              </span>
             </div>
-            <div>
-              <p className={cn("text-2xl font-extrabold tabular-nums", item.color)}>{item.value}</p>
-              <p className="text-[11px] text-muted-foreground/60 font-medium">{item.label}</p>
+            <div className="relative">
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por código..."
+                className="bg-slate-50 dark:bg-slate-900/50 border-none rounded-xl px-4 py-2.5 text-[11px] placeholder:text-slate-300 focus:ring-1 focus:ring-emerald-500 h-auto"
+              />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
             </div>
-          </motion.div>
-        ))}
-      </div>
+          </div>
 
-      {/* Codes List */}
-      <div className="space-y-2.5">
-        <AnimatePresence>
-          {convites?.map((c, i) => {
-            const status = getStatus(c);
-            return (
-              <motion.div
-                key={c.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ delay: i * 0.03 }}
-                className="glass-panel rounded-2xl p-4 group"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0 space-y-2">
-                    {/* Code + Status */}
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <code className="text-base sm:text-lg font-mono font-extrabold tracking-[0.2em] text-foreground/90">
-                        {c.codigo}
-                      </code>
-                      <Badge
+          <div className="flex-1 overflow-y-auto hide-scrollbar">
+            <AnimatePresence>
+              {sortedConvites.map((c) => {
+                const status = getStatus(c);
+                return (
+                  <motion.button
+                    key={c.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    onClick={() => setSelectedId(c.id)}
+                    className={cn(
+                      "w-full text-left p-5 cursor-pointer transition-all border-l-4 border-transparent hover:bg-slate-50/80 dark:hover:bg-slate-800/50",
+                      selectedId === c.id &&
+                        "bg-white dark:bg-slate-800 border-emerald-500 shadow-sm",
+                      c.expirado && selectedId !== c.id && "opacity-70"
+                    )}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <h3
                         className={cn(
-                          "text-[10px] px-2 py-0.5 border",
-                          status.bg,
-                          status.color,
-                          status.border
+                          "font-mono font-bold text-sm truncate max-w-45",
+                          selectedId === c.id
+                            ? "text-foreground"
+                            : "text-slate-600 dark:text-slate-300"
                         )}
                       >
-                        <status.icon className="h-3 w-3 mr-1" />
+                        {c.codigo}
+                      </h3>
+                      <span
+                        className={cn(
+                          "px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border",
+                          status.bg,
+                          status.color,
+                          status.border,
+                          status.darkBg,
+                          status.darkBorder
+                        )}
+                      >
                         {status.label}
-                      </Badge>
+                      </span>
                     </div>
-
                     {c.descricao && (
-                      <p className="text-sm text-muted-foreground/70">{c.descricao}</p>
+                      <p className="text-[11px] text-slate-400 line-clamp-1 mt-1">
+                        {c.descricao}
+                      </p>
                     )}
-
-                    {/* Info chips */}
-                    <div className="flex flex-wrap gap-2">
-                      {/* Duração do acesso */}
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-primary/8 text-primary">
-                        <ShieldCheck className="h-3 w-3" />
-                        Acesso: {formatDuration(c.duracaoAcessoDias)}
-                      </span>
-
-                      {/* Tempo para ativar */}
-                      {c.permanente ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-emerald-500/8 text-emerald-600 dark:text-emerald-400">
-                          <Timer className="h-3 w-3" />
-                          Sem prazo p/ ativar
-                        </span>
-                      ) : c.expiraEm ? (
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md",
-                            c.expirado
-                              ? "bg-red-500/8 text-red-500"
-                              : "bg-amber-500/8 text-amber-600 dark:text-amber-400"
-                          )}
-                        >
-                          <Timer className="h-3 w-3" />
-                          {c.expirado ? "Expirou" : "Ativar até"} {formatDate(c.expiraEm)}
-                        </span>
-                      ) : null}
-
-                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/50 font-medium">
-                        <CalendarClock className="h-3 w-3" />
-                        Criado {formatDate(c.criadoEm)}
-                      </span>
-
-                      {c.usado && c.usadoPorNome && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-emerald-500/8 text-emerald-600 dark:text-emerald-400">
-                          <Users className="h-3 w-3" />
+                    <div className="mt-2 flex items-center justify-between text-[9px] text-slate-400">
+                      <span>{timeAgo(c.criadoEm)}</span>
+                      {c.usadoPorNome && (
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400">
                           {c.usadoPorNome}
-                          {c.usadoEm && ` — ${formatDate(c.usadoEm)}`}
                         </span>
                       )}
                     </div>
-                  </div>
+                  </motion.button>
+                );
+              })}
+            </AnimatePresence>
+          </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {!c.usado && !c.expirado && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs gap-1.5 rounded-lg"
-                        onClick={() => copiarCodigo(c.codigo)}
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                        Copiar
-                      </Button>
-                    )}
+          <div className="p-6 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2">
+              <span>Disponíveis</span>
+              <span>
+                {String(ativos.length).padStart(2, "0")} /{" "}
+                {String(convites?.length ?? 0).padStart(2, "0")}
+              </span>
+            </div>
+            <div className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 transition-all"
+                style={{
+                  width: convites?.length
+                    ? `${(ativos.length / convites.length) * 100}%`
+                    : "0%",
+                }}
+              />
+            </div>
+          </div>
+        </aside>
+
+        {/* ── Detail Panel ── */}
+        <section className="flex-1 overflow-y-auto hide-scrollbar p-6 lg:p-10">
+          {/* Mobile selector */}
+          <div className="lg:hidden mb-6">
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">
+              Selecionar Convite
+            </label>
+            <select
+              value={selectedId ?? ""}
+              onChange={(e) => setSelectedId(Number(e.target.value))}
+              className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-emerald-500"
+            >
+              {sortedConvites.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.codigo} — {getStatus(c).label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedConvite ? (
+            <motion.div
+              key={selectedConvite.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-4xl mx-auto space-y-8"
+            >
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                      Detalhes do Convite
+                    </span>
+                    <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      #{selectedConvite.id}
+                    </span>
+                  </div>
+                  <h1 className="text-2xl lg:text-3xl serif-italic font-mono">
+                    {selectedConvite.codigo}
+                  </h1>
+                </div>
+                <div className="flex items-center gap-3">
+                  {!selectedConvite.usado && !selectedConvite.expirado && (
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-muted-foreground/50 hover:text-red-500"
-                      onClick={() => setRemovingId(c.id)}
+                      variant="outline"
+                      onClick={() => setRemovingId(selectedConvite.id)}
+                      className="flex items-center gap-2 px-5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-[10px] font-bold uppercase tracking-widest text-slate-600 hover:border-rose-500 hover:text-rose-500 transition-all"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <XCircle className="h-3.5 w-3.5" />
+                      Revogar
                     </Button>
+                  )}
+                  <Button
+                    onClick={() => copiarCodigo(selectedConvite.codigo)}
+                    className="flex items-center gap-2 px-5 py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-lg falcon-glow"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copiar Link
+                  </Button>
+                </div>
+              </div>
+
+              {/* Info grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Convite info */}
+                <div className="exec-card rounded-[2rem] p-6 lg:col-span-2">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                    <Link2 className="h-3.5 w-3.5" /> Informações do Convite
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                        Link Completo
+                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-lg px-3 py-2 text-[10px] text-slate-500 dark:text-slate-400 flex-1 truncate">
+                          /registro?convite={selectedConvite.codigo}
+                        </code>
+                        <button
+                          onClick={() => copiarCodigo(selectedConvite.codigo)}
+                          className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                        Duração do Acesso
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                        <span className="text-sm font-bold text-emerald-600">
+                          {formatDuration(selectedConvite.duracaoAcessoDias)}
+                        </span>
+                      </div>
+                    </div>
+                    {selectedConvite.descricao && (
+                      <div className="sm:col-span-2">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                          Descrição
+                        </span>
+                        <p className="text-sm text-slate-700 dark:text-slate-200">
+                          {selectedConvite.descricao}
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                        Criado por
+                      </span>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        {selectedConvite.criadoPorNome}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                        Criado em
+                      </span>
+                      <p className="text-sm text-slate-700 dark:text-slate-200">
+                        {formatDate(selectedConvite.criadoEm)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
 
-        {(!convites || convites.length === 0) && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-panel rounded-2xl p-6 sm:p-10 flex flex-col items-center justify-center text-center"
-          >
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4">
-              <Gift className="h-7 w-7" />
+                {/* Status & Expiry */}
+                <div className="exec-card rounded-[2rem] p-6">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                    <Timer className="h-3.5 w-3.5" /> Status & Expiração
+                  </h3>
+                  <div className="space-y-6">
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                        Status Atual
+                      </span>
+                      {(() => {
+                        const status = getStatus(selectedConvite);
+                        return (
+                          <span
+                            className={cn(
+                              "px-3 py-1 rounded-full text-[10px] font-bold uppercase border",
+                              status.bg,
+                              status.color,
+                              status.border,
+                              status.darkBg,
+                              status.darkBorder
+                            )}
+                          >
+                            {status.label}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                        {selectedConvite.permanente
+                          ? "Validade"
+                          : selectedConvite.expirado
+                            ? "Expirou em"
+                            : "Expira em"}
+                      </span>
+                      {selectedConvite.permanente ? (
+                        <p className="text-sm font-bold text-emerald-600">
+                          Sem prazo
+                        </p>
+                      ) : selectedConvite.expiraEm ? (
+                        <>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                            {formatDate(selectedConvite.expiraEm)}
+                          </p>
+                          {!selectedConvite.expirado && (
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {timeAgo(selectedConvite.expiraEm)}
+                            </p>
+                          )}
+                        </>
+                      ) : null}
+                    </div>
+                    {selectedConvite.usoMaximo !== null && (
+                      <div>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                          Usos
+                        </span>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                          {selectedConvite.usosRealizados} /{" "}
+                          {selectedConvite.ilimitado
+                            ? "∞"
+                            : selectedConvite.usoMaximo}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Used by (if used) */}
+              {selectedConvite.usado && selectedConvite.usadoPorNome && (
+                <div className="exec-card rounded-[2rem] p-8">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5" /> Evento de Uso
+                  </h3>
+                  <div className="flex gap-6">
+                    <div className="relative">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-50 dark:ring-emerald-500/20" />
+                      <div className="absolute left-0.75 top-4 w-px h-8 bg-slate-100 dark:bg-slate-700" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                          Convite aceito por{" "}
+                          <span className="font-semibold text-emerald-600 underline">
+                            {selectedConvite.usadoPorNome}
+                          </span>
+                        </span>
+                        {selectedConvite.usadoEm && (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {formatDate(selectedConvite.usadoEm)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Acesso concedido com duração de{" "}
+                        {formatDuration(selectedConvite.duracaoAcessoDias)}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4">
+              <p className="text-[11px] uppercase tracking-widest font-bold">
+                {convites?.length
+                  ? "Selecione um convite na lista"
+                  : "Nenhum convite gerado"}
+              </p>
+              {!convites?.length && (
+                <Button
+                  onClick={() => setShowCreate(true)}
+                  className="gap-2 px-6 py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all falcon-glow"
+                >
+                  <Plus className="h-4 w-4" />
+                  Gerar Primeiro Link
+                </Button>
+              )}
             </div>
-            <h3 className="text-lg font-bold mb-1.5">Nenhum convite gerado</h3>
-            <p className="text-sm text-muted-foreground/60 mb-5 max-w-sm">
-              Gere um código de convite para permitir que outras pessoas se cadastrem no sistema.
-            </p>
-            <Button
+          )}
+
+          {/* Floating create button */}
+          {convites?.length ? (
+            <button
               onClick={() => setShowCreate(true)}
-              className="gap-2 rounded-xl font-bold shadow-premium btn-premium"
+              className="fixed bottom-8 right-8 bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-6 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-lg falcon-glow flex items-center gap-2 z-40"
             >
               <Plus className="h-4 w-4" />
-              Gerar Primeiro Convite
-            </Button>
-          </motion.div>
-        )}
+              Novo Convite
+            </button>
+          ) : null}
+        </section>
       </div>
 
-      {/* -- Remove Confirmation -- */}
-      <AlertDialog open={removingId !== null} onOpenChange={() => setRemovingId(null)}>
+      {/* ── Remove Dialog ── */}
+      <AlertDialog
+        open={removingId !== null}
+        onOpenChange={() => setRemovingId(null)}
+      >
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover código de convite?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O código será removido permanentemente.
+          <AlertDialogHeader className="items-start text-left">
+            <AlertDialogTitle className="sr-only">
+              Remover link de cadastro?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
+              Esta ação não pode ser desfeita. O link será removido
+              permanentemente.
             </AlertDialogDescription>
+            <DialogShellHeader
+              icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Remover link de cadastro?"
+              description="Esta ação não pode ser desfeita. O link será removido permanentemente."
+              tone="rose"
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => removingId && remover.mutate(removingId)}
               loading={remover.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2"
             >
-              <Trash2 className="h-4 w-4 mr-1" />
+              <Trash2 className="h-4 w-4" />
               Remover
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* -- Create Dialog -- */}
-      <Dialog open={showCreate} onOpenChange={(open) => !open && handleCloseCreate()}>
+      {/* ── Create Dialog ── */}
+      <Dialog
+        open={showCreate}
+        onOpenChange={(open) => !open && handleCloseCreate()}
+      >
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-
-
           <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
-                <Send className="h-5 w-5 sm:h-6 sm:w-6" />
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
+                <Link2 className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <DialogTitle className="text-lg sm:text-xl font-semibold">
-                  Criar Novo Convite
+                  Gerar Link de Cadastro
                 </DialogTitle>
                 <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5">
                   Configure as permissões e validade para o novo acesso.
@@ -450,7 +710,7 @@ export default function AdminConvitesPage() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* ── Duração do Acesso ── */}
+            {/* Duração do Acesso */}
             <div>
               <Label className="block text-sm font-semibold text-foreground mb-2">
                 Duração do Acesso
@@ -507,10 +767,10 @@ export default function AdminConvitesPage() {
               </div>
             </div>
 
-            {/* ── Expiração do Código ── */}
+            {/* Expiração do Link */}
             <div>
               <Label className="block text-sm font-semibold text-foreground mb-2">
-                Expiração do Código
+                Expiração do Link
               </Label>
               <div className="grid grid-cols-3 gap-2 mb-2">
                 {PRESETS_EXPIRACAO.map((p) => (
@@ -551,9 +811,11 @@ export default function AdminConvitesPage() {
               </div>
               <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-border/30">
                 <div>
-                  <p className="text-sm font-semibold">Sem prazo (nunca expira)</p>
+                  <p className="text-sm font-semibold">
+                    Sem prazo (nunca expira)
+                  </p>
                   <p className="text-[11px] text-muted-foreground/60">
-                    O código pode ser usado a qualquer momento
+                    O link pode ser usado a qualquer momento
                   </p>
                 </div>
                 <Switch
@@ -564,7 +826,7 @@ export default function AdminConvitesPage() {
               </div>
             </div>
 
-            {/* ── Uso Único ── */}
+            {/* Uso Único */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold">Uso Único</p>
@@ -575,7 +837,7 @@ export default function AdminConvitesPage() {
               <Switch checked id="usoUnico" disabled />
             </div>
 
-            {/* ── Quantidade + Descrição ── */}
+            {/* Quantidade + Descrição */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
@@ -586,38 +848,52 @@ export default function AdminConvitesPage() {
                   min={1}
                   max={50}
                   value={quantidade}
-                  onChange={(e) => setQuantidade(Math.max(1, Math.min(50, Number(e.target.value))))}
-                  className="h-10 rounded-full text-center font-semibold tabular-nums bg-muted/30 border-border/60"
+                  onChange={(e) =>
+                    setQuantidade(
+                      Math.max(1, Math.min(50, Number(e.target.value)))
+                    )
+                  }
+                  className="h-10 rounded-full bg-muted/30 border-border/60"
                 />
               </div>
               <div>
                 <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  Descrição <span className="font-normal opacity-60">(opcional)</span>
+                  Descrição (opcional)
                 </Label>
                 <Input
-                  placeholder="Ex: João, amigo..."
+                  placeholder="Ex: RH novos"
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
-                  maxLength={200}
                   className="h-10 rounded-full bg-muted/30 border-border/60"
                 />
               </div>
             </div>
+          </div>
 
-            {/* ── Submit ── */}
-            <div className="pt-2 sm:pt-4 pb-safe">
-              <Button
-                onClick={() => criar.mutate()}
-                loading={criar.isPending}
-                className="w-full gap-2 h-11 sm:h-12 rounded-full font-semibold text-sm bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all"
-              >
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={handleCloseCreate}
+              className="rounded-full"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => criar.mutate()}
+              disabled={criar.isPending}
+              className="gap-2 rounded-full font-bold bg-slate-900 dark:bg-white dark:text-slate-900 text-white hover:bg-slate-800 dark:hover:bg-slate-200 falcon-glow"
+            >
+              {criar.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
                 <Send className="h-4 w-4" />
-                {quantidade > 1 ? `Gerar ${quantidade} Convites` : "Gerar Convite"}
-              </Button>
-            </div>
+              )}
+              Gerar{quantidade > 1 ? ` ${quantidade} Links` : " Link"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </PageShell>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo } from "react";
 import {
@@ -9,20 +9,20 @@ import {
 } from "@/hooks/use-queries";
 import { formatCurrency } from "@/lib/format";
 import type { ContaBancaria, TipoContaBancaria } from "@/lib/api";
+import { SUPPORTED_BANKS, getBankById } from "@/lib/banks";
 import {
   Landmark,
   Plus,
-  Pencil,
   Trash2,
   Wallet,
   TrendingUp,
   PiggyBank,
   Smartphone,
   CreditCard,
-  MoreVertical,
   Building2,
   CheckCircle,
   Info,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,15 +52,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { ErrorState } from "@/components/shared/page-components";
-import { motion, AnimatePresence } from "framer-motion";
+import { DialogShellHeader } from "@/components/shared/dialog-shell";
+
+
+// ── Colors for balance distribution bars ────────────────
+const DIST_COLORS = [
+  "bg-purple-600",
+  "bg-orange-500",
+  "bg-rose-500",
+  "bg-emerald-500",
+  "bg-violet-600",
+  "bg-amber-500",
+  "bg-sky-500",
+];
 
 // ── Helpers ───────────────────────────────────────────────
 
@@ -121,10 +127,11 @@ function getTipoInfo(tipo: TipoContaBancaria) {
 interface FormState {
   nome: string;
   tipo: TipoContaBancaria;
+  instituicao: string;
   saldo: string;
 }
 
-const defaultForm: FormState = { nome: "", tipo: "Corrente", saldo: "" };
+const defaultForm: FormState = { nome: "", tipo: "Corrente", instituicao: "", saldo: "" };
 
 // ─────────────────────────────────────────────────────────
 export default function ContasBancariasPage() {
@@ -141,11 +148,28 @@ export default function ContasBancariasPage() {
   // ── Stats ──────────────────────────────────────────────
   const stats = useMemo(() => {
     const totalSaldo = contas.reduce((sum, c) => sum + c.saldo, 0);
-    const maiorSaldo = contas.reduce<ContaBancaria | null>(
-      (max, c) => (!max || c.saldo > max.saldo ? c : max),
-      null
-    );
-    return { totalSaldo, totalContas: contas.length, maiorSaldo };
+    const totalInvestimentos = contas
+      .filter((c) => c.tipo === "Investimento")
+      .reduce((sum, c) => sum + c.saldo, 0);
+    const totalCorrente = contas
+      .filter((c) => c.tipo === "Corrente" || c.tipo === "Digital")
+      .reduce((sum, c) => sum + c.saldo, 0);
+    const pctInvestimentos =
+      totalSaldo > 0 ? Math.round((totalInvestimentos / totalSaldo) * 100) : 0;
+    const distribution = contas.map((c, i) => ({
+      id: c.id,
+      nome: c.nome,
+      pct: totalSaldo > 0 ? Math.round((Math.max(c.saldo, 0) / totalSaldo) * 100) : 0,
+      color: DIST_COLORS[i % DIST_COLORS.length],
+    }));
+    return {
+      totalSaldo,
+      totalContas: contas.length,
+      totalInvestimentos,
+      totalCorrente,
+      pctInvestimentos,
+      distribution,
+    };
   }, [contas]);
 
   // ── Open create / edit ─────────────────────────────────
@@ -157,7 +181,7 @@ export default function ContasBancariasPage() {
 
   function openEdit(c: ContaBancaria) {
     setEditingId(c.id);
-    setForm({ nome: c.nome, tipo: c.tipo, saldo: c.saldo.toFixed(2).replace(".", ",") });
+    setForm({ nome: c.nome, tipo: c.tipo, instituicao: c.instituicao || "", saldo: c.saldo.toFixed(2).replace(".", ",") });
     setDialogOpen(true);
   }
 
@@ -169,10 +193,10 @@ export default function ContasBancariasPage() {
     if (editingId) {
       await atualizarConta.mutateAsync({
         id: editingId,
-        data: { nome: form.nome, tipo: form.tipo, saldo },
+        data: { nome: form.nome, tipo: form.tipo, instituicao: form.instituicao || null, saldo },
       });
     } else {
-      await criarConta.mutateAsync({ nome: form.nome, tipo: form.tipo, saldo });
+      await criarConta.mutateAsync({ nome: form.nome, tipo: form.tipo, instituicao: form.instituicao || undefined, saldo });
     }
     setDialogOpen(false);
     setForm(defaultForm);
@@ -190,256 +214,249 @@ export default function ContasBancariasPage() {
   if (isError) return <ErrorState message="Não foi possível carregar as contas." />;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-panel rounded-2xl p-4 lg:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-      >
-        <div className="flex items-center gap-3">
-          <div className="size-10 flex items-center justify-center bg-emerald-600/10 rounded-xl">
-            <Landmark className="h-5 w-5 text-emerald-600" />
-          </div>
-          <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-              Contas Bancárias
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Gerencie suas contas e carteiras
-            </p>
-          </div>
+    <div className="flex flex-col gap-5 sm:gap-8">
+      {/* ── Header ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-[#0F172A]">Contas Bancárias</h1>
+          <p className="text-[11px] text-slate-400 font-medium uppercase tracking-[0.2em]">
+            Saldos de Referência para Débito e PIX
+          </p>
         </div>
-        <Button
+        <button
           onClick={openCreate}
-          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-600/20"
+          className="bg-emerald-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-3 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 cursor-pointer w-full sm:w-auto justify-center"
         >
-          <Plus className="h-4 w-4" />
-          Nova Conta
-        </Button>
-      </motion.div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0 }}
-          className="glass-panel rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-        >
-          <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 relative z-10">
-            Saldo Total
-          </p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1 tabular-nums relative z-10">
-            {isLoading ? "—" : formatCurrency(stats.totalSaldo)}
-          </p>
-          <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1 relative z-10">
-            em {stats.totalContas} conta{stats.totalContas !== 1 ? "s" : ""}
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="glass-panel rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-        >
-          <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 relative z-10">
-            Contas Ativas
-          </p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1 relative z-10">
-            {isLoading ? "—" : stats.totalContas}
-          </p>
-          <p className="text-[12px] text-slate-400 dark:text-slate-500 mt-1 relative z-10">
-            registradas no sistema
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass-panel rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-        >
-          <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 relative z-10">
-            Maior Saldo
-          </p>
-          {isLoading || !stats.maiorSaldo ? (
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1 relative z-10">—</p>
-          ) : (
-            <>
-              <p className="text-[15px] font-bold text-slate-900 dark:text-white mt-1 truncate relative z-10">
-                {stats.maiorSaldo.nome}
-              </p>
-              <p className="text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums relative z-10">
-                {formatCurrency(stats.maiorSaldo.saldo)}
-              </p>
-            </>
-          )}
-        </motion.div>
+          <Plus className="h-5 w-5" />
+          Adicionar Conta
+        </button>
       </div>
 
-      {/* Table */}
-      <div className="glass-panel rounded-2xl overflow-x-auto">
+      {/* ── Stat cards ────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+        {/* Saldo Consolidado */}
+        <div className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex flex-col justify-between min-h-[140px] sm:min-h-[180px]">
+          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em]">
+            Saldo Consolidado
+          </p>
+          <div className="flex flex-col">
+            <span className="text-xl sm:text-2xl lg:text-3xl serif-italic text-[#0F172A] whitespace-nowrap">
+              {isLoading ? "—" : formatCurrency(stats.totalSaldo)}
+            </span>
+            <span className="text-[10px] mono-data text-emerald-600 font-bold mt-2">
+              {stats.totalContas} conta{stats.totalContas !== 1 ? "s" : ""} ativas
+            </span>
+          </div>
+        </div>
+
+        {/* Total em Investimentos */}
+        <div className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex flex-col justify-between min-h-[140px] sm:min-h-[180px]">
+          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em]">
+            Total em Investimentos
+          </p>
+          <div className="flex flex-col">
+            <span className="text-xl sm:text-2xl lg:text-3xl serif-italic text-[#0F172A] whitespace-nowrap">
+              {isLoading ? "—" : formatCurrency(stats.totalInvestimentos)}
+            </span>
+            <span className="text-[10px] mono-data text-slate-400 font-medium mt-2">
+              {isLoading ? "" : `${stats.pctInvestimentos}% do patrimônio`}
+            </span>
+          </div>
+        </div>
+
+        {/* Disponível em Conta Corrente */}
+        <div className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex flex-col justify-between min-h-[140px] sm:min-h-[180px]">
+          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em]">
+            Disponível em Conta Corrente
+          </p>
+          <div className="flex flex-col">
+            <span className="text-xl sm:text-2xl lg:text-3xl serif-italic text-emerald-600 whitespace-nowrap">
+              {isLoading ? "—" : formatCurrency(stats.totalCorrente)}
+            </span>
+            <span className="text-[10px] mono-data text-slate-400 font-medium mt-2">
+              Liquidez imediata
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Account cards ─────────────────────────────────── */}
+      <div className="space-y-6">
+        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] px-2">
+          Suas Instituições
+        </h4>
+
         {isLoading ? (
-          <div className="p-8 text-center text-slate-400">Carregando...</div>
+          <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 text-center text-slate-400">
+            Carregando...
+          </div>
         ) : contas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-            <div className="h-14 w-14 rounded-2xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mb-4">
+          <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="h-14 w-14 rounded-2xl bg-emerald-100 flex items-center justify-center mb-4">
               <Landmark className="h-7 w-7 text-emerald-600" />
             </div>
-            <p className="text-[15px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <p className="text-[15px] font-semibold text-slate-700 mb-1">
               Nenhuma conta cadastrada
             </p>
-            <p className="text-[13px] text-slate-400 dark:text-slate-500 mb-4">
+            <p className="text-[13px] text-slate-400 mb-4">
               Adicione suas contas bancárias para vincular aos lançamentos
             </p>
-            <Button
+            <button
               onClick={openCreate}
-              size="sm"
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2 text-sm font-semibold cursor-pointer transition-colors"
             >
               <Plus className="h-3.5 w-3.5" /> Nova Conta
-            </Button>
+            </button>
           </div>
         ) : (
-          <>
-            {/* Desktop header */}
-            <div
-              className="hidden lg:grid items-center px-5 py-3 border-b border-emerald-600/8 bg-emerald-600/3 dark:border-slate-700/40 dark:bg-slate-800/30"
-              style={{ gridTemplateColumns: "2fr 1.5fr 1.2fr 80px" }}
-            >
-              {["CONTA", "TIPO", "SALDO", "AÇÕES"].map((h) => (
-                <span
-                  key={h}
-                  className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500"
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+            {contas.map((c) => {
+              const tipoInfo = getTipoInfo(c.tipo);
+              const TipoIcon = tipoInfo.icon;
+              const initials = c.nome.slice(0, 2).toUpperCase();
+              const isNegative = c.saldo < 0;
+              return (
+                <div
+                  key={c.id}
+                  className={cn(
+                    "exec-card p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex flex-col gap-4 sm:gap-6",
+                    isNegative && "border-l-4 border-l-rose-500"
+                  )}
                 >
-                  {h}
-                </span>
-              ))}
-            </div>
-
-            <div className="divide-y divide-slate-100/60 dark:divide-slate-800/60">
-              {contas.map((c) => {
-                const tipoInfo = getTipoInfo(c.tipo);
-                const TipoIcon = tipoInfo.icon;
-                return (
-                  <div key={c.id}>
-                    {/* Desktop row */}
-                    <div
-                      className="hidden lg:grid items-center px-5 py-4 hover:bg-white/40 dark:hover:bg-slate-800/20 transition-colors"
-                      style={{ gridTemplateColumns: "2fr 1.5fr 1.2fr 80px" }}
-                    >
-                      {/* Conta */}
-                      <div className="flex items-center gap-3 min-w-0">
+                  {/* Institution header */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      {c.instituicao ? (
+                        <img 
+                          src={getBankById(c.instituicao)?.logoUrl} 
+                          alt={getBankById(c.instituicao)?.name} 
+                          className="w-14 h-14 rounded-2xl object-cover border border-slate-100 dark:border-slate-800" 
+                        />
+                      ) : (
                         <div
                           className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                            "w-14 h-14 rounded-2xl flex items-center justify-center font-black text-lg tracking-tighter",
                             tipoInfo.color
                           )}
                         >
-                          <TipoIcon className="h-4 w-4" />
+                          {initials}
                         </div>
-                        <p className="text-[14px] font-semibold text-slate-800 dark:text-white truncate">
+                      )}
+                      <div>
+                        <h3 className="text-sm font-bold text-[#0F172A] truncate max-w-[140px]">
                           {c.nome}
-                        </p>
-                      </div>
-
-                      {/* Tipo */}
-                      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300">
-                        <TipoIcon className="h-3 w-3 opacity-60" />
-                        {TIPO_LABELS[c.tipo]}
-                      </span>
-
-                      {/* Saldo */}
-                      <span
-                        className={cn(
-                          "text-[14px] font-bold tabular-nums",
-                          c.saldo >= 0
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-red-500 dark:text-red-400"
-                        )}
-                      >
-                        {formatCurrency(c.saldo)}
-                      </span>
-
-                      {/* Ações */}
-                      <div className="flex items-center gap-1 justify-end">
-                        <button
-                          onClick={() => openEdit(c)}
-                          className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(c.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Mobile card */}
-                    <div className="lg:hidden flex items-center gap-3 px-4 py-3.5 hover:bg-white/40 dark:hover:bg-slate-800/20 transition-colors">
-                      <div
-                        className={cn(
-                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                          tipoInfo.color
-                        )}
-                      >
-                        <TipoIcon className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-bold text-slate-800 dark:text-white truncate">
-                          {c.nome}
-                        </p>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                        </h3>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-widest font-medium">
                           {TIPO_LABELS[c.tipo]}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span
-                          className={cn(
-                            "text-[13px] font-bold tabular-nums",
-                            c.saldo >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
-                          )}
-                        >
-                          {formatCurrency(c.saldo)}
-                        </span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                              <MoreVertical className="h-4 w-4 text-slate-400" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => openEdit(c)}
-                              className="gap-2 cursor-pointer"
-                            >
-                              <Pencil className="h-3.5 w-3.5" /> Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setDeleteId(c.id)}
-                              className="gap-2 text-red-600 dark:text-red-400 cursor-pointer"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" /> Remover
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                    </div>
+                    <div className="text-right">
+                      <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl ml-auto", tipoInfo.color)}>
+                        <TipoIcon className="h-4 w-4" />
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </>
+
+                  {/* Balance */}
+                  <div className="space-y-1">
+                    <p className="text-[8px] text-slate-400 uppercase tracking-[0.2em]">
+                      Saldo Disponível
+                    </p>
+                    <p
+                      className={cn(
+                        "text-2xl mono-data font-bold",
+                        isNegative ? "text-rose-500" : "text-[#0F172A]"
+                      )}
+                    >
+                      {formatCurrency(c.saldo)}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3 mt-2">
+                    <button
+                      onClick={() => openEdit(c)}
+                      className="flex-1 py-3 px-4 rounded-2xl border border-slate-100 text-[9px] font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:text-emerald-600 transition-all cursor-pointer"
+                    >
+                      Ver Detalhes
+                    </button>
+                    <button
+                      onClick={() => setDeleteId(c.id)}
+                      className="w-12 h-11 rounded-2xl border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
+
+      {/* ── Bottom section: Distribution + Insights ───────── */}
+      {!isLoading && contas.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 pb-12">
+          {/* Distribuição de Saldo */}
+          <div className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem]">
+            <h4 className="text-[9px] font-bold text-[#0F172A] uppercase tracking-[0.3em] mb-8">
+              Distribuição de Saldo
+            </h4>
+            <div className="space-y-6">
+              {stats.distribution.map((item) => (
+                <div key={item.id}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                      <span className={cn("w-2 h-2 rounded-full", item.color.replace("bg-", "bg-"))} />
+                      {item.nome}
+                    </span>
+                    <span className="text-[11px] mono-data font-bold">{item.pct}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all", item.color)}
+                      style={{ width: `${item.pct}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Insights */}
+          <div className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] bg-slate-900 text-white border-none flex flex-col justify-between">
+            <div>
+              <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                Insights Financeiros
+              </h4>
+              <p className="serif-italic text-lg text-slate-200 leading-relaxed">
+                {stats.totalInvestimentos > 0
+                  ? `Seu patrimônio em investimentos representa `
+                  : `Você possui `}
+                <span className="text-emerald-400">
+                  {stats.totalContas} conta{stats.totalContas !== 1 ? "s" : ""} ativa
+                  {stats.totalContas !== 1 ? "s" : ""}
+                </span>
+                {stats.totalInvestimentos > 0
+                  ? ` com ${stats.pctInvestimentos}% alocados em investimentos. Seu saldo consolidado é de `
+                  : ` com saldo consolidado de `}
+                <span className="text-emerald-400">{formatCurrency(stats.totalSaldo)}</span>
+                {stats.totalCorrente > 0
+                  ? ` sendo ${formatCurrency(stats.totalCorrente)} disponíveis imediatamente.`
+                  : "."}
+              </p>
+            </div>
+            <button
+              onClick={openCreate}
+              className="mt-8 py-4 rounded-2xl bg-emerald-600 w-full text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-700 transition-all cursor-pointer"
+            >
+              Adicionar Nova Conta
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Dialog: criar / editar */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -515,6 +532,29 @@ export default function ContasBancariasPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Instituicao */}
+                <div className="space-y-1.5 mt-4">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Instituição (Opcional)
+                  </Label>
+                  <Select
+                    value={form.instituicao || "none"}
+                    onValueChange={(v) => setForm((f) => ({ ...f, instituicao: v === "none" ? "" : v }))}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-all">
+                      <SelectValue placeholder="Selecione um banco..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhuma / Outra</SelectItem>
+                      {SUPPORTED_BANKS.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Saldo card */}
@@ -567,18 +607,22 @@ export default function ContasBancariasPage() {
 
       {/* Dialog: desativar */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-700/50">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-900 dark:text-white">
-              Remover conta?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-500 dark:text-slate-400">
+        <AlertDialogContent>
+          <AlertDialogHeader className="items-start text-left">
+            <AlertDialogTitle className="sr-only">Remover conta?</AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
               A conta será desativada e não aparecerá mais na lista. Os lançamentos vinculados não
               serão afetados.
             </AlertDialogDescription>
+            <DialogShellHeader
+              icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Remover conta?"
+              description="A conta será desativada e não aparecerá mais na lista. Os lançamentos vinculados não serão afetados."
+              tone="rose"
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700">
+            <AlertDialogCancel className="rounded-xl">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction

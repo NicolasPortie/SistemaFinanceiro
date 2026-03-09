@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -51,6 +51,7 @@ import {
   Banknote,
 } from "lucide-react";
 import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
+import { DialogShellHeader } from "@/components/shared/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -438,608 +439,444 @@ export default function ContasFixasPage() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
-      {/* ═══ Action Bar ═══ */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/50 dark:border-slate-700/30 rounded-2xl p-4 lg:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm"
-      >
-        <div className="flex items-center gap-3">
-          <div className="size-10 flex items-center justify-center bg-emerald-600/10 rounded-xl">
-            <CalendarClock className="h-5 w-5 text-emerald-600" />
-          </div>
-          <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-              Contas Fixas
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Lembretes de pagamento e contas recorrentes
-            </p>
-          </div>
+    <div className="flex flex-col gap-6 sm:gap-8 lg:gap-10">
+      {/* ── Header ───────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl serif-italic text-[#0F172A]">Contas Fixas</h1>
+          <p className="text-[10px] uppercase tracking-[0.4em] font-bold text-slate-400">
+            Gerenciamento de Compromissos Recorrentes
+          </p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => refetch()}
-                  className="p-2.5 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-xl transition-colors cursor-pointer"
-                >
-                  <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Atualizar dados</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <button
-            onClick={() => {
-              createForm.reset();
-              setShowForm(true);
-            }}
-            className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer text-sm"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Nova Conta Fixa</span>
-            <span className="sm:hidden">Nova</span>
-          </button>
-        </div>
-      </motion.div>
+        <button
+          onClick={() => { createForm.reset(); setShowForm(true); }}
+          className="bg-emerald-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-3 shadow-lg shadow-emerald-100 cursor-pointer w-full sm:w-auto justify-center"
+        >
+          <Plus className="h-5 w-5" />
+          Nova Conta Fixa
+        </button>
+      </div>
 
-      {/* ═══ Stat Cards ═══ */}
+      {/* ── Stat Cards ─────────────────────────────────────── */}
       {isLoading ? (
-        <CardSkeleton count={4} />
+        <CardSkeleton count={3} />
       ) : isError ? (
         <ErrorState message={error?.message} onRetry={() => refetch()} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
-          {/* Total de Contas */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0 }}
-            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-          >
-            <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-            <div className="flex justify-between items-start z-10">
-              <div className="size-10 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-xl text-emerald-600 dark:text-emerald-400">
-                <FileText className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                Contas Ativas
-              </p>
-              <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-                {stats.count}
-              </h3>
-            </div>
-          </motion.div>
-
-          {/* Valor Mensal Total */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-          >
-            <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-            <div className="flex justify-between items-start z-10">
-              <div className="size-10 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-xl text-emerald-600 dark:text-emerald-400">
-                <DollarSign className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                Valor Mensal Total
-              </p>
-              <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+          {/* Card 1 – Valor Mensal Total */}
+          <div className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex flex-col justify-center min-h-[140px] sm:min-h-[180px]">
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em] mb-4">
+              Valor Mensal Total
+            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl mono-data font-medium text-[#0F172A]">
                 {formatCurrency(stats.total)}
-              </h3>
+              </span>
+              <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">
+                Comprometido
+              </span>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Próxima a Vencer */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-          >
-            <div className="absolute -right-6 -bottom-6 bg-amber-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-amber-500/15 transition-all" />
-            <div className="flex justify-between items-start z-10">
-              <div className="size-10 flex items-center justify-center bg-amber-100 dark:bg-amber-500/15 rounded-xl text-amber-600 dark:text-amber-400">
-                <Clock className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                Próxima a Vencer
-              </p>
-              {stats.proximaVencer ? (
-                <>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-white leading-tight truncate">
+          {/* Card 2 – Próxima a Vencer */}
+          <div className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex flex-col justify-center min-h-[140px] sm:min-h-[180px]">
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em] mb-4">
+              Próxima a Vencer
+            </p>
+            {stats.proximaVencer ? (
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 shrink-0">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-lg font-semibold text-[#0F172A] leading-tight truncate">
                     {stats.proximaVencer.descricao}
-                  </h3>
-                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+                  </span>
+                  <span className="text-[10px] mono-data text-slate-500 uppercase">
                     {(() => {
-                      const diff = Math.ceil(
-                        (new Date(stats.proximaVencer.dataVencimento).getTime() -
-                          new Date(new Date().toISOString().split("T")[0]).getTime()) /
-                        86400000
-                      );
-                      const d = new Date(stats.proximaVencer.dataVencimento);
-                      const fmt = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-                      return diff === 0
-                        ? `Vence hoje (${fmt})`
-                        : diff === 1
-                          ? `Vence amanhã (${fmt})`
-                          : `Vence em ${diff} dias (${fmt})`;
+                      const d = new Date(stats.proximaVencer!.dataVencimento);
+                      const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+                      return `Vence em ${String(d.getDate()).padStart(2,"0")} ${months[d.getMonth()]} (${formatCurrency(stats.proximaVencer!.valor ?? 0)})`;
                     })()}
-                  </p>
-                </>
-              ) : (
-                <h3 className="text-sm font-medium text-slate-400 dark:text-slate-500">Nenhuma</h3>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Contas Vencidas */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className={cn(
-              "glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300",
-              stats.vencidos > 0 && "ring-2 ring-red-500/20"
-            )}
-          >
-            <div className="absolute -right-6 -bottom-6 bg-red-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-red-500/15 transition-all" />
-            <div className="flex justify-between items-start z-10">
-              <div className="size-10 flex items-center justify-center bg-red-100 dark:bg-red-500/15 rounded-xl text-red-600 dark:text-red-400">
-                <AlertCircle className="h-5 w-5" />
+                  </span>
+                </div>
               </div>
-              {stats.vencidos > 0 && (
-                <span className="text-[10px] font-bold px-2 py-1 rounded-full text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20">
-                  Atenção
-                </span>
-              )}
-            </div>
-            <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                Contas Vencidas
-              </p>
-              <h3
-                className={cn(
-                  "text-2xl font-bold tracking-tight",
-                  stats.vencidos > 0
-                    ? "text-red-600 dark:text-red-400"
-                    : "text-slate-800 dark:text-white"
-                )}
-              >
-                {stats.vencidos}
-              </h3>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* ═══ Filter Bar ═══ */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="glass-panel rounded-2xl p-4 lg:p-5"
-      >
-        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
-          {/* Search */}
-          <div className="relative flex-1 w-full lg:max-w-sm">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
-            <input
-              placeholder="Buscar lembretes..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="w-full h-10 pl-10 pr-9 rounded-xl bg-white/70 dark:bg-slate-700/50 border border-white/60 dark:border-slate-600/60 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600/30 transition-all"
-            />
-            {busca && (
-              <button
-                onClick={() => setBusca("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
-                aria-label="Limpar busca"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+            ) : (
+              <span className="text-sm font-medium text-slate-400">Nenhuma pendente</span>
             )}
           </div>
 
-          <div className="hidden lg:block h-8 w-px bg-slate-200 dark:bg-slate-700" />
+          {/* Card 3 – Contas Vencidas */}
+          <div className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex flex-col justify-center min-h-[140px] sm:min-h-[180px]">
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em] mb-4">
+              Contas Vencidas
+            </p>
+            <div className="flex items-center gap-6">
+              <span className="text-2xl sm:text-3xl lg:text-4xl mono-data font-bold text-rose-500">
+                {String(stats.vencidos).padStart(2, "0")}
+              </span>
+              {stats.vencidos > 0 && (
+                <span className="px-4 py-1.5 bg-rose-50 text-rose-600 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                  Atenção Necessária
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
-          {/* Status filter pills */}
-          <div className="flex items-center gap-2 flex-wrap">
+      {/* ── Main Table Card ─────────────────────────────────── */}
+      <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden">
+
+        {/* Filter bar header */}
+        <div className="p-4 sm:p-6 lg:p-8 border-b border-slate-100 bg-slate-50/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <Search className="h-4 w-4 text-slate-400" />
+            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              {activeFilters > 0
+                ? `Filtros Ativos: ${filtroStatus !== "todos" ? filtroStatus.charAt(0).toUpperCase() + filtroStatus.slice(1) : ""}${busca ? ` "${busca}"` : ""}`
+                : "Filtros Ativos: Todos os Compromissos"}
+            </h3>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
             {[
-              { key: "todos", label: "Todas" },
+              { key: "todos", label: "Todos" },
               { key: "ativas", label: "Ativas" },
               { key: "inativas", label: "Inativas" },
             ].map((f) => (
               <button
                 key={f.key}
-                onClick={() => {
-                  setFiltroStatus(f.key);
-                  setPage(0);
-                }}
+                onClick={() => { setFiltroStatus(f.key); setPage(0); }}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer",
+                  "px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer",
                   filtroStatus === f.key
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20"
-                    : "bg-white/60 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 border border-white/60 dark:border-slate-600/50"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                 )}
               >
                 {f.label}
               </button>
             ))}
-          </div>
-
-          {activeFilters > 0 && (
-            <button
-              onClick={() => {
-                setFiltroStatus("todos");
-                setBusca("");
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
-            >
-              <X className="h-3.5 w-3.5" />
-              Limpar Filtros
-            </button>
-          )}
-        </div>
-      </motion.div>
-
-      {/* ═══ Bills Table ═══ */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
-        className="glass-panel rounded-2xl overflow-hidden"
-      >
-        {/* Table header */}
-        <div className="overflow-x-auto">
-          <div
-            className="hidden lg:grid gap-4 items-center px-6 py-3.5 border-b border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-800/30 min-w-225"
-            style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 1.2fr 120px 80px 100px" }}
-          >
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Descrição
-            </span>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Valor Mensal
-            </span>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Frequência
-            </span>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Dia Venc.
-            </span>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Próx. Vencimento
-            </span>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Status
-            </span>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Ativa
-            </span>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Ações
-            </span>
-          </div>
-
-          {isLoading ? (
-            <div className="p-12 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">Carregando lembretes...</p>
-            </div>
-          ) : filtered.length > 0 ? (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
-              <AnimatePresence>
-                {paged.map((l, i) => {
-                  const status = getStatusInfo(l.dataVencimento);
-                  const catInfo = getCategoryIcon(l.categoria ?? "");
-                  const CatIcon = catInfo.icon;
-                  const freqLabel =
-                    l.frequencia === "Semanal"
-                      ? "Semanal"
-                      : l.frequencia === "Quinzenal"
-                        ? "Quinzenal"
-                        : l.frequencia === "Anual"
-                          ? "Anual"
-                          : l.recorrenteMensal || l.frequencia === "Mensal"
-                            ? "Mensal"
-                            : "Único";
-                  const diaLabel = l.diaRecorrente ? `Dia ${l.diaRecorrente}` : "—";
-                  return (
-                    <motion.div
-                      key={l.id}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ delay: 0.015 * i }}
-                      className="group"
-                    >
-                      {/* Desktop row */}
-                      <div
-                        className={cn(
-                          "hidden lg:grid gap-4 items-center px-6 py-3.5 hover:bg-white/40 dark:hover:bg-slate-800/30 transition-all duration-200 min-w-225",
-                          !l.ativo && "opacity-60"
-                        )}
-                        style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr 1.2fr 120px 80px 100px" }}
-                      >
-                        {/* Description */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={cn(
-                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105",
-                              catInfo.color
-                            )}
-                          >
-                            <CatIcon className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">
-                              {l.descricao}
-                            </p>
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate">
-                              {l.categoria ?? "—"}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Value */}
-                        <span className="text-[13px] font-bold text-slate-800 dark:text-white tabular-nums">
-                          {l.valor != null ? formatCurrency(l.valor) : "—"}
-                        </span>
-
-                        {/* Frequency */}
-                        <span className="text-[13px] text-slate-500 dark:text-slate-400 font-medium">
-                          {freqLabel}
-                        </span>
-
-                        {/* Due day */}
-                        <span className="text-[13px] text-slate-500 dark:text-slate-400 font-medium tabular-nums">
-                          {diaLabel}
-                        </span>
-
-                        {/* Next due date */}
-                        <span
-                          className={cn(
-                            "text-[13px] font-medium tabular-nums",
-                            l.ativo === false
-                              ? "text-slate-400 dark:text-slate-600"
-                              : isVencido(l.dataVencimento)
-                                ? "text-red-600 dark:text-red-400"
-                                : "text-slate-600 dark:text-slate-300"
-                          )}
-                        >
-                          {l.ativo === false ? "—" : formatShortDate(l.dataVencimento)}
-                        </span>
-
-                        {/* Status badge */}
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold w-fit",
-                            l.pagoCicloAtual
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                              : !l.ativo
-                                ? "bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400"
-                                : status.badgeClass
-                          )}
-                        >
-                          {l.pagoCicloAtual ? (
-                            <>
-                              <CheckCircle2 className="h-3 w-3" /> Pago
-                            </>
-                          ) : !l.ativo ? (
-                            "Inativa"
-                          ) : (
-                            status.label
-                          )}
-                        </span>
-
-                        {/* Active toggle */}
-                        <div>
-                          <Switch
-                            checked={l.ativo !== false}
-                            onCheckedChange={(checked) => {
-                              if (!checked) setDeleteId(l.id);
-                              else atualizarLembrete.mutate({ id: l.id, data: { ativo: true } });
-                            }}
-                          />
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1">
-                          {l.ativo !== false && !l.pagoCicloAtual && (
-                            <button
-                              onClick={() => openPagar(l)}
-                              className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
-                              title="Registrar pagamento"
-                            >
-                              <Banknote className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => openEdit(l)}
-                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteId(l.id)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Mobile card */}
-                      <div
-                        className={cn(
-                          "lg:hidden flex items-center gap-3 px-4 py-3.5 hover:bg-white/30 dark:hover:bg-slate-800/20 transition-colors",
-                          !l.ativo && "opacity-60"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm",
-                            catInfo.color
-                          )}
-                        >
-                          <CatIcon className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[14px] font-bold text-slate-800 dark:text-white truncate">
-                            {l.descricao}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                              {l.categoria ?? "—"}
-                            </span>
-                            {l.valor != null && (
-                              <>
-                                <span className="text-[11px] text-slate-300 dark:text-slate-600">
-                                  ·
-                                </span>
-                                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 tabular-nums">
-                                  {formatCurrency(l.valor)}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span
-                            className={cn(
-                              "inline-flex px-2 py-0.5 rounded-lg text-[11px] font-semibold",
-                              l.pagoCicloAtual
-                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                                : !l.ativo
-                                  ? "bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400"
-                                  : status.badgeClass
-                            )}
-                          >
-                            {l.pagoCicloAtual ? "Pago" : !l.ativo ? "Inativa" : status.label}
-                          </span>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                                <MoreVertical className="h-4 w-4 text-slate-400" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {l.ativo !== false && !l.pagoCicloAtual && (
-                                <DropdownMenuItem
-                                  onClick={() => openPagar(l)}
-                                  className="gap-2 text-emerald-600 dark:text-emerald-400 cursor-pointer"
-                                >
-                                  <Banknote className="h-3.5 w-3.5" /> Pagar
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                onClick={() => openEdit(l)}
-                                className="gap-2 cursor-pointer"
-                              >
-                                <Pencil className="h-3.5 w-3.5" /> Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setDeleteId(l.id)}
-                                className="gap-2 text-red-600 dark:text-red-400 cursor-pointer"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" /> Desativar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <div className="p-12">
-              <EmptyState
-                icon={<CalendarClock className="h-6 w-6" />}
-                title={
-                  activeFilters > 0 ? "Nenhum lembrete encontrado" : "Nenhum lembrete cadastrado"
-                }
-                description={
-                  activeFilters > 0
-                    ? "Tente remover os filtros para ver mais resultados"
-                    : "Adicione contas fixas e lembretes de pagamento para manter o controle"
-                }
-                action={
-                  activeFilters > 0 ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setFiltroStatus("todos");
-                        setBusca("");
-                      }}
-                      className="gap-2 rounded-xl"
-                    >
-                      <X className="h-4 w-4" />
-                      Limpar filtros
-                    </Button>
-                  ) : (
-                    <button
-                      onClick={() => setShowForm(true)}
-                      className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Criar primeiro lembrete
-                    </button>
-                  )
-                }
+            <div className="relative">
+              <input
+                placeholder="Buscar..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="bg-white border border-slate-200 rounded-full py-2 pl-4 pr-9 text-[10px] w-full sm:w-56 outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600/30 transition-all text-slate-700 placeholder-slate-400"
               />
+              {busca && (
+                <button
+                  onClick={() => setBusca("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
-          )}
+            {activeFilters > 0 && (
+              <button
+                onClick={() => { setFiltroStatus("todos"); setBusca(""); }}
+                className="text-[9px] font-bold uppercase tracking-widest text-rose-500 hover:text-rose-700 transition-colors cursor-pointer"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
         </div>
-        {/* end overflow-x-auto */}
+
+        {/* Table */}
+        {isLoading ? (
+          <div className="p-6 sm:p-8 lg:p-12 flex flex-col items-center justify-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+            <p className="text-sm text-slate-500">Carregando contas fixas...</p>
+          </div>
+        ) : (
+          <>
+          {/* Mobile card view */}
+          <div className="lg:hidden divide-y divide-slate-50">
+            {filtered.length === 0 ? (
+              <div className="p-6 sm:p-8">
+                <EmptyState
+                  icon={<CalendarClock className="h-6 w-6" />}
+                  title={activeFilters > 0 ? "Nenhum lembrete encontrado" : "Nenhum lembrete cadastrado"}
+                  description={activeFilters > 0 ? "Tente remover os filtros" : "Adicione contas fixas para manter o controle"}
+                  action={
+                    activeFilters > 0 ? (
+                      <Button variant="outline" onClick={() => { setFiltroStatus("todos"); setBusca(""); }} className="gap-2 rounded-xl">
+                        <X className="h-4 w-4" /> Limpar filtros
+                      </Button>
+                    ) : (
+                      <button onClick={() => setShowForm(true)} className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer text-sm">
+                        <Plus className="h-4 w-4" /> Criar primeiro lembrete
+                      </button>
+                    )
+                  }
+                />
+              </div>
+            ) : (
+              paged.map((l) => {
+                const catInfo = getCategoryIcon(l.categoria ?? "");
+                const CatIcon = catInfo.icon;
+                let statusLabel = "";
+                let statusClass = "";
+                if (l.pagoCicloAtual) { statusLabel = "Pago"; statusClass = "bg-emerald-50 text-emerald-600"; }
+                else if (!l.ativo) { statusLabel = "Inativa"; statusClass = "bg-slate-100 text-slate-500"; }
+                else if (isVencido(l.dataVencimento)) { statusLabel = "Vencida"; statusClass = "bg-rose-50 text-rose-600"; }
+                else {
+                  const diff = Math.ceil((new Date(l.dataVencimento).getTime() - new Date(new Date().toISOString().split("T")[0]).getTime()) / 86400000);
+                  if (diff <= 5) { statusLabel = "Próxima"; statusClass = "bg-amber-50 text-amber-600"; }
+                  else { statusLabel = "OK"; statusClass = "bg-emerald-50 text-emerald-600"; }
+                }
+                return (
+                  <div key={l.id} className={cn("p-4 sm:p-5 space-y-2.5", !l.ativo && "opacity-60")}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn("w-9 h-9 shrink-0 flex items-center justify-center rounded-xl", catInfo.color)}>
+                          <CatIcon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-semibold text-[#0F172A] truncate">{l.descricao}</h4>
+                          <p className="text-xs mono-data font-bold text-slate-700">{l.valor != null ? formatCurrency(l.valor) : "—"}</p>
+                        </div>
+                      </div>
+                      <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest shrink-0", statusClass)}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-slate-500">
+                      <span>Venc: dia {l.diaRecorrente || "—"}</span>
+                      <span>{l.dataVencimento ? (() => { const d = new Date(l.dataVencimento); const m = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]; return `${String(d.getDate()).padStart(2,"0")} ${m[d.getMonth()]}`; })() : "—"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      {l.ativo !== false && !l.pagoCicloAtual && (
+                        <button onClick={() => openPagar(l)} className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg cursor-pointer" title="Pagar">
+                          <Banknote className="h-4 w-4" />
+                        </button>
+                      )}
+                      <button onClick={() => openEdit(l)} className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg cursor-pointer" title="Editar">
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => setDeleteId(l.id)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer ml-auto" title="Remover">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop table — hidden on mobile */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50">
+                  <th className="px-10 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                    Descrição
+                  </th>
+                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                    Valor Mensal
+                  </th>
+                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                    Frequência
+                  </th>
+                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">
+                    Dia Venc.
+                  </th>
+                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                    Próx. Vencimento
+                  </th>
+                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                    Telegram
+                  </th>
+                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                    Status
+                  </th>
+                  <th className="px-10 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-6 sm:p-12">
+                      <EmptyState
+                        icon={<CalendarClock className="h-6 w-6" />}
+                        title={activeFilters > 0 ? "Nenhum lembrete encontrado" : "Nenhum lembrete cadastrado"}
+                        description={
+                          activeFilters > 0
+                            ? "Tente remover os filtros para ver mais resultados"
+                            : "Adicione contas fixas e lembretes de pagamento para manter o controle"
+                        }
+                        action={
+                          activeFilters > 0 ? (
+                            <Button variant="outline" onClick={() => { setFiltroStatus("todos"); setBusca(""); }} className="gap-2 rounded-xl">
+                              <X className="h-4 w-4" /> Limpar filtros
+                            </Button>
+                          ) : (
+                            <button
+                              onClick={() => setShowForm(true)}
+                              className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm"
+                            >
+                              <Plus className="h-4 w-4" /> Criar primeiro lembrete
+                            </button>
+                          )
+                        }
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  paged.map((l) => {
+                    const catInfo = getCategoryIcon(l.categoria ?? "");
+                    const CatIcon = catInfo.icon;
+                    const freqLabel =
+                      l.frequencia === "Semanal" ? "Semanal"
+                        : l.frequencia === "Quinzenal" ? "Quinzenal"
+                        : l.frequencia === "Anual" ? "Anual"
+                        : l.recorrenteMensal || l.frequencia === "Mensal" ? "Mensal"
+                        : "Único";
+                    const diaLabel = l.diaRecorrente ? `${l.diaRecorrente}` : "—";
+                    const nextDate = l.ativo === false ? null : l.dataVencimento;
+                    const nextFmt = nextDate
+                      ? (() => {
+                          const d = new Date(nextDate);
+                          const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+                          return `${String(d.getDate()).padStart(2,"0")} ${months[d.getMonth()]} ${d.getFullYear()}`;
+                        })()
+                      : "—";
+                    let statusLabel = "";
+                    let statusClass = "";
+                    if (l.pagoCicloAtual) {
+                      statusLabel = "Pago";
+                      statusClass = "bg-emerald-50 text-emerald-600";
+                    } else if (!l.ativo) {
+                      statusLabel = "Inativa";
+                      statusClass = "bg-slate-100 text-slate-500";
+                    } else if (isVencido(l.dataVencimento)) {
+                      statusLabel = "Vencida";
+                      statusClass = "bg-rose-50 text-rose-600";
+                    } else {
+                      const diff = Math.ceil(
+                        (new Date(l.dataVencimento).getTime() - new Date(new Date().toISOString().split("T")[0]).getTime()) / 86400000
+                      );
+                      if (diff <= 5) {
+                        statusLabel = "Próxima";
+                        statusClass = "bg-amber-50 text-amber-600";
+                      } else {
+                        statusLabel = "OK";
+                        statusClass = "bg-emerald-50 text-emerald-600";
+                      }
+                    }
+                    return (
+                      <tr key={l.id} className={cn("hover:bg-slate-50/50 transition-colors group", !l.ativo && "opacity-60")}>
+                        <td className="px-10 py-6">
+                          <div className="flex items-center gap-3">
+                            <div className={cn("w-9 h-9 shrink-0 flex items-center justify-center rounded-xl", catInfo.color)}>
+                              <CatIcon className="h-4 w-4" />
+                            </div>
+                            <span className="text-sm font-semibold text-[#0F172A]">{l.descricao}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-6">
+                          <span className="text-sm mono-data font-bold text-slate-700">
+                            {l.valor != null ? formatCurrency(l.valor) : "—"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-6">
+                          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">
+                            {freqLabel}
+                          </span>
+                        </td>
+                        <td className="px-6 py-6 text-center">
+                          <span className="text-sm mono-data text-slate-600">{diaLabel}</span>
+                        </td>
+                        <td className="px-6 py-6">
+                          <span className={cn("text-[11px] mono-data uppercase", isVencido(l.dataVencimento) && l.ativo !== false && !l.pagoCicloAtual ? "text-rose-500" : "text-slate-500")}>
+                            {nextFmt}
+                          </span>
+                        </td>
+                        <td className="px-6 py-6">
+                          <Switch
+                            checked={l.lembreteTelegramAtivo === true}
+                            onCheckedChange={(checked) =>
+                              atualizarLembrete.mutate({ id: l.id, data: { lembreteTelegramAtivo: checked } })
+                            }
+                          />
+                        </td>
+                        <td className="px-6 py-6">
+                          <span className={cn("px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest", statusClass)}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td className="px-10 py-6 text-right">
+                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {l.ativo !== false && !l.pagoCicloAtual && (
+                              <button
+                                onClick={() => openPagar(l)}
+                                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                title="Registrar pagamento"
+                              >
+                                <Banknote className="h-4 w-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => openEdit(l)}
+                              className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteId(l.id)}
+                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          </>
+        )}
 
         {/* Pagination */}
         {filtered.length > PAGE_SIZE && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 dark:border-slate-800/50">
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 lg:px-10 py-4 sm:py-6 border-t border-slate-50">
+            <p className="text-[10px] text-slate-500 font-medium">
               Mostrando{" "}
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                {Math.min(page * PAGE_SIZE + 1, filtered.length)}–
-                {Math.min((page + 1) * PAGE_SIZE, filtered.length)}
+              <span className="font-bold text-slate-700">
+                {Math.min(page * PAGE_SIZE + 1, filtered.length)}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)}
               </span>{" "}
               de{" "}
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                {filtered.length}
-              </span>{" "}
+              <span className="font-bold text-slate-700">{filtered.length}</span>{" "}
               contas
             </p>
             <div className="flex items-center gap-2">
               <button
                 disabled={page === 0}
                 onClick={() => setPage((p) => p - 1)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
-                <ChevronLeft className="h-4 w-4" /> Anterior
+                <ChevronLeft className="h-3.5 w-3.5" /> Anterior
               </button>
               <button
                 disabled={page >= totalPages - 1}
                 onClick={() => setPage((p) => p + 1)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
-                Próxima <ChevronRight className="h-4 w-4" />
+                Próxima <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* ═══ New Bill Dialog ═══ */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
@@ -1813,17 +1650,23 @@ export default function ContasFixasPage() {
 
       {/* ═══ Delete Dialog ═══ */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-700/50">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-900 dark:text-white">
+        <AlertDialogContent>
+          <AlertDialogHeader className="items-start text-left">
+            <AlertDialogTitle className="sr-only">
               Desativar lembrete?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-500 dark:text-slate-400">
+            <AlertDialogDescription className="sr-only">
               Tem certeza que deseja desativar este lembrete? Ele não aparecerá mais na lista.
             </AlertDialogDescription>
+            <DialogShellHeader
+              icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Desativar lembrete?"
+              description="Tem certeza que deseja desativar este lembrete? Ele nao aparecera mais na lista."
+              tone="rose"
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700">
+            <AlertDialogCancel className="rounded-xl">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction

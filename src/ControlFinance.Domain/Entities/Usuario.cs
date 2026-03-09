@@ -8,12 +8,24 @@ public class Usuario
 
     // Autenticação Web
     public string Email { get; set; } = string.Empty;
-    public string SenhaHash { get; set; } = string.Empty;
+    public string? SenhaHash { get; set; }
     public bool EmailConfirmado { get; set; }
+    public string? GoogleId { get; set; }
+    public string? AppleId { get; set; }
 
     // Telegram
     public long? TelegramChatId { get; set; }
     public bool TelegramVinculado { get; set; }
+
+    // WhatsApp
+    public string? WhatsAppPhone { get; set; }
+    public bool WhatsAppVinculado { get; set; }
+
+    /// <summary>
+    /// Celular do usuário normalizado (DDI+DDD+número, ex: "5511999887766").
+    /// Usado para auto-vincular Telegram e WhatsApp sem código.
+    /// </summary>
+    public string? Celular { get; set; }
 
     public string Nome { get; set; } = string.Empty;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
@@ -30,6 +42,12 @@ public class Usuario
     /// Data em que o acesso do usuário expira. Null = acesso permanente.
     /// </summary>
     public DateTime? AcessoExpiraEm { get; set; }
+
+    /// <summary>
+    /// CPF do usuário. Obrigatório para ativar trial.
+    /// Null = não informado.
+    /// </summary>
+    public string? Cpf { get; set; }
 
     /// <summary>
     /// Renda mensal informada pelo usuário. Usado como piso para projeções financeiras.

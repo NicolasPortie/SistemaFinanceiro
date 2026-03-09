@@ -15,4 +15,11 @@ public interface IEmailService
         string codigo,
         DateTime expiraEmUtc,
         CancellationToken cancellationToken = default);
+
+    Task<bool> EnviarEmailGenericoAsync(
+        string emailDestino,
+        string nomeDestino,
+        string assunto,
+        string conteudoTexto,
+        CancellationToken cancellationToken = default);
 }

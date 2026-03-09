@@ -40,6 +40,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
+import { DialogShellHeader } from "@/components/shared/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -238,270 +239,321 @@ export default function MetasPage() {
   const totalAtual = ativas.reduce((s, m) => s + m.valorAtual, 0);
   const globalPct = totalAlvo > 0 ? Math.round((totalAtual / totalAlvo) * 100) : 0;
 
+  const totalMensal = ativas.reduce((s, m) => s + m.valorMensalNecessario, 0);
+
+  // calendar: which months (0=Jan…11=Dec) are "contributed" based on criadoEm
+  function getCalendar(criadoEm: string): boolean[] {
+    const start = new Date(criadoEm);
+    const now = new Date();
+    const year = now.getFullYear();
+    return Array.from({ length: 12 }, (_, i) => {
+      const monthEnd = new Date(year, i + 1, 0);
+      return start <= monthEnd && new Date(year, i, 1) <= now;
+    });
+  }
+
+  const MONTH_LABELS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
   return (
-    <div className="space-y-6">
-      {/* ═══ Action Bar ═══ */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/50 dark:border-slate-700/30 rounded-2xl p-4 lg:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm"
-      >
-        <div className="flex items-center gap-3">
-          <div className="size-10 flex items-center justify-center bg-purple-100 dark:bg-purple-500/15 rounded-xl text-purple-600 dark:text-purple-400">
-            <Target className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-              Metas Financeiras
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Defina e acompanhe suas metas de economia e investimento
-            </p>
-          </div>
+    <div className="flex flex-col gap-6 sm:gap-8">
+      {/* ── Page Header & Summary Cards ──────────────────────────── */}
+      <div className="flex items-end justify-between flex-wrap gap-4 sm:gap-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-[#0F172A] mb-2">Metas</h1>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Gerenciamento Estratégico de Capitais</p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => refetch()}
-                  className="p-2.5 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-xl transition-colors cursor-pointer"
-                >
-                  <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Atualizar dados</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <div className="flex gap-3 sm:gap-4 flex-wrap items-center w-full sm:w-auto">
+          <div className="exec-card px-4 sm:px-6 py-3 sm:py-4 rounded-2xl flex flex-col flex-1 sm:flex-none sm:min-w-[170px]">
+            <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mb-1">Total Acumulado</p>
+            <p className="text-sm mono-data font-bold text-[#0F172A]">{formatCurrency(totalAtual)}</p>
+          </div>
+          <div className="exec-card px-4 sm:px-6 py-3 sm:py-4 rounded-2xl flex flex-col flex-1 sm:flex-none sm:min-w-[170px]">
+            <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mb-1">Total Projetado</p>
+            <p className="text-sm mono-data font-bold text-[#0F172A]">{formatCurrency(totalAlvo)}</p>
+          </div>
+          <div className="exec-card px-4 sm:px-6 py-3 sm:py-4 rounded-2xl flex flex-col flex-1 sm:flex-none sm:min-w-[170px]">
+            <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mb-1">Economia Mensal</p>
+            <p className="text-sm mono-data font-bold text-[#0F172A]">{formatCurrency(totalMensal)}<span className="text-slate-400 font-normal">/mês</span></p>
+          </div>
           <button
-            onClick={() => {
-              createForm.reset();
-              setShowForm(true);
-            }}
-            className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer text-sm"
+            onClick={() => { createForm.reset(); setShowForm(true); }}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 sm:px-6 py-3 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 w-full sm:w-auto justify-center"
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Nova Meta</span>
-            <span className="sm:hidden">Nova</span>
+            Nova Meta
           </button>
         </div>
-      </motion.div>
+      </div>
 
-      {/* ═══ Stat Cards ═══ */}
+      {/* ── Main Content ─────────────────────────────────────────── */}
       {loading ? (
-        <CardSkeleton count={3} />
+        <CardSkeleton count={4} />
       ) : isError ? (
         <ErrorState message={error?.message ?? "Erro ao carregar metas"} onRetry={refetch} />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
-          {/* Metas Ativas */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0 }}
-            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-          >
-            <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-            <div className="flex justify-between items-start z-10">
-              <div className="size-10 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-xl text-emerald-600 dark:text-emerald-400">
-                <Target className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                Metas Ativas
-              </p>
-              <h3 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">
-                {ativas.length}
-              </h3>
-              {pausadas.length > 0 && (
-                <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded mt-1 inline-block">
-                  {pausadas.length} pausada{pausadas.length > 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Total Poupado */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-          >
-            <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-            <div className="flex justify-between items-start z-10">
-              <div className="size-10 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-xl text-emerald-600 dark:text-emerald-400">
-                <DollarSign className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                Total Economizado
-              </p>
-              <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-                {formatCurrency(totalAtual)}
-              </h3>
-              <div className="flex items-center gap-2 mt-1.5">
-                <div className="flex-1 bg-slate-100 dark:bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-1.5 rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(globalPct, 100)}%` }}
-                  />
-                </div>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold tabular-nums">
-                  {globalPct}%
-                </span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Metas Concluídas */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-          >
-            <div className="absolute -right-6 -bottom-6 bg-purple-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-purple-500/15 transition-all" />
-            <div className="flex justify-between items-start z-10">
-              <div className="size-10 flex items-center justify-center bg-purple-100 dark:bg-purple-500/15 rounded-xl text-purple-600 dark:text-purple-400">
-                <Trophy className="h-5 w-5" />
-              </div>
-              {concluidas.length > 0 && (
-                <span className="text-[10px] font-bold px-2 py-1 rounded-full text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20">
-                  Parabéns!
-                </span>
-              )}
-            </div>
-            <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                Metas Concluídas
-              </p>
-              <h3 className="text-3xl font-bold text-slate-800 dark:text-white tracking-tight">
-                {concluidas.length}
-              </h3>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* ═══ Active Goals ═══ */}
-      {ativas.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">
-            Metas Ativas
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <AnimatePresence>
-              {ativas.map((meta, i) => (
-                <MetaCard
-                  key={meta.id}
-                  meta={meta}
-                  index={i}
-                  actionLoading={actionLoading}
-                  onEdit={() => {
-                    setEditMeta(meta);
-                    editForm.reset({ valorAtual: meta.valorAtual.toFixed(2).replace(".", ",") });
-                  }}
-                  onPausar={() => handlePausarResumir(meta)}
-                  onRemover={() => setDeleteId(meta.id)}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ Paused Goals ═══ */}
-      {pausadas.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">
-            Pausadas
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {pausadas.map((meta, i) => (
-              <MetaCard
-                key={meta.id}
-                meta={meta}
-                index={i}
-                actionLoading={actionLoading}
-                onEdit={() => {
-                  setEditMeta(meta);
-                  editForm.reset({ valorAtual: meta.valorAtual.toFixed(2).replace(".", ",") });
-                }}
-                onPausar={() => handlePausarResumir(meta)}
-                onRemover={() => setDeleteId(meta.id)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ═══ Completed Goals ═══ */}
-      {concluidas.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">
-            Concluídas
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {concluidas.map((meta, i) => (
-              <motion.div
-                key={meta.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="glass-panel rounded-2xl p-5 group hover:-translate-y-0.5 transition-transform duration-300"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-                    <CheckCircle2 className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-slate-800 dark:text-white truncate">
-                      {meta.nome}
-                    </p>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium tabular-nums">
-                      {formatCurrency(meta.valorAlvo)}
-                    </p>
-                  </div>
-                  <span
-                    className={cn(
-                      "text-[10px] font-bold px-2.5 py-1 rounded-full",
-                      statusConfig.concluida.badgeClass
-                    )}
-                  >
-                    Concluída
-                  </span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ═══ Empty state ═══ */}
-      {metas.length === 0 && !loading && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-panel rounded-2xl p-12"
-        >
+      ) : metas.length === 0 ? (
+        <div className="exec-card rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-12">
           <EmptyState
             icon={<Target className="h-6 w-6" />}
             title="Nenhuma meta"
             description="Crie sua primeira meta financeira para começar a acompanhar seu progresso"
             action={
               <button
-                onClick={() => setShowForm(true)}
-                className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm"
+                onClick={() => { createForm.reset(); setShowForm(true); }}
+                className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer text-sm"
               >
                 <Plus className="h-4 w-4" />
                 Criar meta
               </button>
             }
           />
-        </motion.div>
+        </div>
+      ) : (
+        <div className="exec-card rounded-2xl sm:rounded-[2.5rem] overflow-hidden flex flex-col">
+          {/* Desktop Table header — hidden on mobile */}
+          <div className="hidden lg:grid p-6 xl:p-10 border-b border-slate-50 grid-cols-12 gap-6 text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] items-center">
+            <div className="col-span-3">Objetivo Estratégico</div>
+            <div className="col-span-2">Real vs. Velocity</div>
+            <div className="col-span-2">Acúmulo / Meta</div>
+            <div className="col-span-2">Tendência</div>
+            <div className="col-span-1 text-center">Status</div>
+            <div className="col-span-2 text-right pr-4">Ações</div>
+          </div>
+
+          {/* Mobile card view */}
+          <div className="lg:hidden divide-y divide-slate-50">
+            {metas.map((meta) => {
+              const pct = Math.min(meta.percentualConcluido, 100);
+              const isConcluida = meta.status === "concluida";
+              const isPausada = meta.status === "pausada";
+              const isAtrasada = meta.desvio?.toLowerCase().includes("atrasada");
+              const isAdiantada = meta.desvio?.toLowerCase().includes("adiantada");
+              let pillLabel = "No Prazo";
+              let pillCls = "bg-emerald-50 text-emerald-600";
+              let accentColor = "text-emerald-600";
+              let barStroke = "bg-emerald-500";
+              if (isConcluida) { pillLabel = "Concluída"; pillCls = "bg-emerald-50 text-emerald-600"; }
+              else if (isPausada) { pillLabel = "Pausada"; pillCls = "bg-amber-50 text-amber-600"; accentColor = "text-amber-600"; barStroke = "bg-amber-400"; }
+              else if (isAtrasada) { pillLabel = "Atrasada"; pillCls = "bg-rose-50 text-rose-600"; accentColor = "text-rose-600"; barStroke = "bg-rose-500"; }
+              else if (isAdiantada) { pillLabel = "Adiantada"; pillCls = "bg-indigo-50 text-indigo-600"; accentColor = "text-indigo-600"; barStroke = "bg-indigo-500"; }
+              let deltaText = "";
+              if (isConcluida) deltaText = "META ATINGIDA!";
+              else if (isAtrasada) deltaText = `DÉFICIT DE ${formatCurrency(meta.valorAlvo - meta.valorAtual)}`;
+              else if (meta.mesesRestantes > 0) deltaText = `FALTAM ${meta.mesesRestantes} ${meta.mesesRestantes === 1 ? "MÊS" : "MESES"}`;
+
+              return (
+                <div key={meta.id} className="p-4 sm:p-6 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                        <Target className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-[#0F172A] truncate">{meta.nome}</h3>
+                        {deltaText && <p className={`text-[8px] font-bold mt-0.5 ${accentColor}`}>{deltaText}</p>}
+                      </div>
+                    </div>
+                    <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md whitespace-nowrap ${pillCls}`}>
+                      {pillLabel}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-slate-500 font-medium">{formatCurrency(meta.valorAtual)} / {formatCurrency(meta.valorAlvo)}</span>
+                      <span className={`font-bold ${accentColor}`}>{pct}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full ${barStroke} rounded-full`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 pt-1">
+                    {!isConcluida && (
+                      <button
+                        onClick={() => { setEditMeta(meta); editForm.reset({ valorAtual: meta.valorAtual.toFixed(2).replace(".", ",") }); }}
+                        className="text-emerald-600 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Aportar
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setDeleteId(meta.id)}
+                      className="text-slate-400 hover:text-rose-600 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer ml-auto"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Rows — hidden on mobile */}
+          <div className="hidden lg:block divide-y divide-slate-50">
+            {metas.map((meta) => {
+              const pct = Math.min(meta.percentualConcluido, 100);
+              // Projected % based on timeline
+              const prazoDate = new Date(meta.prazo);
+              const startDate = new Date(meta.criadoEm);
+              const totalMs = prazoDate.getTime() - startDate.getTime();
+              const elapsedMs = Date.now() - startDate.getTime();
+              const projPct = totalMs > 0 ? Math.min(Math.round((elapsedMs / totalMs) * 100), 100) : 0;
+
+              // Status pill
+              const isAdiantada = meta.desvio?.toLowerCase().includes("adiantada");
+              const isAtrasada = meta.desvio?.toLowerCase().includes("atrasada");
+              const isConcluida = meta.status === "concluida";
+              const isPausada = meta.status === "pausada";
+              let pillLabel = "No Prazo";
+              let pillCls = "bg-emerald-50 text-emerald-600";
+              let accentColor = "text-emerald-600";
+              let barStroke = "bg-emerald-500";
+              let svgStroke = "#10B981";
+              if (isConcluida) {
+                pillLabel = "Concluída"; pillCls = "bg-emerald-50 text-emerald-600";
+                accentColor = "text-emerald-600"; barStroke = "bg-emerald-500"; svgStroke = "#10B981";
+              } else if (isPausada) {
+                pillLabel = "Pausada"; pillCls = "bg-amber-50 text-amber-600";
+                accentColor = "text-amber-600"; barStroke = "bg-amber-400"; svgStroke = "#F59E0B";
+              } else if (isAtrasada) {
+                pillLabel = "Atrasada"; pillCls = "bg-rose-50 text-rose-600";
+                accentColor = "text-rose-600"; barStroke = "bg-rose-500"; svgStroke = "#F43F5E";
+              } else if (isAdiantada) {
+                pillLabel = "Adiantada"; pillCls = "bg-indigo-50 text-indigo-600";
+                accentColor = "text-indigo-600"; barStroke = "bg-indigo-500"; svgStroke = "#6366F1";
+              }
+
+              // Sub-delta text
+              let deltaText = "";
+              if (isConcluida) {
+                deltaText = "META ATINGIDA!";
+              } else if (isAtrasada) {
+                deltaText = `DÉFICIT DE ${formatCurrency(meta.valorAlvo - meta.valorAtual)}`;
+              } else if (isAdiantada && meta.mesesRestantes > 0) {
+                deltaText = `CONCLUSÃO EM ${meta.mesesRestantes} ${meta.mesesRestantes === 1 ? "MÊS" : "MESES"}`;
+              } else if (meta.mesesRestantes > 0) {
+                deltaText = `FALTAM ${meta.mesesRestantes} ${meta.mesesRestantes === 1 ? "MÊS" : "MESES"}`;
+              }
+
+              // Sparkline path
+              const sparkPath = isAtrasada
+                ? "M0,5 L20,10 L40,12 L60,14 L80,15 L100,16 L120,18"
+                : isAdiantada
+                  ? "M0,28 L20,22 L40,16 L60,12 L80,7 L100,4 L120,2"
+                  : "M0,25 L20,22 L40,20 L60,17 L80,13 L100,10 L120,7";
+
+              // Calendar squares
+              const calendar = getCalendar(meta.criadoEm);
+
+              return (
+                <div key={meta.id} className="grid grid-cols-12 gap-6 p-6 xl:p-10 items-center hover:bg-slate-50/50 transition-colors group">
+                  {/* Objetivo */}
+                  <div className="col-span-3 flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors shrink-0">
+                      <Target className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-bold text-[#0F172A] mb-2 truncate">{meta.nome}</h3>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">Calendário de Aportes</span>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {MONTH_LABELS.map((label, i) => (
+                            <div key={i} className="flex flex-col items-center gap-0.5">
+                              <div className={`w-3.5 h-3.5 rounded-sm ${calendar[i] ? "bg-emerald-500" : "border border-slate-200 bg-transparent"}`} />
+                              <span className="text-[7px] font-bold text-slate-400 uppercase">{label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Velocity */}
+                  <div className="col-span-2 space-y-2">
+                    <div className="flex justify-between text-[8px] font-bold uppercase tracking-tighter mb-1">
+                      <span className={accentColor}>ATUAL: {pct}%</span>
+                      <span className="text-slate-400">PROJ: {projPct}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-100 rounded-full relative overflow-hidden">
+                      <div className={`absolute top-0 left-0 h-[2px] ${barStroke} rounded-full z-10`} style={{ width: `${pct}%` }} />
+                      <div className="absolute bottom-0 left-0 h-[2px] bg-slate-300 rounded-full opacity-50" style={{ width: `${projPct}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Acúmulo / Meta */}
+                  <div className="col-span-2">
+                    <p className="text-xs mono-data font-bold text-[#0F172A]">
+                      {formatCurrency(meta.valorAtual)}{" "}
+                      <span className="text-slate-300 font-light mx-0.5">/</span>{" "}
+                      {formatCurrency(meta.valorAlvo)}
+                    </p>
+                    {deltaText && (
+                      <p className={`text-[8px] font-bold mt-1 ${accentColor}`}>{deltaText}</p>
+                    )}
+                  </div>
+
+                  {/* Tendência sparkline */}
+                  <div className="col-span-2">
+                    <p className="text-[7px] font-bold text-slate-400 mb-1 uppercase tracking-widest truncate">
+                      {meta.desvio || "Tendência estável"}
+                    </p>
+                    <svg className="w-full h-8" viewBox="0 0 120 30">
+                      <path d={sparkPath} fill="none" stroke={svgStroke} strokeLinecap="round" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+
+                  {/* Status pill */}
+                  <div className="col-span-1 flex justify-center">
+                    <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md min-w-[85px] text-center ${pillCls}`}>
+                      {pillLabel}
+                    </span>
+                  </div>
+
+                  {/* Ações */}
+                  <div className="col-span-2 flex justify-end gap-8 text-[9px] font-bold uppercase tracking-widest pr-4">
+                    {!isConcluida && (
+                      <button
+                        onClick={() => { setEditMeta(meta); editForm.reset({ valorAtual: meta.valorAtual.toFixed(2).replace(".", ",") }); }}
+                        className="text-emerald-600 hover:brightness-90 transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Aportar
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setDeleteId(meta.id)}
+                      className="text-slate-400 hover:text-rose-600 transition-all flex items-center gap-1.5 cursor-pointer opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 sm:p-6 lg:p-8 border-t border-slate-50 bg-slate-50/20 flex items-center justify-between flex-wrap gap-4">
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+              {metas.length} meta{metas.length !== 1 ? "s" : ""} ativas • {ativas.length} ativa{ativas.length !== 1 ? "s" : ""}, {concluidas.length} concluída{concluidas.length !== 1 ? "s" : ""}
+            </p>
+            <div className="flex gap-4 flex-wrap">
+              {pausadas.length > 0 && (
+                <span className="px-5 py-2.5 rounded-xl bg-amber-50 border border-amber-100 text-[9px] font-bold text-amber-600 uppercase tracking-widest">
+                  {pausadas.length} pausada{pausadas.length !== 1 ? "s" : ""}
+                </span>
+              )}
+              <button
+                onClick={() => { createForm.reset(); setShowForm(true); }}
+                className="px-6 py-3 rounded-xl bg-slate-900 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 cursor-pointer flex items-center gap-2"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Nova Meta
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ═══ New Goal Dialog ═══ */}
@@ -825,11 +877,17 @@ export default function MetasPage() {
       {/* ═══ Delete Dialog ═══ */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover meta?</AlertDialogTitle>
-            <AlertDialogDescription>
+          <AlertDialogHeader className="items-start text-left">
+            <AlertDialogTitle className="sr-only">Remover meta?</AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
               Tem certeza que deseja remover esta meta? Essa ação não pode ser desfeita.
             </AlertDialogDescription>
+            <DialogShellHeader
+              icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Remover meta?"
+              description="Tem certeza que deseja remover esta meta? Essa ação não pode ser desfeita."
+              tone="rose"
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>

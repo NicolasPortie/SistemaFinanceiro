@@ -43,6 +43,10 @@ services:
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN}
       Telegram__WebhookUrl: ${TELEGRAM_WEBHOOK_URL}
       Telegram__WebhookSecretToken: ${TELEGRAM_WEBHOOK_SECRET}
+      WhatsApp__Enabled: ${WHATSAPP_ENABLED:-false}
+      WhatsApp__BridgeUrl: ${WHATSAPP_BRIDGE_URL:-http://whatsapp-bridge:3100}
+      WhatsApp__BridgeSecret: ${WHATSAPP_BRIDGE_SECRET}
+      WhatsApp__WebhookSecretToken: ${WHATSAPP_WEBHOOK_SECRET}
       Gemini__ApiKey: ${GEMINI_API_KEY}
       Gemini__Model: ${GEMINI_MODEL:-gemini-2.0-flash}
       Groq__ApiKey: ${GROQ_API_KEY}
@@ -103,8 +107,39 @@ services:
       retries: 3
       start_period: 40s
 
+  whatsapp-bridge:
+    build:
+      context: ./whatsapp-bridge
+      dockerfile: Dockerfile
+    image: controlfinance-whatsapp:latest
+    container_name: controlfinance-whatsapp-prod
+    restart: always
+    depends_on:
+      - api
+    environment:
+      PORT: 3100
+      API_BASE_URL: http://api:5000
+      BRIDGE_SECRET: ${WHATSAPP_BRIDGE_SECRET}
+      AUTH_DIR: /app/auth_data
+      LOG_LEVEL: info
+      PHONE_NUMBER: ${WHATSAPP_PHONE_NUMBER:-}
+    volumes:
+      - whatsapp_auth_prod:/app/auth_data
+    networks:
+      - controlfinance-network
+    expose:
+      - "3100"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
 volumes:
   pgdata_prod:
+    driver: local
+  whatsapp_auth_prod:
     driver: local
 
 networks:

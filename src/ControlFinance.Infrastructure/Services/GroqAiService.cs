@@ -103,7 +103,7 @@ public class GroqAiService : IAiService
         var temperaturaLlm = origem == OrigemDado.Audio ? 0.3 : 0.7;
 
         var prompt = $$"""
-            Você é o ControlFinance, um assistente financeiro pessoal no Telegram. Seja direto, profissional e objetivo. Use no máximo 1 ou 2 emojis por mensagem (apenas quando fizer sentido funcional, como ✅ para confirmação ou ⚠️ para alerta). Nunca encha a mensagem de emojis. Fale em português brasileiro de forma clara e natural.
+            Você é o ControlFinance, um assistente financeiro pessoal inteligente. Seja direto, profissional e objetivo. Use no máximo 1 ou 2 emojis por mensagem (apenas quando fizer sentido funcional, como ✅ para confirmação ou ⚠️ para alerta). Nunca encha a mensagem de emojis. Fale em português brasileiro de forma clara e natural.
 
             INFORMAÇÕES DE TEMPO PARA CÁLCULO DE DATAS E CUMPRIMENTOS:
             - Data Atual: {{dataHoje}} ({{diaSemana}})
@@ -116,6 +116,26 @@ public class GroqAiService : IAiService
             TIPO DE ENTRADA: A mensagem veio via {{origem.ToString()}}.
             {{regraImagem}}
             {{regraAudio}}
+
+            ═══ REGRA FUNDAMENTAL: NUNCA FIQUE CEGO ═══
+            Você tem acesso ao contexto financeiro completo do usuário acima: saldo, gastos por categoria, histórico dos últimos meses, lançamentos individuais recentes e metas. USE ESSES DADOS para responder QUALQUER pergunta financeira. NUNCA diga "não tenho acesso" ou "não consigo ver" — você TEM os dados no contexto acima.
+            
+            Quando o usuário perguntar:
+            - "quanto gastei em X?" → Some os valores da categoria X nos ÚLTIMOS LANÇAMENTOS do contexto. Se ele especificar período, filtre por data.
+            - "qual meu maior gasto?" → Encontre o maior valor nos ÚLTIMOS LANÇAMENTOS.
+            - "gastei com o quê?" → Liste as categorias e totais do contexto.
+            - "como estou esse mês?" → Use os totais do mês atual + saldo + top categorias do contexto.
+            - "e no mês passado?" → Use os dados do mês correspondente no histórico.
+            - Perguntas analíticas ("aumentou?", "diminuiu?", "tendência?") → Compare os dados dos meses no contexto.
+            
+            REGRA ANTI-BURRICE (CRÍTICA):
+            - NUNCA peça esclarecimento quando conseguir deduzir a resposta. Se o usuário perguntar "gastos de fevereiro" e você tem dados de fevereiro no contexto, RESPONDA DIRETAMENTE.
+            - NUNCA pergunte "qual mês?" quando o mês está implícito na mensagem.
+            - NUNCA pergunte "qual categoria?" quando pode listar todas.
+            - NUNCA devolva perguntas genéricas tipo "sobre o que especificamente?" — se o usuário quer saber sobre gastos, mostre gastos.
+            - Se o período é ambíguo (ex: "quanto gastei?"), assuma o MÊS ATUAL.
+            - Se a categoria é ambígua (ex: "como está meu limite?"), mostre TODOS os limites.
+            - SEMPRE tente resolver a intenção do usuário com os dados disponíveis antes de pedir qualquer esclarecimento.
 
             REGRA DE CATEGORIZAÇÃO (CRÍTICA):
             No contexto acima há "Mapeamentos aprendidos" com descrição → categoria que o usuário JÁ USOU. Se a descrição do lançamento atual corresponder (parcial ou exatamente) a algum mapeamento, USE a mesma categoria — esse é o padrão do usuário. Se não houver mapeamento correspondente, escolha a melhor categoria da lista "Categorias do usuário". Só use "Outros" se nenhuma categoria se aplicar.
@@ -150,17 +170,58 @@ public class GroqAiService : IAiService
             Usuário: "6x de R$29,90 no cartão"
             Ação: Chamar registrar_lancamento(valor=179.40, numeroParcelas=6, formaPagamento="credito") → TOTAL = 6 × 29.90 = 179.40
 
+            EXEMPLOS DE CONSULTA POR PERÍODO (FEW-SHOT):
+            Usuário: "gastos de fevereiro"
+            Ação: Chamar responder_generico(comandoInterno="ver_extrato", parametro="02/2026", resposta="Aqui estão seus gastos de fevereiro.")
+
+            Usuário: "lista meus lançamentos do mês passado"
+            Ação: Chamar responder_generico(comandoInterno="ver_extrato", parametro="02/2026", resposta="Listando seus lançamentos do mês passado.")
+
+            Usuário: "o que gastei de 01 de fevereiro até 20 de fevereiro"
+            Ação: Chamar responder_generico(comandoInterno="ver_extrato", parametro="01/02/2026_20/02/2026", resposta="Aqui estão seus gastos no período.")
+
+            Usuário: "quanto gastei em janeiro?"
+            Ação: Chamar responder_generico(comandoInterno="ver_extrato", parametro="01/2026", resposta="Aqui está o resumo de janeiro.")
+
+            EXEMPLOS DE CONSULTAS ANALÍTICAS (FEW-SHOT) — RESPONDA COM O CONTEXTO:
+            Usuário: "quanto gastei em alimentação?"
+            Ação: Procure "Alimentação" nos gastos por categoria do contexto. Responda com responder_generico(comandoInterno="none", resposta="Seus gastos em Alimentação este mês: R$ XXX.") ou, se o usuário especificou mês, use ver_extrato.
+
+            Usuário: "qual meu maior gasto esse mês?"
+            Ação: Analise os ÚLTIMOS LANÇAMENTOS do contexto, encontre o maior valor, e responda com responder_generico(comandoInterno="none", resposta="Seu maior gasto foi R$ X em Y no dia DD/MM.")
+
+            Usuário: "como estão meus gastos comparado ao mês passado?"
+            Ação: Chamar responder_generico(comandoInterno="comparar_meses", parametro="mes_atual_vs_mes_passado", resposta="Vou comparar.")
+
+            Usuário: "gastei mais ou menos que no mês passado?"
+            Ação: Use o histórico do contexto para comparar totais de gastos e responda diretamente, OU use comparar_meses.
+
+            Usuário: "detalhar saúde" ou "gastos em saúde"
+            Ação: Chamar responder_generico(comandoInterno="detalhar_categoria", parametro="Saúde", resposta="Detalhando Saúde.")
+
+            Usuário: "gastos em alimentação em fevereiro" ou "quanto gastei em transporte no mês passado"
+            Ação: Chamar responder_generico(comandoInterno="detalhar_categoria", parametro="Alimentação|02/2026", resposta="Gastos em Alimentação de fevereiro."). Use o formato "NomeCategoria|MM/AAAA" ou "NomeCategoria|DD/MM/AAAA_DD/MM/AAAA" para filtrar por categoria E período.
+
+            Usuário: "quanto gastei em uber em março?"
+            Ação: Chamar responder_generico(comandoInterno="detalhar_categoria", parametro="Transporte|03/2026", resposta="Gastos em Transporte de março."). Se não souber a categoria exata, use a mais provável do contexto.
+
             MENSAGEM DO USUÁRIO: "{{mensagem}}"
 
             INSTRUÇÃO:
             Avalie a mensagem do usuário e ESCOLHA A FERRAMENTA MAIS ADEQUADA. 
             Preencha todos os parâmetros requeridos pela ferramenta com os dados extraídos ou deduzidos da mensagem.
             Se for uma dúvida genérica, pedir resumo, faturas, use "responder_generico" ou a ferramenta mais aderente.
+            Se a solicitação não se encaixar em nenhum comando interno, ainda assim responda com "responder_generico", usando comandoInterno "none" e uma resposta útil em "resposta".
+            Se o usuário fizer uma pergunta analítica que pode ser respondida com os dados do CONTEXTO acima, use "responder_generico" com comandoInterno "none" e coloque a resposta completa no campo "resposta" — use os números do contexto.
             Se o usuário pedir a sua "nota" ou score financeiro = use 'responder_generico' indicando comandoInterno 'ver_score'.
             Se o usuário pedir seu "perfil", "jeito de gastar" = use 'responder_generico' indicando comandoInterno 'ver_perfil'.
-            Se o usuário perguntar sobre "eventos", "gastos de meses específicos" = 'responder_generico' indicando comandoInterno 'ver_sazonalidade'.
+            Se o usuário pedir para LISTAR, VER ou MOSTRAR gastos/lançamentos/transações de um mês específico ou período (ex: "gastos de fevereiro", "lista os gastos do mês passado", "o que gastei em janeiro", "lançamentos de 01/02 até 20/02") = use 'responder_generico' com comandoInterno 'ver_extrato' e preencha `parametro` com o período. Use formato 'MM/AAAA' para mês inteiro ou 'DD/MM/AAAA_DD/MM/AAAA' para intervalo. Deduza o ano pela Data Atual se não informado. "Mês passado" = mês anterior à Data Atual.
+            Se o usuário perguntar gastos de uma CATEGORIA ESPECÍFICA (com ou sem período), use 'responder_generico' com comandoInterno 'detalhar_categoria' e parametro conforme exemplos acima.
+            Se o usuário perguntar sobre "eventos", "gastos de meses específicos" (análise, não listagem) = 'responder_generico' indicando comandoInterno 'ver_sazonalidade'.
             Se ele perguntar sobre "receitas fixas", "salário" ou "recorrentes" = 'responder_generico' indicando comandoInterno 'ver_recorrentes' (ou ver_salario se falar salário).
             Se ele perguntar sobre assinaturas, contas fixas, lembretes, "quais são minhas contas", "meus lembretes" ou contas que vão vencer = 'responder_generico' indicando comandoInterno 'ver_lembretes'.
+            Se o usuário pedir para comparar meses (ex: "compare com mês passado", "comparar com outro mes", "comparativo mensal") = use 'responder_generico' com comandoInterno 'comparar_meses' e preencha `parametro` com um marcador de período quando possível.
+            Formatos de `parametro` aceitos para comparação: "mes_atual_vs_mes_passado", "mes_atual_vs_mes_retrasado" ou "MM/AAAA_vs_MM/AAAA".
             IMPORTANTE: Se o usuário quiser CRIAR/CADASTRAR/ADICIONAR uma conta fixa nova (ex: "conta fixa de internet 99,90 dia 15", "adicionar aluguel 1500 dia 10", "netflix 55,90 todo dia 5") = use 'criar_conta_fixa' (NÃO 'ver_lembretes'). Só use 'ver_lembretes' quando ele quiser VER/LISTAR as contas existentes.
             Se o usuário usar verbos no passado (\"comprei\", \"adquiri\", \"fiz a compra\") referindo-se a uma transação JÁ concluída = use 'registrar_lancamento' (não 'prever_compra').
             """;
@@ -183,6 +244,11 @@ public class GroqAiService : IAiService
 
             if (toolCall == null || toolCall.Function == null || string.IsNullOrWhiteSpace(toolCall.Function.Name))
             {
+                _logger.LogWarning("Groq não retornou tool call válida. Acionando fallback de resposta livre.");
+                var fallbackLivre = await GerarRespostaLivreFallbackAsync(mensagem, contextoFinanceiro, origem, "sem_tool_call");
+                if (fallbackLivre != null)
+                    return fallbackLivre;
+
                 return new RespostaIA
                 {
                     Intencao = "erro",
@@ -201,16 +267,94 @@ public class GroqAiService : IAiService
             // Re-aproveitar lógicas de validação de valores financeiros
             ValidarValoresResposta(resultado, mensagem);
 
+            if (PrecisaFallbackLivre(resultado))
+            {
+                var fallbackLivre = await GerarRespostaLivreFallbackAsync(mensagem, contextoFinanceiro, origem, "tool_call_inconclusiva");
+                if (fallbackLivre != null)
+                    return fallbackLivre;
+            }
+
             return resultado;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao processar mensagem via LLM Tools: {Mensagem}", mensagem);
+
+            var fallbackLivre = await GerarRespostaLivreFallbackAsync(mensagem, contextoFinanceiro, origem, "excecao_tools");
+            if (fallbackLivre != null)
+                return fallbackLivre;
+
             return new RespostaIA
             {
                 Intencao = "erro",
                 Resposta = "Tive um probleminha técnico. Tenta de novo daqui a pouquinho!"
             };
+        }
+    }
+
+    private static bool PrecisaFallbackLivre(RespostaIA resposta)
+    {
+        if (resposta == null)
+            return true;
+
+        if (!string.Equals(resposta.Intencao, "erro", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (string.IsNullOrWhiteSpace(resposta.Resposta))
+            return true;
+
+        var texto = resposta.Resposta.Trim().ToLowerInvariant();
+        return texto.Contains("não entendi")
+            || texto.Contains("nao entendi")
+            || texto.Contains("probleminha")
+            || texto.Contains("ainda não sei")
+            || texto.Contains("ainda nao sei")
+            || texto.Contains("não consegui processar")
+            || texto.Contains("nao consegui processar");
+    }
+
+    private async Task<RespostaIA?> GerarRespostaLivreFallbackAsync(
+        string mensagem,
+        string contextoFinanceiro,
+        OrigemDado origem,
+        string motivo)
+    {
+        try
+        {
+            var dataHoje = DateTime.UtcNow.AddHours(-3).ToString("yyyy-MM-dd");
+            var systemPrompt =
+                "Você é o ControlFinance, assistente financeiro pessoal inteligente em português do Brasil. " +
+                "Responda de forma útil, direta e profissional. " +
+                "Você tem acesso ao CONTEXTO FINANCEIRO COMPLETO do usuário abaixo — USE ESSES DADOS para responder perguntas. " +
+                "NUNCA diga que não tem acesso aos dados ou que não consegue ver as informações — você TEM tudo no contexto. " +
+                "Se o usuário perguntar sobre gastos, categorias, saldo, lançamentos, metas, use os números do contexto para dar uma resposta concreta com valores reais. " +
+                "Se perguntar algo analítico (tendência, comparativo, maior gasto), analise os dados e responda com números. " +
+                "NUNCA peça esclarecimento desnecessário — se conseguir deduzir a resposta, responda diretamente. " +
+                "Se faltar informação, seja honesto mas ofereça o que pode com os dados disponíveis. " +
+                "Use no máximo 1-2 emojis funcionais.";
+
+            var userPrompt =
+                $"Data atual: {dataHoje}\n" +
+                $"Origem: {origem}\n\n" +
+                $"Contexto financeiro do usuário:\n{contextoFinanceiro}\n\n" +
+                $"Mensagem do usuário:\n{mensagem}\n\n" +
+                "Entregue uma resposta clara e útil usando os dados acima. Cite valores reais do contexto quando aplicável.";
+
+            var texto = await ChamarGroqSimplesAsync(systemPrompt, userPrompt, 0.45);
+            if (string.IsNullOrWhiteSpace(texto))
+                return null;
+
+            _logger.LogInformation("Fallback livre aplicado com sucesso. Motivo: {Motivo}", motivo);
+            return new RespostaIA
+            {
+                Intencao = "resposta_livre",
+                Resposta = texto.Trim()
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Fallback livre falhou. Motivo: {Motivo}", motivo);
+            return null;
         }
     }
 
@@ -361,12 +505,12 @@ public class GroqAiService : IAiService
 
                 case "responder_generico":
                     // O modelo decidiu usar o responder genérico. O comandoInterno deve ser mapeado para intencao se for válido.
-                    var comando = GetStr("comandoInterno") ?? "erro";
+                    var comando = NormalizarComandoInterno(GetStr("comandoInterno"));
                     var respostaArgs = GetStr("resposta") ?? "Ok!";
                     var parametro = GetStr("parametro");
 
                     // Map do "comandoInterno" da Tool de volta para os "Intencao" antigos do ResponseIA
-                    result.Intencao = comando;
+                    result.Intencao = comando is "none" or "resposta_livre" ? "resposta_livre" : comando;
                     result.Resposta = respostaArgs;
 
                     // Adaptações especiais baseadas no parametro (ex: detalhar_categoria precisa do nome na propriedade Resposta)
@@ -377,6 +521,11 @@ public class GroqAiService : IAiService
                     if (comando == "criar_categoria" && !string.IsNullOrEmpty(parametro))
                     {
                         result.Resposta = parametro; // O TelegramBotService espera SOMENTE o nome da categoria na propriedade Resposta.
+                    }
+                    if (comando == "comparar_meses" && !string.IsNullOrWhiteSpace(parametro))
+                    {
+                        // Usa o parâmetro como dica estruturada de período para o motor de chat.
+                        result.Resposta = parametro;
                     }
                     if (comando == "excluir_lancamento")
                     {
@@ -397,6 +546,10 @@ public class GroqAiService : IAiService
                     {
                          result.Resposta = parametro;
                     }
+                    if (comando == "ver_extrato" && !string.IsNullOrWhiteSpace(parametro))
+                    {
+                        result.Resposta = parametro;
+                    }
                     if ((comando == "ver_score" || comando == "ver_perfil" || comando == "ver_lembretes" || comando == "ver_eventos_sazonais" || comando == "ver_recorrentes" || comando == "ver_salario"))
                     {
                          // Estes comandos são diretos e não dependem da Resposta String para o TelegramBotService
@@ -406,8 +559,17 @@ public class GroqAiService : IAiService
 
                 default:
                     _logger.LogWarning("Ferramenta não reconhecida ou tratada: {FunctionName}", functionName);
-                    result.Intencao = "erro";
-                    result.Resposta = "Desculpa, reconheci a ação mas ainda não sei aplicar.";
+                    var respostaLivre = GetStr("resposta");
+                    if (!string.IsNullOrWhiteSpace(respostaLivre))
+                    {
+                        result.Intencao = "resposta_livre";
+                        result.Resposta = respostaLivre;
+                    }
+                    else
+                    {
+                        result.Intencao = "erro";
+                        result.Resposta = "Desculpa, reconheci a ação mas ainda não sei aplicar.";
+                    }
                     break;
             }
         }
@@ -417,6 +579,31 @@ public class GroqAiService : IAiService
         }
 
         return result;
+    }
+
+    private static string NormalizarComandoInterno(string? comandoInterno)
+    {
+        if (string.IsNullOrWhiteSpace(comandoInterno))
+            return "erro";
+
+        var comando = comandoInterno
+            .Trim()
+            .ToLowerInvariant()
+            .Replace('-', '_')
+            .Replace(' ', '_');
+
+        return comando switch
+        {
+            "none" or "resposta_livre" or "livre" or "chat_livre" => "resposta_livre",
+            "comparar_mes" or "comparar_mensal" or "comparativo" or "comparativo_mes" or "comparativo_mensal" or "comparacao_mensal" => "comparar_meses",
+            "ver_limites" => "consultar_limites",
+            "ver_metas" => "consultar_metas",
+            "ver_sazonalidade" or "sazonalidade" => "ver_eventos_sazonais",
+            "fatura" => "ver_fatura",
+            "fatura_detalhada" => "ver_fatura_detalhada",
+            "extrato" => "ver_extrato",
+            _ => comando
+        };
     }
 
     private void ValidarValoresResposta(RespostaIA resultado, string mensagem)
@@ -1104,6 +1291,156 @@ public class GroqAiService : IAiService
         return null;
     }
 
+    // ══════════════════════════════════════════════════
+    // Humanização de respostas para chat web (InApp)
+    // ══════════════════════════════════════════════════
+
+    public async Task<string> HumanizarRespostaAsync(string mensagemUsuario, string dadosFormatados)
+    {
+        ValidarChavesConfiguradas();
+
+        var systemPrompt =
+            "Você é o ControlFinance, um assistente financeiro pessoal amigável em um chat web. " +
+            "O usuário fez uma pergunta e o sistema gerou dados financeiros no formato de relatório. " +
+            "Sua tarefa: reescrever esses dados como uma RESPOSTA NATURAL DE CONVERSA.\n\n" +
+            "Regras:\n" +
+            "- Mantenha TODOS os números e valores monetários exatos (R$ X,XX)\n" +
+            "- Use linguagem natural e fluida, como se estivesse conversando com um amigo\n" +
+            "- Use **negrito** para destacar valores ou informações importantes\n" +
+            "- NÃO use listas com emojis (📊🟢🔴💳 etc.) — isso é formato de bot\n" +
+            "- Pode usar no máximo 1-2 emojis leves se fizer sentido natural\n" +
+            "- Seja conciso mas informativo\n" +
+            "- Fale em português brasileiro\n" +
+            "- Não repita a pergunta do usuário\n" +
+            "- Se os dados indicarem que não há informação, diga naturalmente";
+
+        var userMessage = $"Pergunta do usuário: \"{mensagemUsuario}\"\n\nDados financeiros:\n{dadosFormatados}";
+
+        try
+        {
+            var resultado = await ChamarGroqSimplesAsync(systemPrompt, userMessage, 0.6);
+            if (!string.IsNullOrWhiteSpace(resultado))
+            {
+                _logger.LogInformation("Resposta humanizada com sucesso ({OrigLen} → {NewLen} chars)", dadosFormatados.Length, resultado.Length);
+                return resultado;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha ao humanizar resposta, usando original");
+        }
+
+        return dadosFormatados;
+    }
+
+    // ══════════════════════════════════════════════════
+    // Chat Completion multi-turn (suporte)
+    // ══════════════════════════════════════════════════
+
+    public async Task<string?> ChatCompletionAsync(IReadOnlyList<MensagemChatIA> mensagens, double temperatura = 0.7, int maxTokens = 1024)
+    {
+        ValidarChavesConfiguradas();
+
+        var apiKey = _groqApiKeys.First();
+        var model = _groqModels.First();
+
+        var requestBody = new
+        {
+            model,
+            messages = mensagens.Select(m => new { role = m.Role, content = m.Content }).ToArray(),
+            temperature = temperatura,
+            max_tokens = maxTokens
+        };
+
+        var json = JsonSerializer.Serialize(requestBody, JsonOptions);
+
+        for (int tentativa = 0; tentativa <= 2; tentativa++)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions")
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("Authorization", $"Bearer {apiKey}");
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var response = await _httpClient.SendAsync(request, cts.Token);
+            var responseBody = await response.Content.ReadAsStringAsync(cts.Token);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = JsonSerializer.Deserialize<GroqResponse>(responseBody, JsonOptions);
+                return result?.Choices?.FirstOrDefault()?.Message?.Content;
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests && tentativa < 2)
+            {
+                _logger.LogWarning("Groq chat completion 429 — tentativa {T}/2, aguardando...", tentativa + 1);
+                await Task.Delay(2000 * (tentativa + 1));
+                continue;
+            }
+
+            _logger.LogWarning("Groq chat completion falhou {Status}: {Body}", response.StatusCode, responseBody);
+            return null;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Chamada simples ao Groq (sem tools) — retorna apenas texto.
+    /// Usada para humanização e reformatação de respostas.
+    /// </summary>
+    private async Task<string?> ChamarGroqSimplesAsync(string systemPrompt, string userMessage, double temperatura = 0.7)
+    {
+        var apiKey = _groqApiKeys.First();
+        var model = _groqModels.First();
+
+        var requestBody = new
+        {
+            model,
+            messages = new object[]
+            {
+                new { role = "system", content = systemPrompt },
+                new { role = "user", content = userMessage }
+            },
+            temperature = temperatura,
+            max_tokens = 1024
+        };
+
+        var json = JsonSerializer.Serialize(requestBody, JsonOptions);
+
+        for (int tentativa = 0; tentativa <= 2; tentativa++)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions")
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("Authorization", $"Bearer {apiKey}");
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var response = await _httpClient.SendAsync(request, cts.Token);
+            var responseBody = await response.Content.ReadAsStringAsync(cts.Token);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = JsonSerializer.Deserialize<GroqResponse>(responseBody, JsonOptions);
+                return result?.Choices?.FirstOrDefault()?.Message?.Content;
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests && tentativa < 2)
+            {
+                _logger.LogWarning("Groq simples 429 — tentativa {T}/2, aguardando...", tentativa + 1);
+                await Task.Delay(2000 * (tentativa + 1));
+                continue;
+            }
+
+            _logger.LogWarning("Groq simples falhou {Status}: {Body}", response.StatusCode, responseBody);
+            return null;
+        }
+
+        return null;
+    }
+
     private async Task<GroqToolCall?> ChamarGroqAsync(string prompt, string groqApiKey, string? modelo = null, int? keyIndex = null, double temperatura = 0.7)
     {
         var groqModel = modelo ?? _groqModels.First();
@@ -1209,6 +1546,4 @@ public class GroqAiService : IAiService
         public string? Name { get; set; }
         public string? Arguments { get; set; }
     }
-
-
 }

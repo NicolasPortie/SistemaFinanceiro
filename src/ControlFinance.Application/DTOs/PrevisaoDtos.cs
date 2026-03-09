@@ -1,31 +1,28 @@
 using System.ComponentModel.DataAnnotations;
-using ControlFinance.Domain.Enums;
 
 namespace ControlFinance.Application.DTOs;
 
-// ====== Request ======
 public class SimularCompraRequestDto
 {
-    [Required(ErrorMessage = "Descrição é obrigatória")]
-    [StringLength(200, MinimumLength = 1, ErrorMessage = "Descrição deve ter entre 1 e 200 caracteres")]
+    [Required(ErrorMessage = "Descricao e obrigatoria")]
+    [StringLength(200, MinimumLength = 1, ErrorMessage = "Descricao deve ter entre 1 e 200 caracteres")]
     public string Descricao { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Valor é obrigatório")]
+    [Required(ErrorMessage = "Valor e obrigatorio")]
     [Range(0.01, 999999999.99, ErrorMessage = "Valor deve ser entre 0,01 e 999.999.999,99")]
     public decimal Valor { get; set; }
 
-    [Required(ErrorMessage = "Forma de pagamento é obrigatória")]
-    [StringLength(20, ErrorMessage = "Forma de pagamento inválida")]
-    public string FormaPagamento { get; set; } = "pix"; // pix, debito, credito
+    [Required(ErrorMessage = "Forma de pagamento e obrigatoria")]
+    [StringLength(20, ErrorMessage = "Forma de pagamento invalida")]
+    public string FormaPagamento { get; set; } = "pix";
 
-    [Range(1, 48, ErrorMessage = "Número de parcelas deve ser entre 1 e 48")]
+    [Range(1, 48, ErrorMessage = "Numero de parcelas deve ser entre 1 e 48")]
     public int NumeroParcelas { get; set; } = 1;
 
     public int? CartaoCreditoId { get; set; }
     public DateTime? DataPrevista { get; set; }
 }
 
-// ====== Response ======
 public class SimulacaoResultadoDto
 {
     public int SimulacaoId { get; set; }
@@ -41,11 +38,9 @@ public class SimulacaoResultadoDto
     public decimal FolgaMensalMedia { get; set; }
     public List<SimulacaoMesDto> Meses { get; set; } = new();
     public List<CenarioAlternativoDto>? CenariosAlternativos { get; set; }
-    public string ResumoTexto { get; set; } = string.Empty; // Para bot
-
-    // Campos avançados
-    public string ClassificacaoRisco { get; set; } = string.Empty; // "Seguro","Moderado","Arriscado","Crítico"
-    public decimal ProbabilidadeMesNegativo { get; set; } // 0-100%
+    public string ResumoTexto { get; set; } = string.Empty;
+    public string ClassificacaoRisco { get; set; } = string.Empty;
+    public decimal ProbabilidadeMesNegativo { get; set; }
     public decimal ImpactoReservaMinima { get; set; }
     public List<ImpactoMetaDto>? ImpactoMetas { get; set; }
     public decimal ScoreSaudeFinanceira { get; set; }
@@ -54,7 +49,7 @@ public class SimulacaoResultadoDto
 
 public class SimulacaoMesDto
 {
-    public string Mes { get; set; } = string.Empty; // "MM/yyyy"
+    public string Mes { get; set; } = string.Empty;
     public decimal ReceitaPrevista { get; set; }
     public decimal GastoPrevisto { get; set; }
     public decimal CompromissosExistentes { get; set; }
@@ -86,15 +81,4 @@ public class PerfilFinanceiroDto
     public int MesesComDados { get; set; }
     public string Confianca { get; set; } = string.Empty;
     public DateTime AtualizadoEm { get; set; }
-}
-
-// Usado pelo Gemini para extrair dados de simulação via linguagem natural
-public class DadosSimulacao
-{
-    public decimal Valor { get; set; }
-    public string Descricao { get; set; } = string.Empty;
-    public string FormaPagamento { get; set; } = "pix";
-    public int NumeroParcelas { get; set; } = 1;
-    public string? Cartao { get; set; }
-    public DateTime? DataPrevista { get; set; }
 }

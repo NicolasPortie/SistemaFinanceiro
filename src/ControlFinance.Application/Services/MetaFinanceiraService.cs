@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Exceptions;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -14,15 +15,18 @@ public class MetaFinanceiraService : IMetaFinanceiraService
 {
     private readonly IMetaFinanceiraRepository _metaRepo;
     private readonly ICategoriaRepository _categoriaRepo;
+    private readonly IFeatureGateService _featureGate;
     private readonly ILogger<MetaFinanceiraService> _logger;
 
     public MetaFinanceiraService(
         IMetaFinanceiraRepository metaRepo,
         ICategoriaRepository categoriaRepo,
+        IFeatureGateService featureGate,
         ILogger<MetaFinanceiraService> logger)
     {
         _metaRepo = metaRepo;
         _categoriaRepo = categoriaRepo;
+        _featureGate = featureGate;
         _logger = logger;
     }
 
@@ -31,6 +35,12 @@ public class MetaFinanceiraService : IMetaFinanceiraService
     /// </summary>
     public async Task<MetaFinanceiraDto> CriarMetaAsync(int usuarioId, CriarMetaDto dto)
     {
+        // ── Feature Gate: limite de metas financeiras ──
+        var metasAtuais = await _metaRepo.ObterPorUsuarioAsync(usuarioId, StatusMeta.Ativa);
+        var gate = await _featureGate.VerificarLimiteAsync(usuarioId, Recurso.MetasFinanceiras, metasAtuais.Count);
+        if (!gate.Permitido)
+            throw new FeatureGateException(gate.Mensagem!, Recurso.MetasFinanceiras, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
+
         var tipo = dto.Tipo?.ToLower() switch
         {
             "juntar_valor" or "juntar" => TipoMeta.JuntarValor,

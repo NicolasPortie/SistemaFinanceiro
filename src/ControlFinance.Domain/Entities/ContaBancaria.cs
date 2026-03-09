@@ -10,6 +10,7 @@ public class ContaBancaria
     public decimal Saldo { get; set; } = 0;
     public int UsuarioId { get; set; }
     public bool Ativo { get; set; } = true;
+    public string? Instituicao { get; set; }
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
     // Navegação

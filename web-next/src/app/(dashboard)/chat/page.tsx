@@ -1,0 +1,419 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { History, MessageSquare, Plus, Settings, Loader2, ArrowRight, Paperclip, Mic, ThumbsUp, ThumbsDown, Trash2, Pencil, Check, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { useAuth } from "@/contexts/auth-context";
+import { api } from "@/lib/api";
+import type { MensagemDto } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { ChatRichBlocks, isRichContent, parseRichContent } from "@/components/chat/chat-rich-blocks";
+import Link from "next/link";
+
+function extractErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return fallback;
+}
+
+const SUGGESTIONS = [
+  "Analisar minhas faturas deste mês",
+  "Projeção de Metas Financeiras",
+  "Otimizar meu Fluxo de Caixa",
+  "Onde posso reduzir gastos?",
+];
+
+/* ─── Message bubble ─────────────────────────────────────── */
+function MessageBubble({ msg, isLastAssistant }: { msg: MensagemDto; isLastAssistant: boolean }) {
+  const isUser = msg.papel === "user";
+  const rich = !isUser && isRichContent(msg.conteudo);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className={cn("flex flex-col", isUser ? "items-end" : "items-start gap-3")}
+    >
+      {isUser ? (
+        <div className="max-w-[80%] text-slate-800 dark:text-slate-200 text-sm font-medium leading-relaxed px-4 py-2">
+          <p className="whitespace-pre-wrap">{msg.conteudo}</p>
+        </div>
+      ) : (
+        <>
+          <div className="glass-bubble rounded-xl sm:rounded-[2rem] rounded-tl-none p-4 sm:p-7 max-w-[95%] sm:max-w-[92%] border-l-4 border-l-emerald-500 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            {rich ? (
+              <ChatRichBlocks content={parseRichContent(msg.conteudo)} />
+            ) : (
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
+                  strong: ({ children }) => <strong className="font-semibold text-slate-800 dark:text-white">{children}</strong>,
+                  code: ({ children }) => <code className="font-mono text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-1 rounded text-xs">{children}</code>,
+                  ul: ({ children }) => <ul className="list-disc list-inside space-y-1 mb-3">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 mb-3">{children}</ol>,
+                  li: ({ children }) => <li className="text-slate-600 dark:text-slate-300">{children}</li>,
+                }}
+              >
+                {msg.conteudo}
+              </ReactMarkdown>
+            )}
+          </div>
+
+          {isLastAssistant && (
+            <div className="flex gap-2 ml-2">
+              <button className="w-8 h-8 rounded-full flex items-center justify-center border border-slate-100 dark:border-slate-700 text-slate-300 hover:text-emerald-500 hover:border-emerald-200 transition-all cursor-pointer">
+                <ThumbsUp className="h-3.5 w-3.5" />
+              </button>
+              <button className="w-8 h-8 rounded-full flex items-center justify-center border border-slate-100 dark:border-slate-700 text-slate-300 hover:text-rose-400 hover:border-rose-200 transition-all cursor-pointer">
+                <ThumbsDown className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </motion.div>
+  );
+}
+
+/* ─── Sidebar item ───────────────────────────────────────── */
+function SidebarItem({
+  id: _id, titulo, isActive, onSelect, onRename, onDelete,
+}: {
+  id: number; titulo: string; isActive: boolean;
+  onSelect: () => void; onRename: (t: string) => void; onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(titulo);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+
+  const handleRename = () => {
+    if (draft.trim() && draft !== titulo) onRename(draft.trim());
+    setEditing(false);
+  };
+
+  return (
+    <div
+      onClick={() => !editing && onSelect()}
+      className={cn(
+        "group flex items-center gap-4 p-2 pr-2 rounded-xl cursor-pointer transition-colors",
+        isActive ? "bg-white dark:bg-slate-800 shadow-sm" : "hover:bg-white dark:hover:bg-slate-800"
+      )}
+    >
+      <MessageSquare className={cn("h-4 w-4 shrink-0 transition-colors", isActive ? "text-emerald-500" : "text-slate-300 group-hover:text-emerald-500")} />
+
+      {editing ? (
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setEditing(false); }}
+          onClick={(e) => e.stopPropagation()}
+          className="label-text flex-1 text-[11px] bg-transparent border-none outline-none text-slate-700 dark:text-slate-200 min-w-0 w-0"
+        />
+      ) : (
+        <span className="label-text text-[11px] text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white truncate flex-1 w-0">
+          {titulo}
+        </span>
+      )}
+
+      <div className="label-text flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+        {editing ? (
+          <>
+            <button onClick={handleRename} className="p-0.5 text-emerald-500 hover:text-emerald-700 cursor-pointer"><Check className="h-3 w-3" /></button>
+            <button onClick={() => setEditing(false)} className="p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer"><X className="h-3 w-3" /></button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => setEditing(true)} className="p-0.5 text-slate-300 hover:text-slate-600 cursor-pointer"><Pencil className="h-3 w-3" /></button>
+            <button onClick={onDelete} className="p-0.5 text-slate-300 hover:text-rose-500 cursor-pointer"><Trash2 className="h-3 w-3" /></button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main page ──────────────────────────────────────────── */
+export default function ChatPage() {
+  const { usuario } = useAuth();
+  const queryClient = useQueryClient();
+  const tempIdRef = useRef(-1);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const [activeConversaId, setActiveConversaId] = useState<number | null>(null);
+  const [messages, setMessages] = useState<MensagemDto[]>([]);
+  const [inputText, setInputText] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const { data: conversas = [] } = useQuery({
+    queryKey: ["chat-conversas"],
+    queryFn: () => api.chat.listarConversas(),
+    staleTime: 30_000,
+  });
+
+  const { data: conversaData, isFetching: isLoadingConversa } = useQuery({
+    queryKey: ["chat-conversa", activeConversaId],
+    queryFn: () => api.chat.obterConversa(activeConversaId!),
+    enabled: !!activeConversaId,
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (conversaData?.mensagens) setMessages(conversaData.mensagens);
+  }, [conversaData]);
+
+  const addOptimistic = useCallback((conteudo: string, origem: string) => {
+    setMessages((prev) => [...prev, {
+      id: tempIdRef.current--, conteudo, papel: "user", origem,
+      criadoEm: new Date().toISOString(),
+    }]);
+  }, []);
+
+  const replaceOptimistic = useCallback((res: { mensagemUsuario: MensagemDto; mensagemAssistente: MensagemDto }) => {
+    setMessages((prev) => [...prev.filter((m) => m.id > 0), res.mensagemUsuario, res.mensagemAssistente]);
+  }, []);
+
+  const removeOptimistic = useCallback(() => {
+    setMessages((prev) => prev.filter((m) => m.id > 0));
+  }, []);
+
+  const sendText = useMutation({
+    mutationFn: (text: string) => api.chat.enviarMensagem({ mensagem: text, conversaId: activeConversaId ?? undefined }),
+    onMutate: (text) => addOptimistic(text, "Texto"),
+    onSuccess: (res) => {
+      replaceOptimistic(res);
+      if (!activeConversaId || activeConversaId !== res.conversaId) setActiveConversaId(res.conversaId);
+      queryClient.invalidateQueries({ queryKey: ["chat-conversas"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-conversa", res.conversaId] });
+    },
+    onError: (error) => { removeOptimistic(); toast.error(extractErrorMessage(error, "Não foi possível enviar sua mensagem.")); },
+  });
+
+  const sendAudio = useMutation({
+    mutationFn: (file: File) => api.chat.enviarAudio(file, activeConversaId ?? undefined),
+    onMutate: () => addOptimistic("Áudio enviado...", "Audio"),
+    onSuccess: (res) => {
+      replaceOptimistic(res);
+      if (!activeConversaId || activeConversaId !== res.conversaId) setActiveConversaId(res.conversaId);
+      queryClient.invalidateQueries({ queryKey: ["chat-conversas"] });
+    },
+    onError: (error) => { removeOptimistic(); toast.error(extractErrorMessage(error, "Não foi possível processar o áudio.")); },
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: ({ id, titulo }: { id: number; titulo: string }) => api.chat.renomearConversa(id, titulo),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chat-conversas"] }),
+    onError: (error) => toast.error(extractErrorMessage(error, "Não foi possível renomear.")),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.chat.excluirConversa(id),
+    onSuccess: (_, deletedId) => {
+      if (activeConversaId === deletedId) { setActiveConversaId(null); setMessages([]); }
+      queryClient.invalidateQueries({ queryKey: ["chat-conversas"] });
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Não foi possível excluir.")),
+  });
+
+  const isSending = sendText.isPending || sendAudio.isPending;
+  const hasMessages = messages.length > 0;
+
+  const handleSend = () => {
+    const text = inputText.trim();
+    if (!text || isSending) return;
+    setInputText("");
+    sendText.mutate(text);
+  };
+
+  const toggleRecording = async () => {
+    if (isRecording) {
+      mediaRecorder.current?.stop();
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mr = new MediaRecorder(stream);
+        audioChunks.current = [];
+        mr.ondataavailable = (e) => audioChunks.current.push(e.data);
+        mr.onstop = () => {
+          const blob = new Blob(audioChunks.current, { type: "audio/webm" });
+          sendAudio.mutate(new File([blob], "audio.webm", { type: "audio/webm" }));
+          stream.getTracks().forEach((t) => t.stop());
+          setIsRecording(false);
+        };
+        mr.start();
+        mediaRecorder.current = mr;
+        setIsRecording(true);
+      } catch {
+        toast.error("Não foi possível acessar o microfone.");
+      }
+    }
+  };
+
+  const lastAssistantIdx = messages.reduce((acc, m, i) => m.papel === "assistant" ? i : acc, -1);
+
+  return (
+    <div className="ivory-bg h-full flex overflow-hidden">
+
+      {/* ═══ Memory Sidebar ═══ */}
+      <aside className="sidebar-memory flex h-full shrink-0 flex-col overflow-hidden border-r border-[rgba(15,23,42,0.06)] bg-white/60 py-6 dark:border-white/5 dark:bg-slate-900/60">
+        <div className="flex items-center px-4 mb-6 gap-4">
+          <History className="h-4 w-4 shrink-0 text-slate-400" />
+          <span className="label-text text-[10px] font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap">Memória</span>
+        </div>
+
+        <div className="px-3 mb-4">
+          <button
+            onClick={() => { setActiveConversaId(null); setMessages([]); }}
+            className="group flex items-center gap-4 p-2 rounded-xl w-full hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            <Plus className="h-4 w-4 shrink-0 text-emerald-500" />
+            <span className="label-text text-[11px] font-bold text-emerald-600 whitespace-nowrap">Nova conversa</span>
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-1 px-3 overflow-y-auto hide-scrollbar">
+          {conversas.map((c) => (
+            <SidebarItem
+              key={c.id}
+              id={c.id}
+              titulo={c.titulo}
+              isActive={activeConversaId === c.id}
+              onSelect={() => setActiveConversaId(c.id)}
+              onRename={(titulo) => renameMutation.mutate({ id: c.id, titulo })}
+              onDelete={() => deleteMutation.mutate(c.id)}
+            />
+          ))}
+          {conversas.length === 0 && (
+            <p className="label-text text-[10px] text-slate-400 text-center py-8 px-2">Nenhuma conversa ainda</p>
+          )}
+        </div>
+
+        <div className="px-4 mt-4">
+          <Link href="/configuracoes">
+            <Settings className="h-4 w-4 text-slate-300 hover:text-slate-600 dark:hover:text-slate-400 cursor-pointer transition-colors" />
+          </Link>
+        </div>
+      </aside>
+
+      {/* ═══ Chat Area ═══ */}
+      <div className="flex-1 flex flex-col h-full relative min-w-0">
+
+        {/* Welcome / empty state */}
+        {!hasMessages && (
+          <div className="flex-1 flex flex-col items-center justify-center px-6 pb-48">
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-md">
+              <div className="w-16 h-16 rounded-[1.5rem] bg-emerald-500 flex items-center justify-center mx-auto mb-6 shadow-[0_8px_24px_rgba(16,185,129,0.25)]">
+                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14v-4H7l5-8v4h4l-5 8z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight mb-1 serif-italic">Ravier</h2>
+              <p className="text-[11px] text-slate-400 uppercase tracking-[0.2em] font-medium">Consultor Financeiro Executivo</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-5 leading-relaxed">
+                Olá{usuario?.nome ? `, ${usuario.nome.split(" ")[0]}` : ""}! Estou pronto para analisar suas finanças, projetar metas e identificar oportunidades de otimização.
+              </p>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Messages */}
+        {hasMessages && (
+          <div className="flex-1 overflow-y-auto hide-scrollbar px-6 pt-10">
+            <div className="max-w-3xl mx-auto space-y-10 pb-52">
+              <div className="flex items-center gap-4 opacity-40">
+                <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                <span className="text-[9px] uppercase tracking-[0.2em] font-bold text-slate-400">Sessão Iniciada — Hoje</span>
+                <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+              </div>
+
+              {messages.map((msg, idx) => (
+                <MessageBubble key={msg.id || idx} msg={msg} isLastAssistant={idx === lastAssistantIdx} />
+              ))}
+
+              {isSending && (
+                <div className="flex items-start">
+                  <div className="glass-bubble rounded-[2rem] rounded-tl-none px-7 py-5 border-l-4 border-l-emerald-500 flex items-center gap-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                    <span className="text-sm text-slate-500">Ravier está analisando...</span>
+                  </div>
+                </div>
+              )}
+
+              <div ref={bottomRef} />
+            </div>
+          </div>
+        )}
+
+        {/* ═══ Input Area ═══ */}
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-linear-to-t from-[#F9F9F7] via-[#F9F9F7]/95 to-transparent px-6 pb-6 pt-20 dark:from-[#0a0e14] dark:via-[#0a0e14]/95">
+          <div className="max-w-3xl mx-auto flex flex-col items-center gap-4 pointer-events-auto">
+
+            {/* Suggestions (empty state only) */}
+            {!hasMessages && (
+              <div className="flex flex-wrap justify-center gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setInputText(s); inputRef.current?.focus(); }}
+                    className="px-4 py-2 rounded-full bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest hover:border-emerald-500 hover:text-emerald-600 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Pill input */}
+            <div className="w-full bg-white dark:bg-slate-900 rounded-full px-5 py-3 flex items-center gap-2 border border-[rgba(15,23,42,0.08)] dark:border-slate-700 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.06)]">
+              <button className="cursor-pointer p-2 shrink-0 text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300">
+                <Paperclip className="h-4 w-4" />
+              </button>
+              <button
+                onClick={toggleRecording}
+                className={cn(
+                  "cursor-pointer p-2 shrink-0 transition-colors",
+                  isRecording ? "text-rose-500 animate-pulse" : "text-slate-400 hover:text-emerald-500"
+                )}
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                disabled={isSending || isLoadingConversa}
+                placeholder="Instrua o Ravier..."
+                className="flex-1 bg-transparent border-none outline-none ring-0 focus:ring-0 text-sm placeholder:text-slate-300 dark:placeholder:text-slate-600 text-slate-700 dark:text-slate-200 ml-1 min-w-0"
+              />
+              <button
+                onClick={handleSend}
+                disabled={!inputText.trim() || isSending}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)] transition-all hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              >
+                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+              </button>
+            </div>
+
+            <p className="text-[9px] text-slate-400 dark:text-slate-600 tracking-widest uppercase font-medium pb-1">
+              Processamento Seguro via Executive Hub
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

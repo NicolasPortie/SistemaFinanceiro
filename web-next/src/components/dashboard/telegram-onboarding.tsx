@@ -2,34 +2,17 @@
 
 import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { api, type CodigoTelegramResponse } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, ExternalLink, Copy, Check, RefreshCw } from "lucide-react";
+import { MessageCircle, ExternalLink, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { formatDate } from "@/lib/format";
 
 const TELEGRAM_BOT_URL = "https://t.me/facilita_finance_bot";
 
 export function TelegramOnboarding() {
   const { usuario, atualizarPerfil } = useAuth();
   const [open, setOpen] = useState(false);
-  const [codigo, setCodigo] = useState<CodigoTelegramResponse | null>(null);
-  const [gerando, setGerando] = useState(false);
   const [verificando, setVerificando] = useState(false);
-  const [copiado, setCopiado] = useState(false);
-
-  const gerarCodigo = useCallback(async () => {
-    setGerando(true);
-    try {
-      const res = await api.auth.gerarCodigoTelegram();
-      setCodigo(res);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao gerar codigo");
-    } finally {
-      setGerando(false);
-    }
-  }, []);
 
   const verificar = useCallback(async () => {
     setVerificando(true);
@@ -37,30 +20,17 @@ export function TelegramOnboarding() {
       await atualizarPerfil();
       const stored = localStorage.getItem("cf_user");
       if (stored && JSON.parse(stored).telegramVinculado) {
-        toast.success("Telegram vinculado! ");
+        toast.success("Telegram vinculado!");
         setOpen(false);
         return;
       }
-      toast.info("Ainda nao detectamos o vinculo. Envie o comando e tente novamente.");
+      toast.info("Ainda não detectamos o vínculo. Abra o bot e compartilhe seu contato.");
     } catch {
       toast.error("Erro ao verificar");
     } finally {
       setVerificando(false);
     }
   }, [atualizarPerfil]);
-
-  const copiar = () => {
-    if (!codigo) return;
-    navigator.clipboard.writeText(codigo.codigo);
-    setCopiado(true);
-    toast.success("Copiado!");
-    setTimeout(() => setCopiado(false), 2000);
-  };
-
-  const handleOpen = () => {
-    setOpen(true);
-    if (!codigo && !gerando) gerarCodigo();
-  };
 
   if (!usuario || usuario.telegramVinculado) return null;
 
@@ -89,8 +59,8 @@ export function TelegramOnboarding() {
             {/* Body */}
             <div className="p-4 space-y-3">
               <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                Registre gastos por audio, foto ou texto direto no Telegram. Funciona 24h sem abrir
-                o app.
+                Registre gastos por áudio, foto ou texto direto no Telegram. A vinculação é
+                automática pelo seu celular cadastrado.
               </p>
 
               {/* Step 1 */}
@@ -114,47 +84,12 @@ export function TelegramOnboarding() {
               {/* Step 2 */}
               <div className="space-y-1.5">
                 <p className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
-                  2 Envie o código
+                  2 Compartilhe seu contato
                 </p>
-                {gerando ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Gerando codigo...
-                  </div>
-                ) : codigo ? (
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <code className="flex-1 rounded-lg bg-muted px-2.5 py-2 text-xs font-mono font-bold select-all truncate">
-                        {codigo.codigo}
-                      </code>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9 shrink-0 rounded-lg"
-                        onClick={copiar}
-                      >
-                        {copiado ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-500" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground/40">
-                      Expira em {formatDate(codigo.expiraEm)}
-                    </p>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full rounded-xl gap-1.5 h-9 text-xs"
-                    onClick={gerarCodigo}
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    Gerar codigo
-                  </Button>
-                )}
+                <p className="text-[11px] text-muted-foreground/50 leading-relaxed">
+                  Ao abrir o bot, toque no botão &quot;Compartilhar meu contato&quot;. Seu celular será
+                  comparado com o cadastrado aqui no sistema.
+                </p>
               </div>
 
               {/* Confirm */}
@@ -162,10 +97,9 @@ export function TelegramOnboarding() {
                 size="sm"
                 className="w-full rounded-xl h-9 gap-1.5 text-xs font-semibold btn-premium"
                 onClick={verificar}
-                disabled={!codigo}
                 loading={verificando}
               >
-                <Check className="h-3.5 w-3.5" /> Ja enviei confirmar
+                <Check className="h-3.5 w-3.5" /> Já vinculei — confirmar
               </Button>
             </div>
           </motion.div>
@@ -174,7 +108,7 @@ export function TelegramOnboarding() {
 
       {/* Floating pill trigger */}
       <motion.button
-        onClick={() => (open ? setOpen(false) : handleOpen())}
+        onClick={() => setOpen(!open)}
         className="flex items-center gap-2.5 rounded-full bg-emerald-500 pl-3.5 pr-4 py-2.5 text-white shadow-lg shadow-emerald-500/30 hover:bg-blue-600 transition-all duration-300 hover:shadow-emerald-500/40 hover:shadow-xl group"
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}

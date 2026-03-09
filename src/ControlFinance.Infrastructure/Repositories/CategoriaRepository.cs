@@ -36,6 +36,15 @@ public class CategoriaRepository : ICategoriaRepository
             .ToListAsync();
     }
 
+    public async Task<List<Categoria>> ObterPorFamiliaIdAsync(int familiaId)
+    {
+        return await _context.Categorias
+            .Include(c => c.Usuario)
+            .Where(c => c.FamiliaId == familiaId)
+            .OrderBy(c => c.Nome)
+            .ToListAsync();
+    }
+
     public async Task<Categoria?> ObterPorNomeAsync(int usuarioId, string nome)
     {
         var categorias = await _context.Categorias

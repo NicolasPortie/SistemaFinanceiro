@@ -1,5 +1,5 @@
 // ============================================================
-// ControlFinance — Lottie Animation Wrapper
+// Ravier — Lottie Animation Wrapper
 // Componente padrão para todas as animações Lottie do sistema
 // Respeita prefers-reduced-motion para acessibilidade
 // ============================================================

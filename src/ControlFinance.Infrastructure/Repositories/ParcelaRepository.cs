@@ -20,6 +20,14 @@ public class ParcelaRepository : IParcelaRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task<Parcela?> ObterPorIdAsync(int parcelaId)
+    {
+        return await _context.Parcelas
+            .Include(p => p.Fatura)
+                .ThenInclude(f => f!.CartaoCredito)
+            .FirstOrDefaultAsync(p => p.Id == parcelaId);
+    }
+
     public async Task<List<Parcela>> ObterPorLancamentoAsync(int lancamentoId)
     {
         return await _context.Parcelas

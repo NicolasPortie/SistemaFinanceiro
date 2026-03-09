@@ -17,5 +17,6 @@ public class CodigoVerificacao
 public enum TipoCodigoVerificacao
 {
     VinculacaoTelegram,
-    RecuperacaoSenha
+    RecuperacaoSenha,
+    VinculacaoWhatsApp
 }

@@ -36,6 +36,10 @@ services:
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
       Telegram__WebhookUrl: ${TELEGRAM_WEBHOOK_URL:-https://finance.nicolasportie.com/api/telegram/webhook}
       Telegram__WebhookSecretToken: ${TELEGRAM_WEBHOOK_SECRET:-}
+      WhatsApp__Enabled: ${WHATSAPP_ENABLED:-false}
+      WhatsApp__BridgeUrl: ${WHATSAPP_BRIDGE_URL:-http://whatsapp-bridge:3100}
+      WhatsApp__BridgeSecret: ${WHATSAPP_BRIDGE_SECRET:-}
+      WhatsApp__WebhookSecretToken: ${WHATSAPP_WEBHOOK_SECRET:-}
       Gemini__ApiKey: ${GEMINI_API_KEY:-}
       Gemini__Model: ${GEMINI_MODEL:-gemini-2.0-flash}
       Groq__ApiKey: ${GROQ_API_KEY:-}
@@ -76,5 +80,26 @@ services:
     ports:
       - "${WEB_PORT:-5173}:5173"
 
+  whatsapp-bridge:
+    build:
+      context: ./whatsapp-bridge
+      dockerfile: Dockerfile
+    container_name: controlfinance-whatsapp
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      PORT: 3100
+      API_BASE_URL: http://api:5000
+      BRIDGE_SECRET: ${WHATSAPP_BRIDGE_SECRET:-}
+      AUTH_DIR: /app/auth_data
+      LOG_LEVEL: info
+      PHONE_NUMBER: ${WHATSAPP_PHONE_NUMBER:-}
+    volumes:
+      - whatsapp_auth:/app/auth_data
+    ports:
+      - "${WHATSAPP_BRIDGE_PORT:-3100}:3100"
+
 volumes:
   pgdata:
+  whatsapp_auth:

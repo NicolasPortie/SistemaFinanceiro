@@ -13,10 +13,122 @@ public partial class NormalizacaoService : INormalizacaoService
 
     // Palavras-chave para detecção de flags
     private static readonly string[] FlagsPagamento = { "PAGAMENTO", "PGTO", "PAG " };
+
+    // Descrições curtas/genéricas que por si sós indicam transferência interna (match exato após trim)
+    private static readonly string[] ExactMatchTransferenciaInterna =
+    {
+        "PAGAMENTO", "PGTO", "PAG",
+        "PAYMENT",
+        "PAGAMENTO RECEBIDO", "PGTO RECEBIDO",
+        "PAGAMENTO REALIZADO", "PGTO REALIZADO",
+        "PAGAMENTO EFETUADO", "PGTO EFETUADO",
+    };
     private static readonly string[] FlagsEstorno = { "ESTORNO", "DEVOLUÇÃO", "DEVOLUÇAO", "DEVOLUCAO", "REVERSAL" };
     private static readonly string[] FlagsTarifa = { "TARIFA", "TAXA", "ANUIDADE", "IOF", "JUROS", "ENCARGO" };
     private static readonly string[] FlagsIgnorar = { "SALDO", "TOTAL", "SUBTOTAL", "RESUMO", "SALDO ANTERIOR", "SALDO FINAL" };
-    private static readonly string[] FlagsTransferenciaInterna = { "COFRINHO", "DINHEIRO GUARDADO", "DINHEIRO RESGATADO" };
+    private static readonly string[] FlagsTransferenciaInterna =
+    {
+        // Cofrinho / Dinheiro guardado
+        "COFRINHO", "DINHEIRO GUARDADO", "DINHEIRO RESGATADO",
+
+        // Pagamento da própria fatura (não é gasto, é quitação da fatura)
+        "PAGAMENTO FATURA",
+        "PAGTO FATURA",
+        "PGTO FATURA",
+        "PAG FATURA",
+        "PAGAMENTO DE FATURA",
+        "PAGTO DE FATURA",
+        "PGTO DE FATURA",
+        "PAG DE FATURA",
+        "PAGAMENTO DA FATURA",
+        "PAGTO DA FATURA",
+        "PGTO DA FATURA",
+        "PAG DA FATURA",
+        "PAGAMENTO FAT ",
+        "PGTO FAT ",
+        "PAG FAT ",
+        "PAGAMENTO CARTAO",
+        "PAGAMENTO CARTÃO",
+        "PAGTO CARTAO",
+        "PAGTO CARTÃO",
+        "PGTO CARTAO",
+        "PGTO CARTÃO",
+        "PAG CARTAO",
+        "PAG CARTÃO",
+        "PAGAMENTO DE CARTAO",
+        "PAGAMENTO DE CARTÃO",
+        "PAGAMENTO DO CARTAO",
+        "PAGAMENTO DO CARTÃO",
+        "PAGTO DO CARTAO",
+        "PAGTO DO CARTÃO",
+        "PGTO DO CARTAO",
+        "PGTO DO CARTÃO",
+        "PAGAMENTO MINIMO",
+        "PAGAMENTO MÍNIMO",
+        "PGTO MINIMO",
+        "PGTO MÍNIMO",
+        "PAGAMENTO PARCIAL",
+        "PGTO PARCIAL",
+        "CREDITO PAGAMENTO",
+        "CRÉDITO PAGAMENTO",
+        "CR PAGAMENTO",
+        "CREDIT PAYMENT",
+
+        // Variações com PIX/TED/BOLETO/DEBITO
+        "PAGAMENTO FATURA PIX",
+        "PGTO FATURA PIX",
+        "PAG FATURA PIX",
+        "PAGAMENTO FATURA TED",
+        "PGTO FATURA TED",
+        "PAGAMENTO FATURA BOLETO",
+        "PGTO FATURA BOLETO",
+        "PAGAMENTO FATURA DEBITO",
+        "PGTO FATURA DEBITO",
+        "PAGAMENTO FATURA DÉBITO",
+        "PGTO FATURA DÉBITO",
+
+        // Pagamento via app / internet banking
+        "PAGAMENTO VIA APP",
+        "PGTO VIA APP",
+        "PAGAMENTO VIA PIX",
+        "PGTO VIA PIX",
+        "PAGAMENTO EFETUADO",
+        "PGTO EFETUADO",
+
+        // Transferências entre contas do mesmo titular
+        "TRANSFERENCIA ENTRE CONTAS",
+        "TRANSFERÊNCIA ENTRE CONTAS",
+        "TRANSF ENTRE CONTAS",
+        "TED ENTRE CONTAS",
+        "PIX ENTRE CONTAS",
+        "TRANSFERENCIA MESMA TITULARIDADE",
+        "TRANSFERÊNCIA MESMA TITULARIDADE",
+        "TRANSF MESMA TITULARIDADE",
+
+        // Aplicações / Investimentos internos
+        "APLICACAO", "APLICAÇÃO",
+        "RESGATE APLIC", "RESGATE APLICAÇÃO", "RESGATE APLICACAO",
+        "RESGATE INVESTIMENTO",
+        "INVESTIMENTO AUTOMATICO", "INVESTIMENTO AUTOMÁTICO",
+        "RESGATE AUTOMATICO", "RESGATE AUTOMÁTICO",
+        "APLICACAO AUTOMATICA", "APLICAÇÃO AUTOMÁTICA",
+        "APLICACAO POUPANCA", "APLICAÇÃO POUPANÇA",
+        "RESGATE POUPANCA", "RESGATE POUPANÇA",
+        "RENDIMENTO POUPANCA", "RENDIMENTO POUPANÇA",
+        "CDB AUTOMATICO", "CDB AUTOMÁTICO",
+        "RESGATE CDB",
+
+        // Outras movimentações internas
+        "SALDO ANTERIOR",
+        "SALDO INICIAL",
+        "SALDO FINAL",
+        "ENCERRAMENTO DE CONTA",
+        "AJUSTE A CREDITO", "AJUSTE A CRÉDITO",
+        "AJUSTE A DEBITO", "AJUSTE A DÉBITO",
+        "AJUSTE INTERNO",
+        "MOV INTERNA",
+        "MOVIMENTACAO INTERNA", "MOVIMENTAÇÃO INTERNA"
+    };
 
     // Prefixos de ação bancária que devem ser removidos da descrição
     // (mantém apenas o nome do estabelecimento/pessoa)
@@ -282,13 +394,17 @@ public partial class NormalizacaoService : INormalizacaoService
 
     private static TipoTransacao DetectarTipo(decimal valor, string descricao)
     {
+        var upper = descricao.ToUpperInvariant();
+
+        if (EhTransferenciaInterna(upper) || EhCreditoRotativo(upper))
+            return TipoTransacao.Indefinido;
+
         // Se valor é negativo, provável débito
         if (valor < 0)
             return TipoTransacao.Debito;
         if (valor > 0)
         {
             // Verificar palavras-chave de crédito
-            var upper = descricao.ToUpperInvariant();
             if (FlagsEstorno.Any(f => upper.Contains(f)) || upper.Contains("TED REC") || upper.Contains("PIX REC") || upper.Contains("RECEBIDO"))
                 return TipoTransacao.Credito;
 
@@ -312,10 +428,23 @@ public partial class NormalizacaoService : INormalizacaoService
             flags.Add("tarifa");
         if (upper.Contains("IOF"))
             flags.Add("iof");
-        if (FlagsTransferenciaInterna.Any(f => upper.Contains(f)))
+        if (EhTransferenciaInterna(upper))
             flags.Add("transferencia_interna");
 
         return flags;
+    }
+
+    private static bool EhTransferenciaInterna(string descricaoUpper)
+    {
+        return FlagsTransferenciaInterna.Any(f => descricaoUpper.Contains(f))
+            || ExactMatchTransferenciaInterna.Any(f => descricaoUpper.Equals(f, StringComparison.OrdinalIgnoreCase))
+            || Regex.IsMatch(descricaoUpper, @"\b(PAGAMENTO|PGTO|PAG)\s+EM\s+\d{1,2}\s+[A-Z]{3,}\b", RegexOptions.CultureInvariant);
+    }
+
+    private static bool EhCreditoRotativo(string descricaoUpper)
+    {
+        return descricaoUpper.Contains("CREDITO ROTATIVO")
+            || descricaoUpper.Contains("CRÉDITO ROTATIVO");
     }
 
     private static bool DeveIgnorar(string descricao)

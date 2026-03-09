@@ -512,6 +512,44 @@ public class BotNotificationService : BackgroundService
     }
 
     /// <summary>
+    /// Envia mesma notificação para todos os usuários com WhatsApp vinculado.
+    /// Usa a lista de usuários WhatsApp e envia via bridge HTTP.
+    /// </summary>
+    private async Task EnviarNotificacaoWhatsAppAsync(
+        IServiceScope scope,
+        Func<Usuario, Task<string?>> gerarMensagem,
+        CancellationToken ct)
+    {
+        try
+        {
+            var usuarioRepo = scope.ServiceProvider.GetRequiredService<IUsuarioRepository>();
+            var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppBotService>();
+            var usuarios = await usuarioRepo.ObterTodosComWhatsAppAsync();
+
+            foreach (var user in usuarios)
+            {
+                if (ct.IsCancellationRequested) break;
+                try
+                {
+                    var msg = await gerarMensagem(user);
+                    if (!string.IsNullOrEmpty(msg) && !string.IsNullOrEmpty(user.WhatsAppPhone))
+                    {
+                        await whatsAppService.EnviarMensagemAsync(user.WhatsAppPhone, msg);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Erro ao enviar notificação WhatsApp para {Usuario}", user.Nome);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao enviar notificações WhatsApp");
+        }
+    }
+
+    /// <summary>
     /// Envia mensagem com botão de link para o sistema web.
     /// Usado apenas em notificações contextuais onde ir ao app faz sentido.
     /// </summary>

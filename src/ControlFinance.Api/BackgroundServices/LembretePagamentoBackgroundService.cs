@@ -1,3 +1,4 @@
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
@@ -125,8 +126,11 @@ public class LembretePagamentoBackgroundService : BackgroundService
         ILembretePagamentoRepository lembreteRepo,
         CancellationToken ct)
     {
-        // Verificar se telegram vinculado
-        if (lembrete.Usuario?.TelegramVinculado != true || lembrete.Usuario.TelegramChatId == null)
+        // Verificar se tem pelo menos um canal vinculado
+        var temTelegram = lembrete.Usuario?.TelegramVinculado == true && lembrete.Usuario.TelegramChatId != null;
+        var temWhatsApp = lembrete.Usuario?.WhatsAppVinculado == true && !string.IsNullOrEmpty(lembrete.Usuario.WhatsAppPhone);
+
+        if (!temTelegram && !temWhatsApp)
             return;
 
         // Verificar janela de horário (configurável por lembrete) 
@@ -200,49 +204,71 @@ public class LembretePagamentoBackgroundService : BackgroundService
 
         if (jaEnviouHoje) return;
 
-        // Enviar mensagem
-        try
+        // Enviar mensagem via Telegram
+        if (temTelegram)
         {
-            var keyboard = new InlineKeyboardMarkup(
-                InlineKeyboardButton.WithUrl("Gerenciar lembretes", $"{WebUrl}/contas-fixas")
-            );
-            var sent = await _botClient.SendMessage(
-                chatId: lembrete.Usuario.TelegramChatId.Value,
-                text: mensagem,
-                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
-                replyMarkup: keyboard,
-                cancellationToken: ct);
-
-            // Log sucesso
-            await logRepo.RegistrarAsync(new LogLembreteTelegram
+            try
             {
-                LembretePagamentoId = lembrete.Id,
-                UsuarioId = lembrete.UsuarioId,
-                Status = "enviado",
-                MensagemTelegramId = sent.Id,
-                TipoLembrete = tipoLembrete,
-                EnviadoEm = agoraUtc
-            });
+                var keyboard = new InlineKeyboardMarkup(
+                    InlineKeyboardButton.WithUrl("Gerenciar lembretes", $"{WebUrl}/contas-fixas")
+                );
+                var sent = await _botClient.SendMessage(
+                    chatId: lembrete.Usuario!.TelegramChatId!.Value,
+                    text: mensagem,
+                    parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                    replyMarkup: keyboard,
+                    cancellationToken: ct);
 
-            lembrete.UltimoEnvioEm = agoraUtc;
-            lembrete.AtualizadoEm = agoraUtc;
-            await lembreteRepo.AtualizarAsync(lembrete);
+                // Log sucesso
+                await logRepo.RegistrarAsync(new LogLembreteTelegram
+                {
+                    LembretePagamentoId = lembrete.Id,
+                    UsuarioId = lembrete.UsuarioId,
+                    Status = "enviado",
+                    MensagemTelegramId = sent.Id,
+                    TipoLembrete = tipoLembrete,
+                    EnviadoEm = agoraUtc
+                });
 
-            _logger.LogInformation("Lembrete {Id} ({Tipo}) enviado para {User}",
-                lembrete.Id, tipoLembrete, lembrete.Usuario.Nome);
+                _logger.LogInformation("Lembrete {Id} ({Tipo}) enviado via Telegram para {User}",
+                    lembrete.Id, tipoLembrete, lembrete.Usuario.Nome);
+            }
+            catch (Exception ex)
+            {
+                await logRepo.RegistrarAsync(new LogLembreteTelegram
+                {
+                    LembretePagamentoId = lembrete.Id,
+                    UsuarioId = lembrete.UsuarioId,
+                    Status = "erro_envio",
+                    Erro = $"Telegram {tipoLembrete}: {ex.Message}",
+                    EnviadoEm = agoraUtc
+                });
+                _logger.LogWarning(ex, "Erro ao enviar lembrete {Id} via Telegram", lembrete.Id);
+            }
         }
-        catch (Exception ex)
+
+        // Enviar mensagem via WhatsApp
+        if (temWhatsApp)
         {
-            await logRepo.RegistrarAsync(new LogLembreteTelegram
+            try
             {
-                LembretePagamentoId = lembrete.Id,
-                UsuarioId = lembrete.UsuarioId,
-                Status = "erro_envio",
-                Erro = $"{tipoLembrete}: {ex.Message}",
-                EnviadoEm = agoraUtc
-            });
-            throw;
+                using var whatsAppScope = _scopeFactory.CreateScope();
+                var whatsAppService = whatsAppScope.ServiceProvider.GetRequiredService<IWhatsAppBotService>();
+                var waMsg = mensagem + $"\n\n🌐 Gerenciar: {WebUrl}/contas-fixas";
+                await whatsAppService.EnviarMensagemAsync(lembrete.Usuario!.WhatsAppPhone!, waMsg);
+
+                _logger.LogInformation("Lembrete {Id} ({Tipo}) enviado via WhatsApp para {User}",
+                    lembrete.Id, tipoLembrete, lembrete.Usuario.Nome);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Erro ao enviar lembrete {Id} via WhatsApp", lembrete.Id);
+            }
         }
+
+        lembrete.UltimoEnvioEm = agoraUtc;
+        lembrete.AtualizadoEm = agoraUtc;
+        await lembreteRepo.AtualizarAsync(lembrete);
 
         // Não avança ciclo por atraso; ciclo só avança quando o usuário marcar como pago.
     }

@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Application.Services;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -13,6 +14,7 @@ public class LimiteCategoriaServiceTests
     private readonly Mock<ILimiteCategoriaRepository> _limiteRepoMock;
     private readonly Mock<ICategoriaRepository> _categoriaRepoMock;
     private readonly Mock<ILancamentoRepository> _lancamentoRepoMock;
+    private readonly Mock<IFeatureGateService> _featureGateMock;
     private readonly Mock<ILogger<LimiteCategoriaService>> _loggerMock;
     private readonly LimiteCategoriaService _service;
 
@@ -21,12 +23,22 @@ public class LimiteCategoriaServiceTests
         _limiteRepoMock = new Mock<ILimiteCategoriaRepository>();
         _categoriaRepoMock = new Mock<ICategoriaRepository>();
         _lancamentoRepoMock = new Mock<ILancamentoRepository>();
+        _featureGateMock = new Mock<IFeatureGateService>();
         _loggerMock = new Mock<ILogger<LimiteCategoriaService>>();
+
+        // Por padrão, permitir acesso nos testes
+        _featureGateMock
+            .Setup(fg => fg.VerificarAcessoAsync(It.IsAny<int>(), It.IsAny<Recurso>()))
+            .ReturnsAsync(FeatureGateResult.Permitir(-1));
+        _featureGateMock
+            .Setup(fg => fg.VerificarLimiteAsync(It.IsAny<int>(), It.IsAny<Recurso>(), It.IsAny<int>()))
+            .ReturnsAsync(FeatureGateResult.Permitir(-1));
 
         _service = new LimiteCategoriaService(
             _limiteRepoMock.Object,
             _categoriaRepoMock.Object,
             _lancamentoRepoMock.Object,
+            _featureGateMock.Object,
             _loggerMock.Object);
     }
 

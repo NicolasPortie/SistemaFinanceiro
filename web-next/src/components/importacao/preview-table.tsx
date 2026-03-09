@@ -20,15 +20,15 @@ import {
   EyeOff,
   Filter,
   Tag,
+  CalendarRange,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatShortDate } from "@/lib/format";
+import { formatCurrency, formatMonth, formatShortDate } from "@/lib/format";
 import { useCategorias } from "@/hooks/use-queries";
 import type {
   ImportacaoPreview,
@@ -80,7 +80,7 @@ const TIPO_LABEL: Record<TipoTransacao, { label: string; color: string }> = {
   Indefinido: { label: "—", color: "text-muted-foreground" },
 };
 
-type SortField = "data" | "valor" | "descricao" | "status";
+type SortField = "data" | "valor" | "descricao";
 type SortDir = "asc" | "desc";
 type StatusFilter = "all" | StatusTransacaoImportada;
 
@@ -94,6 +94,7 @@ interface PreviewTableProps {
 export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: PreviewTableProps) {
   const { data: categorias } = useCategorias();
   const categoriasLista = useMemo(() => categorias ?? [], [categorias]);
+  const isFaturaImport = preview.tipoImportacao === "Fatura";
 
   // Selection state
   const [selected, setSelected] = useState<Set<number>>(() => {
@@ -121,6 +122,35 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
 
   // Show/hide duplicates toggle
   const [showDuplicatas, setShowDuplicatas] = useState(true);
+  const [showOnlyForaDaFaturaPadrao, setShowOnlyForaDaFaturaPadrao] = useState(false);
+
+  const addMonthsToKey = (key: string, delta: number) => {
+    const [year, month] = key.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1 + delta, 1));
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  };
+
+  const formatInvoiceMonthKey = (key?: string | null) => {
+    if (!key) return "—";
+    const [year, month] = key.split("-");
+    return formatMonth(`${month}/${year}`);
+  };
+
+  const mesFaturaOptions = useMemo(() => {
+    if (!isFaturaImport) return [] as string[];
+
+    const base = preview.mesFaturaPadrao ?? preview.mesesDetectados[0] ?? new Date().toISOString().slice(0, 7);
+    const values = new Set<string>([
+      addMonthsToKey(base, -2),
+      addMonthsToKey(base, -1),
+      base,
+      addMonthsToKey(base, 1),
+      addMonthsToKey(base, 2),
+      ...preview.mesesDetectados,
+    ]);
+
+    return Array.from(values).sort();
+  }, [isFaturaImport, preview.mesFaturaPadrao, preview.mesesDetectados]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -145,9 +175,10 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
           override?.categoria ?? override?.categoriaId
             ? categoriasLista.find((c) => c.id === (override?.categoriaId ?? t.categoriaId))?.nome ?? t.categoriaSugerida
             : t.categoriaSugerida,
+        mesFaturaReferencia: override?.mesFaturaReferencia ?? preview.mesFaturaPadrao ?? null,
       };
     },
-    [overrides, categoriasLista]
+    [overrides, categoriasLista, preview.mesFaturaPadrao]
   );
 
   // Sort, filter and group by month
@@ -159,6 +190,10 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
       items = items.filter((t) => t.status === statusFilter);
     } else if (!showDuplicatas) {
       items = items.filter((t) => t.status !== "Duplicata");
+    }
+
+    if (isFaturaImport && showOnlyForaDaFaturaPadrao && preview.mesFaturaPadrao) {
+      items = items.filter((t) => t.mesFaturaReferencia && t.mesFaturaReferencia !== preview.mesFaturaPadrao);
     }
 
     items.sort((a, b) => {
@@ -173,15 +208,12 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
         case "descricao":
           cmp = a.descricao.localeCompare(b.descricao);
           break;
-        case "status":
-          cmp = a.status.localeCompare(b.status);
-          break;
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
 
     return items;
-  }, [preview.transacoes, sortField, sortDir, getDisplayTransaction, statusFilter, showDuplicatas]);
+  }, [preview.transacoes, sortField, sortDir, getDisplayTransaction, statusFilter, showDuplicatas, isFaturaImport, showOnlyForaDaFaturaPadrao, preview.mesFaturaPadrao]);
 
   // Group by month
   const groupedByMonth = useMemo(() => {
@@ -202,6 +234,9 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
   const semCategoria = preview.transacoes.filter(
     (t) => selected.has(t.indiceOriginal) && !overrides.get(t.indiceOriginal)?.categoriaId && !t.categoriaId
   ).length;
+  const valorTotalGeral = preview.transacoes
+    .filter((t) => t.status !== "Ignorada" && t.status !== "Duplicata")
+    .reduce((sum, t) => sum + Math.abs(overrides.get(t.indiceOriginal)?.valor ?? t.valor), 0);
   const valorTotalSelecionado = preview.transacoes
     .filter((t) => selected.has(t.indiceOriginal))
     .reduce((sum, t) => sum + Math.abs(overrides.get(t.indiceOriginal)?.valor ?? t.valor), 0);
@@ -241,6 +276,7 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
       descricao: override?.descricao ?? t.descricao,
       valor: override?.valor ?? t.valor,
       categoriaId: override?.categoriaId ?? t.categoriaId ?? undefined,
+      mesFaturaReferencia: override?.mesFaturaReferencia ?? preview.mesFaturaPadrao ?? undefined,
     });
   };
 
@@ -256,6 +292,9 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
     if (editForm.categoriaId && editForm.categoriaId !== original.categoriaId) {
       ov.categoriaId = editForm.categoriaId;
       ov.categoria = categoriasLista.find((c) => c.id === editForm.categoriaId)?.nome;
+    }
+    if (isFaturaImport && editForm.mesFaturaReferencia && editForm.mesFaturaReferencia !== preview.mesFaturaPadrao) {
+      ov.mesFaturaReferencia = editForm.mesFaturaReferencia;
     }
 
     // Only save if there are actual changes
@@ -278,6 +317,12 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
   const selectableCount = preview.transacoes.filter((t) => t.status !== "Ignorada" && t.status !== "Duplicata").length;
   const allSelected = selected.size === selectableCount && selectableCount > 0;
   const allDuplicatas = totalDuplicatas === preview.totalTransacoes && totalDuplicatas > 0;
+  const totalForaDaFaturaPadrao = useMemo(() => {
+    if (!isFaturaImport || !preview.mesFaturaPadrao) return 0;
+    return preview.transacoes
+      .map(getDisplayTransaction)
+      .filter((t) => t.mesFaturaReferencia && t.mesFaturaReferencia !== preview.mesFaturaPadrao).length;
+  }, [isFaturaImport, preview.mesFaturaPadrao, preview.transacoes, getDisplayTransaction]);
 
   // Filter avisos that duplicate the "already imported" info
   const filteredAvisos = useMemo(() => {
@@ -327,86 +372,108 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
               <p className="font-medium text-violet-900 dark:text-violet-200">
                 Fatura do cartão <span className="font-semibold">{preview.cartaoCreditoNome}</span>
               </p>
-              {preview.mesesDetectados.length > 0 && (
-                <p className="text-violet-600/80 dark:text-violet-400/70 text-xs mt-0.5">
-                  Período: {preview.mesesDetectados.map(m => {
-                    const [y, mo] = m.split("-");
-                    return new Date(parseInt(y), parseInt(mo) - 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-                  }).join(", ")}
+              {preview.mesesDetectados.length > 0 && (() => {
+                // Mostrar apenas o mês predominante (mais transações)
+                const mesPrincipal = preview.mesesDetectados[preview.mesesDetectados.length - 1];
+                const [y, mo] = mesPrincipal.split("-");
+                const mesFormatado = new Date(parseInt(y), parseInt(mo) - 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+                return (
+                  <p className="text-violet-600/80 dark:text-violet-400/70 text-xs mt-0.5 capitalize">
+                    {mesFormatado}
+                  </p>
+                );
+              })()}
+              {preview.cartaoDiaFechamento && (
+                <p className="text-[11px] text-violet-700/80 dark:text-violet-300/80 mt-2 leading-relaxed">
+                  Fechamento no dia <strong>{preview.cartaoDiaFechamento}</strong>. Se necessário, ajuste a <strong>Fatura destino</strong> no lápis.
                 </p>
               )}
             </div>
           </motion.div>
         )}
 
-        {/* ── Summary ── */}
+
+
+        {/* ── Filter Summary chips ── */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
           className="flex flex-wrap items-center gap-2"
         >
+          {isFaturaImport && preview.mesFaturaPadrao && totalForaDaFaturaPadrao > 0 && (
+            <button
+              onClick={() => setShowOnlyForaDaFaturaPadrao((current) => !current)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all opacity-80 hover:opacity-100",
+                showOnlyForaDaFaturaPadrao
+                  ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              <CalendarRange className="h-3 w-3" />
+              <span>{totalForaDaFaturaPadrao} fora da fatura</span>
+            </button>
+          )}
+
           <button
             onClick={() => setStatusFilter(statusFilter === "Normal" ? "all" : "Normal")}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all",
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all opacity-80 hover:opacity-100",
               statusFilter === "Normal"
-                ? "border-emerald-300 bg-emerald-50 shadow-sm dark:border-emerald-700 dark:bg-emerald-950/30"
-                : "border-border/50 bg-card hover:bg-muted/60"
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
             )}
           >
-            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{totalNormais}</span>
-            <span className="text-muted-foreground font-normal">para importar</span>
+            <Check className="h-3 w-3" />
+            <span>{totalNormais} normais</span>
           </button>
 
-          <button
-            onClick={() => setStatusFilter(statusFilter === "Duplicata" ? "all" : "Duplicata")}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all",
-              statusFilter === "Duplicata"
-                ? "border-orange-300 bg-orange-50 shadow-sm dark:border-orange-700 dark:bg-orange-950/30"
-                : "border-border/50 bg-card hover:bg-muted/60"
-            )}
-          >
-            <Copy className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
-            <span className={cn("font-bold tabular-nums", totalDuplicatas > 0 ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground")}>{totalDuplicatas}</span>
-            <span className="text-muted-foreground font-normal">duplicatas</span>
-          </button>
+          {totalDuplicatas > 0 && (
+            <button
+              onClick={() => setStatusFilter(statusFilter === "Duplicata" ? "all" : "Duplicata")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all opacity-80 hover:opacity-100",
+                statusFilter === "Duplicata"
+                  ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              <Copy className="h-3 w-3" />
+              <span>{totalDuplicatas} duplicatas</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setStatusFilter(statusFilter === "Ignorada" ? "all" : "Ignorada")}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all",
-              statusFilter === "Ignorada"
-                ? "border-neutral-300 bg-neutral-100 shadow-sm dark:border-neutral-600 dark:bg-neutral-800/40"
-                : "border-border/50 bg-card hover:bg-muted/60"
-            )}
-          >
-            <Ban className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />
-            <span className={cn("font-bold tabular-nums", totalIgnoradas > 0 ? "text-neutral-500" : "text-muted-foreground")}>{totalIgnoradas}</span>
-            <span className="text-muted-foreground font-normal">ignoradas</span>
-          </button>
+          {totalIgnoradas > 0 && (
+            <button
+              onClick={() => setStatusFilter(statusFilter === "Ignorada" ? "all" : "Ignorada")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all opacity-80 hover:opacity-100",
+                statusFilter === "Ignorada"
+                  ? "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              <Ban className="h-3 w-3" />
+              <span>{totalIgnoradas} ignoradas</span>
+            </button>
+          )}
 
-          <div className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs",
-            semCategoria > 0
-              ? "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
-              : "border-border/50 bg-card"
-          )}>
-            <Tag className={cn("h-3.5 w-3.5", semCategoria > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")} />
-            <span className={cn("font-bold tabular-nums", semCategoria > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>{semCategoria}</span>
-            <span className="text-muted-foreground font-normal">sem categoria</span>
-          </div>
+          {semCategoria > 0 && (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100/50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 px-3 py-1.5 text-xs font-medium opacity-80">
+              <Tag className="h-3 w-3" />
+              <span>{semCategoria} sem categoria</span>
+            </div>
+          )}
 
-          {statusFilter !== "all" && (
-            <>
-              <div className="h-4 w-px bg-border" />
-              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setStatusFilter("all")}>
-                <X className="h-3 w-3" />
-                Limpar filtro
-              </Button>
-            </>
+          {(statusFilter !== "all" || showOnlyForaDaFaturaPadrao) && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 opacity-70 hover:opacity-100 rounded-full" onClick={() => {
+              setStatusFilter("all");
+              setShowOnlyForaDaFaturaPadrao(false);
+            }}>
+              <X className="h-3 w-3" />
+              Limpar filtros
+            </Button>
           )}
         </motion.div>
 
@@ -417,38 +484,25 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="rounded-xl border border-orange-200 bg-linear-to-r from-orange-50 to-orange-50/40 dark:border-orange-800/60 dark:from-orange-950/20 dark:to-orange-950/10 p-4"
+              className="rounded-xl border border-orange-200/50 bg-orange-50/30 dark:border-orange-900/30 dark:bg-orange-950/20 p-3"
             >
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/40">
-                  <ShieldAlert className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                </div>
+              <div className="flex gap-2.5 items-start">
+                <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
                 <div className="space-y-0.5 min-w-0">
-                  <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">
+                  <p className="text-xs font-medium text-orange-800 dark:text-orange-300">
                     {preview.arquivoJaImportado
                       ? "Arquivo já importado anteriormente"
                       : allDuplicatas
                         ? `Todas as ${totalDuplicatas} transações já existem no sistema`
                         : "Atenção"}
                     {preview.arquivoJaImportado && preview.dataImportacaoAnterior && (
-                      <span className="font-normal text-orange-600/70 dark:text-orange-400/50 ml-1.5">
+                      <span className="font-normal text-orange-600/70 ml-1.5">
                         · {formatShortDate(preview.dataImportacaoAnterior)}
                       </span>
                     )}
                   </p>
-                  {preview.arquivoJaImportado && allDuplicatas && (
-                    <p className="text-xs text-orange-600/80 dark:text-orange-400/60">
-                      Todas as {totalDuplicatas} transações já existem no sistema. Duplicatas detectadas por valor, data e descrição.
-                    </p>
-                  )}
-                  {!preview.arquivoJaImportado && allDuplicatas && (
-                    <p className="text-xs text-orange-600/80 dark:text-orange-400/60">
-                      Nenhuma transação nova encontrada. Duplicatas detectadas por valor, data e descrição.
-                    </p>
-                  )}
                   {filteredAvisos.map((aviso, i) => (
-                    <p key={i} className="flex items-center gap-1.5 text-xs text-orange-600/80 dark:text-orange-400/60">
-                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                    <p key={i} className="text-[11px] text-orange-700/80 dark:text-orange-400/80">
                       {aviso}
                     </p>
                   ))}
@@ -458,39 +512,10 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
           )}
         </AnimatePresence>
 
-        {/* ── Sem categoria ── */}
-        <AnimatePresence>
-          {semCategoria > 0 && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-            >
-              <div className="flex items-center gap-2 rounded-lg border border-amber-200/60 bg-amber-50/40 dark:border-amber-800/40 dark:bg-amber-950/15 px-3.5 py-2.5 text-xs text-amber-700 dark:text-amber-400">
-                <Tag className="h-3.5 w-3.5 shrink-0" />
-                <span>
-                  {semCategoria === 1
-                    ? "1 transação sem categoria — será importada como "
-                    : `${semCategoria} transações sem categoria — serão importadas como `}
-                  <strong>Outras</strong>. Edite clicando em <Pencil className="inline h-3 w-3 mx-0.5 -mt-0.5" />.
-                </span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* ── Table ── */}
         <div className="rounded-xl border overflow-hidden shadow-sm">
           {/* Inline toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-muted/20 px-3 py-2 border-b border-border/50">
-            <span className="text-xs text-muted-foreground">
-              {selected.size} de {selectableCount} selecionadas
-              {selected.size > 0 && (
-                <Badge variant="outline" className="ml-2 text-xs font-normal">
-                  {formatCurrency(valorTotalSelecionado)}
-                </Badge>
-              )}
-            </span>
+          <div className="flex flex-wrap items-center justify-end gap-2 bg-muted/20 px-3 py-2 border-b border-border/50">
             <div className="flex items-center gap-1.5">
               {totalDuplicatas > 0 && statusFilter === "all" && (
                 <Button
@@ -506,35 +531,37 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="min-w-max w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40">
-                  <th className="p-3 w-10">
+                  <th className="w-12 px-4 py-3.5">
                     <Checkbox
                       checked={allSelected}
                       onCheckedChange={toggleSelectAll}
                       aria-label="Selecionar todas"
                     />
                   </th>
-                  <th className="p-3 text-left">
-                    <SortHeader field="status">Status</SortHeader>
-                  </th>
-                  <th className="p-3 text-left">
+                  <th className="min-w-28 px-4 py-3.5 text-left">
                     <SortHeader field="data">Data</SortHeader>
                   </th>
-                  <th className="p-3 text-left min-w-50">
+                  <th className="min-w-80 px-4 py-3.5 text-left">
                     <SortHeader field="descricao">Descrição</SortHeader>
                   </th>
-                  <th className="p-3 text-right">
+                  <th className="min-w-32 px-4 py-3.5 text-right">
                     <SortHeader field="valor">Valor</SortHeader>
                   </th>
-                  <th className="p-3 text-left">
+                  <th className="min-w-24 px-4 py-3.5 text-left">
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipo</span>
                   </th>
-                  <th className="p-3 text-left">
+                  <th className="min-w-32 px-4 py-3.5 text-left">
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categoria</span>
                   </th>
-                  <th className="p-3 w-10"></th>
+                  {isFaturaImport && (
+                    <th className="min-w-28 px-4 py-3.5 text-left">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fatura destino</span>
+                    </th>
+                  )}
+                  <th className="w-12 px-4 py-3.5"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -550,6 +577,7 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
                       count={transactions.length}
                       monthDuplicatas={monthDuplicatas}
                       monthTotal={monthTotal}
+                      colSpan={isFaturaImport ? 8 : 7}
                       collapsed={collapsed}
                       onToggle={() => toggleMonth(month)}
                     >
@@ -568,6 +596,11 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
                             onCancelEdit={cancelEdit}
                             categoriasLista={categoriasLista}
                             hasOverride={overrides.has(t.indiceOriginal)}
+                            isFaturaImport={isFaturaImport}
+                            mesFaturaPadrao={preview.mesFaturaPadrao}
+                            mesFaturaOptions={mesFaturaOptions}
+                            mesFaturaAtual={(t as TransacaoImportada & { mesFaturaReferencia?: string | null }).mesFaturaReferencia ?? preview.mesFaturaPadrao ?? null}
+                            formatInvoiceMonthKey={formatInvoiceMonthKey}
                           />
                         ))}
                     </MonthGroupFragment>
@@ -588,46 +621,59 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
           )}
         </div>
 
-        {/* ── Footer ── */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
-          className="rounded-xl border bg-card p-3"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{selected.size}</span> de {selectableCount} selecionadas
-              {selected.size > 0 && (
-                <Badge variant="outline" className="text-xs font-normal">
-                  {formatCurrency(valorTotalSelecionado)}
-                </Badge>
-              )}
+        {/* ── Floating action bar ── */}
+        <div className="sticky bottom-0 z-20 -mx-1 px-1 pb-1 pt-3 bg-linear-to-t from-white via-white/95 to-transparent dark:from-[#161B22] dark:via-[#161B22]/95">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-white/90 dark:bg-[#161B22]/90 backdrop-blur-md shadow-lg shadow-black/5 dark:shadow-black/20 px-5 py-3"
+          >
+            {/* Left: totals */}
+            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-2">
+                <div className={cn("h-2 w-2 rounded-full transition-colors", selected.size > 0 ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+                <span className="text-[11px] font-bold text-foreground tabular-nums">{selected.size}</span>
+                <span className="text-[10px] text-muted-foreground">de {selectableCount}</span>
+              </div>
+              <div className="h-4 w-px bg-border/50" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground font-medium">Total:</span>
+                <span className="text-[11px] font-bold text-foreground tabular-nums">{formatCurrency(valorTotalGeral)}</span>
+              </div>
+              <div className="h-4 w-px bg-border/50" />
+              <div className="flex items-center gap-1.5">
+                <span className={cn("text-[10px] font-medium", selected.size > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>Selecionado:</span>
+                <span className={cn("text-[11px] font-bold tabular-nums", selected.size > 0 ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground")}>{formatCurrency(valorTotalSelecionado)}</span>
+              </div>
             </div>
+
+            {/* Right: actions */}
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={onCancel} disabled={isConfirming}>
+              <Button variant="outline" size="sm" onClick={onCancel} disabled={isConfirming} className="rounded-full text-[10px] uppercase tracking-wider h-8 px-4">
                 Cancelar
               </Button>
               <Button
                 onClick={handleConfirm}
                 disabled={selected.size === 0 || isConfirming}
-                size="default"
+                size="sm"
+                className="rounded-full text-[10px] uppercase tracking-wider h-8 px-5"
               >
                 {isConfirming ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                     Importando...
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
                     Confirmar ({selected.size})
                   </>
                 )}
               </Button>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
     </TooltipProvider>
   );
@@ -639,6 +685,7 @@ function MonthGroupFragment({
   count,
   monthDuplicatas,
   monthTotal,
+  colSpan,
   collapsed,
   onToggle,
   children,
@@ -647,6 +694,7 @@ function MonthGroupFragment({
   count: number;
   monthDuplicatas: number;
   monthTotal: number;
+  colSpan: number;
   collapsed: boolean;
   onToggle: () => void;
   children: React.ReactNode;
@@ -657,8 +705,8 @@ function MonthGroupFragment({
         className="bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
         onClick={onToggle}
       >
-        <td colSpan={8} className="p-0">
-          <div className="flex items-center justify-between px-3 py-2.5">
+        <td colSpan={colSpan} className="p-0">
+          <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-2">
               {collapsed ? (
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -704,6 +752,11 @@ function TransactionRow({
   onCancelEdit,
   categoriasLista,
   hasOverride,
+  isFaturaImport,
+  mesFaturaPadrao,
+  mesFaturaOptions,
+  mesFaturaAtual,
+  formatInvoiceMonthKey,
 }: {
   t: TransacaoImportada;
   isSelected: boolean;
@@ -716,9 +769,13 @@ function TransactionRow({
   onCancelEdit: () => void;
   categoriasLista: { id: number; nome: string }[];
   hasOverride: boolean;
+  isFaturaImport: boolean;
+  mesFaturaPadrao: string | null;
+  mesFaturaOptions: string[];
+  mesFaturaAtual: string | null;
+  formatInvoiceMonthKey: (key?: string | null) => string;
 }) {
   const statusCfg = STATUS_CONFIG[t.status];
-  const StatusIcon = statusCfg.icon;
   const tipoCfg = TIPO_LABEL[t.tipoTransacao];
   const isIgnored = t.status === "Ignorada";
   const isDuplicate = t.status === "Duplicata";
@@ -733,12 +790,12 @@ function TransactionRow({
         isDuplicate && !isSelected && "opacity-60",
         statusCfg.bgRow,
         isSelected
-          ? "bg-emerald-50/50 dark:bg-emerald-950/15 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/20"
+          ? "bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100/60 dark:hover:bg-emerald-950/40"
           : !isDisabled && "hover:bg-muted/30"
       )}
     >
       {/* Checkbox */}
-      <td className="p-3">
+      <td className={cn("px-4 py-4 transition-colors", isSelected && "border-l-[3px] border-l-emerald-500")}>
         <Checkbox
           checked={isSelected}
           disabled={isDisabled}
@@ -746,34 +803,8 @@ function TransactionRow({
         />
       </td>
 
-      {/* Status */}
-      <td className="p-3">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium cursor-default",
-                statusCfg.color
-              )}
-            >
-              <StatusIcon className="h-3 w-3" />
-              {statusCfg.label}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent
-            side="right"
-            className="max-w-[220px] bg-background text-foreground border shadow-md [&>svg]:hidden"
-          >
-            <p className="font-medium text-xs">{statusCfg.label}</p>
-            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              {t.motivoStatus || statusCfg.description}
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </td>
-
       {/* Data */}
-      <td className="p-3 whitespace-nowrap">
+      <td className="px-4 py-4 align-middle whitespace-nowrap">
         {isEditing ? (
           <Input
             type="date"
@@ -787,7 +818,7 @@ function TransactionRow({
       </td>
 
       {/* Descrição */}
-      <td className="p-3">
+      <td className="min-w-80 px-4 py-4 align-middle">
         {isEditing ? (
           <Input
             value={editForm.descricao ?? ""}
@@ -795,8 +826,8 @@ function TransactionRow({
             className="h-8 text-xs"
           />
         ) : (
-          <div className="flex items-center gap-1.5">
-            <span className={cn("text-xs line-clamp-1", isDuplicate && "line-through decoration-orange-400/50")} title={t.descricao}>
+          <div className="flex items-center gap-2">
+            <span className={cn("text-xs line-clamp-2 leading-relaxed", isDuplicate && "line-through decoration-orange-400/50")} title={t.descricao}>
               {t.descricao}
             </span>
             {t.totalParcelas && t.totalParcelas > 1 && (
@@ -819,7 +850,7 @@ function TransactionRow({
       </td>
 
       {/* Valor */}
-      <td className="p-3 text-right whitespace-nowrap">
+      <td className="px-4 py-4 align-middle text-right whitespace-nowrap">
         {isEditing ? (
           <Input
             type="number"
@@ -844,12 +875,12 @@ function TransactionRow({
       </td>
 
       {/* Tipo */}
-      <td className="p-3">
+      <td className="px-4 py-4 align-middle">
         <span className={cn("text-xs", tipoCfg.color)}>{tipoCfg.label}</span>
       </td>
 
       {/* Categoria */}
-      <td className="p-3">
+      <td className="px-4 py-4 align-middle">
         {isEditing ? (
           <Select
             value={String(editForm.categoriaId ?? "")}
@@ -878,8 +909,37 @@ function TransactionRow({
         )}
       </td>
 
+      {isFaturaImport && (
+        <td className="px-4 py-4 align-middle">
+          {isEditing ? (
+            <Select
+              value={editForm.mesFaturaReferencia ?? mesFaturaPadrao ?? ""}
+              onValueChange={(v) => setEditForm((f) => ({ ...f, mesFaturaReferencia: v }))}
+            >
+              <SelectTrigger className="h-8 w-36 text-xs">
+                <SelectValue placeholder="Fatura" />
+              </SelectTrigger>
+              <SelectContent>
+                {mesFaturaOptions.map((mes) => (
+                  <SelectItem key={mes} value={mes}>{formatInvoiceMonthKey(mes)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <span className={cn(
+              "inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium",
+              mesFaturaAtual !== mesFaturaPadrao
+                ? "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-300"
+                : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
+            )}>
+              {formatInvoiceMonthKey(mesFaturaAtual)}
+            </span>
+          )}
+        </td>
+      )}
+
       {/* Actions */}
-      <td className="p-3">
+      <td className="px-4 py-4 align-middle">
         {isEditing ? (
           <div className="flex gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onSaveEdit}>

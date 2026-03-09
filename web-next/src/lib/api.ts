@@ -1,9 +1,39 @@
 // ============================================================
-// ControlFinance — API Client Layer
+// Ravier — API Client Layer
 // Professional HTTP client with auto-refresh, rate-limit handling
 // ============================================================
 
 const API_BASE = "/api";
+
+// ── Custom Errors ──────────────────────────────────────────
+
+export class FeatureGateError extends Error {
+  public readonly recurso: string;
+  public readonly recursoNome: string;
+  public readonly limite: number;
+  public readonly usoAtual: number;
+  public readonly planoSugerido: string | null;
+  public readonly planoNomeSugerido: string | null;
+
+  constructor(
+    message: string,
+    recurso: string,
+    recursoNome: string,
+    limite: number,
+    usoAtual: number,
+    planoSugerido: string | null,
+    planoNomeSugerido: string | null
+  ) {
+    super(message);
+    this.name = "FeatureGateError";
+    this.recurso = recurso;
+    this.recursoNome = recursoNome;
+    this.limite = limite;
+    this.usoAtual = usoAtual;
+    this.planoSugerido = planoSugerido;
+    this.planoNomeSugerido = planoNomeSugerido;
+  }
+}
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -11,10 +41,13 @@ export interface Usuario {
   id: number;
   nome: string;
   email: string;
+  celular: string | null;
   telegramVinculado: boolean;
+  whatsAppVinculado: boolean;
   criadoEm: string;
   role: string;
   rendaMensal: number | null;
+  temCpf: boolean;
 }
 
 export interface AuthResponse {
@@ -22,16 +55,64 @@ export interface AuthResponse {
   usuario: Usuario;
 }
 
+// ── Assinatura / Stripe ────────────────────────────────────
+
+export type TipoPlano = "Gratuito" | "Individual" | "Familia";
+export type StatusAssinatura = "Trial" | "Ativa" | "Cancelada" | "Expirada" | "Inadimplente";
+
+export interface PlanoInfo {
+  id: string;
+  nome: string;
+  descricao: string;
+  preco: number;
+  tipo: TipoPlano;
+  maxMembros: number;
+  trialDisponivel: boolean;
+  diasGratis: number;
+  recursos: string[];
+  destaque: boolean;
+  podeFazerCheckout: boolean;
+}
+
+export interface AssinaturaResponse {
+  plano: TipoPlano;
+  status: StatusAssinatura;
+  valorMensal: number;
+  inicioTrial: string | null;
+  fimTrial: string | null;
+  proximaCobranca: string | null;
+  canceladoEm: string | null;
+  maxMembros: number;
+  emTrial: boolean;
+  diasRestantesTrial: number;
+  // Display flags (computed by backend)
+  planoNome: string;
+  statusNome: string;
+  statusCor: string;
+  podeGerenciarAssinatura: boolean;
+  exibirBanner: boolean;
+  tipoBanner: "trial" | "gratuito" | "inadimplente" | "trial_urgente" | null;
+  bannerTitulo: string | null;
+  bannerDescricao: string | null;
+}
+
+export interface MinhaAssinaturaResponse {
+  temAssinatura: boolean;
+  assinatura?: AssinaturaResponse;
+}
+
+export interface CheckoutSessionResponse {
+  url: string;
+}
+
+export interface PortalSessionResponse {
+  url: string;
+}
+
 export interface RegistroPendenteResponse {
   pendente: boolean;
   email: string;
   mensagem: string;
-}
-
-export interface CodigoTelegramResponse {
-  codigo: string;
-  expiraEm: string;
-  instrucoes: string;
 }
 
 export interface ResumoFinanceiro {
@@ -242,6 +323,7 @@ export interface ContaBancaria {
   id: number;
   nome: string;
   tipo: TipoContaBancaria;
+  instituicao?: string | null;
   saldo: number;
   ativo: boolean;
   criadoEm: string;
@@ -250,12 +332,14 @@ export interface ContaBancaria {
 export interface CriarContaBancariaRequest {
   nome: string;
   tipo: TipoContaBancaria;
-  saldo?: number;
+  instituicao?: string;
+  saldo: number;
 }
 
 export interface AtualizarContaBancariaRequest {
   nome?: string;
   tipo?: TipoContaBancaria;
+  instituicao?: string | null;
   saldo?: number;
 }
 
@@ -281,6 +365,7 @@ export interface FaturaResumo {
 }
 
 export interface FaturaParcela {
+  id: number;
   descricao: string;
   categoria: string;
   valor: number;
@@ -300,6 +385,8 @@ export interface AtualizarPerfilRequest {
   senhaAtual?: string;
   novaSenha?: string;
   rendaMensal?: number | null;
+  cpf?: string;
+  celular?: string;
 }
 
 // ── Lembretes / Contas Fixas ───────────────────────────────
@@ -604,6 +691,24 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
           return request<T>(path, { ...options, _isRetry: true });
         }
       }
+
+      // Feature Gate — recurso bloqueado pelo plano
+      if (errorData?.codigo === "FEATURE_GATE") {
+        const gateError = new FeatureGateError(
+          errorData.erro || "Recurso não disponível no seu plano.",
+          errorData.recurso,
+          errorData.recursoNome || errorData.recurso,
+          errorData.limite,
+          errorData.usoAtual,
+          errorData.planoSugerido,
+          errorData.planoNomeSugerido || errorData.planoSugerido
+        );
+        // Dispatch event para o UpgradeModal capturar
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("feature-gate-blocked", { detail: gateError }));
+        }
+        throw gateError;
+      }
     }
 
     throw new Error(
@@ -624,11 +729,44 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return parsed as T;
 }
 
+// ── Chat Types ─────────────────────────────────────────────
+
+export interface ConversaResumoDto {
+  id: number;
+  titulo: string;
+  ultimaMensagem: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface MensagemDto {
+  id: number;
+  conteudo: string;
+  papel: "user" | "assistant";
+  origem: string;
+  transcricaoOriginal?: string | null;
+  criadoEm: string;
+}
+
+export interface ConversaDetalheDto {
+  id: number;
+  titulo: string;
+  criadoEm: string;
+  mensagens: MensagemDto[];
+}
+
+export interface RespostaChatDto {
+  conversaId: number;
+  titulo: string;
+  mensagemUsuario: MensagemDto;
+  mensagemAssistente: MensagemDto;
+}
+
 // ── API Endpoints ──────────────────────────────────────────
 
 export const api = {
   auth: {
-    registrar: (data: { nome: string; email: string; senha: string; codigoConvite: string }) =>
+    registrar: (data: { nome: string; email: string; senha: string; celular: string; codigoConvite?: string }) =>
       request<RegistroPendenteResponse>("/auth/registrar", { method: "POST", body: data }),
 
     verificarRegistro: (data: { email: string; codigo: string }) =>
@@ -643,6 +781,12 @@ export const api = {
     login: (data: { email: string; senha: string }) =>
       request<AuthResponse>("/auth/login", { method: "POST", body: data }),
 
+    loginGoogle: (data: { idToken: string; celular?: string }) =>
+      request<AuthResponse>("/auth/google", { method: "POST", body: data }),
+
+    loginApple: (data: { idToken: string; celular?: string; nome?: string }) =>
+      request<AuthResponse>("/auth/apple", { method: "POST", body: data }),
+
     logout: () => request("/auth/logout", { method: "POST" }),
 
     perfil: () => request<Usuario>("/auth/perfil"),
@@ -655,11 +799,6 @@ export const api = {
 
     redefinirSenha: (data: { email: string; codigo: string; novaSenha: string }) =>
       request("/auth/redefinir-senha", { method: "POST", body: data }),
-
-    gerarCodigoTelegram: () =>
-      request<CodigoTelegramResponse>("/auth/telegram/gerar-codigo", {
-        method: "POST",
-      }),
 
     excluirConta: () => request("/auth/conta", { method: "DELETE" }),
   },
@@ -724,6 +863,8 @@ export const api = {
       request(`/cartoes/${id}/limite-extra`, { method: "POST", body: data }),
     faturas: (cartaoId: number, mes?: string) =>
       request<FaturaResumo[]>(`/cartoes/${cartaoId}/fatura${mes ? `?mes=${mes}` : ""}`),
+    togglePagaFatura: (faturaId: number) =>
+      request<{ paga: boolean }>(`/cartoes/fatura/${faturaId}/paga`, { method: "PATCH" }),
 
     resgatarLimiteExtra: (id: number, data: { valorResgate: number; percentualBonus: number }) =>
       request<{
@@ -802,7 +943,7 @@ export const api = {
   importacao: {
     upload: async (
       arquivo: File,
-      tipoImportacao: string,
+      tipoImportacao: TipoImportacao,
       contaBancariaId?: number,
       cartaoCreditoId?: number,
       banco?: string,
@@ -846,6 +987,21 @@ export const api = {
       const qs = params.toString();
       return request<ImportacaoHistorico[]>(`/importacao/historico${qs ? `?${qs}` : ""}`);
     },
+  },
+
+  assinaturas: {
+    planos: () => request<PlanoInfo[]>("/assinaturas/planos"),
+
+    minha: () => request<MinhaAssinaturaResponse>("/assinaturas/minha"),
+
+    criarCheckout: (plano: TipoPlano) =>
+      request<CheckoutSessionResponse>("/assinaturas/checkout", {
+        method: "POST",
+        body: { plano },
+      }),
+
+    portal: () =>
+      request<PortalSessionResponse>("/assinaturas/portal", { method: "POST" }),
   },
 
   admin: {
@@ -897,8 +1053,204 @@ export const api = {
       revogarTodas: () =>
         request<{ message: string }>("/admin/seguranca/sessoes/revogar-todas", { method: "POST" }),
     },
+
+    planos: {
+      listar: () => request<PlanoConfigDto[]>("/admin/planos"),
+      detalhe: (id: number) => request<PlanoConfigDto>(`/admin/planos/${id}`),
+      atualizar: (id: number, data: AtualizarPlanoRequest) =>
+        request<PlanoConfigDto>(`/admin/planos/${id}`, { method: "PUT", body: data }),
+      atualizarRecursos: (id: number, recursos: AtualizarRecursoRequest[]) =>
+        request<PlanoConfigDto>(`/admin/planos/${id}/recursos`, { method: "PUT", body: recursos }),
+    },
+
+    whatsapp: {
+      status: () => request<WhatsAppStatusResponse>("/whatsapp/status"),
+      qr: () => request<WhatsAppQrResponse>("/whatsapp/qr"),
+      disconnect: () => request<{ success: boolean; message?: string }>("/whatsapp/disconnect", { method: "POST" }),
+    },
+  },
+
+  planos: {
+    comparacao: () => request<ComparacaoPlanoDto[]>("/assinaturas/planos/comparacao"),
+    meusLimites: () => request<MeusLimitesDto>("/assinaturas/meus-limites"),
+  },
+
+  familia: {
+    obter: () => request<FamiliaData | { familia: null }>("/familia"),
+    enviarConvite: (email: string) =>
+      request<ConviteFamilia>("/familia/convite", { method: "POST", body: { email } }),
+    cancelarConvite: () => request("/familia/convite", { method: "DELETE" }),
+    obterConvite: (token: string) => request<ConviteFamilia>(`/familia/convite/${token}`),
+    aceitarConvite: (token: string) =>
+      request<AceitarConviteResponse>(`/familia/convite/${token}/aceitar`, { method: "POST" }),
+    recusarConvite: (token: string) =>
+      request(`/familia/convite/${token}/recusar`, { method: "POST" }),
+    removerMembro: () => request("/familia/membro", { method: "DELETE" }),
+    sair: () => request("/familia/sair", { method: "POST" }),
+    // Recursos
+    listarRecursos: () => request<RecursoFamiliar[]>("/familia/recursos"),
+    ativarRecurso: (recurso: string) =>
+      request<RecursoFamiliar>(`/familia/recursos/${recurso}/ativar`, { method: "POST" }),
+    aceitarRecurso: (recurso: string) =>
+      request<RecursoFamiliar>(`/familia/recursos/${recurso}/aceitar`, { method: "POST" }),
+    recusarRecurso: (recurso: string) =>
+      request<RecursoFamiliar>(`/familia/recursos/${recurso}/recusar`, { method: "POST" }),
+    desativarRecurso: (recurso: string) =>
+      request<RecursoFamiliar>(`/familia/recursos/${recurso}/desativar`, { method: "POST" }),
+    // Dashboard
+    dashboardResumo: (mes?: number, ano?: number) => {
+      const params = new URLSearchParams();
+      if (mes) params.set("mes", String(mes));
+      if (ano) params.set("ano", String(ano));
+      const qs = params.toString();
+      return request<DashboardFamiliarResumo>(`/familia/dashboard/resumo${qs ? `?${qs}` : ""}`);
+    },
+    dashboardCategorias: (mes?: number, ano?: number) => {
+      const params = new URLSearchParams();
+      if (mes) params.set("mes", String(mes));
+      if (ano) params.set("ano", String(ano));
+      const qs = params.toString();
+      return request<GastoCategoriaFamiliar[]>(`/familia/dashboard/categorias${qs ? `?${qs}` : ""}`);
+    },
+    dashboardEvolucao: (meses?: number) =>
+      request<EvolucaoMensalFamiliar[]>(`/familia/dashboard/evolucao${meses ? `?meses=${meses}` : ""}`),
+    // Metas conjuntas
+    listarMetas: () => request<MetaFinanceira[]>("/familia/metas").then(m => m.map(normalizeMeta)),
+    criarMeta: (data: CriarMetaRequest) =>
+      request<MetaFinanceira>("/familia/metas", { method: "POST", body: data }).then(normalizeMeta),
+    atualizarValorMeta: (id: number, valorAtual: number) =>
+      request<MetaFinanceira>(`/familia/metas/${id}/valor`, { method: "PATCH", body: { valorAtual } }).then(normalizeMeta),
+    removerMeta: (id: number) => request(`/familia/metas/${id}`, { method: "DELETE" }),
+    // Categorias compartilhadas
+    listarCategorias: () => request<CategoriaFamiliar[]>("/familia/categorias"),
+    criarCategoria: (nome: string) =>
+      request<CategoriaFamiliar>("/familia/categorias", { method: "POST", body: { nome } }),
+    atualizarCategoria: (id: number, nome: string) =>
+      request<CategoriaFamiliar>(`/familia/categorias/${id}`, { method: "PUT", body: { nome } }),
+    removerCategoria: (id: number) => request(`/familia/categorias/${id}`, { method: "DELETE" }),
+    // Orçamento familiar
+    listarOrcamentos: () => request<OrcamentoFamiliar[]>("/familia/orcamentos"),
+    criarOrcamento: (data: { categoriaId: number; valorLimite: number }) =>
+      request<OrcamentoFamiliar>("/familia/orcamentos", { method: "POST", body: data }),
+    atualizarOrcamento: (id: number, data: { valorLimite: number; ativo: boolean }) =>
+      request<OrcamentoFamiliar>(`/familia/orcamentos/${id}`, { method: "PUT", body: data }),
+    removerOrcamento: (id: number) => request(`/familia/orcamentos/${id}`, { method: "DELETE" }),
+  },
+
+  // ── Ravier Chat ───────────────────────────────────────────
+  chat: {
+    listarConversas: () => request<ConversaResumoDto[]>("/chat/conversas"),
+
+    obterConversa: (id: number) => request<ConversaDetalheDto>(`/chat/conversas/${id}`),
+
+    renomearConversa: (id: number, titulo: string) =>
+      request(`/chat/conversas/${id}`, { method: "PATCH", body: { titulo } }),
+
+    excluirConversa: (id: number) => request(`/chat/conversas/${id}`, { method: "DELETE" }),
+
+    enviarMensagem: (data: { mensagem: string; conversaId?: number }) =>
+      request<RespostaChatDto>("/chat/mensagem", { method: "POST", body: data }),
+
+    enviarAudio: async (arquivo: File, conversaId?: number): Promise<RespostaChatDto> => {
+      const formData = new FormData();
+      formData.append("arquivo", arquivo);
+      if (conversaId) formData.append("conversaId", String(conversaId));
+
+      const csrfToken = await obterCsrfToken();
+      const headers: Record<string, string> = {};
+      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
+      const res = await fetch(`${API_BASE}/chat/audio`, {
+        method: "POST",
+        headers,
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        if (res.status === 403 && err?.codigo === "FEATURE_GATE") {
+          const gateError = new FeatureGateError(
+            err.erro || "Recurso não disponível no seu plano.",
+            err.recurso, err.recursoNome || err.recurso,
+            err.limite, err.usoAtual, err.planoSugerido, err.planoNomeSugerido || err.planoSugerido
+          );
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("feature-gate-blocked", { detail: gateError }));
+          }
+          throw gateError;
+        }
+        throw new Error(err?.erro || err?.mensagem || `Erro ${res.status}`);
+      }
+      return res.json();
+    },
+
+    enviarImagem: async (arquivo: File, conversaId?: number, legenda?: string): Promise<RespostaChatDto> => {
+      const formData = new FormData();
+      formData.append("arquivo", arquivo);
+      if (conversaId) formData.append("conversaId", String(conversaId));
+      if (legenda) formData.append("legenda", legenda);
+
+      const csrfToken = await obterCsrfToken();
+      const headers: Record<string, string> = {};
+      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
+      const res = await fetch(`${API_BASE}/chat/imagem`, {
+        method: "POST",
+        headers,
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        if (res.status === 403 && err?.codigo === "FEATURE_GATE") {
+          const gateError = new FeatureGateError(
+            err.erro || "Recurso não disponível no seu plano.",
+            err.recurso, err.recursoNome || err.recurso,
+            err.limite, err.usoAtual, err.planoSugerido, err.planoNomeSugerido || err.planoSugerido
+          );
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("feature-gate-blocked", { detail: gateError }));
+          }
+          throw gateError;
+        }
+        throw new Error(err?.erro || err?.mensagem || `Erro ${res.status}`);
+      }
+      return res.json();
+    },
+  },
+
+  suporte: {
+    enviarMensagem: (data: SuporteMensagemRequest) =>
+      request<SuporteRespostaDto>("/suporte/mensagem", { method: "POST", body: data }),
+
+    enviarEmail: (data: SuporteEmailRequest) =>
+      request<{ mensagem: string }>("/suporte/email", { method: "POST", body: data }),
   },
 };
+
+// ── Suporte Types ──────────────────────────────────────────
+
+export interface SuporteMensagemHistorico {
+  papel: "user" | "assistant";
+  conteudo: string;
+}
+
+export interface SuporteMensagemRequest {
+  mensagem: string;
+  historico: SuporteMensagemHistorico[];
+  paginaAtual?: string;
+}
+
+export interface SuporteRespostaDto {
+  resposta: string;
+}
+
+export interface SuporteEmailRequest {
+  assunto: string;
+  descricao: string;
+}
 
 // ── Admin Types ────────────────────────────────────────────
 
@@ -988,6 +1340,83 @@ export interface AdminSegurancaResumo {
   usuariosBloqueadosLista: AdminUsuarioBloqueado[];
 }
 
+// ── Admin Planos Types ─────────────────────────────────────
+
+export interface RecursoPlanoDto {
+  id: number;
+  recurso: string;
+  nomeRecurso: string;
+  limite: number;
+  descricaoLimite: string | null;
+}
+
+export interface PlanoConfigDto {
+  id: number;
+  tipo: TipoPlano;
+  nome: string;
+  descricao: string;
+  precoMensal: number;
+  ativo: boolean;
+  trialDisponivel: boolean;
+  diasGratis: number;
+  ordem: number;
+  destaque: boolean;
+  stripePriceId: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
+  recursos: RecursoPlanoDto[];
+}
+
+export interface AtualizarPlanoRequest {
+  nome: string;
+  descricao: string;
+  precoMensal: number;
+  ativo: boolean;
+  trialDisponivel: boolean;
+  diasGratis: number;
+  ordem: number;
+  destaque: boolean;
+  stripePriceId: string | null;
+}
+
+export interface AtualizarRecursoRequest {
+  recurso: string;
+  limite: number;
+  descricaoLimite: string | null;
+}
+
+export interface RecursoResumoDto {
+  limite: number;
+  descricaoLimite: string | null;
+}
+
+export interface ComparacaoPlanoDto {
+  tipo: TipoPlano;
+  nome: string;
+  descricao: string;
+  precoMensal: number;
+  destaque: boolean;
+  ordem: number;
+  recursos: Record<string, { limite: number; descricaoLimite: string | null }>;
+}
+
+export interface FeatureGateErrorResponse {
+  erro: string;
+  codigo: "FEATURE_GATE";
+  recurso: string;
+  recursoNome: string;
+  limite: number;
+  usoAtual: number;
+  planoSugerido: string | null;
+  planoNomeSugerido: string | null;
+  traceId: string;
+}
+
+export interface MeusLimitesDto {
+  plano: TipoPlano;
+  limites: Record<string, number>;
+}
+
 // ── Importação de Extratos ─────────────────────────────────
 
 export type FormatoArquivo = "CSV" | "XLSX" | "OFX" | "PDF";
@@ -1020,6 +1449,8 @@ export interface ImportacaoPreview {
   tipoImportacao: TipoImportacao;
   cartaoCreditoId: number | null;
   cartaoCreditoNome: string | null;
+  cartaoDiaFechamento: number | null;
+  mesFaturaPadrao: string | null;
   mesesDetectados: string[];
   transacoes: TransacaoImportada[];
   totalTransacoes: number;
@@ -1038,6 +1469,7 @@ export interface TransacaoOverride {
   valor?: number;
   categoria?: string;
   categoriaId?: number;
+  mesFaturaReferencia?: string;
 }
 
 export interface ConfirmarImportacaoRequest {
@@ -1065,4 +1497,101 @@ export interface ImportacaoHistorico {
   qtdTransacoesImportadas: number;
   status: StatusImportacao;
   criadoEm: string;
+}
+
+// ── Família Types ──────────────────────────────────────────
+
+export interface FamiliaData {
+  id: number;
+  titularId: number;
+  titularNome: string;
+  membroId: number | null;
+  membroNome: string | null;
+  status: string;
+  criadoEm: string;
+  convitePendente: ConviteFamilia | null;
+  recursos: RecursoFamiliar[];
+}
+
+export interface ConviteFamilia {
+  id: number;
+  email: string;
+  token: string;
+  status: string;
+  criadoEm: string;
+  expiraEm: string;
+  titularNome?: string;
+}
+
+export interface AceitarConviteResponse {
+  mensagem: string;
+  familia: FamiliaData;
+}
+
+export interface RecursoFamiliar {
+  id: number;
+  recurso: string;
+  status: string;
+  solicitadoEm: string | null;
+  aceitoEm: string | null;
+  desativadoEm: string | null;
+}
+
+export interface DashboardFamiliarResumo {
+  receitaTotal: number;
+  gastoTotal: number;
+  saldoFamiliar: number;
+  contribuicaoTitular: number;
+  contribuicaoMembro: number;
+  mesReferencia: string;
+}
+
+export interface GastoCategoriaFamiliar {
+  categoriaId: number;
+  categoriaNome: string;
+  total: number;
+  gastoTitular: number;
+  gastoMembro: number;
+}
+
+export interface EvolucaoMensalFamiliar {
+  mes: string;
+  gastoTotal: number;
+  receitaTotal: number;
+}
+
+export interface OrcamentoFamiliar {
+  id: number;
+  categoriaId: number;
+  categoriaNome: string;
+  valorLimite: number;
+  ativo: boolean;
+  gastoAtual: number;
+  percentualConsumido: number;
+}
+
+export interface CategoriaFamiliar {
+  id: number;
+  nome: string;
+  padrao: boolean;
+  criadorId: number;
+  criadorNome: string;
+}
+
+// ── WhatsApp Admin Types ────────────────────────────────────
+
+export interface WhatsAppStatusResponse {
+  connected: boolean;
+  phoneNumber?: string;
+  uptime?: number;
+  messagesHandled?: number;
+  whatsapp?: string;
+}
+
+export interface WhatsAppQrResponse {
+  status: string;
+  qrCode?: string;
+  raw?: string;
+  pairingCode?: string;
+  message?: string;
 }

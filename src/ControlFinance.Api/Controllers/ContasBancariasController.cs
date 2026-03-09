@@ -1,5 +1,8 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Exceptions;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
+using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,10 +15,12 @@ namespace ControlFinance.Api.Controllers;
 public class ContasBancariasController : BaseAuthController
 {
     private readonly IContaBancariaRepository _contaRepo;
+    private readonly IFeatureGateService _featureGate;
 
-    public ContasBancariasController(IContaBancariaRepository contaRepo)
+    public ContasBancariasController(IContaBancariaRepository contaRepo, IFeatureGateService featureGate)
     {
         _contaRepo = contaRepo;
+        _featureGate = featureGate;
     }
 
     [HttpGet]
@@ -29,10 +34,17 @@ public class ContasBancariasController : BaseAuthController
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] CriarContaBancariaRequest request)
     {
+        // ── Feature Gate: limite de contas bancárias ──
+        var contasAtual = await _contaRepo.ObterPorUsuarioAsync(UsuarioId);
+        var gate = await _featureGate.VerificarLimiteAsync(UsuarioId, Recurso.ContasBancarias, contasAtual.Count);
+        if (!gate.Permitido)
+            throw new FeatureGateException(gate.Mensagem!, Recurso.ContasBancarias, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
+
         var conta = await _contaRepo.CriarAsync(new ContaBancaria
         {
             Nome = request.Nome,
             Tipo = request.Tipo,
+            Instituicao = request.Instituicao,
             Saldo = request.Saldo,
             UsuarioId = UsuarioId
         });
@@ -48,6 +60,7 @@ public class ContasBancariasController : BaseAuthController
 
         if (request.Nome != null) conta.Nome = request.Nome;
         if (request.Tipo.HasValue) conta.Tipo = request.Tipo.Value;
+        if (request.Instituicao != null) conta.Instituicao = request.Instituicao;
         if (request.Saldo.HasValue) conta.Saldo = request.Saldo.Value;
 
         await _contaRepo.AtualizarAsync(conta);
@@ -70,6 +83,7 @@ public class ContasBancariasController : BaseAuthController
         c.Id,
         c.Nome,
         tipo = c.Tipo.ToString(),
+        c.Instituicao,
         c.Saldo,
         c.Ativo,
         c.CriadoEm

@@ -10,11 +10,13 @@ public class FaturaService : IFaturaService
 {
     private readonly IFaturaRepository _faturaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
+    private readonly IParcelaRepository _parcelaRepo;
 
-    public FaturaService(IFaturaRepository faturaRepo, ICartaoCreditoRepository cartaoRepo)
+    public FaturaService(IFaturaRepository faturaRepo, ICartaoCreditoRepository cartaoRepo, IParcelaRepository parcelaRepo)
     {
         _faturaRepo = faturaRepo;
         _cartaoRepo = cartaoRepo;
+        _parcelaRepo = parcelaRepo;
     }
 
     public async Task<FaturaResumoDto?> ObterFaturaAtualAsync(int cartaoId)
@@ -53,6 +55,26 @@ public class FaturaService : IFaturaService
         }
 
         await _faturaRepo.AtualizarAsync(fatura);
+    }
+
+    public async Task<bool> TogglePagaFaturaAsync(int faturaId, int usuarioId)
+    {
+        var fatura = await _faturaRepo.ObterPorIdAsync(faturaId);
+        if (fatura == null) return false;
+
+        if (fatura.CartaoCredito == null)
+            fatura.CartaoCredito = (await _cartaoRepo.ObterPorIdAsync(fatura.CartaoCreditoId))!;
+
+        if (fatura.CartaoCredito?.UsuarioId != usuarioId)
+            throw new UnauthorizedAccessException("Fatura não pertence ao usuário.");
+
+        var agora = fatura.Status == StatusFatura.Paga;
+        fatura.Status = agora ? StatusFatura.Aberta : StatusFatura.Paga;
+        foreach (var p in fatura.Parcelas)
+            p.Paga = !agora;
+
+        await _faturaRepo.AtualizarAsync(fatura);
+        return !agora; // retorna o novo estado
     }
 
     public string FormatarFatura(FaturaResumoDto fatura)
@@ -165,13 +187,14 @@ public class FaturaService : IFaturaService
                 Descricao = p.Lancamento?.Descricao ?? "",
                 Categoria = p.Lancamento?.Categoria?.Nome ?? "",
                 Valor = p.Valor,
-                ValorTotal = p.Lancamento?.Valor ?? p.Valor,
+                ValorTotal = (p.Lancamento?.Valor ?? p.Valor) * p.TotalParcelas,
                 Parcela = $"{p.NumeroParcela}/{p.TotalParcelas}",
                 NumeroParcela = p.NumeroParcela,
                 TotalParcelas = p.TotalParcelas,
                 DataCompra = p.Lancamento?.Data ?? p.DataVencimento,
                 DataVencimento = p.DataVencimento,
-                Paga = p.Paga
+                Paga = p.Paga,
+                Id = p.Id
             }).ToList()
         };
     }

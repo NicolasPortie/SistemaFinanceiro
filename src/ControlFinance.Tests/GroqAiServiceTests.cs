@@ -173,6 +173,23 @@ public class GroqAiServiceTests
     }
 
     [Fact]
+    public async Task ProcessarMensagemCompletaAsync_ResponderGenerico_DetalharCategoriaComPeriodo_PreservaParametroEstruturado()
+    {
+        SetupGroqResponse("responder_generico", new
+        {
+            comandoInterno = "detalhar_categoria",
+            resposta = "Detalhando categoria",
+            parametro = "Alimentação|02/2026"
+        });
+
+        var result = await _aiService.ProcessarMensagemCompletaAsync("quanto gastei em alimentação em fevereiro?", "contexto");
+
+        Assert.NotNull(result);
+        Assert.Equal("detalhar_categoria", result.Intencao);
+        Assert.Equal("Alimentação|02/2026", result.Resposta);
+    }
+
+    [Fact]
     public async Task ProcessarMensagemCompletaAsync_CamposFaltando_NaoQuebra_UsaValoresPadrao()
     {
         // Arrange: Missing "formaPagamento" and "categoria" properties to test resilience

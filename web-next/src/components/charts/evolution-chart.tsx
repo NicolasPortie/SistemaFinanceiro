@@ -38,8 +38,9 @@ interface EvolutionChartProps {
 }
 
 export function EvolutionChart({ data }: EvolutionChartProps) {
-  if (!data || data.length < 2) return null;
+  if (!data || data.length < 1) return null;
 
+  const many = data.length > 8;
   const chartData = data.map((d) => {
     const parts = d.mes.split("-");
     const monthIdx = parseInt(parts[1]) - 1;
@@ -52,8 +53,8 @@ export function EvolutionChart({ data }: EvolutionChartProps) {
   });
 
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+    <ResponsiveContainer width="100%" height={many ? 320 : 280}>
+      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: many ? 40 : 0 }}>
         <defs>
           <linearGradient id="gradEvoReceitas" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />
@@ -67,9 +68,13 @@ export function EvolutionChart({ data }: EvolutionChartProps) {
         <CartesianGrid strokeDasharray="3 3" stroke="oklch(var(--border))" opacity={0.4} />
         <XAxis
           dataKey="label"
-          tick={{ fontSize: 12, fill: "oklch(var(--muted-foreground))" }}
+          interval={0}
+          angle={many ? -40 : 0}
+          textAnchor={many ? "end" : "middle"}
+          tick={{ fontSize: many ? 10 : 11, fill: "oklch(var(--muted-foreground))" }}
           axisLine={false}
           tickLine={false}
+          height={many ? 55 : 30}
         />
         <YAxis
           tickFormatter={(v: number) => {

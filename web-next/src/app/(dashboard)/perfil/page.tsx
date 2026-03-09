@@ -1,110 +1,61 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { api, type CodigoTelegramResponse } from "@/lib/api";
-import {
-  useCategorias,
-  useCriarCategoria,
-  useAtualizarCategoria,
-  useRemoverCategoria,
-  useAtualizarPerfil,
-} from "@/hooks/use-queries";
-import { formatDate, getInitials } from "@/lib/format";
+import { api } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { useAtualizarPerfil } from "@/hooks/use-queries";
+import { getInitials } from "@/lib/format";
 import {
   atualizarPerfilSchema,
   alterarSenhaSchema,
-  categoriaSchema,
-  rendaMensalSchema,
   type AtualizarPerfilData,
   type AlterarSenhaData,
-  type CategoriaData,
-  type RendaMensalData,
 } from "@/lib/schemas";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion } from "framer-motion";
 import {
-  User,
+  Camera,
+  CheckCircle,
+  Diamond,
+  LogOut,
   MessageCircle,
-  Copy,
-  Check,
-  ExternalLink,
-  RefreshCw,
-  Shield,
   Smartphone,
-  Pencil,
-  Trash2,
-  Plus,
-  Lock,
-  Tag,
-  Save,
-  AlertTriangle,
-  Send,
-  DollarSign,
+  Shield,
+  ExternalLink,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { CurrencyInput } from "@/components/ui/currency-input";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
-
-/* ────────────────────────────────────────────── */
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function PerfilPage() {
-  const telegramBotUrl = "https://t.me/facilita_finance_bot";
-  const router = useRouter();
   const { usuario, atualizarPerfil: atualizarContexto, logout } = useAuth();
-
-  /* ── state ── */
-  const [codigoTelegram, setCodigoTelegram] = useState<CodigoTelegramResponse | null>(null);
-  const [gerando, setGerando] = useState(false);
-  const [verificando, setVerificando] = useState(false);
-  const [copiado, setCopiado] = useState(false);
-  const [editandoNome, setEditandoNome] = useState(false);
-  const [editandoRenda, setEditandoRenda] = useState(false);
   const [showSenha, setShowSenha] = useState(false);
-  const [showNovaCategoria, setShowNovaCategoria] = useState(false);
-  const [editandoCategoria, setEditandoCategoria] = useState<{ id: number; nome: string } | null>(
-    null
-  );
-  const [removendoCategoria, setRemovendoCategoria] = useState<number | null>(null);
-  const [showExcluirConta, setShowExcluirConta] = useState(false);
-  const [excluirTexto, setExcluirTexto] = useState("");
-  const [excluindoConta, setExcluindoConta] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [encerrandoSessoes, setEncerrandoSessoes] = useState(false);
+  const [verificando, setVerificando] = useState(false);
 
-  /* ── mutations / queries ── */
   const atualizarPerfilMutation = useAtualizarPerfil();
-  const { data: categorias = [] } = useCategorias();
-  const criarCategoria = useCriarCategoria();
-  const atualizarCategoria = useAtualizarCategoria();
-  const removerCategoria = useRemoverCategoria();
 
-  /* ── forms ── */
-  const nomeForm = useForm<AtualizarPerfilData>({
+  const { data: minha } = useQuery({
+    queryKey: ["assinatura-minha"],
+    queryFn: () => api.assinaturas.minha(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const assinatura = minha?.assinatura;
+
+  const perfilForm = useForm<AtualizarPerfilData>({
     resolver: zodResolver(atualizarPerfilSchema),
-    defaultValues: { nome: usuario?.nome ?? "" },
+    defaultValues: { nome: usuario?.nome ?? "", celular: usuario?.celular ?? "" },
   });
 
   const senhaForm = useForm<AlterarSenhaData>({
@@ -112,79 +63,22 @@ export default function PerfilPage() {
     defaultValues: { senhaAtual: "", novaSenha: "", confirmarSenha: "" },
   });
 
-  const categoriaForm = useForm<CategoriaData>({
-    resolver: zodResolver(categoriaSchema),
-    defaultValues: { nome: "" },
-  });
-
-  const rendaForm = useForm<RendaMensalData>({
-    resolver: zodResolver(rendaMensalSchema),
-    defaultValues: {
-      rendaMensal: usuario?.rendaMensal ? usuario.rendaMensal.toFixed(2).replace(".", ",") : "0,00",
-    },
-  });
-
-  const editCategoriaForm = useForm<CategoriaData>({
-    resolver: zodResolver(categoriaSchema),
-  });
-
   if (!usuario) return null;
 
-  /* ── handlers ── */
-  const gerarCodigo = async () => {
-    setGerando(true);
-    try {
-      const res = await api.auth.gerarCodigoTelegram();
-      setCodigoTelegram(res);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao gerar código");
-    } finally {
-      setGerando(false);
-    }
-  };
-
-  const verificarVinculo = async () => {
-    setVerificando(true);
-    try {
-      await atualizarContexto();
-      toast.success("Perfil atualizado!");
-    } catch {
-      // ignore
-    } finally {
-      setVerificando(false);
-    }
-  };
-
-  const copiarCodigo = () => {
-    if (!codigoTelegram) return;
-    navigator.clipboard.writeText(codigoTelegram.codigo);
-    setCopiado(true);
-    toast.success("Código copiado!");
-    setTimeout(() => setCopiado(false), 2000);
-  };
-
-  const onSalvarNome = (data: AtualizarPerfilData) => {
+  /* ─── handlers ─── */
+  const onSalvarPerfil = (data: AtualizarPerfilData) => {
+    setSalvando(true);
     atualizarPerfilMutation.mutate(
-      { nome: data.nome },
+      { nome: data.nome, celular: data.celular },
       {
         onSuccess: async () => {
-          setEditandoNome(false);
           await atualizarContexto();
+          toast.success("Perfil atualizado!");
+          setSalvando(false);
         },
-      }
-    );
-  };
-
-  const onSalvarRenda = (data: RendaMensalData) => {
-    const raw = data.rendaMensal.replace(/\./g, "").replace(",", ".");
-    const valor = parseFloat(raw);
-    atualizarPerfilMutation.mutate(
-      { rendaMensal: isNaN(valor) || valor === 0 ? 0 : valor },
-      {
-        onSuccess: async () => {
-          setEditandoRenda(false);
-          await atualizarContexto();
-          toast.success("Renda mensal atualizada!");
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Erro ao salvar");
+          setSalvando(false);
         },
       }
     );
@@ -203,607 +97,477 @@ export default function PerfilPage() {
     );
   };
 
-  const onCriarCategoria = (data: CategoriaData) => {
-    criarCategoria.mutate(
-      { nome: data.nome },
-      {
-        onSuccess: () => {
-          setShowNovaCategoria(false);
-          categoriaForm.reset();
-        },
-      }
-    );
-  };
-
-  const onEditarCategoria = (data: CategoriaData) => {
-    if (!editandoCategoria) return;
-    atualizarCategoria.mutate(
-      { id: editandoCategoria.id, data: { nome: data.nome } },
-      { onSuccess: () => setEditandoCategoria(null) }
-    );
-  };
-
-  const onRemoverCategoria = () => {
-    if (removendoCategoria === null) return;
-    removerCategoria.mutate(removendoCategoria, {
-      onSuccess: () => setRemovendoCategoria(null),
-    });
-  };
-
-  const onExcluirConta = async () => {
-    if (excluirTexto !== "EXCLUIR MINHA CONTA") return;
-    setExcluindoConta(true);
+  const verificarVinculo = async () => {
+    setVerificando(true);
     try {
-      await api.auth.excluirConta();
-      toast.success("Conta excluída permanentemente.");
-      logout();
-      router.push("/login");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir conta.");
-      setExcluindoConta(false);
+      await atualizarContexto();
+      toast.success("Status atualizado!");
+    } catch {
+      // ignore
+    } finally {
+      setVerificando(false);
     }
   };
 
-  /* ── render ── */
+  const onEncerrarSessoes = async () => {
+    setEncerrandoSessoes(true);
+    try {
+      logout();
+      toast.success("Sessões encerradas.");
+    } finally {
+      setEncerrandoSessoes(false);
+    }
+  };
+
+  /* ─── plan data ─── */
+  const planNome = assinatura?.planoNome ?? "Gratuito";
+  const planStatus = assinatura?.statusNome ?? "Inativo";
+  const planValor = assinatura?.valorMensal ?? 0;
+  const planAtivo = assinatura?.status === "Ativa" || assinatura?.emTrial;
+
+  const planBeneficios: Record<string, string[]> = {
+    Individual: [
+      "Lançamentos ilimitados",
+      "Importação de extratos",
+      "Telegram ilimitado",
+      "Suporte prioritário",
+    ],
+    Familia: [
+      "Tudo do Individual",
+      "Titular + 1 membro",
+      "Recursos compartilhados opcionais",
+      "Suporte VIP",
+    ],
+    Gratuito: [
+      "50 lançamentos/mês",
+      "Categorias básicas",
+      "Dashboard básico",
+      "Sem importação",
+    ],
+  };
+  const beneficios =
+    planBeneficios[assinatura?.plano ?? "Gratuito"] ?? planBeneficios["Gratuito"];
+
+  /* ─── input class ─── */
+  const inputCls =
+    "w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/30 focus:border-emerald-500 transition-colors";
+  const labelCls =
+    "text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block";
+
   return (
-    <div className="space-y-8">
-      {/* ── Page Header ── */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">Ajustes</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm">
-          Gerencie suas informações pessoais, integrações e categorias.
+    <div className="space-y-4 sm:space-y-6">
+      {/* ── Header ── */}
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight serif-italic">
+          Perfil
+        </h1>
+        <p className="text-xs text-slate-400 mt-1 mono-data uppercase tracking-[0.15em]">
+          Gestão de Identidade Financeira
         </p>
       </div>
 
-      {/* ═══════════════════════════════════════════
-          SEÇÃO 1 — MINHA CONTA
-      ═══════════════════════════════════════════ */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 pb-2">
-          <User className="h-6 w-6 text-emerald-600" />
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Minha Conta</h2>
-        </div>
-
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-panel rounded-2xl p-4 sm:p-6 lg:p-8"
-        >
-          {/* Top: avatar + info */}
-          <div className="flex items-start justify-between flex-wrap gap-4 sm:gap-6">
-            <div className="flex gap-4 sm:gap-6 items-center">
-              <div className="relative">
-                <Avatar className="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 border-4 border-white dark:border-slate-700 shadow-lg">
-                  <AvatarFallback className="text-2xl font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                    {getInitials(usuario.nome)}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white">{usuario.nome}</h3>
-                <p className="text-slate-500 dark:text-slate-400">{usuario.email}</p>
-              </div>
-            </div>
-            <div className="text-right text-sm text-slate-400 hidden sm:block">
-              <p>Membro desde</p>
-              <p className="font-medium text-slate-600 dark:text-slate-300">
-                {formatDate(usuario.criadoEm)}
-              </p>
-            </div>
-          </div>
-
-          {/* Grid: Info + Security */}
-          <div className="border-t border-slate-100 dark:border-slate-700/50 pt-8 mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Left: Personal info */}
-            <div className="flex flex-col gap-4">
-              <h4 className="font-semibold text-slate-700 dark:text-slate-200">
-                Informações Pessoais
-              </h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
-                    Nome Completo
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-slate-600 dark:text-slate-300"
-                      disabled
-                      type="text"
-                      value={usuario.nome}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
-                    Email
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      className="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 text-slate-500 dark:text-slate-400 cursor-not-allowed"
-                      disabled
-                      type="email"
-                      value={usuario.email}
-                    />
-                    <button
-                      className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-emerald-600 hover:border-emerald-600/30 font-medium text-sm transition-all whitespace-nowrap shadow-sm"
-                      onClick={() => {
-                        nomeForm.reset({ nome: usuario.nome });
-                        setEditandoNome(true);
-                      }}
-                    >
-                      Editar
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
-                    Renda Mensal
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="w-full flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2">
-                      <DollarSign className="h-4 w-4 text-emerald-500 shrink-0" />
-                      <span className="text-slate-600 dark:text-slate-300">
-                        {usuario.rendaMensal
-                          ? `R$ ${usuario.rendaMensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                          : "Não informada"}
-                      </span>
-                    </div>
-                    <button
-                      className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-emerald-600 hover:border-emerald-600/30 font-medium text-sm transition-all whitespace-nowrap shadow-sm"
-                      onClick={() => {
-                        rendaForm.reset({
-                          rendaMensal: usuario.rendaMensal
-                            ? usuario.rendaMensal.toFixed(2).replace(".", ",")
-                            : "0,00",
-                        });
-                        setEditandoRenda(true);
-                      }}
-                    >
-                      Editar
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    Usada como base nas projeções e simulações financeiras
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Security */}
-            <div className="flex flex-col gap-4">
-              <h4 className="font-semibold text-slate-700 dark:text-slate-200">Segurança</h4>
-              <div className="flex flex-col gap-4">
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-slate-800 dark:text-slate-200">Senha</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Altere sua senha de acesso
-                    </p>
-                  </div>
-                  <button
-                    className="text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
-                    onClick={() => setShowSenha(true)}
-                  >
-                    Alterar Senha
-                  </button>
-                </div>
-                <div className="p-4 bg-red-50/50 dark:bg-red-950/20 rounded-xl border border-red-100 dark:border-red-900/30 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-red-700 dark:text-red-400">Zona de Perigo</p>
-                    <p className="text-xs text-red-500 dark:text-red-400/70">Ação irreversível</p>
-                  </div>
-                  <button
-                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 font-medium text-sm transition-colors shadow-sm"
-                    onClick={() => setShowExcluirConta(true)}
-                  >
-                    Excluir Conta
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.section>
-      </div>
-
-      {/* ═══════════════════════════════════════════
-          SEÇÃO 2 — INTEGRAÇÃO TELEGRAM
-      ═══════════════════════════════════════════ */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 pb-2 mt-4">
-          <Send className="h-6 w-6 text-emerald-600" />
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Integração Telegram</h2>
-        </div>
-
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass-panel rounded-2xl p-4 sm:p-6 lg:p-8 flex flex-col md:flex-row gap-6 lg:gap-8"
-        >
-          {/* Left: info & instructions */}
-          <div className="flex-1 space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="size-10 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center text-sky-500">
-                <MessageCircle className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-                  Bot do Telegram
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Receba notificações e adicione gastos rápidos pelo Telegram.
-                </p>
-              </div>
-              {usuario.telegramVinculado ? (
-                <Badge className="ml-auto bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-0">
-                  <Check className="h-3 w-3 mr-1" />
-                  Vinculado
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="ml-auto">
-                  Pendente
-                </Badge>
-              )}
-            </div>
-
-            <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-              <p className="mb-1">
-                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-                  Como funciona:
-                </span>
-              </p>
-              <ul className="list-disc list-inside space-y-1 ml-1">
-                <li>Clique no botão abaixo para abrir o Telegram.</li>
-                <li>Envie o código exibido ao lado para o nosso bot.</li>
-                <li>Pronto! Sua conta estará vinculada automaticamente.</li>
-              </ul>
-            </div>
-
-            <div className="flex gap-4 pt-2">
-              <a
-                href={telegramBotUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 font-medium transition-colors flex items-center gap-2 shadow-sm"
-              >
-                Link para o Bot
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </div>
-          </div>
-
-          {/* Right: code panel */}
-          <div className="w-full md:max-w-100 lg:max-w-120 bg-white/60 dark:bg-slate-800/40 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-lg border border-white/50 dark:border-slate-700/30 flex flex-col gap-6 relative overflow-hidden backdrop-blur-xl">
-            <div className="absolute -top-16 -right-16 size-48 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
-
-            {usuario.telegramVinculado ? (
-              /* Connected state */
-              <div className="relative z-10 flex flex-col items-center gap-4 text-center py-6">
-                <div className="size-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                  <Shield className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-lg text-emerald-800 dark:text-emerald-300">
-                    Telegram conectado!
-                  </h4>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
-                    Registre lançamentos, consulte saldos e faturas pelo Telegram usando linguagem
-                    natural.
-                  </p>
-                </div>
-              </div>
-            ) : !codigoTelegram ? (
-              /* No code yet — prompt to generate */
-              <div className="relative z-10 flex flex-col items-center gap-6 text-center py-6">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-bold tracking-wide uppercase border border-emerald-100 dark:border-emerald-800">
-                    Segurança
-                  </span>
-                </div>
-                <p className="text-base font-semibold text-slate-700 dark:text-slate-200">
-                  Código de vinculação
-                </p>
-                <p className="text-sm text-slate-400">Gere um código para vincular seu Telegram.</p>
-                <Button
-                  onClick={gerarCodigo}
-                  loading={gerando}
-                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-600 text-white rounded-xl text-lg font-bold shadow-lg shadow-emerald-500/25 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
-                >
-                  <Smartphone className="h-5 w-5" />
-                  Gerar código
-                </Button>
-              </div>
-            ) : (
-              /* Code generated — OTP display */
-              <div className="relative z-10 flex flex-col gap-4">
-                <div className="flex flex-col gap-2 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-bold tracking-wide uppercase border border-emerald-100 dark:border-emerald-800">
-                      Segurança
+      {/* ── 12-col grid ── */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* ════ Left column (8 cols) ════ */}
+        <div className="col-span-12 lg:col-span-8 space-y-6">
+          {/* Identity card */}
+          <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-12">
+            {/* Avatar row */}
+            <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 sm:justify-between mb-6 sm:mb-10">
+              <div className="flex items-center gap-4 sm:gap-6">
+                {/* Avatar */}
+                <div className="relative group cursor-pointer">
+                  <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-36 lg:h-36 rounded-full bg-slate-100 border-4 border-white shadow-2xl flex items-center justify-center">
+                    <span className="text-2xl sm:text-4xl lg:text-5xl font-bold text-slate-400">
+                      {getInitials(usuario.nome)}
                     </span>
                   </div>
-                  <p className="text-base font-semibold text-slate-700 dark:text-slate-200">
-                    Seu código de vinculação
+                  {/* camera overlay */}
+                  <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Camera className="text-white w-8 h-8" />
+                  </div>
+                  {/* verified badge */}
+                  <div className="absolute -bottom-1 -right-1 w-10 h-10 bg-emerald-500 rounded-full border-4 border-white flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+
+                <div>
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-slate-900">
+                    {usuario.nome}
+                  </h2>
+                  <p className="mono-data text-xs text-slate-400 mt-1 uppercase tracking-widest">
+                    {assinatura?.plano === "Familia"
+                      ? "CONTA FAMÍLIA"
+                      : "CONTA INDIVIDUAL"}
                   </p>
-                  <p className="text-sm text-slate-400">Envie este código no bot do Telegram.</p>
-                </div>
-
-                {/* OTP boxes */}
-                <div className="my-4">
-                  <div className="flex justify-center items-center gap-1.5 sm:gap-3 flex-wrap">
-                    {codigoTelegram.codigo.split("").map((char, i, arr) => (
-                      <span key={i}>
-                        <div className="w-9 h-11 sm:w-12 sm:h-14 text-center text-2xl sm:text-3xl font-mono font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl shadow-sm text-slate-800 dark:text-white flex items-center justify-center select-all">
-                          {char}
-                        </div>
-                        {i === Math.floor(arr.length / 2) - 1 && (
-                          <div className="w-3 sm:w-4 h-1 bg-slate-200 dark:bg-slate-600 rounded-full mx-0.5 sm:mx-1 inline-block" />
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  <button
-                    onClick={copiarCodigo}
-                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-600 text-white rounded-xl text-lg font-bold shadow-lg shadow-emerald-500/25 transition-all active:scale-[0.98] flex items-center justify-center gap-3 group"
-                  >
-                    {copiado ? (
-                      <Check className="h-6 w-6" />
-                    ) : (
-                      <Copy className="h-6 w-6 group-hover:rotate-12 transition-transform" />
-                    )}
-                    {copiado ? "Copiado!" : "Copiar Código"}
-                  </button>
-
-                  <Button
-                    onClick={verificarVinculo}
-                    loading={verificando}
-                    variant="outline"
-                    className="w-full py-3 rounded-xl font-semibold gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Já enviei, verificar
-                  </Button>
-
-                  <div className="flex items-center justify-center gap-3 py-2">
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 tabular-nums">
-                      Expira em:{" "}
-                      <span className="text-slate-800 dark:text-white font-bold">
-                        {formatDate(codigoTelegram.expiraEm)}
-                      </span>
-                    </p>
-                  </div>
                 </div>
               </div>
-            )}
+
+              {/* Save button */}
+              <button
+                type="submit"
+                form="perfil-form"
+                disabled={salvando || atualizarPerfilMutation.isPending}
+                className="bg-slate-900 text-white rounded-full px-6 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-colors disabled:opacity-50"
+              >
+                {salvando || atualizarPerfilMutation.isPending
+                  ? "Salvando..."
+                  : "Salvar Alterações"}
+              </button>
+            </div>
+
+            {/* Profile form */}
+            <form
+              id="perfil-form"
+              onSubmit={perfilForm.handleSubmit(onSalvarPerfil)}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 lg:gap-x-8 gap-y-6">
+                {/* Nome Completo */}
+                <div className="col-span-2">
+                  <label className={labelCls}>Nome Completo</label>
+                  <input
+                    {...perfilForm.register("nome")}
+                    className={inputCls}
+                    placeholder="Seu nome completo"
+                  />
+                  {perfilForm.formState.errors.nome && (
+                    <p className="text-rose-500 text-xs mt-1">
+                      {perfilForm.formState.errors.nome.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className={labelCls}>Email</label>
+                  <input
+                    value={usuario.email}
+                    readOnly
+                    className={cn(inputCls, "cursor-not-allowed text-slate-400")}
+                  />
+                </div>
+
+                {/* Celular */}
+                <div>
+                  <label className={labelCls}>Celular (WhatsApp)</label>
+                  <input
+                    {...perfilForm.register("celular")}
+                    className={inputCls}
+                    placeholder="(11) 99999-9999"
+                    type="tel"
+                    inputMode="tel"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Usado para vincular automaticamente Telegram e WhatsApp
+                  </p>
+                  {perfilForm.formState.errors.celular && (
+                    <p className="text-rose-500 text-xs mt-1">
+                      {perfilForm.formState.errors.celular.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Senha */}
+                <div>
+                  <label className={labelCls}>Senha</label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      value="••••••••"
+                      readOnly
+                      className={cn(inputCls, "pr-24")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSenha(true)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-600 uppercase tracking-widest hover:text-emerald-700 transition-colors"
+                    >
+                      Alterar
+                    </button>
+                  </div>
+                </div>
+
+                {/* CPF */}
+                <div>
+                  <label className={labelCls}>CPF</label>
+                  <input
+                    value={
+                      usuario.temCpf ? "•••.•••.•••-••" : "Não informado"
+                    }
+                    readOnly
+                    className={cn(
+                      inputCls,
+                      "cursor-not-allowed mono-data text-slate-500"
+                    )}
+                  />
+                </div>
+
+                {/* Membro desde */}
+                <div>
+                  <label className={labelCls}>Membro Desde</label>
+                  <input
+                    value={new Date(usuario.criadoEm).toLocaleDateString(
+                      "pt-BR"
+                    )}
+                    readOnly
+                    className={cn(
+                      inputCls,
+                      "cursor-not-allowed mono-data text-slate-500"
+                    )}
+                  />
+                </div>
+              </div>
+            </form>
           </div>
-        </motion.section>
-      </div>
 
-      {/* ═══════════════════════════════════════════
-          SEÇÃO 3 — CATEGORIAS
-      ═══════════════════════════════════════════ */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 pb-2 mt-4">
-          <Tag className="h-6 w-6 text-emerald-600" />
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Categorias</h2>
-        </div>
-
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="glass-panel rounded-2xl overflow-hidden"
-        >
-          {/* Header */}
-          <div className="p-6 border-b border-slate-200 dark:border-slate-700/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-                Categorias de Despesas
+          {/* Serviços Conectados */}
+          <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-12">
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold text-slate-900 serif-italic">
+                Serviços Conectados
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Personalize como você organiza suas finanças.
+              <p className="text-sm text-slate-400 mt-1">
+                Vinculação automática pelo celular cadastrado
               </p>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Telegram tile */}
+              <div
+                className={cn(
+                  "rounded-3xl bg-slate-50 border p-6 flex flex-col gap-3",
+                  usuario.telegramVinculado
+                    ? "border-slate-100"
+                    : "border-dashed border-slate-200"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: "#0088cc" }}
+                  >
+                    <MessageCircle className="text-white w-5 h-5" />
+                  </div>
+                  {usuario.telegramVinculado ? (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1 uppercase tracking-widest">
+                      Conectado
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-slate-400 bg-slate-100 rounded-full px-3 py-1 uppercase tracking-widest">
+                      Pendente
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Telegram Bot
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    @facilita_finance_bot
+                  </p>
+                </div>
+
+                {usuario.telegramVinculado ? (
+                  <button
+                    type="button"
+                    onClick={verificarVinculo}
+                    disabled={verificando}
+                    className="text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-900 transition-colors text-left"
+                  >
+                    {verificando ? "Verificando..." : "Verificar Status"}
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-slate-500">
+                      Envie uma mensagem ao bot e compartilhe seu contato para vincular automaticamente.
+                    </p>
+                    <a
+                      href="https://t.me/facilita_finance_bot"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 uppercase tracking-widest hover:text-emerald-700 transition-colors"
+                    >
+                      Abrir Telegram <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* WhatsApp tile */}
+              <div
+                className={cn(
+                  "rounded-3xl bg-slate-50 border p-6 flex flex-col gap-3",
+                  usuario.whatsAppVinculado
+                    ? "border-slate-100"
+                    : "border-dashed border-slate-200"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: "#25D366" }}
+                  >
+                    <Smartphone className="text-white w-5 h-5" />
+                  </div>
+                  {usuario.whatsAppVinculado ? (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1 uppercase tracking-widest">
+                      Conectado
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-slate-400 bg-slate-100 rounded-full px-3 py-1 uppercase tracking-widest">
+                      Pendente
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    WhatsApp Bot
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Falcon Finance
+                  </p>
+                </div>
+
+                {usuario.whatsAppVinculado ? (
+                  <button
+                    type="button"
+                    onClick={verificarVinculo}
+                    disabled={verificando}
+                    className="text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-900 transition-colors text-left"
+                  >
+                    {verificando ? "Verificando..." : "Verificar Status"}
+                  </button>
+                ) : (
+                  <p className="text-[11px] text-slate-500">
+                    Envie uma mensagem ao nosso WhatsApp — a vinculação é automática pelo seu celular cadastrado.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ════ Right column (4 cols) ════ */}
+        <div className="col-span-12 lg:col-span-4 space-y-6">
+          {/* Premium card */}
+          <div className="relative bg-white border border-slate-200/70 border-l-4 border-l-emerald-500 rounded-[2rem] p-8 shadow-sm overflow-hidden">
+            {/* Ghost icon bg */}
+            <div className="absolute top-4 right-4 opacity-[0.03] pointer-events-none">
+              <Diamond className="w-32 h-32 text-slate-900" />
+            </div>
+
+            <div className="relative z-10 space-y-5">
+              {/* Plan identity */}
+              <div>
+                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.2em] mb-2">
+                  Plano Atual
+                </p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h3 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-slate-900 serif-italic">
+                    {planNome}
+                  </h3>
+                  <span
+                    className={cn(
+                      "text-[10px] font-bold uppercase tracking-widest rounded-full px-3 py-1 border",
+                      planAtivo
+                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                        : "bg-slate-50 text-slate-500 border-slate-200"
+                    )}
+                  >
+                    {planStatus}
+                  </span>
+                </div>
+                {planValor > 0 && (
+                  <p className="mono-data text-lg text-emerald-600 mt-2">
+                    R${" "}
+                    {planValor.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}{" "}
+                    / mês
+                  </p>
+                )}
+              </div>
+
+              {/* Benefits */}
+              <ul className="space-y-2">
+                {beneficios.map((b) => (
+                  <li key={b} className="flex items-center gap-2.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span className="text-sm text-slate-600">{b}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Actions */}
+              <div className="pt-2 space-y-3">
+                <button
+                  type="button"
+                  className="w-full py-4 rounded-2xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors"
+                  onClick={() => toast.info("Upgrade disponível em breve")}
+                >
+                  Upgrade de Plano
+                </button>
+                <button
+                  type="button"
+                  className="w-full text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors py-1"
+                  onClick={() => toast.info("Histórico disponível em breve")}
+                >
+                  Ver Histórico de Faturas
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Segurança Crítica */}
+          <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <Shield className="w-5 h-5 text-slate-600" />
+              <h3 className="text-base font-semibold text-slate-900">
+                Segurança Crítica
+              </h3>
+            </div>
             <button
-              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-600 hover:text-emerald-600 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-xl font-medium shadow-sm transition-all active:scale-95 flex items-center gap-2 text-sm"
-              onClick={() => {
-                categoriaForm.reset();
-                setShowNovaCategoria(true);
-              }}
+              type="button"
+              onClick={onEncerrarSessoes}
+              disabled={encerrandoSessoes}
+              className="w-full p-6 bg-slate-50 rounded-[2rem] border border-transparent hover:border-rose-500/30 transition-all flex items-center gap-4 group"
             >
-              <Plus className="h-4 w-4" />
-              Nova Categoria
+              <LogOut className="w-5 h-5 text-slate-500 group-hover:text-rose-500 transition-colors shrink-0" />
+              <div className="text-left">
+                <p className="text-sm font-semibold text-slate-900">
+                  Encerrar Sessões
+                </p>
+                <p className="text-xs text-rose-400 mt-0.5">
+                  {encerrandoSessoes ? "Encerrando..." : "Fará logout desta conta"}
+                </p>
+              </div>
             </button>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 dark:bg-slate-800/30 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700/50">
-                  <th className="p-3 sm:p-5 w-1/3">Nome da Categoria</th>
-                  <th className="p-3 sm:p-5">Tipo</th>
-                  <th className="p-3 sm:p-5 hidden sm:table-cell">Criada em</th>
-                  <th className="p-3 sm:p-5 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30 text-sm">
-                {categorias.map((cat) => (
-                  <tr
-                    key={cat.id}
-                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group"
-                  >
-                    <td className="p-3 sm:p-5">
-                      <div className="flex items-center gap-3">
-                        <div className="size-8 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-600 shrink-0">
-                          <Tag className="h-4 w-4" />
-                        </div>
-                        <span className="font-medium text-slate-700 dark:text-slate-200">
-                          {cat.nome}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-3 sm:p-5">
-                      {cat.padrao ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400">
-                          Padrão do Sistema
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
-                          Personalizada
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3 sm:p-5 text-slate-500 dark:text-slate-400 hidden sm:table-cell">
-                      {cat.padrao ? "--" : "--"}
-                    </td>
-                    <td className="p-3 sm:p-5 text-right">
-                      {cat.padrao ? (
-                        <span className="text-slate-300 dark:text-slate-600 text-xs italic">
-                          Não editável
-                        </span>
-                      ) : (
-                        <div className="flex items-center justify-end gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                          <button
-                            className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-600/10 rounded-lg transition-colors"
-                            title="Editar"
-                            onClick={() => {
-                              editCategoriaForm.reset({ nome: cat.nome });
-                              setEditandoCategoria({ id: cat.id, nome: cat.nome });
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
-                            title="Excluir"
-                            onClick={() => setRemovendoCategoria(cat.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {categorias.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="p-8 text-center text-slate-400 dark:text-slate-500">
-                      Nenhuma categoria encontrada.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </motion.section>
+          {/* Help */}
+          <p className="text-xs text-slate-400 text-center px-4">
+            Precisa de ajuda?{" "}
+            <button
+              type="button"
+              className="text-emerald-600 hover:text-emerald-700 font-semibold"
+              onClick={() => toast.info("Suporte disponível em breve")}
+            >
+              Fale com o suporte
+            </button>
+          </p>
+        </div>
       </div>
 
-      {/* ═══════════════════════════════════════════
-          DIALOGS
-      ═══════════════════════════════════════════ */}
-
-      {/* Edit Name Dialog */}
-      <Dialog open={editandoNome} onOpenChange={setEditandoNome}>
+      {/* ── Alterar Senha modal ── */}
+      <Dialog open={showSenha} onOpenChange={(open) => { if (!open) { setShowSenha(false); senhaForm.reset(); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
-                <User className="h-5 w-5 sm:h-6 sm:w-6" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <DialogTitle className="text-lg sm:text-xl font-semibold">Editar Nome</DialogTitle>
-                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
-                  Altere seu nome de exibição
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <form onSubmit={nomeForm.handleSubmit(onSalvarNome)} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Nome
-              </Label>
-              <Input className="h-11 rounded-xl" {...nomeForm.register("nome")} />
-              {nomeForm.formState.errors.nome && (
-                <p className="text-xs text-red-500">{nomeForm.formState.errors.nome.message}</p>
-              )}
-            </div>
-            <Button
-              type="submit"
-              className="w-full h-12 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-              loading={atualizarPerfilMutation.isPending}
-            >
-              <Save className="h-4 w-4 sm:h-5 sm:w-5" />
-              Salvar
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Renda Mensal Dialog */}
-      <Dialog open={editandoRenda} onOpenChange={setEditandoRenda}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
-                <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <DialogTitle className="text-lg sm:text-xl font-semibold">Renda Mensal</DialogTitle>
-                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
-                  Informe sua renda mensal base.
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <form onSubmit={rendaForm.handleSubmit(onSalvarRenda)} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Valor (R$)
-              </Label>
-              <div className="relative">
-                <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center rounded-l-xl text-xs font-bold bg-emerald-600/10 text-emerald-600">
-                  R$
-                </div>
-                <CurrencyInput
-                  className="h-11 rounded-xl pl-13 tabular-nums font-semibold"
-                  value={rendaForm.watch("rendaMensal")}
-                  onValueChange={(v) =>
-                    rendaForm.setValue("rendaMensal", v, { shouldValidate: true })
-                  }
-                />
-              </div>
-              {rendaForm.formState.errors.rendaMensal && (
-                <p className="text-xs text-red-500">
-                  {rendaForm.formState.errors.rendaMensal.message}
-                </p>
-              )}
-            </div>
-            <Button
-              type="submit"
-              className="w-full h-12 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-              loading={atualizarPerfilMutation.isPending}
-            >
-              <Save className="h-4 w-4 sm:h-5 sm:w-5" />
-              Salvar
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Change Password Dialog */}
-      <Dialog open={showSenha} onOpenChange={setShowSenha}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
-                <Lock className="h-5 w-5 sm:h-6 sm:w-6" />
+                <Shield className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <DialogTitle className="text-lg sm:text-xl font-semibold">Alterar Senha</DialogTitle>
@@ -813,51 +577,32 @@ export default function PerfilPage() {
               </div>
             </div>
           </DialogHeader>
-
           <form onSubmit={senhaForm.handleSubmit(onAlterarSenha)} className="space-y-4">
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Senha atual
               </Label>
-              <Input
-                type="password"
-                className="h-11 rounded-xl"
-                {...senhaForm.register("senhaAtual")}
-              />
+              <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("senhaAtual")} />
               {senhaForm.formState.errors.senhaAtual && (
-                <p className="text-xs text-red-500">
-                  {senhaForm.formState.errors.senhaAtual.message}
-                </p>
+                <p className="text-xs text-red-500">{senhaForm.formState.errors.senhaAtual.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Nova senha
               </Label>
-              <Input
-                type="password"
-                className="h-11 rounded-xl"
-                {...senhaForm.register("novaSenha")}
-              />
+              <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("novaSenha")} />
               {senhaForm.formState.errors.novaSenha && (
-                <p className="text-xs text-red-500">
-                  {senhaForm.formState.errors.novaSenha.message}
-                </p>
+                <p className="text-xs text-red-500">{senhaForm.formState.errors.novaSenha.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Confirmar nova senha
               </Label>
-              <Input
-                type="password"
-                className="h-11 rounded-xl"
-                {...senhaForm.register("confirmarSenha")}
-              />
+              <Input type="password" className="h-11 rounded-xl" {...senhaForm.register("confirmarSenha")} />
               {senhaForm.formState.errors.confirmarSenha && (
-                <p className="text-xs text-red-500">
-                  {senhaForm.formState.errors.confirmarSenha.message}
-                </p>
+                <p className="text-xs text-red-500">{senhaForm.formState.errors.confirmarSenha.message}</p>
               )}
             </div>
             <Button
@@ -865,213 +610,10 @@ export default function PerfilPage() {
               className="w-full h-12 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
               loading={atualizarPerfilMutation.isPending}
             >
-              <Lock className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
               Alterar senha
             </Button>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* New Category Dialog */}
-      <Dialog open={showNovaCategoria} onOpenChange={setShowNovaCategoria}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
-                <Tag className="h-5 w-5 sm:h-6 sm:w-6" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <DialogTitle className="text-lg sm:text-xl font-semibold">Nova Categoria</DialogTitle>
-                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
-                  Crie uma categoria personalizada
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <form onSubmit={categoriaForm.handleSubmit(onCriarCategoria)} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Nome da categoria
-              </Label>
-              <Input
-                className="h-11 rounded-xl"
-                placeholder="Ex: Pets, Investimentos..."
-                {...categoriaForm.register("nome")}
-              />
-              {categoriaForm.formState.errors.nome && (
-                <p className="text-xs text-red-500">
-                  {categoriaForm.formState.errors.nome.message}
-                </p>
-              )}
-            </div>
-            <Button
-              type="submit"
-              className="w-full h-12 rounded-xl gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-              loading={criarCategoria.isPending}
-            >
-              <Tag className="h-4 w-4 sm:h-5 sm:w-5" />
-              Criar categoria
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Category Dialog */}
-      <Dialog
-        open={editandoCategoria !== null}
-        onOpenChange={(open) => {
-          if (!open) setEditandoCategoria(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
-                <Pencil className="h-5 w-5 sm:h-6 sm:w-6" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <DialogTitle className="text-lg sm:text-xl font-semibold">
-                  Editar Categoria
-                </DialogTitle>
-                <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5 truncate">
-                  Altere o nome da categoria
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <form
-            onSubmit={editCategoriaForm.handleSubmit(onEditarCategoria)}
-            className="space-y-4"
-          >
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Nome
-              </Label>
-              <Input className="h-11 rounded-xl" {...editCategoriaForm.register("nome")} />
-              {editCategoriaForm.formState.errors.nome && (
-                <p className="text-xs text-red-500">
-                  {editCategoriaForm.formState.errors.nome.message}
-                </p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditandoCategoria(null)}
-                className="h-12 rounded-xl flex-1 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                className="h-12 rounded-xl flex-1 gap-2 font-bold bg-emerald-600 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                loading={atualizarCategoria.isPending}
-              >
-                <Check className="h-4 w-4 sm:h-5 sm:w-5" />
-                Salvar
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Category Confirmation */}
-      <AlertDialog
-        open={removendoCategoria !== null}
-        onOpenChange={() => setRemovendoCategoria(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover categoria?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Os lançamentos vinculados a esta categoria não serão
-              removidos.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={onRemoverCategoria}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2"
-              loading={removerCategoria.isPending}
-            >
-              <Trash2 className="h-4 w-4" />
-              Remover
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete Account Dialog */}
-      <Dialog
-        open={showExcluirConta}
-        onOpenChange={(open) => {
-          setShowExcluirConta(open);
-          if (!open) setExcluirTexto("");
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Excluir conta permanentemente
-            </DialogTitle>
-            <DialogDescription>
-              Esta ação é irreversível. Todos os seus dados serão deletados definitivamente.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-4 text-sm text-destructive/80 space-y-1">
-              <p className="font-semibold">Serão excluídos permanentemente:</p>
-              <ul className="list-disc list-inside space-y-0.5 text-xs">
-                <li>Todos os lançamentos e transações</li>
-                <li>Cartões, metas e limites</li>
-                <li>Categorias personalizadas</li>
-                <li>Configurações e integração com Telegram</li>
-              </ul>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Digite <span className="text-foreground font-bold">EXCLUIR MINHA CONTA</span> para
-                confirmar:
-              </Label>
-              <Input
-                value={excluirTexto}
-                onChange={(e) => setExcluirTexto(e.target.value)}
-                placeholder="EXCLUIR MINHA CONTA"
-                className="h-11 rounded-xl font-mono"
-                disabled={excluindoConta}
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1 rounded-xl"
-                onClick={() => {
-                  setShowExcluirConta(false);
-                  setExcluirTexto("");
-                }}
-                disabled={excluindoConta}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1 rounded-xl font-bold"
-                disabled={excluirTexto !== "EXCLUIR MINHA CONTA"}
-                loading={excluindoConta}
-                onClick={onExcluirConta}
-              >
-                Excluir definitivamente
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
     </div>

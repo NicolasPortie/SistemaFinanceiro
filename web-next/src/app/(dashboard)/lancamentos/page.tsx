@@ -52,6 +52,7 @@ import {
   FileUp,
 } from "lucide-react";
 import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
+import { DialogShellHeader } from "@/components/shared/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -391,63 +392,53 @@ export default function LancamentosPage() {
   const endIdx = lancamentosData ? Math.min(lancamentosData.pagina * 20, lancamentosData.total) : 0;
 
   return (
-    <div className="space-y-6">
-      {/* ═══ Action Bar ═══ */}
+    <div className="space-y-5 sm:space-y-8">
+
+      {/* ═══ Page Header ═══ */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/50 dark:border-slate-700/30 rounded-2xl p-4 lg:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm"
+        className="flex items-end justify-between gap-4 flex-wrap"
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
+        <div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-slate-900 dark:text-white tracking-tight">
             Lançamentos
-          </h2>
-          <div className="hidden md:block h-8 w-px bg-slate-300 dark:bg-slate-600" />
-          {/* Month selector */}
-          <div className="flex items-center gap-2 bg-white/70 dark:bg-slate-700/70 px-3 py-1.5 rounded-xl border border-white/60 dark:border-slate-600/60 shadow-sm">
-            <button
-              onClick={prev}
-              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg transition-colors cursor-pointer"
-            >
-              <ChevronLeft className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          </h1>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold mt-2">
+            Gestão de Fluxo de Caixa
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800/80 px-3 py-1.5 rounded-full border border-[rgba(15,23,42,0.06)] dark:border-slate-700/60 shadow-sm">
+            <button onClick={prev} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer">
+              <ChevronLeft className="h-3.5 w-3.5 text-slate-400" />
             </button>
             <button
               onClick={reset}
-              className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 min-w-28 justify-center select-none cursor-pointer hover:text-emerald-600 transition-colors"
+              className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700 dark:text-slate-200 min-w-24 justify-center select-none cursor-pointer uppercase tracking-[0.2em] hover:text-emerald-600 transition-colors"
             >
-              <CalendarDays className="h-4 w-4 text-emerald-600" />
+              <CalendarDays className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
               {label}
             </button>
             <button
               onClick={next}
-              disabled={isCurrentMonth}
-              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+              className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
             >
-              <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+              <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
             </button>
           </div>
-        </div>
-        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleRefresh}
-                  className="p-2.5 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-xl transition-colors cursor-pointer"
-                >
-                  <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Atualizar dados</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <button
+            onClick={handleRefresh}
+            className="p-2 text-slate-400 hover:text-emerald-500 transition-colors rounded-full hover:bg-white dark:hover:bg-slate-800 cursor-pointer"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
           <button
             onClick={() => setShowForm(true)}
-            className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer text-sm"
+            className="bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white px-5 py-2.5 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center gap-2 cursor-pointer shadow-lg"
           >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Novo Lançamento</span>
-            <span className="sm:hidden">Novo</span>
+            <Plus className="h-3.5 w-3.5" />
+            Novo Lançamento
           </button>
         </div>
       </motion.div>
@@ -456,34 +447,29 @@ export default function LancamentosPage() {
       <AnimatePresence>
         {selectedIds.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, height: 0, scale: 0.95 }}
-            animate={{ opacity: 1, height: "auto", scale: 1 }}
-            exit={{ opacity: 0, height: 0, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
           >
-            <div className="flex items-center justify-between p-3 px-5 rounded-2xl bg-emerald-600/10 border border-emerald-600/20 text-emerald-600 dark:text-emerald-400">
-              <span className="text-sm font-semibold">
+            <div className="flex items-center justify-between px-6 py-3 rounded-[2rem] bg-emerald-600/10 border border-emerald-600/20 text-emerald-600 dark:text-emerald-400">
+              <span className="text-[11px] font-bold uppercase tracking-widest">
                 {selectedIds.length}{" "}
                 {selectedIds.length === 1 ? "lançamento selecionado" : "lançamentos selecionados"}
               </span>
               <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={() => setSelectedIds([])}
-                  className="hover:bg-emerald-600/10"
+                  className="px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest text-emerald-700 hover:bg-emerald-600/10 transition-colors cursor-pointer"
                 >
                   Cancelar
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
+                </button>
+                <button
                   onClick={() => setDeletingMany(true)}
-                  className="gap-2 shadow-sm rounded-xl"
+                  className="px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-rose-500 text-white hover:bg-rose-600 transition-colors cursor-pointer flex items-center gap-2"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  Excluir Selecionados
-                </Button>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Excluir
+                </button>
               </div>
             </div>
           </motion.div>
@@ -496,267 +482,156 @@ export default function LancamentosPage() {
       ) : isError ? (
         <ErrorState message={error?.message} onRetry={handleRefresh} />
       ) : resumo ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
-          {/* Receitas */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 xl:gap-8">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0 }}
-            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+            className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-between"
           >
-            <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-            <div className="flex justify-between items-start z-10">
-              <div className="size-10 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-xl text-emerald-600 dark:text-emerald-400">
-                <TrendingUp className="h-5 w-5" />
-              </div>
+            <div>
+              <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-4">Receita Mensal</p>
+              <span className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(resumo.totalReceitas)}</span>
             </div>
-            <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                Receitas
-              </p>
-              <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-                {formatCurrency(resumo.totalReceitas)}
-              </h3>
-            </div>
+            <TrendingUp className="h-8 w-8 text-emerald-500 opacity-20" />
           </motion.div>
 
-          {/* Gastos */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+            className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-between"
           >
-            <div className="absolute -right-6 -bottom-6 bg-red-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-red-500/15 transition-all" />
-            <div className="flex justify-between items-start z-10">
-              <div className="size-10 flex items-center justify-center bg-red-100 dark:bg-red-500/15 rounded-xl text-red-600 dark:text-red-400">
-                <TrendingDown className="h-5 w-5" />
-              </div>
+            <div>
+              <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-4">Despesa Mensal</p>
+              <span className="text-lg sm:text-2xl font-bold text-rose-500">{formatCurrency(resumo.totalGastos)}</span>
             </div>
-            <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                Gastos
-              </p>
-              <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-                {formatCurrency(resumo.totalGastos)}
-              </h3>
-            </div>
+            <TrendingDown className="h-8 w-8 text-rose-500 opacity-20" />
           </motion.div>
 
-          {/* Saldo */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300 ring-2 ring-emerald-600/20"
+            className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-between"
           >
-            <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-            <div className="flex justify-between items-start z-10">
-              <div className="size-10 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-xl text-emerald-600 dark:text-emerald-400">
-                <Wallet className="h-5 w-5" />
-              </div>
-              {resumo.saldo !== 0 && resumo.totalReceitas > 0 && (
-                <span
-                  className={cn(
-                    "text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-0.5 border",
-                    resumo.saldo > 0
-                      ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20"
-                      : "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20"
-                  )}
-                >
-                  {resumo.saldo > 0 ? "+" : ""}
-                  {Math.round(
-                    ((resumo.totalReceitas - resumo.totalGastos) / resumo.totalReceitas) * 100
-                  )}
-                  %
-                </span>
-              )}
-            </div>
-            <div className="z-10 mt-auto">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                Saldo
-              </p>
-              <h3
-                className={cn(
-                  "text-2xl font-bold tracking-tight",
-                  resumo.saldo >= 0
-                    ? "text-slate-800 dark:text-white"
-                    : "text-red-600 dark:text-red-400"
-                )}
-              >
+            <div>
+              <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-4">Saldo do Período</p>
+              <span className={cn("text-lg sm:text-2xl font-bold", resumo.saldo >= 0 ? "text-emerald-600" : "text-rose-500")}>
                 {formatCurrency(resumo.saldo)}
-              </h3>
+              </span>
             </div>
+            <Wallet className="h-8 w-8 text-emerald-600 opacity-20" />
           </motion.div>
         </div>
       ) : null}
 
       {/* ═══ Filter Bar ═══ */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="glass-panel rounded-2xl p-4 lg:p-5"
+        transition={{ delay: 0.1 }}
+        className="exec-card p-3 rounded-2xl sm:rounded-[2rem] flex flex-wrap items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8"
       >
-        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
-          {/* Search */}
-          <div className="relative flex-1 w-full lg:max-w-sm">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
-            <input
-              placeholder="Buscar lançamentos..."
-              value={busca}
-              onChange={(e) => {
-                setBusca(e.target.value);
-                setPagina(1);
-              }}
-              className="w-full h-10 pl-10 pr-9 rounded-xl bg-white/70 dark:bg-slate-700/50 border border-white/60 dark:border-slate-600/60 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600/30 transition-all"
-            />
-            {busca && (
-              <button
-                onClick={() => {
-                  setBusca("");
-                  setPagina(1);
-                }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
-                aria-label="Limpar busca"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="hidden lg:block h-8 w-px bg-slate-200 dark:bg-slate-700" />
-
-          {/* Type filter pills */}
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex-1 relative min-w-0">
+          <Search className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 dark:text-slate-600" />
+          <input
+            placeholder="Pesquisar por descrição..."
+            value={busca}
+            onChange={(e) => { setBusca(e.target.value); setPagina(1); }}
+            className="w-full bg-transparent border-none text-[12px] pl-6 focus:ring-0 placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:italic text-slate-700 dark:text-slate-200 outline-none"
+          />
+          {busca && (
             <button
-              onClick={() => {
-                setFiltroTipo("todos");
-                setPagina(1);
-              }}
-              className={cn(
-                "px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer",
-                filtroTipo === "todos"
-                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20"
-                  : "bg-white/60 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 border border-white/60 dark:border-slate-600/50"
-              )}
-            >
-              Todos
-            </button>
-            <button
-              onClick={() => {
-                setFiltroTipo("receita");
-                setPagina(1);
-              }}
-              className={cn(
-                "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
-                filtroTipo === "receita"
-                  ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                  : "bg-white/60 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 border border-white/60 dark:border-slate-600/50"
-              )}
-            >
-              <ArrowUpCircle className="h-3.5 w-3.5" />
-              Receitas
-            </button>
-            <button
-              onClick={() => {
-                setFiltroTipo("gasto");
-                setPagina(1);
-              }}
-              className={cn(
-                "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
-                filtroTipo === "gasto"
-                  ? "bg-red-500 text-white shadow-md shadow-red-500/20"
-                  : "bg-white/60 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 border border-white/60 dark:border-slate-600/50"
-              )}
-            >
-              <ArrowDownCircle className="h-3.5 w-3.5" />
-              Gastos
-            </button>
-          </div>
-
-          {/* Category dropdown */}
-          <Select
-            value={filtroCategoria}
-            onValueChange={(v) => {
-              setFiltroCategoria(v);
-              setPagina(1);
-            }}
-          >
-            <SelectTrigger className="w-full sm:w-48 h-10 rounded-xl text-xs bg-white/70 dark:bg-slate-700/50 border-white/60 dark:border-slate-600/60 shadow-sm">
-              <Tag className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas categorias</SelectItem>
-              {categorias.map((c) => (
-                <SelectItem key={c.id} value={c.nome}>
-                  {c.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {activeFilters > 0 && (
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
+              onClick={() => { setBusca(""); setPagina(1); }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />
-              Limpar Filtros
             </button>
           )}
         </div>
+
+        <div className="h-8 w-px bg-slate-100 dark:bg-slate-700 flex-shrink-0" />
+
+        <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-100 dark:border-slate-700 flex-shrink-0">
+          {(["todos", "receita", "gasto"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => { setFiltroTipo(t); setPagina(1); }}
+              className={cn(
+                "px-4 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap",
+                filtroTipo === t
+                  ? t === "gasto"
+                    ? "bg-rose-500 text-white shadow-sm"
+                    : "bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400"
+                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              )}
+            >
+              {t === "todos" ? "Todas" : t === "receita" ? "Receitas" : "Despesas"}
+            </button>
+          ))}
+        </div>
+
+        <div className="h-8 w-px bg-slate-100 dark:bg-slate-700 flex-shrink-0" />
+
+        <select
+          value={filtroCategoria}
+          onChange={(e) => { setFiltroCategoria(e.target.value); setPagina(1); }}
+          className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 border-none bg-transparent cursor-pointer focus:ring-0 outline-none flex-shrink-0 dark:bg-slate-900"
+        >
+          <option value="todas">Categoria</option>
+          {categorias.map((c) => (
+            <option key={c.id} value={c.nome}>{c.nome}</option>
+          ))}
+        </select>
+
+        {activeFilters > 0 && (
+          <>
+            <div className="h-8 w-px bg-slate-100 dark:bg-slate-700 flex-shrink-0" />
+            <button
+              onClick={clearFilters}
+              className="text-[9px] font-bold uppercase tracking-widest text-rose-400 hover:text-rose-600 transition-colors cursor-pointer flex items-center gap-1.5 flex-shrink-0"
+            >
+              <X className="h-3 w-3" />
+              Limpar
+            </button>
+          </>
+        )}
       </motion.div>
 
       {/* ═══ Transaction Table ═══ */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="glass-panel rounded-2xl overflow-x-auto"
+        transition={{ delay: 0.15 }}
+        className="exec-card rounded-2xl sm:rounded-[2.5rem] overflow-hidden flex flex-col"
       >
         {/* Table header */}
-        <div className="hidden lg:grid lg:grid-cols-[40px_2fr_1fr_1fr_1fr_0.8fr_1fr_50px] gap-4 items-center px-6 py-3.5 border-b border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-800/30">
-          <div>
+        <div className="hidden lg:flex items-center border-b border-slate-50 dark:border-slate-700/50">
+          <div className="px-8 py-6 flex-shrink-0">
             <Checkbox
-              checked={
-                !!lancamentosData?.items?.length &&
-                selectedIds.length === lancamentosData.items.length
-              }
+              checked={!!lancamentosData?.items?.length && selectedIds.length === lancamentosData.items.length}
               onCheckedChange={(c: boolean) => toggleSelectAll(c)}
               aria-label="Selecionar todos"
             />
           </div>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Descrição
-          </span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Data
-          </span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Categoria
-          </span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Forma Pgto.
-          </span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Origem
-          </span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 text-right">
-            Valor
-          </span>
-          <span />
+          <div className="grid grid-cols-[0.7fr_1.4fr_0.8fr_0.8fr_0.9fr] flex-1 pr-8">
+            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Data</span>
+            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Descrição</span>
+            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Categoria</span>
+            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Origem</span>
+            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] text-right">Valor</span>
+          </div>
+          <div className="w-24 flex-shrink-0" />
         </div>
 
         {loadingLancamentos ? (
-          <div className="p-12 flex flex-col items-center justify-center gap-3">
+          <div className="p-6 sm:p-12 flex flex-col items-center justify-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">Carregando lançamentos...</p>
+            <p className="text-[11px] text-slate-400 uppercase tracking-widest font-bold">Carregando...</p>
           </div>
         ) : lancamentosData && lancamentosData.items.length > 0 ? (
           <>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
+            <div className="divide-y divide-slate-50 dark:divide-slate-800/50">
               <AnimatePresence>
                 {lancamentosData.items.map((l, i) => (
                   <motion.div
@@ -768,215 +643,91 @@ export default function LancamentosPage() {
                   >
                     {/* Desktop row */}
                     <div
-                      className={cn(
-                        "hidden lg:grid lg:grid-cols-[40px_2fr_1fr_1fr_1fr_0.8fr_1fr_50px] gap-4 items-center px-6 py-3.5 transition-all duration-200 cursor-pointer",
-                        selectedIds.includes(l.id)
-                          ? "bg-emerald-600/5 hover:bg-emerald-600/8"
-                          : "hover:bg-white/40 dark:hover:bg-slate-800/30"
-                      )}
+                      className="hidden lg:flex items-center hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
                       onClick={() => setViewingItem(l)}
                     >
-                      {/* Checkbox */}
-                      <div onClick={(e) => e.stopPropagation()}>
+                      <div className="px-8 py-7 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedIds.includes(l.id)}
                           onCheckedChange={(c: boolean) => toggleSelectRow(l.id, c)}
-                          aria-label={`Selecionar ${l.descricao}`}
                         />
                       </div>
-
-                      {/* Description */}
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105",
-                            l.tipo === "receita"
-                              ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
-                              : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"
-                          )}
-                        >
-                          {l.tipo === "receita" ? (
-                            <ArrowUpCircle className="h-4 w-4" />
-                          ) : (
-                            <ArrowDownCircle className="h-4 w-4" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">
+                      <div className="grid grid-cols-[0.7fr_1.4fr_0.8fr_0.8fr_0.9fr] flex-1 pr-0 py-7 gap-4">
+                        {/* Data */}
+                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 self-center">
+                          {formatDate(l.data)}
+                        </span>
+                        {/* Descrição */}
+                        <div className="flex flex-col self-center min-w-0 pr-4">
+                          <span className="text-[13px] font-semibold text-slate-900 dark:text-white truncate">
                             {l.descricao}
-                          </p>
-                          {l.parcelado && (
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                              {l.numeroParcelas}x de {formatCurrency(l.valor / l.numeroParcelas)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Date */}
-                      <span className="text-[13px] text-slate-500 dark:text-slate-400 font-medium tabular-nums">
-                        {formatDate(l.data)}
-                      </span>
-
-                      {/* Category */}
-                      <div>
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold",
-                            getCategoryBadge(l.categoria)
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              "h-1.5 w-1.5 rounded-full",
-                              getCategoryColor(l.categoria)
-                            )}
-                          />
-                          {l.categoria}
-                        </span>
-                      </div>
-
-                      {/* Payment method */}
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-slate-100 dark:bg-slate-700/50">
-                          <PaymentIcon
-                            method={l.formaPagamento}
-                            className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400"
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-[12px] text-slate-600 dark:text-slate-300 font-medium">
-                            {formatFormaPagamento(l.formaPagamento)}
                           </span>
-                          {l.parcelado && (
-                            <span className="ml-1.5 text-[10px] bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-md font-medium">
-                              {l.numeroParcelas}x
-                            </span>
-                          )}
+                          <span className={cn(
+                            "text-[9px] font-bold uppercase tracking-tighter mt-0.5",
+                            l.tipo === "receita" ? "text-emerald-500 opacity-70" : "text-slate-400"
+                          )}>
+                            {l.origem === "Imagem" ? "Foto" : l.origem === "Audio" ? "Áudio" : l.origem === "Importacao" ? "Extrato Bancário" : "Manual"}
+                            {l.parcelado && ` · ${l.numeroParcelas}x`}
+                          </span>
                         </div>
-                      </div>
-
-                      {/* Origem */}
-                      <div className="flex items-center gap-1.5">
-                        {l.origem === "Imagem" ? (
-                          <ImageIcon className="h-3.5 w-3.5 text-violet-500" />
-                        ) : l.origem === "Audio" ? (
-                          <MessageSquare className="h-3.5 w-3.5 text-sky-500" />
-                        ) : l.origem === "Importacao" ? (
-                          <FileUp className="h-3.5 w-3.5 text-emerald-500" />
-                        ) : (
-                          <Globe className="h-3.5 w-3.5 text-slate-400" />
-                        )}
-                        <span className="text-[12px] text-slate-500 dark:text-slate-400 font-medium">
-                          {l.origem === "Imagem"
-                            ? "Imagem"
-                            : l.origem === "Audio"
-                              ? "Áudio"
-                              : l.origem === "Importacao"
-                                ? "Importação"
-                                : "Texto"}
+                        {/* Categoria */}
+                        <div className="self-center">
+                          <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700/50 text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase whitespace-nowrap">
+                            {l.categoria}
+                          </span>
+                        </div>
+                        {/* Origem */}
+                        <div className="flex items-center gap-2 self-center">
+                          {l.origem === "Imagem" ? (
+                            <ImageIcon className="h-3.5 w-3.5 text-violet-400" />
+                          ) : l.origem === "Audio" ? (
+                            <MessageSquare className="h-3.5 w-3.5 text-sky-400" />
+                          ) : l.origem === "Importacao" ? (
+                            <FileUp className="h-3.5 w-3.5 text-emerald-400" />
+                          ) : (
+                            <Globe className="h-3.5 w-3.5 text-slate-400" />
+                          )}
+                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                            {l.origem === "Imagem" ? "Foto" : l.origem === "Audio" ? "Áudio" : l.origem === "Importacao" ? "Importação" : "Texto"}
+                          </span>
+                        </div>
+                        {/* Valor */}
+                        <span className={cn(
+                          "text-[13px] font-mono font-bold text-right self-center whitespace-nowrap",
+                          l.tipo === "receita" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"
+                        )}>
+                          {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
                         </span>
                       </div>
-
-                      {/* Value */}
-                      <span
-                        className={cn(
-                          "text-sm font-bold tabular-nums text-right whitespace-nowrap",
-                          l.tipo === "receita"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-red-600 dark:text-red-400"
-                        )}
-                      >
-                        {l.tipo === "receita" ? "+" : "\u2212"} {formatCurrency(l.valor)}
-                      </span>
-
-                      {/* Actions dropdown */}
+                      {/* Actions (revealed on hover) */}
                       <div
-                        className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="w-24 flex-shrink-0 py-7 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-                              <MoreVertical className="h-4 w-4 text-slate-400" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => openEdit(l)}
-                              className="gap-2 cursor-pointer"
-                            >
-                              <Pencil className="h-3.5 w-3.5" /> Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setDeletingId(l.id)}
-                              className="gap-2 text-red-600 dark:text-red-400 cursor-pointer"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" /> Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <button onClick={() => openEdit(l)} className="text-slate-300 hover:text-emerald-500 transition-colors cursor-pointer" title="Editar">
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => setDeletingId(l.id)} className="text-slate-300 hover:text-rose-500 transition-colors cursor-pointer" title="Excluir">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
 
                     {/* Mobile card */}
                     <div
-                      className={cn(
-                        "lg:hidden flex flex-col gap-3 p-4 sm:p-5 transition-colors cursor-pointer active:scale-[0.99]",
-                        selectedIds.includes(l.id)
-                          ? "bg-emerald-600/5"
-                          : "hover:bg-white/30 dark:hover:bg-slate-800/20"
-                      )}
+                      className="lg:hidden flex items-center gap-3 px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
                       onClick={() => setViewingItem(l)}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 w-full min-w-0">
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <Checkbox
-                              checked={selectedIds.includes(l.id)}
-                              onCheckedChange={(c: boolean) => toggleSelectRow(l.id, c)}
-                              className="w-5 h-5 rounded-md"
-                            />
-                          </div>
-                          <div
-                            className={cn(
-                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm",
-                              l.tipo === "receita"
-                                ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
-                                : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"
-                            )}
-                          >
-                            {l.tipo === "receita" ? (
-                              <ArrowUpCircle className="h-5 w-5" />
-                            ) : (
-                              <ArrowDownCircle className="h-5 w-5" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[14px] font-bold text-slate-800 dark:text-white truncate">
-                              {l.descricao}
-                            </p>
-                            <p className="text-[12px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
-                              {l.categoria}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span
-                            className={cn(
-                              "block text-[15px] font-extrabold tabular-nums tracking-tight",
-                              l.tipo === "receita"
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-red-600 dark:text-red-400"
-                            )}
-                          >
-                            {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
-                          </span>
-                          <span className="block text-[11px] font-semibold text-slate-400 dark:text-slate-500 mt-1">
-                            {formatDate(l.data)}
-                          </span>
-                        </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Checkbox checked={selectedIds.includes(l.id)} onCheckedChange={(c: boolean) => toggleSelectRow(l.id, c)} />
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">{l.descricao}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">{l.categoria} · {formatDate(l.data)}</p>
+                      </div>
+                      <span className={cn("text-[13px] font-mono font-bold whitespace-nowrap", l.tipo === "receita" ? "text-emerald-600" : "text-rose-500")}>
+                        {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
+                      </span>
                     </div>
                   </motion.div>
                 ))}
@@ -985,64 +736,32 @@ export default function LancamentosPage() {
 
             {/* Pagination */}
             {lancamentosData.totalPaginas > 1 && (
-              <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-slate-200/60 dark:border-slate-700/40 bg-slate-50/30 dark:bg-slate-800/20">
-                <span className="text-[12px] text-slate-500 dark:text-slate-400 font-medium tabular-nums">
-                  Mostrando {startIdx}-{endIdx} de {lancamentosData.total}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 rounded-xl text-xs gap-1.5 bg-white/60 dark:bg-slate-700/50 border-white/60 dark:border-slate-600/50"
+              <div className="px-4 sm:px-6 lg:px-10 py-4 sm:py-6 border-t border-slate-50 dark:border-slate-700/50 bg-slate-50/20 dark:bg-slate-800/20 flex items-center justify-between">
+                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
+                  {startIdx}–{endIdx} de {lancamentosData.total}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
                     disabled={pagina <= 1}
                     onClick={() => setPagina((p) => p - 1)}
+                    className="p-2 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                   >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    Anterior
-                  </Button>
-                  {/* Page numbers */}
-                  {Array.from({ length: Math.min(lancamentosData.totalPaginas, 5) }, (_, i) => {
-                    let pageNum: number;
-                    if (lancamentosData.totalPaginas <= 5) {
-                      pageNum = i + 1;
-                    } else if (pagina <= 3) {
-                      pageNum = i + 1;
-                    } else if (pagina >= lancamentosData.totalPaginas - 2) {
-                      pageNum = lancamentosData.totalPaginas - 4 + i;
-                    } else {
-                      pageNum = pagina - 2 + i;
-                    }
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setPagina(pageNum)}
-                        className={cn(
-                          "h-8 w-8 rounded-xl text-xs font-semibold transition-all cursor-pointer",
-                          pageNum === pagina
-                            ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20"
-                            : "text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-700/50"
-                        )}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 rounded-xl text-xs gap-1.5 bg-white/60 dark:bg-slate-700/50 border-white/60 dark:border-slate-600/50"
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="px-4 py-2 text-[10px] font-bold text-slate-900 dark:text-white font-mono">Página {pagina}</span>
+                  <button
                     disabled={pagina >= lancamentosData.totalPaginas}
                     onClick={() => setPagina((p) => p + 1)}
+                    className="p-2 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                   >
-                    Próxima
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             )}
           </>
         ) : (
-          <div className="p-12">
+          <div className="p-6 sm:p-12">
             <EmptyState
               icon={<Receipt className="h-6 w-6" />}
               title="Nenhum lançamento encontrado"
@@ -1053,16 +772,19 @@ export default function LancamentosPage() {
               }
               action={
                 activeFilters > 0 ? (
-                  <Button variant="outline" onClick={clearFilters} className="gap-2 rounded-xl">
-                    <X className="h-4 w-4" />
+                  <button
+                    onClick={clearFilters}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[9px] font-bold uppercase tracking-widest border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
                     Limpar filtros
-                  </Button>
+                  </button>
                 ) : (
                   <button
                     onClick={() => setShowForm(true)}
-                    className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm"
+                    className="bg-slate-900 dark:bg-emerald-600 text-white px-6 py-3 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 cursor-pointer shadow-lg"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5" />
                     Registrar lançamento
                   </button>
                 )
@@ -1071,6 +793,7 @@ export default function LancamentosPage() {
           </div>
         )}
       </motion.div>
+
 
       {/* ═══ New Transaction Dialog ═══ */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
@@ -1461,8 +1184,16 @@ export default function LancamentosPage() {
       <Dialog open={editingItem !== null} onOpenChange={() => setEditingItem(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Editar Lançamento</DialogTitle>
-            <DialogDescription>Altere os dados do lançamento</DialogDescription>
+            <DialogTitle className="sr-only">Editar Lançamento</DialogTitle>
+            <DialogDescription className="sr-only">
+              Altere os dados do lançamento.
+            </DialogDescription>
+            <DialogShellHeader
+              icon={<Pencil className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Editar lançamento"
+              description="Ajuste descrição, valor, categoria e data sem sair da visão principal."
+              tone="emerald"
+            />
           </DialogHeader>
           <form onSubmit={editForm.handleSubmit(onEdit)} className="space-y-5">
             {editingItem && (
@@ -1567,8 +1298,16 @@ export default function LancamentosPage() {
       <Dialog open={viewingItem !== null} onOpenChange={() => setViewingItem(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Detalhes do Lançamento</DialogTitle>
-            <DialogDescription>Informações completas</DialogDescription>
+            <DialogTitle className="sr-only">Detalhes do Lançamento</DialogTitle>
+            <DialogDescription className="sr-only">
+              Informações completas do lançamento selecionado.
+            </DialogDescription>
+            <DialogShellHeader
+              icon={<Receipt className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Detalhes do lançamento"
+              description="Revise categoria, pagamento, data e ações disponíveis para este registro."
+              tone="blue"
+            />
           </DialogHeader>
           {viewingItem && (
             <div className="space-y-5">
@@ -1706,11 +1445,17 @@ export default function LancamentosPage() {
       {/* ═══ Delete Confirmation ═══ */}
       <AlertDialog open={deletingId !== null} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover lançamento?</AlertDialogTitle>
-            <AlertDialogDescription>
+          <AlertDialogHeader className="items-start text-left">
+            <AlertDialogTitle className="sr-only">Remover lançamento?</AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
               Esta ação não pode ser desfeita. O lançamento será removido permanentemente.
             </AlertDialogDescription>
+            <DialogShellHeader
+              icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Remover lançamento?"
+              description="Esta ação não pode ser desfeita. O lançamento será removido permanentemente."
+              tone="rose"
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
@@ -1728,12 +1473,18 @@ export default function LancamentosPage() {
       {/* ═══ Bulk Delete Confirmation ═══ */}
       <AlertDialog open={deletingMany} onOpenChange={setDeletingMany}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover vários lançamentos?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja remover os <strong>{selectedIds.length}</strong> lançamentos
-              selecionados? Esta ação não pode ser desfeita.
+          <AlertDialogHeader className="items-start text-left">
+            <AlertDialogTitle className="sr-only">Remover vários lançamentos?</AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
+              Tem certeza que deseja remover os lançamentos selecionados? Esta ação não pode ser
+              desfeita.
             </AlertDialogDescription>
+            <DialogShellHeader
+              icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Remover vários lançamentos?"
+              description={`Os ${selectedIds.length} lançamentos selecionados serão removidos de forma permanente.`}
+              tone="rose"
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>

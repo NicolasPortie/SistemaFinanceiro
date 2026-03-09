@@ -165,6 +165,19 @@ public class TelegramController : ControllerBase
                     resposta = await ProcessarFoto(message, botService);
                     break;
 
+                case MessageType.Contact when message.Contact != null:
+                    var phoneNumber = message.Contact.PhoneNumber;
+                    if (!string.IsNullOrEmpty(phoneNumber))
+                    {
+                        _logger.LogInformation("Contato recebido de {Nome} ({ChatId}): {Phone}", nomeUsuario, chatId, phoneNumber);
+                        resposta = await botService.ProcessarContatoAsync(chatId, phoneNumber, nomeUsuario);
+                    }
+                    else
+                    {
+                        resposta = "❌ Não consegui ler o número do contato. Tente novamente.";
+                    }
+                    break;
+
                 default:
                     resposta = "❓ Tipo de mensagem não suportado. Envie texto, áudio, foto ou vídeo circular.";
                     break;
@@ -217,10 +230,21 @@ public class TelegramController : ControllerBase
     {
         if (_botClient == null) return;
 
+        // Verificar se há solicitação de contato pendente (auto-link)
+        var solicitarContato = TelegramBotService.ConsumirSolicitacaoContato(chatId);
+
         // Verificar se há teclado inline pendente
         var teclado = TelegramBotService.ConsumirTeclado(chatId);
         ReplyMarkup? replyMarkup = null;
-        if (teclado != null && teclado.Count > 0)
+
+        if (solicitarContato)
+        {
+            // ReplyKeyboard com botão de compartilhar contato
+            replyMarkup = new ReplyKeyboardMarkup(
+                new KeyboardButton("📱 Compartilhar meu contato") { RequestContact = true }
+            ) { OneTimeKeyboard = true, ResizeKeyboard = true };
+        }
+        else if (teclado != null && teclado.Count > 0)
         {
             replyMarkup = new InlineKeyboardMarkup(
                 teclado.Select(row =>

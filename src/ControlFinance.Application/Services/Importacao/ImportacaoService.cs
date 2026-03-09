@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
+using System.Globalization;
 using ControlFinance.Application.DTOs.Importacao;
+using ControlFinance.Application.Exceptions;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -23,6 +25,7 @@ public class ImportacaoService : IImportacaoService
     private readonly IParcelaRepository _parcelaRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMemoryCache _cache;
+    private readonly IFeatureGateService _featureGate;
     private readonly ILogger<ImportacaoService> _logger;
 
     private const long MaxTamanhoArquivo = 5 * 1024 * 1024; // 5MB
@@ -41,6 +44,7 @@ public class ImportacaoService : IImportacaoService
         IParcelaRepository parcelaRepo,
         IUnitOfWork unitOfWork,
         IMemoryCache cache,
+        IFeatureGateService featureGate,
         ILogger<ImportacaoService> logger)
     {
         _parsers = parsers;
@@ -54,12 +58,16 @@ public class ImportacaoService : IImportacaoService
         _parcelaRepo = parcelaRepo;
         _unitOfWork = unitOfWork;
         _cache = cache;
+        _featureGate = featureGate;
         _logger = logger;
     }
 
     public async Task<ImportacaoPreviewDto> ProcessarUploadAsync(
         int usuarioId, Stream arquivo, string nomeArquivo, ImportacaoUploadRequest request)
-    {
+    {        // ── Feature Gate: Importação de extratos ──
+        var gate = await _featureGate.VerificarAcessoAsync(usuarioId, Recurso.ImportacaoExtratos);
+        if (!gate.Permitido)
+            throw new FeatureGateException(gate.Mensagem!, Recurso.ImportacaoExtratos, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
         _logger.LogInformation("Iniciando processamento de upload: {Arquivo} para usuário {UsuarioId}", nomeArquivo, usuarioId);
 
         // 1) Validar tamanho
@@ -118,13 +126,12 @@ public class ImportacaoService : IImportacaoService
         var normalizadas = _normalizacao.Normalizar(parseResult.Transacoes);
         _logger.LogInformation("Normalização: {Total} transações normalizadas", normalizadas.Count);
 
-        // 6.1) Remover transferências internas (cofrinho, dinheiro guardado/resgatado)
+        // 6.1) Remover transferências internas (pagamento fatura, cofrinho, transferências entre contas, etc.)
         var internasRemovidas = normalizadas.Count(t => t.Flags.Contains("transferencia_interna"));
         normalizadas = normalizadas.Where(t => !t.Flags.Contains("transferencia_interna")).ToList();
         if (internasRemovidas > 0)
         {
-            _logger.LogInformation("Removidas {Count} transferências internas (cofrinho)", internasRemovidas);
-            preview.Avisos.Add($"{internasRemovidas} transferência(s) interna(s) removida(s) (cofrinho/guardado/resgatado).");
+            _logger.LogInformation("Removidas {Count} transferências internas", internasRemovidas);
         }
 
         // 7) Categorizar
@@ -154,13 +161,49 @@ public class ImportacaoService : IImportacaoService
             await MarcarDuplicatasFaturaAsync(request.CartaoCreditoId.Value, transacoesDto, normalizadas);
         }
 
-        // 9) Detectar meses
-        preview.MesesDetectados = normalizadas
-            .Where(t => t.Valida)
-            .Select(t => t.Data.ToString("yyyy-MM"))
-            .Distinct()
-            .OrderBy(m => m)
-            .ToList();
+        // 9) Detectar meses (para fatura: usar DeterminarMesFatura com DiaFechamento do cartão)
+        CartaoCredito? cartaoPreview = null;
+        if (isFatura && request.CartaoCreditoId.HasValue)
+        {
+            cartaoPreview = await _cartaoRepo.ObterPorIdAsync(request.CartaoCreditoId.Value);
+            preview.CartaoDiaFechamento = cartaoPreview?.DiaFechamento;
+        }
+
+        if (isFatura && cartaoPreview != null)
+        {
+            // Para fatura: agrupar pelo mês REAL da fatura (levando em conta o fechamento)
+            // Ex: cartão fecha dia 10 → compra de 15/Jan vai para fatura de Fev
+            var mesesFaturaDetectados = normalizadas
+                .Where(t => t.Valida)
+                .Select(t => FaturaCicloHelper.DeterminarMesFatura(t.Data, cartaoPreview.DiaFechamento).ToString("yyyy-MM"))
+                .ToList();
+
+            preview.MesesDetectados = mesesFaturaDetectados
+                .Distinct()
+                .OrderBy(m => m)
+                .ToList();
+
+            preview.MesFaturaPadrao = mesesFaturaDetectados
+                .GroupBy(m => m)
+                .OrderByDescending(g => g.Count())
+                .ThenBy(g => g.Key)
+                .Select(g => g.Key)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(preview.MesFaturaPadrao))
+            {
+                preview.Avisos.Add($"Fatura destino sugerida: {preview.MesFaturaPadrao}. Use a edição de cada linha se precisar mandar um lançamento para outro mês de fatura.");
+            }
+        }
+        else
+        {
+            preview.MesesDetectados = normalizadas
+                .Where(t => t.Valida)
+                .Select(t => t.Data.ToString("yyyy-MM"))
+                .Distinct()
+                .OrderBy(m => m)
+                .ToList();
+        }
 
         // 10) Limitar transações no preview
         if (transacoesDto.Count > MaxTransacoes)
@@ -177,11 +220,10 @@ public class ImportacaoService : IImportacaoService
         preview.TipoImportacao = request.TipoImportacao;
         preview.CartaoCreditoId = request.CartaoCreditoId;
 
-        // Carregar nome do cartão se for fatura
+        // Carregar nome do cartão se for fatura (reutilizar cartaoPreview já carregado)
         if (isFatura && request.CartaoCreditoId.HasValue)
         {
-            var cartao = await _cartaoRepo.ObterPorIdAsync(request.CartaoCreditoId.Value);
-            preview.CartaoCreditoNome = cartao?.Nome;
+            preview.CartaoCreditoNome = cartaoPreview?.Nome;
         }
 
         // Alertar se muitas suspeitas
@@ -265,12 +307,22 @@ public class ImportacaoService : IImportacaoService
             CartaoCredito? cartao = null;
             var faturasCache = new Dictionary<string, Fatura>(); // mesRef → Fatura
 
+            // Para fatura: usar o mês sugerido do preview como padrão, mas permitir override por transação.
+            DateTime? mesFaturaPadrao = null;
+
             if (isFatura && preview.CartaoCreditoId.HasValue)
             {
                 cartao = await _cartaoRepo.ObterPorIdAsync(preview.CartaoCreditoId.Value);
                 if (cartao == null)
                 {
                     throw new InvalidOperationException("Cartão de crédito não encontrado.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(preview.MesFaturaPadrao)
+                    && DateTime.TryParseExact(preview.MesFaturaPadrao, "yyyy-MM", CultureInfo.InvariantCulture,
+                        DateTimeStyles.None, out var mesPadraoParseado))
+                {
+                    mesFaturaPadrao = new DateTime(mesPadraoParseado.Year, mesPadraoParseado.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                 }
             }
 
@@ -371,18 +423,30 @@ public class ImportacaoService : IImportacaoService
                     // Para fatura: criar Parcela vinculada à Fatura do mês correto
                     if (isFatura && cartao != null)
                     {
-                        var mesRef = FaturaCicloHelper.DeterminarMesFatura(data, cartao.DiaFechamento);
-                        var mesKey = mesRef.ToString("yyyy-MM");
+                        var numParcela = transacao.NumeroParcela ?? 1;
+                        var totParcelas = transacao.TotalParcelas ?? 1;
+
+                        DateTime? mesFaturaOverride = null;
+                        if (!string.IsNullOrWhiteSpace(ov?.MesFaturaReferencia)
+                            && DateTime.TryParseExact(ov.MesFaturaReferencia, "yyyy-MM", CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out var mesOverrideParseado))
+                        {
+                            mesFaturaOverride = new DateTime(mesOverrideParseado.Year, mesOverrideParseado.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                        }
+
+                        // Prioridade: override manual da linha -> mês padrão do preview -> cálculo automático pelo fechamento.
+                        var mesFaturaAtual = mesFaturaOverride
+                            ?? mesFaturaPadrao
+                            ?? FaturaCicloHelper.DeterminarMesFatura(data, cartao.DiaFechamento);
+
+                        var mesKey = mesFaturaAtual.ToString("yyyy-MM");
 
                         if (!faturasCache.TryGetValue(mesKey, out var fatura))
                         {
-                            fatura = await _faturaRepo.ObterOuCriarFaturaAsync(cartao.Id, mesRef);
+                            fatura = await _faturaRepo.ObterOuCriarFaturaAsync(cartao.Id, mesFaturaAtual);
                             if (fatura != null)
                                 faturasCache[mesKey] = fatura;
                         }
-
-                        var numParcela = transacao.NumeroParcela ?? 1;
-                        var totParcelas = transacao.TotalParcelas ?? 1;
 
                         var parcela = new Parcela
                         {
@@ -396,6 +460,84 @@ public class ImportacaoService : IImportacaoService
                         };
 
                         await _parcelaRepo.CriarVariasAsync(new[] { parcela });
+
+                        // Criar parcelas retroativas para histórico
+                        // Ex: se é parcela 3/3, criar parcelas 1/3 e 2/3 nas faturas anteriores
+                        if (numParcela > 1 && totParcelas > 1)
+                        {
+                            var parcelasRetroativas = new List<Parcela>();
+                            for (int p = 1; p < numParcela; p++)
+                            {
+                                var mesesAtras = numParcela - p;
+                                var mesFaturaAnterior = mesFaturaAtual.AddMonths(-mesesAtras);
+                                var mesKeyAnterior = mesFaturaAnterior.ToString("yyyy-MM");
+
+                                if (!faturasCache.TryGetValue(mesKeyAnterior, out var faturaAnterior))
+                                {
+                                    faturaAnterior = await _faturaRepo.ObterOuCriarFaturaAsync(cartao.Id, mesFaturaAnterior);
+                                    if (faturaAnterior != null)
+                                        faturasCache[mesKeyAnterior] = faturaAnterior;
+                                }
+
+                                parcelasRetroativas.Add(new Parcela
+                                {
+                                    LancamentoId = criado.Id,
+                                    FaturaId = faturaAnterior?.Id,
+                                    NumeroParcela = p,
+                                    TotalParcelas = totParcelas,
+                                    Valor = Math.Abs(valor),
+                                    DataVencimento = faturaAnterior?.DataVencimento ?? mesFaturaAnterior,
+                                    Paga = true // Parcelas anteriores já foram pagas
+                                });
+                            }
+
+                            if (parcelasRetroativas.Count > 0)
+                            {
+                                await _parcelaRepo.CriarVariasAsync(parcelasRetroativas);
+                                _logger.LogInformation(
+                                    "Criadas {Qty} parcelas retroativas para '{Desc}' (parcela {Num}/{Tot})",
+                                    parcelasRetroativas.Count, descricao, numParcela, totParcelas);
+                            }
+                        }
+
+                        // Criar parcelas futuras
+                        // Ex: se é parcela 1/3, criar parcelas 2/3 e 3/3 nas faturas seguintes
+                        if (numParcela < totParcelas)
+                        {
+                            var parcelasFuturas = new List<Parcela>();
+                            for (int p = numParcela + 1; p <= totParcelas; p++)
+                            {
+                                var mesesAFrente = p - numParcela;
+                                var mesFaturaFutura = mesFaturaAtual.AddMonths(mesesAFrente);
+                                var mesKeyFuturo = mesFaturaFutura.ToString("yyyy-MM");
+
+                                if (!faturasCache.TryGetValue(mesKeyFuturo, out var faturaFutura))
+                                {
+                                    faturaFutura = await _faturaRepo.ObterOuCriarFaturaAsync(cartao.Id, mesFaturaFutura);
+                                    if (faturaFutura != null)
+                                        faturasCache[mesKeyFuturo] = faturaFutura;
+                                }
+
+                                parcelasFuturas.Add(new Parcela
+                                {
+                                    LancamentoId = criado.Id,
+                                    FaturaId = faturaFutura?.Id,
+                                    NumeroParcela = p,
+                                    TotalParcelas = totParcelas,
+                                    Valor = Math.Abs(valor),
+                                    DataVencimento = faturaFutura?.DataVencimento ?? mesFaturaFutura,
+                                    Paga = false // Parcelas futuras ainda não foram pagas
+                                });
+                            }
+
+                            if (parcelasFuturas.Count > 0)
+                            {
+                                await _parcelaRepo.CriarVariasAsync(parcelasFuturas);
+                                _logger.LogInformation(
+                                    "Criadas {Qty} parcelas futuras para '{Desc}' (parcela {Num}/{Tot})",
+                                    parcelasFuturas.Count, descricao, numParcela, totParcelas);
+                            }
+                        }
                     }
 
                     resultado.LancamentosCriadosIds.Add(criado.Id);

@@ -260,37 +260,24 @@ export default function ConsultorFinanceiroPage() {
 
   /* ── render ── */
   return (
-    <div className="space-y-8">
-      {/* ── Page Header ── */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">
-            Consultor Financeiro
-          </h1>
+    <div className="flex flex-col gap-5 sm:gap-8">
+
+      {/* ── Page Header ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-[#0F172A] mb-2">Simulação</h1>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Consultor Financeiro Estratégico</p>
         </div>
-        <div className="flex gap-2 bg-white/50 dark:bg-slate-800/40 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/30">
-          <button
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === "nova"
-              ? "bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white border border-slate-100 dark:border-slate-600"
-              : "text-slate-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50 hover:text-slate-800 dark:hover:text-white"
-              }`}
-            onClick={() => setTab("nova")}
-          >
-            Nova Análise
-          </button>
-          <button
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === "historico"
-              ? "bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white border border-slate-100 dark:border-slate-600"
-              : "text-slate-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50 hover:text-slate-800 dark:hover:text-white"
-              }`}
-            onClick={() => {
-              setTab("historico");
-              carregarHistorico();
-            }}
-          >
-            Histórico
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            setTab(tab === "historico" ? "nova" : "historico");
+            if (tab !== "historico") carregarHistorico();
+          }}
+          className="flex items-center gap-2 exec-card px-5 py-3 rounded-2xl text-[9px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+        >
+          <History className="h-4 w-4" />
+          {tab === "historico" ? "Nova Análise" : "Ver Histórico"}
+        </button>
       </div>
 
       <AnimatePresence mode="wait">
@@ -302,64 +289,27 @@ export default function ConsultorFinanceiroPage() {
             exit={{ opacity: 0, y: -10 }}
             className="grid grid-cols-1 lg:grid-cols-12 gap-6"
           >
-            {/* ═══════════════════════════════════════════
-                LEFT: Input Form (4 cols)
-            ═══════════════════════════════════════════ */}
+            {/* ═══ LEFT: Input Form (4 cols) ═══ */}
             <div className="lg:col-span-4 flex flex-col gap-6">
-              <div className="glass-panel p-6 rounded-2xl relative overflow-hidden">
-                {/* Decorative icon */}
-                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                  <Brain className="h-20 w-20" />
-                </div>
+              <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 flex flex-col overflow-hidden">
 
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2 relative z-10">
-                  <Brain className="h-5 w-5 text-emerald-600" />
-                  Dados da Consulta
-                </h3>
-
-                {/* Mode selector */}
-                <div className="mb-6 relative z-10">
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                    Tipo de Análise
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="cursor-pointer">
-                      <input
-                        type="radio"
-                        name="analysis_mode"
-                        className="peer sr-only"
-                        checked={mode === "rapida"}
-                        onChange={() => {
-                          setMode("rapida");
-                          handleReset();
-                        }}
-                      />
-                      <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center peer-checked:border-emerald-600 peer-checked:bg-emerald-50 dark:peer-checked:bg-emerald-950/30 peer-checked:text-emerald-600 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
-                        <div className="text-sm font-bold">Rápida</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                          Feedback instantâneo
-                        </div>
-                      </div>
-                    </label>
-                    <label className="cursor-pointer">
-                      <input
-                        type="radio"
-                        name="analysis_mode"
-                        className="peer sr-only"
-                        checked={mode === "projecao"}
-                        onChange={() => {
-                          setMode("projecao");
-                          handleReset();
-                        }}
-                      />
-                      <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center peer-checked:border-emerald-600 peer-checked:bg-emerald-50 dark:peer-checked:bg-emerald-950/30 peer-checked:text-emerald-600 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
-                        <div className="text-sm font-bold">Projeção</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                          Impacto 12 meses
-                        </div>
-                      </div>
-                    </label>
-                  </div>
+                {/* Mode Toggle */}
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-4">Configuração</p>
+                <div className="flex flex-col gap-2 p-1.5 bg-slate-100 rounded-2xl mb-8">
+                  <button
+                    type="button"
+                    onClick={() => { setMode("rapida"); handleReset(); }}
+                    className={`w-full py-2.5 rounded-xl text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer ${mode === "rapida" ? "bg-white text-[#0F172A] shadow-sm" : "text-slate-500 hover:bg-white/50"}`}
+                  >
+                    Pensamento Rápido
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMode("projecao"); handleReset(); }}
+                    className={`w-full py-2.5 rounded-xl text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer ${mode === "projecao" ? "bg-white text-[#0F172A] shadow-sm" : "text-slate-500 hover:bg-white/50"}`}
+                  >
+                    Projeção Estratégica
+                  </button>
                 </div>
 
                 {/* ── RÁPIDA form ── */}
@@ -367,76 +317,57 @@ export default function ConsultorFinanceiroPage() {
                   {mode === "rapida" ? (
                     <motion.form
                       key="form-rapida"
-                      initial={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      className="flex flex-col gap-5 relative z-10"
+                      exit={{ opacity: 0, x: 10 }}
+                      className="flex flex-col gap-6"
                       onSubmit={rapidaForm.handleSubmit(handleRapida)}
                     >
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                          Valor (R$) *
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-sm">
-                            R$
-                          </span>
+                      <div className="border-b border-slate-50 pb-6">
+                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Valor (R$) *</label>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-[10px] text-slate-400 font-bold">R$</span>
                           <CurrencyInput
                             placeholder="0,00"
-                            className={`w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-lg font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all ${rapidaForm.formState.errors.valor ? "border-red-500" : ""
-                              }`}
+                            className={`flex-1 bg-transparent border-none p-0 text-xl font-semibold text-[#0F172A] focus:ring-0 outline-none placeholder:text-slate-300 ${rapidaForm.formState.errors.valor ? "text-red-500" : ""}`}
                             value={rapidaForm.watch("valor")}
-                            onValueChange={(v) =>
-                              rapidaForm.setValue("valor", v, {
-                                shouldValidate: rapidaForm.formState.isSubmitted,
-                              })
-                            }
+                            onValueChange={(v) => rapidaForm.setValue("valor", v, { shouldValidate: rapidaForm.formState.isSubmitted })}
                           />
                         </div>
                         {rapidaForm.formState.errors.valor && (
-                          <p className="text-xs text-red-500 font-medium mt-1">
-                            {rapidaForm.formState.errors.valor.message}
-                          </p>
+                          <p className="text-xs text-red-500 font-medium mt-1">{rapidaForm.formState.errors.valor.message}</p>
                         )}
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                          Descrição
-                        </label>
+                      <div className="border-b border-slate-50 pb-6">
+                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Descrição</label>
                         <input
-                          className="w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400 dark:text-white"
-                          placeholder="Ex: Notebook, Tênis, Jantar..."
+                          className="w-full bg-transparent border-none p-0 text-sm font-semibold text-[#0F172A] focus:ring-0 outline-none placeholder:text-slate-300"
+                          placeholder="Ex: Notebook, Tênis..."
                           {...rapidaForm.register("descricao")}
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                          Categoria
-                        </label>
+                      <div className="border-b border-slate-50 pb-6">
+                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Categoria</label>
                         <Select
                           value={rapidaForm.watch("categoria") || ""}
                           onValueChange={(v) => rapidaForm.setValue("categoria", v)}
                         >
-                          <SelectTrigger className="h-11 rounded-xl bg-white/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                          <SelectTrigger className="h-9 rounded-xl border-slate-100 bg-slate-50 text-sm font-semibold text-[#0F172A]">
                             <SelectValue placeholder="Selecione (opcional)" />
                           </SelectTrigger>
                           <SelectContent>
                             {categorias.map((c) => (
-                              <SelectItem key={c.id} value={c.nome}>
-                                {c.nome}
-                              </SelectItem>
+                              <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
 
-                      <div className="bg-slate-50/50 dark:bg-slate-800/30 rounded-xl p-4 border border-slate-100 dark:border-slate-700/50">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Compra Parcelada?
-                          </span>
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Compra Parcelada?</label>
                           <Switch
                             checked={parcelado}
                             onCheckedChange={(v) => rapidaForm.setValue("parcelado", v)}
@@ -450,29 +381,19 @@ export default function ConsultorFinanceiroPage() {
                               exit={{ opacity: 0, height: 0 }}
                               className="overflow-hidden mt-3 space-y-2"
                             >
-                              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                                Número de Parcelas
-                              </label>
-                              <Input
-                                type="number"
-                                min={2}
-                                max={48}
-                                className="h-10 rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                {...rapidaForm.register("parcelas")}
-                              />
+                              <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Número de Parcelas</label>
+                              <Input type="number" min={2} max={48} className="h-10 rounded-xl bg-slate-50 border-slate-100" {...rapidaForm.register("parcelas")} />
                               {(() => {
                                 const nParcelas = parseInt(rapidaForm.watch("parcelas") || "1");
                                 const valorStr = rapidaForm.watch("valor") || "";
                                 const valorNum = parseFloat(valorStr.replace(",", "."));
                                 if (nParcelas > 1 && !isNaN(valorNum) && valorNum > 0) {
                                   return (
-                                    <div className="flex items-center gap-2 rounded-xl border border-emerald-500/15 dark:border-emerald-400/20 bg-emerald-50/50 dark:bg-emerald-950/30 px-3 py-2">
-                                      <CreditCard className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                    <div className="flex items-center gap-2 rounded-xl border border-emerald-500/15 bg-emerald-50/50 px-3 py-2">
+                                      <CreditCard className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                      <span className="text-xs font-medium text-emerald-700">
                                         {nParcelas}x de <strong>{formatCurrency(valorNum / nParcelas)}</strong>
-                                        <span className="text-emerald-600/60 dark:text-emerald-400/60 ml-1">
-                                          (total: {formatCurrency(valorNum)})
-                                        </span>
+                                        <span className="text-emerald-600/60 ml-1">(total: {formatCurrency(valorNum)})</span>
                                       </span>
                                     </div>
                                   );
@@ -487,95 +408,72 @@ export default function ConsultorFinanceiroPage() {
                       <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-3.5 rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
+                        className="w-full mt-2 bg-[#0F172A] text-white py-4 rounded-2xl text-[9px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
                       >
                         {avaliarGasto.isPending ? (
-                          <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
                           <Zap className="h-4 w-4" />
                         )}
-                        Analisar Impacto
+                        Processar Análise
                       </button>
                     </motion.form>
                   ) : (
                     /* ── PROJEÇÃO form ── */
                     <motion.form
                       key="form-projecao"
-                      initial={{ opacity: 0, x: 20 }}
+                      initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="flex flex-col gap-5 relative z-10"
+                      exit={{ opacity: 0, x: -10 }}
+                      className="flex flex-col gap-6"
                       onSubmit={projecaoForm.handleSubmit(handleProjecao)}
                     >
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                          O que você quer comprar?
-                        </label>
+                      <div className="border-b border-slate-50 pb-6">
+                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Descrição</label>
                         <input
-                          className={`w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400 dark:text-white ${projecaoForm.formState.errors.descricao ? "border-red-500" : ""
-                            }`}
-                          placeholder="Ex: iPhone 16, Cadeira Ergonômica..."
+                          className={`w-full bg-transparent border-none p-0 text-lg serif-italic placeholder:text-slate-300 text-[#0F172A] focus:ring-0 outline-none ${projecaoForm.formState.errors.descricao ? "text-red-500" : ""}`}
+                          placeholder="Ex: Aquisição de Ativos"
                           {...projecaoForm.register("descricao")}
                         />
                         {projecaoForm.formState.errors.descricao && (
-                          <p className="text-xs text-red-500 font-medium mt-1">
-                            {projecaoForm.formState.errors.descricao.message}
-                          </p>
+                          <p className="text-xs text-red-500 font-medium mt-1">{projecaoForm.formState.errors.descricao.message}</p>
                         )}
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                          Valor (R$)
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-sm">
-                            R$
-                          </span>
-                          <CurrencyInput
-                            placeholder="0,00"
-                            className={`w-full bg-white/60 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-lg font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all ${projecaoForm.formState.errors.valor ? "border-red-500" : ""
-                              }`}
-                            value={projecaoForm.watch("valor")}
-                            onValueChange={(v) =>
-                              projecaoForm.setValue("valor", v, {
-                                shouldValidate: projecaoForm.formState.isSubmitted,
-                              })
-                            }
-                          />
+                      <div className="grid grid-cols-2 gap-6 border-b border-slate-50 pb-6">
+                        <div>
+                          <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Valor</label>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-[10px] text-slate-400 font-bold">R$</span>
+                            <CurrencyInput
+                              placeholder="0,00"
+                              className={`flex-1 bg-transparent border-none p-0 mono-data text-base font-semibold text-[#0F172A] focus:ring-0 outline-none placeholder:text-slate-300 ${projecaoForm.formState.errors.valor ? "text-red-500" : ""}`}
+                              value={projecaoForm.watch("valor")}
+                              onValueChange={(v) => projecaoForm.setValue("valor", v, { shouldValidate: projecaoForm.formState.isSubmitted })}
+                            />
+                          </div>
+                          {projecaoForm.formState.errors.valor && (
+                            <p className="text-xs text-red-500 font-medium mt-1">{projecaoForm.formState.errors.valor.message}</p>
+                          )}
                         </div>
-                        {projecaoForm.formState.errors.valor && (
-                          <p className="text-xs text-red-500 font-medium mt-1">
-                            {projecaoForm.formState.errors.valor.message}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                          Forma de Pagamento
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {paymentMethods.map((pm) => (
-                            <button
-                              key={pm.value}
-                              type="button"
-                              className={`flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${formaPagamento === pm.value
-                                ? "bg-emerald-600/10 text-emerald-600 border-2 border-emerald-600/30 shadow-md shadow-emerald-500/5"
-                                : "bg-white/40 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-700/40 border border-slate-200/60 dark:border-slate-700/40"
-                                }`}
-                              onClick={() => {
-                                projecaoForm.setValue(
-                                  "formaPagamento",
-                                  pm.value as "pix" | "debito" | "credito"
-                                );
-                                if (pm.value !== "credito") projecaoForm.setValue("parcelas", 1);
-                              }}
-                            >
-                              <pm.icon className="h-4 w-4" />
-                              {pm.label}
-                            </button>
-                          ))}
+                        <div>
+                          <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Pagamento</label>
+                          <Select
+                            value={projecaoForm.watch("formaPagamento") || "debito"}
+                            onValueChange={(v) => {
+                              projecaoForm.setValue("formaPagamento", v as "pix" | "debito" | "credito");
+                              if (v !== "credito") projecaoForm.setValue("parcelas", 1);
+                            }}
+                          >
+                            <SelectTrigger className="h-9 rounded-xl border-slate-100 bg-slate-50 text-sm font-semibold text-[#0F172A]">
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pix">PIX / À Vista</SelectItem>
+                              <SelectItem value="debito">Débito</SelectItem>
+                              <SelectItem value="credito">Crédito</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
 
@@ -585,39 +483,31 @@ export default function ConsultorFinanceiroPage() {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="flex flex-col gap-4 overflow-hidden"
+                            className="flex flex-col gap-4 overflow-hidden border-b border-slate-50 pb-6"
                           >
                             <div>
-                              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                                Parcelas
-                              </label>
-                              <div className="flex flex-wrap gap-1.5">
-                                {parcelasOpcoes.map((p) => (
-                                  <button
-                                    key={p}
-                                    type="button"
-                                    className={`h-9 min-w-11 px-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${parcelas === p
-                                      ? "bg-emerald-600 text-white shadow-sm"
-                                      : "bg-white/40 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-700/40 border border-slate-200/60 dark:border-slate-700/40"
-                                      }`}
-                                    onClick={() => projecaoForm.setValue("parcelas", p)}
-                                  >
-                                    {p}x
-                                  </button>
-                                ))}
+                              <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-3">Parcelamento (1–12)</label>
+                              <div className="flex items-center gap-4">
+                                <input
+                                  type="range"
+                                  min={1}
+                                  max={12}
+                                  value={parcelas}
+                                  onChange={(e) => projecaoForm.setValue("parcelas", parseInt(e.target.value))}
+                                  className="flex-1 h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                                />
+                                <span className="text-[10px] mono-data font-bold text-[#0F172A]">{String(parcelas).padStart(2, "0")}x</span>
                               </div>
                               {(() => {
                                 const valorStr = projecaoForm.watch("valor") || "";
                                 const valorNum = parseFloat(valorStr.replace(",", "."));
                                 if (parcelas > 1 && !isNaN(valorNum) && valorNum > 0) {
                                   return (
-                                    <div className="flex items-center gap-2 rounded-xl border border-emerald-500/15 dark:border-emerald-400/20 bg-emerald-50/50 dark:bg-emerald-950/30 px-3 py-2 mt-2">
-                                      <CreditCard className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                    <div className="flex items-center gap-2 rounded-xl border border-emerald-500/15 bg-emerald-50/50 px-3 py-2 mt-3">
+                                      <CreditCard className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                      <span className="text-xs font-medium text-emerald-700">
                                         {parcelas}x de <strong>{formatCurrency(valorNum / parcelas)}</strong>
-                                        <span className="text-emerald-600/60 dark:text-emerald-400/60 ml-1">
-                                          (total: {formatCurrency(valorNum)})
-                                        </span>
+                                        <span className="text-emerald-600/60 ml-1">(total: {formatCurrency(valorNum)})</span>
                                       </span>
                                     </div>
                                   );
@@ -625,23 +515,18 @@ export default function ConsultorFinanceiroPage() {
                                 return null;
                               })()}
                             </div>
-
                             <div>
-                              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                                Cartão
-                              </label>
+                              <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Cartão</label>
                               <Select
                                 value={projecaoForm.watch("cartaoId") || ""}
                                 onValueChange={(v) => projecaoForm.setValue("cartaoId", v)}
                               >
-                                <SelectTrigger className="h-11 rounded-xl bg-white/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                                <SelectTrigger className="h-9 rounded-xl border-slate-100 bg-slate-50 text-sm font-semibold text-[#0F172A]">
                                   <SelectValue placeholder="Selecione o cartão" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {cartoes.map((c) => (
-                                    <SelectItem key={c.id} value={c.id.toString()}>
-                                      {c.nome}
-                                    </SelectItem>
+                                    <SelectItem key={c.id} value={c.id.toString()}>{c.nome}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -653,50 +538,31 @@ export default function ConsultorFinanceiroPage() {
                       <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-3.5 rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
+                        className="w-full mt-2 bg-[#0F172A] text-white py-4 rounded-2xl text-[9px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
                       >
                         {simularMutation.isPending ? (
-                          <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
                           <BarChart3 className="h-4 w-4" />
                         )}
-                        Simular Projeção
+                        Processar Projeção
                       </button>
                     </motion.form>
                   )}
                 </AnimatePresence>
               </div>
 
-              {/* ── Sidebar summary below form (sticky) ── */}
+              {/* Sidebar mini-chart */}
               <AnimatePresence>
-                {/* Projeção sidebar: budget summary */}
-                {resultadoSimulacao &&
-                  mode === "projecao" &&
-                  resultadoSimulacao.meses?.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="glass-panel p-5 rounded-2xl lg:sticky lg:top-6"
-                    >
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
-                        Resumo da Projeção
-                      </h4>
-                      <BalanceLineChart data={resultadoSimulacao.meses} />
-                    </motion.div>
-                  )}
-
-                {/* Rápida sidebar: budget donut */}
+                {resultadoSimulacao && mode === "projecao" && resultadoSimulacao.meses?.length > 0 && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="exec-card rounded-[2rem] p-6">
+                    <h4 className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-4">Resumo da Projeção</h4>
+                    <BalanceLineChart data={resultadoSimulacao.meses} />
+                  </motion.div>
+                )}
                 {resultadoDecisao && mode === "rapida" && isDecisaoRapida(resultadoDecisao) && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="glass-panel p-5 rounded-2xl lg:sticky lg:top-6"
-                  >
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
-                      Orçamento do Mês
-                    </h4>
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="exec-card rounded-[2rem] p-6">
+                    <h4 className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-4">Orçamento do Mês</h4>
                     <BudgetDonutChart
                       gastoAcumulado={resultadoDecisao.gastoAcumuladoMes}
                       saldoLivre={resultadoDecisao.saldoLivreMes}
@@ -708,20 +574,11 @@ export default function ConsultorFinanceiroPage() {
               </AnimatePresence>
             </div>
 
-            {/* ═══════════════════════════════════════════
-                RIGHT: Results (8 cols)
-            ═══════════════════════════════════════════ */}
+            {/* ═══ RIGHT: Results (8 cols) ═══ */}
             <div className="lg:col-span-8 flex flex-col gap-6">
               <AnimatePresence mode="wait">
-                {/* ── Rápida result ── */}
                 {resultadoDecisao && mode === "rapida" && (
-                  <motion.div
-                    key="rapida-result"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="flex flex-col gap-6"
-                  >
+                  <motion.div key="rapida-result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-6">
                     {isDecisaoRapida(resultadoDecisao) ? (
                       <RapidaResult data={resultadoDecisao} onReset={handleReset} />
                     ) : (
@@ -730,195 +587,182 @@ export default function ConsultorFinanceiroPage() {
                   </motion.div>
                 )}
 
-                {/* ── Projeção result ── */}
                 {resultadoSimulacao && mode === "projecao" && (
-                  <motion.div
-                    key="projecao-result"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="flex flex-col gap-6"
-                  >
-                    <ProjecaoResult
-                      data={resultadoSimulacao}
-                      showMeses={showMeses}
-                      setShowMeses={setShowMeses}
-                      riskIcon={riskIcon}
-                      onReset={handleReset}
-                    />
+                  <motion.div key="projecao-result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-6">
+                    <ProjecaoResult data={resultadoSimulacao} showMeses={showMeses} setShowMeses={setShowMeses} riskIcon={riskIcon} onReset={handleReset} />
                   </motion.div>
                 )}
 
-                {/* ── Placeholder ── */}
                 {!hasResult && !isLoading && (
-                  <motion.div
-                    key="placeholder"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="glass-panel p-10 rounded-2xl flex flex-col items-center justify-center text-center min-h-[400px]"
-                  >
-                    <div className="size-18 rounded-3xl bg-emerald-600/10 flex items-center justify-center text-emerald-600 mb-5 shadow-sm">
-                      <Brain className="h-9 w-9" />
-                    </div>
-                    <h3 className="font-extrabold text-lg text-slate-800 dark:text-white mb-2">
-                      {mode === "rapida" ? "Análise Rápida" : "Projeção de Impacto"}
-                    </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed mb-8">
-                      {mode === "rapida"
-                        ? "Informe o valor e receba uma recomendação imediata: pode gastar, com cautela ou melhor segurar."
-                        : "Projeta o impacto de uma compra nos próximos 12 meses, considerando receitas, despesas e metas."}
-                    </p>
-                    <div className="text-left w-full max-w-md space-y-3">
-                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Como funciona?
-                      </p>
-                      <div className="grid gap-2">
-                        {mode === "rapida" ? (
-                          <>
-                            <HowItWorksStep
-                              n={1}
-                              title="Orçamento"
-                              desc="Verifica se o valor cabe no seu saldo livre do mês"
-                            />
-                            <HowItWorksStep
-                              n={2}
-                              title="Histórico"
-                              desc="Compara com sua média de gastos dos últimos 3 meses"
-                            />
-                            <HowItWorksStep
-                              n={3}
-                              title="Tendência"
-                              desc="Analisa se seus gastos estão subindo ou caindo"
-                            />
-                            <HowItWorksStep
-                              n={4}
-                              title="Saúde Financeira"
-                              desc="Gera um score de 0 a 100 avaliando sua situação geral"
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <HowItWorksStep
-                              n={1}
-                              title="Projeção 12 meses"
-                              desc="Simula mês a mês como fica seu saldo com a compra"
-                            />
-                            <HowItWorksStep
-                              n={2}
-                              title="Sazonalidade"
-                              desc="Considera gastos sazonais (IPVA, material escolar, etc.)"
-                            />
-                            <HowItWorksStep
-                              n={3}
-                              title="Impacto em metas"
-                              desc="Mostra se a compra atrasa suas metas financeiras"
-                            />
-                            <HowItWorksStep
-                              n={4}
-                              title="Cenários"
-                              desc="Sugere parcelamentos com risco menor"
-                            />
-                          </>
-                        )}
+                  <motion.div key="placeholder" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    {/* Placeholder: chart mockup + AI panel */}
+                    <div className="grid grid-cols-12 gap-6 h-full">
+                      <div className="col-span-8 flex flex-col gap-6">
+                        <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 flex flex-col" style={{ minHeight: 340 }}>
+                          <div className="flex items-center justify-between mb-8">
+                            <div>
+                              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] mb-2">Simulação de Fluxo de Caixa</h3>
+                              <h2 className="text-3xl serif-italic text-[#0F172A]">
+                                {mode === "rapida" ? "Análise Rápida" : "Saldo Projetado"}
+                              </h2>
+                            </div>
+                            <div className="bg-slate-50 px-5 py-2.5 rounded-2xl border border-slate-100 flex items-center gap-3">
+                              <Brain className="h-5 w-5 text-slate-400" />
+                              <div>
+                                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Aguardando</p>
+                                <p className="text-[10px] font-bold text-slate-600 uppercase">Configure &amp; Processe</p>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Placeholder bars */}
+                          <div className="flex-1 flex items-end justify-between px-4 pb-4 gap-4 min-h-[160px]">
+                            {["Set", "Out", "Nov", "Dez", "Jan", "Fev"].map((m, i) => (
+                              <div key={m} className="flex flex-col items-center gap-3 flex-1">
+                                <div className="flex items-end gap-1 w-12 h-40 max-h-40">
+                                  <div className="w-5 bg-slate-100 rounded-t-xl" style={{ height: `${60 + i * 6}%` }} />
+                                  <div className="w-5 bg-emerald-100 rounded-t-xl" style={{ height: `${45 + i * 5}%` }} />
+                                </div>
+                                <span className="text-[9px] mono-data text-slate-300 uppercase">{m}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-6 flex items-center gap-8 justify-center border-t border-slate-50 pt-6">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2.5 h-2.5 rounded-full bg-slate-100" />
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Saldo Atual</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-200" />
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Saldo Projetado</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* How it works steps */}
+                        <div className="exec-card rounded-[2rem] p-8">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-6">Como Funciona</p>
+                          <div className="grid grid-cols-2 gap-4">
+                            {(mode === "rapida"
+                              ? [
+                                { n: 1, title: "Orçamento", desc: "Verifica se o valor cabe no saldo livre do mês" },
+                                { n: 2, title: "Histórico", desc: "Compara com a média de gastos dos últimos 3 meses" },
+                                { n: 3, title: "Tendência", desc: "Analisa se seus gastos estão subindo ou caindo" },
+                                { n: 4, title: "Saúde Financeira", desc: "Score de 0 a 100 avaliando sua situação geral" },
+                              ]
+                              : [
+                                { n: 1, title: "Projeção 12 meses", desc: "Simula mês a mês como fica seu saldo com a compra" },
+                                { n: 2, title: "Sazonalidade", desc: "Considera gastos sazonais (IPVA, material escolar, etc.)" },
+                                { n: 3, title: "Impacto em metas", desc: "Mostra se a compra atrasa suas metas financeiras" },
+                                { n: 4, title: "Cenários", desc: "Sugere parcelamentos com risco menor" },
+                              ]
+                            ).map(({ n, title, desc }) => (
+                              <HowItWorksStep key={n} n={n} title={title} desc={desc} />
+                            ))}
+                          </div>
+                          <p className="text-[11px] text-slate-400 italic mt-4">
+                            Quanto mais dados você cadastrar, mais precisa fica a análise.
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
-                        Quanto mais dados você cadastrar, mais precisa fica a análise.
-                      </p>
+
+                      {/* AI Scenarios panel */}
+                      <div className="col-span-4">
+                        <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 flex flex-col h-full">
+                          <div className="flex items-center gap-4 mb-8">
+                            <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shrink-0">
+                              <Brain className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em]">Falcon AI</h3>
+                              <h2 className="text-xl serif-italic text-[#0F172A]">Cenários Alternativos</h2>
+                            </div>
+                          </div>
+                          <div className="space-y-4 flex-1">
+                            <div className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100">
+                              <div className="flex justify-between items-start mb-3">
+                                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[8px] font-bold uppercase tracking-widest rounded-full">Otimizado</span>
+                                <span className="text-[10px] mono-data font-bold text-emerald-600">-15% Risco</span>
+                              </div>
+                              <p className="text-xs text-slate-400 leading-relaxed">Aguarde o processamento para ver a análise personalizada de cenários para esta compra.</p>
+                            </div>
+                            <div className="p-6 rounded-[2rem] border border-slate-100">
+                              <div className="flex justify-between items-start mb-3">
+                                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[8px] font-bold uppercase tracking-widest rounded-full">Parcelado</span>
+                                <span className="text-[10px] mono-data font-bold text-indigo-600">+Yield</span>
+                              </div>
+                              <p className="text-xs text-slate-400 leading-relaxed">Opções de parcelamento com menor impacto no fluxo de caixa serão calculadas.</p>
+                            </div>
+                            <div className="p-6 rounded-[2rem] border border-slate-100">
+                              <div className="flex justify-between items-start mb-3">
+                                <span className="px-3 py-1 bg-amber-50 text-amber-700 text-[8px] font-bold uppercase tracking-widest rounded-full">Alternativo</span>
+                                <span className="text-[10px] mono-data font-bold text-amber-600">Liquidez</span>
+                              </div>
+                              <p className="text-xs text-slate-400 leading-relaxed">Cenários alternativos de compra aparecerão aqui após a análise.</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 )}
 
-                {/* Loading state */}
                 {isLoading && !hasResult && (
-                  <motion.div
-                    key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="glass-panel p-10 rounded-2xl flex flex-col items-center justify-center text-center min-h-[400px]"
-                  >
-                    <div className="h-12 w-12 border-3 border-slate-200 dark:border-slate-700 border-t-emerald-600 rounded-full animate-spin mb-6" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                      Analisando seus dados financeiros...
-                    </p>
+                  <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-6 sm:p-10 lg:p-12 flex flex-col items-center justify-center text-center min-h-[300px] sm:min-h-[400px]">
+                      <div className="h-12 w-12 border-2 border-slate-100 border-t-emerald-600 rounded-full animate-spin mb-6" />
+                      <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400">Analisando seus dados financeiros...</p>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           </motion.div>
         ) : (
-          /* ═══════════════════════════════════════════
-              HISTÓRICO TAB
-          ═══════════════════════════════════════════ */
-          <motion.div
-            key="historico"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-          >
-            <div className="glass-panel rounded-2xl overflow-hidden">
-              <div className="p-5 border-b border-slate-200 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/30 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-                  Histórico de Simulações
-                </h3>
+          /* ═══ HISTÓRICO TAB ═══ */
+          <motion.div key="historico" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden">
+              <div className="hidden lg:grid p-5 sm:p-8 lg:p-10 border-b border-slate-50 grid-cols-12 gap-6 text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] items-center">
+                <div className="col-span-4">Descrição</div>
+                <div className="col-span-2">Valor</div>
+                <div className="col-span-2">Veredito</div>
+                <div className="col-span-2">Folga Mensal</div>
+                <div className="col-span-2">Pior Mês</div>
               </div>
 
               {historico.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold">
-                        <th className="p-4 w-1/3">Item</th>
-                        <th className="p-4">Valor</th>
-                        <th className="p-4">Veredito</th>
-                        <th className="p-4 hidden sm:table-cell">Folga Mensal</th>
-                        <th className="p-4 hidden sm:table-cell">Pior Mês</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30 text-sm">
-                      {historico.map((h) => (
-                        <tr
-                          key={h.simulacaoId}
-                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group"
-                        >
-                          <td className="p-4">
-                            <span className="font-medium text-slate-800 dark:text-slate-200">
-                              {h.descricao}
-                            </span>
-                            <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                              {h.formaPagamento}
-                              {h.numeroParcelas > 1 && ` • ${h.numeroParcelas}x`}
-                            </span>
-                          </td>
-                          <td className="p-4 text-slate-600 dark:text-slate-300 tabular-nums">
-                            {formatCurrency(h.valor)}
-                          </td>
-                          <td className="p-4">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${riskColor(h.risco).badge} ${riskColor(h.risco).border}`}
-                            >
-                              {h.risco}
-                            </span>
-                          </td>
-                          <td className="p-4 text-slate-600 dark:text-slate-300 tabular-nums hidden sm:table-cell">
-                            {formatCurrency(h.folgaMensalMedia)}
-                          </td>
-                          <td className="p-4 text-slate-500 dark:text-slate-400 hidden sm:table-cell">{h.piorMes}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="divide-y divide-slate-50">
+                  {historico.map((h) => (
+                    <div key={h.simulacaoId} className="hidden lg:grid grid-cols-12 gap-6 px-5 sm:px-8 lg:px-10 py-5 sm:py-8 items-center hover:bg-slate-50/50 transition-colors group">
+                      <div className="col-span-4">
+                        <span className="text-sm font-bold text-[#0F172A]">{h.descricao}</span>
+                        <span className="block text-[10px] text-slate-400 font-medium mt-0.5">
+                          {h.formaPagamento}{h.numeroParcelas > 1 && ` • ${h.numeroParcelas}x`}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-sm mono-data font-medium text-[#0F172A]">{formatCurrency(h.valor)}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-bold border uppercase tracking-widest ${riskColor(h.risco).badge} ${riskColor(h.risco).border}`}>
+                          {h.risco}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-sm mono-data font-medium text-[#0F172A]">{formatCurrency(h.folgaMensalMedia)}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-sm text-slate-500">{h.piorMes}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <div className="p-12 text-center">
-                  <History className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                    Nenhuma simulação no histórico
-                  </p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    Faça sua primeira projeção para ver o histórico aqui
-                  </p>
+                <div className="p-6 sm:p-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+                    <History className="h-5 w-5 text-slate-300" />
+                  </div>
+                  <p className="text-sm font-bold text-[#0F172A] mb-1">Nenhuma simulação no histórico</p>
+                  <p className="text-[11px] text-slate-400">Faça sua primeira projeção para ver o histórico aqui</p>
                 </div>
               )}
             </div>

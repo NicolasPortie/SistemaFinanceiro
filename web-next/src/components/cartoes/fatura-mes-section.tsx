@@ -39,6 +39,7 @@ const defaultIconBg = "bg-slate-100 dark:bg-slate-500/15 text-slate-500 dark:tex
 
 interface CombinedParcela extends FaturaParcela {
   cartaoNome: string;
+  cartaoId: number;
 }
 
 interface FaturaMesSectionProps {
@@ -77,6 +78,7 @@ export function FaturaMesSection({ cartoes, mesParam, mesLabel }: FaturaMesSecti
         combined.push({
           ...p,
           cartaoNome: cartoes[i].nome,
+          cartaoId: cartoes[i].id,
         });
       }
       total += fatura.total;
@@ -164,9 +166,16 @@ export function FaturaMesSection({ cartoes, mesParam, mesLabel }: FaturaMesSecti
             <Receipt className="h-5 w-5 text-emerald-600" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white tracking-tight">
-              Fatura de {mesLabel}
-            </h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white tracking-tight">
+                Fatura de {mesLabel}
+              </h3>
+              {cartoes.length === 1 && (
+                <span className="text-xs font-semibold bg-emerald-600/10 text-emerald-600 px-2.5 py-0.5 rounded-full">
+                  {cartoes[0].nome}
+                </span>
+              )}
+            </div>
             {proximoVencimento && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
                 Próximo vencimento:{" "}
@@ -221,7 +230,7 @@ export function FaturaMesSection({ cartoes, mesParam, mesLabel }: FaturaMesSecti
                   key={`${p.descricao}-${p.dataCompra}-${i}`}
                   className="border-b border-slate-50 dark:border-slate-700/20 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-700/10 transition-colors"
                 >
-                  {/* Icon */}
+                  {/* Ícone */}
                   <td className="pl-5 lg:pl-6 pr-2 py-3.5">
                     <div
                       className={cn(
@@ -271,7 +280,7 @@ export function FaturaMesSection({ cartoes, mesParam, mesLabel }: FaturaMesSecti
 
                   {/* Valor */}
                   <td className="pr-5 lg:pr-6 pl-3 py-3.5 text-right">
-                    <span className="text-sm font-bold text-slate-800 dark:text-white tabular-nums">
+                    <span className="text-sm font-bold tabular-nums text-slate-800 dark:text-white">
                       {formatCurrency(p.valor)}
                     </span>
                   </td>

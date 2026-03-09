@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ControlFinance — Controle Financeiro Inteligente",
-    short_name: "ControlFinance",
+    name: "Ravier — Controle Financeiro Inteligente",
+    short_name: "Ravier",
     description:
       "Gerencie suas finanças pessoais de forma inteligente com IA. Dashboard, simulações, metas e integração com Telegram.",
     start_url: "/dashboard",

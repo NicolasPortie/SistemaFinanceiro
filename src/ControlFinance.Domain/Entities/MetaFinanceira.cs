@@ -20,7 +20,14 @@ public class MetaFinanceira
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Se preenchido, esta é uma meta conjunta da família (visível para os dois).
+    /// Se null, é uma meta pessoal (privada, só do UsuarioId).
+    /// </summary>
+    public int? FamiliaId { get; set; }
+
     // Navegação
     public Usuario Usuario { get; set; } = null!;
     public Categoria? Categoria { get; set; }
+    public Familia? Familia { get; set; }
 }

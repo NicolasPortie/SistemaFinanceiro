@@ -7,8 +7,15 @@ public class Categoria
     public bool Padrao { get; set; } // true = categoria do sistema, false = customizada
     public int UsuarioId { get; set; }
 
+    /// <summary>
+    /// Se preenchido, esta é uma categoria compartilhada da família (visível para os dois, marcada com 🏠).
+    /// Se null, é uma categoria pessoal (só do UsuarioId).
+    /// </summary>
+    public int? FamiliaId { get; set; }
+
     // Navegação
     public Usuario Usuario { get; set; } = null!;
+    public Familia? Familia { get; set; }
     public ICollection<Lancamento> Lancamentos { get; set; } = new List<Lancamento>();
     public ICollection<LimiteCategoria> Limites { get; set; } = new List<LimiteCategoria>();
 

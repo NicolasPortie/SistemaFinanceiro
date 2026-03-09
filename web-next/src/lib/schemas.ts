@@ -1,5 +1,5 @@
 // ============================================================
-// ControlFinance — Zod Schemas
+// Ravier — Zod Schemas
 // Type-safe validation schemas for all forms
 // ============================================================
 
@@ -13,13 +13,19 @@ export const loginSchema = z.object({
 export const registroSchema = z.object({
   nome: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100, "Nome muito longo"),
   email: z.string().min(1, "E-mail é obrigatório").email("E-mail inválido"),
+  celular: z
+    .string()
+    .min(1, "Celular é obrigatório")
+    .min(10, "Celular deve ter pelo menos 10 dígitos")
+    .max(20, "Celular muito longo")
+    .regex(/^\+?[\d\s()\-]+$/, "Formato de celular inválido"),
   senha: z
     .string()
     .min(8, "Mínimo 8 caracteres")
     .regex(/[A-Z]/, "Deve conter letra maiúscula")
     .regex(/[a-z]/, "Deve conter letra minúscula")
     .regex(/\d/, "Deve conter um número"),
-  codigoConvite: z.string().min(1, "Código de convite é obrigatório"),
+  codigoConvite: z.string().optional(),
 });
 
 export const simulacaoSchema = z.object({
@@ -125,6 +131,12 @@ export const categoriaSchema = z.object({
 
 export const atualizarPerfilSchema = z.object({
   nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
+  celular: z
+    .string()
+    .max(20, "Celular muito longo")
+    .regex(/^$|^\+?[\d\s()\-]+$/, "Formato de celular inválido")
+    .optional()
+    .or(z.literal("")),
 });
 
 export const rendaMensalSchema = z.object({

@@ -14,7 +14,7 @@ public interface ILancamentoHandler
     /// <summary>
     /// Inicia o fluxo de lançamento em etapas. Se faltam dados, pergunta; senão, vai direto para confirmação.
     /// </summary>
-    Task<string> IniciarFluxoAsync(Usuario usuario, DadosLancamento dados, OrigemDado origem);
+    Task<string> IniciarFluxoAsync(long chatId, Usuario usuario, DadosLancamento dados, OrigemDado origem);
 
     /// <summary>
     /// Processa a próxima etapa do fluxo pendente. Retorna null se não há pendente.
@@ -29,7 +29,7 @@ public interface ILancamentoHandler
     /// <summary>
     /// Processa divisão de gasto: registra apenas a parte do usuário (valorTotal / numeroPessoas).
     /// </summary>
-    Task<string> ProcessarDivisaoGastoAsync(Usuario usuario, DadosDivisaoGastoIA dados, OrigemDado origem);
+    Task<string> ProcessarDivisaoGastoAsync(long chatId, Usuario usuario, DadosDivisaoGastoIA dados, OrigemDado origem);
 
     void RemoverPendente(long chatId);
     bool TemPendente(long chatId);

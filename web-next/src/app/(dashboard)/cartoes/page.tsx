@@ -25,23 +25,21 @@ import {
   Eye,
   Calendar,
   Wifi,
-  TrendingUp,
   DollarSign,
   Wallet,
+  CheckCircle,
   ArrowDownToLine,
   ArrowUpFromLine,
   Shield,
   Info,
   RefreshCw,
-  MoreVertical,
-  CheckCircle,
   Receipt,
   ChevronLeft,
   ChevronRight,
-  CalendarDays,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
+import { DialogShellHeader } from "@/components/shared/dialog-shell";
 import {
   Dialog,
   DialogContent,
@@ -49,13 +47,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -74,27 +66,6 @@ import {
 import { FaturaView } from "@/components/cartoes/fatura-view";
 import { FaturaMesSection } from "@/components/cartoes/fatura-mes-section";
 import { cn } from "@/lib/utils";
-
-const cardStyles = [
-  {
-    bg: "bg-gradient-to-br from-[#1e3a8a] to-[#172554]",
-    accent: "text-blue-200",
-    titleClass: "text-white",
-    numberClass: "text-blue-100",
-  },
-  {
-    bg: "bg-gradient-to-br from-[#94a3b8] to-[#475569]",
-    accent: "text-slate-300",
-    titleClass: "text-slate-100",
-    numberClass: "text-slate-200",
-  },
-  {
-    bg: "bg-gradient-to-br from-[#18181b] to-[#09090b]",
-    accent: "text-gray-400",
-    titleClass: "text-gray-200",
-    numberClass: "text-gray-400",
-  },
-];
 
 // ── Month Selector Hook ──────────────────────────────────────
 const meses = [
@@ -151,9 +122,10 @@ export default function CartoesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewingFaturaId, setViewingFaturaId] = useState<{ id: number; nome: string } | null>(null);
   const [garantiaCard, setGarantiaCard] = useState<Cartao | null>(null);
+  const [selectedCartaoId, setSelectedCartaoId] = useState<number | null>(null);
   const [garantiaTab, setGarantiaTab] = useState<string>("adicionar");
 
-  const { mesParam, label: mesLabel, isCurrentMonth, prev, next, reset } = useMonthSelector();
+  const { mesParam, label: mesLabel, prev, next, reset } = useMonthSelector();
 
   const { data: cartoes = [], isLoading, isError, error, refetch } = useCartoes();
   const criarCartao = useCriarCartao();
@@ -282,10 +254,7 @@ export default function CartoesPage() {
     );
   };
 
-  const totalLimite = cartoes.reduce((s, c) => s + c.limite, 0);
-  const totalUsado = cartoes.reduce((s, c) => s + c.limiteUsado, 0);
   const totalDisponivel = cartoes.reduce((s, c) => s + (c.limiteDisponivel ?? c.limite), 0);
-  const usagePercent = totalLimite > 0 ? Math.round((totalUsado / totalLimite) * 100) : 0;
 
   // Fetch faturas for all cards to show monthly total in stat card
   const faturaQueries = useQueries({
@@ -308,92 +277,52 @@ export default function CartoesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [faturaQueries.map((q) => q.dataUpdatedAt).join(",")]);
 
-  const faturaPercent = totalLimite > 0 ? Math.round((faturaTotalMes / totalLimite) * 100) : 0;
 
   if (isError) {
     return (
-      <div className="space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/50 dark:border-slate-700/30 rounded-2xl p-4 lg:p-5 shadow-sm"
-        >
-          <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-            Cartões
-          </h2>
-        </motion.div>
+      <div className="flex flex-col gap-8">
+        <div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-slate-900 dark:text-white">Cartões de Crédito</h1>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold mt-2">Gestão de Limites e Faturas</p>
+        </div>
         <ErrorState message={error?.message ?? "Erro ao carregar cartões"} onRetry={refetch} />
       </div>
     );
   }
 
+  const totalLimite = cartoes.reduce((s, c) => s + c.limite, 0);
+  const cardBgStyles = [
+    "bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950",
+    "bg-slate-800",
+    "bg-emerald-900",
+    "bg-gradient-to-br from-blue-900 to-blue-950",
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* ═══ Action Bar ═══ */}
+    <div className="flex flex-col gap-8">
+      {/* ═══ Header ═══ */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/50 dark:border-slate-700/30 rounded-2xl p-4 lg:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm"
+        className="flex flex-col sm:flex-row sm:items-end justify-between gap-4"
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="size-10 flex items-center justify-center bg-emerald-600/10 rounded-xl">
-              <CreditCard className="h-5 w-5 text-emerald-600" />
-            </div>
-            <div>
-              <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-                Cartões
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Gerencie seus cartões e visualize faturas
-              </p>
-            </div>
-          </div>
-          <div className="hidden sm:block h-8 w-px bg-slate-300 dark:bg-slate-600" />
-          {/* Month selector */}
-          <div className="flex items-center gap-2 bg-white/70 dark:bg-slate-700/70 px-3 py-1.5 rounded-xl border border-white/60 dark:border-slate-600/60 shadow-sm">
-            <button
-              onClick={prev}
-              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg transition-colors cursor-pointer"
-            >
-              <ChevronLeft className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-            </button>
-            <button
-              onClick={reset}
-              className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 min-w-28 justify-center select-none cursor-pointer hover:text-emerald-600 transition-colors"
-            >
-              <CalendarDays className="h-4 w-4 text-emerald-600" />
-              {mesLabel}
-            </button>
-            <button
-              onClick={next}
-              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg transition-colors cursor-pointer"
-            >
-              <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-            </button>
-          </div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-slate-900 dark:text-white">Cartões de Crédito</h1>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold mt-2">Gestão de Limites e Faturas</p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => refetch()}
-                  className="p-2.5 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-xl transition-colors cursor-pointer"
-                >
-                  <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Atualizar dados</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => refetch()}
+            className="p-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm transition-colors cursor-pointer"
+          >
+            <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          </button>
           <button
             onClick={() => setShowForm(true)}
-            className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer text-sm"
+            className="bg-emerald-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-emerald-500/20 hover:brightness-105 transition-all cursor-pointer w-full sm:w-auto justify-center"
           >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Adicionar Cartão</span>
-            <span className="sm:hidden">Novo</span>
+            <Plus className="h-5 w-5" />
+            Novo Cartão
           </button>
         </div>
       </motion.div>
@@ -401,309 +330,161 @@ export default function CartoesPage() {
       {/* ═══ Stat Cards ═══ */}
       {isLoading ? (
         <CardSkeleton count={3} />
-      ) : cartoes.length > 0 ? (
+      ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
-            {/* Total de Cartões */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0 }}
-              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+              className="exec-card p-5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex items-center justify-between border-l-4 border-emerald-500"
             >
-              <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-              <div className="flex justify-between items-start z-10">
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                    Total de Cartões
-                  </p>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-                    {cartoes.length} {cartoes.length === 1 ? "Ativo" : "Ativos"}
-                  </h3>
-                </div>
-                <div className="size-10 flex items-center justify-center bg-emerald-100 dark:bg-emerald-500/15 rounded-xl text-emerald-600">
-                  <CreditCard className="h-5 w-5" />
-                </div>
+              <div>
+                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">Limite Total</p>
+                <span className="text-xl mono-data text-slate-900 dark:text-white font-medium">{formatCurrency(totalLimite)}</span>
               </div>
+              <Wallet className="text-slate-300 h-8 w-8 shrink-0" />
             </motion.div>
-
-            {/* Limite Disponível Total */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+              className="exec-card p-5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex items-center justify-between border-l-4 border-emerald-300"
             >
-              <div className="absolute -right-6 -bottom-6 bg-green-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-green-500/15 transition-all" />
-              <div className="flex justify-between items-start z-10">
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                    Limite Disponível Total
-                  </p>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-                    {formatCurrency(totalDisponivel)}
-                  </h3>
-                </div>
-                <div className="size-10 flex items-center justify-center bg-green-100 dark:bg-green-500/15 rounded-xl text-green-600 dark:text-green-400">
-                  <CheckCircle className="h-5 w-5" />
-                </div>
+              <div>
+                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">Limite Disponível Total</p>
+                <span className="text-xl mono-data text-emerald-600 font-medium">{formatCurrency(totalDisponivel)}</span>
               </div>
-              <div className="w-full bg-slate-100 dark:bg-slate-700/40 rounded-full h-1.5 mt-auto z-10">
-                <div
-                  className="bg-green-500 h-1.5 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${totalLimite > 0 ? Math.round((totalDisponivel / totalLimite) * 100) : 0}%`,
-                  }}
-                />
-              </div>
+              <CheckCircle className="text-slate-300 h-8 w-8 shrink-0" />
             </motion.div>
-
-            {/* Fatura Total do Mês */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300 ring-1 ring-emerald-600/20 bg-white/90 dark:bg-slate-800/90"
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              className="exec-card p-5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex items-center justify-between border-l-4 border-rose-400"
             >
-              <div className="absolute -right-6 -bottom-6 bg-emerald-600/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-600/15 transition-all" />
-              <div className="flex justify-between items-start z-10">
-                <div>
-                  <p className="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                    Fatura Total do Mês
-                  </p>
-                  <h3 className="text-2xl font-bold text-emerald-600 tracking-tight">
-                    {formatCurrency(faturaTotalMes)}
-                  </h3>
-                </div>
-                <div className="size-10 flex items-center justify-center bg-red-100 dark:bg-red-500/15 rounded-xl text-red-600 dark:text-red-400">
-                  <Receipt className="h-5 w-5" />
-                </div>
+              <div>
+                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">Fatura Global</p>
+                <span className="text-xl mono-data text-rose-500 font-bold">{formatCurrency(faturaTotalMes)}</span>
               </div>
-              {faturaPercent > 0 && (
-                <div className="flex items-center gap-1 text-xs font-medium mt-auto z-10 text-red-500">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  {faturaPercent}% do limite utilizado
-                </div>
-              )}
+              <Receipt className="text-slate-300 h-8 w-8 shrink-0" />
             </motion.div>
           </div>
 
-          {/* ═══ Card Grid ═══ */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            <AnimatePresence>
+          {/* ═══ Horizontal Card Strip ═══ */}
+          {cartoes.length === 0 ? (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-6 sm:p-10 lg:p-12">
+              <EmptyState
+                icon={<CreditCard className="h-6 w-6" />}
+                title="Nenhum cartão"
+                description="Adicione um cartão de crédito para começar a rastrear suas faturas"
+                action={
+                  <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 cursor-pointer w-full sm:w-auto justify-center">
+                    <Plus className="h-4 w-4" /> Novo Cartão
+                  </button>
+                }
+              />
+            </motion.div>
+          ) : (
+            <div className="flex gap-6 overflow-x-auto pb-2 hide-scrollbar">
               {cartoes.map((cartao, i) => {
-                const style = cardStyles[i % cardStyles.length];
+                const bgClass = cardBgStyles[i % cardBgStyles.length];
+                const isSelected = selectedCartaoId === cartao.id;
+                const disponivel = cartao.limiteDisponivel ?? cartao.limite;
+                const availablePct = cartao.limite > 0 ? Math.min((disponivel / cartao.limite) * 100, 100) : 0;
                 return (
-                  <motion.div
+                  <div
                     key={cartao.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * i }}
-                    className="glass-panel p-6 rounded-3xl flex flex-col gap-6 hover:shadow-lg transition-all duration-300"
+                    onClick={() => setSelectedCartaoId(prev => prev === cartao.id ? null : cartao.id)}
+                    className={cn(
+                      "shrink-0 w-64 sm:w-80 h-40 sm:h-48 rounded-xl sm:rounded-[2rem] p-5 sm:p-8 text-white flex flex-col justify-between border border-slate-700 shadow-xl cursor-pointer transition-all hover:-translate-y-1",
+                      bgClass,
+                      isSelected && "ring-2 ring-emerald-500 ring-offset-4"
+                    )}
                   >
-                    {/* ── Credit Card Visual ── */}
-                    <div
-                      className={cn(
-                        style.bg,
-                        "rounded-2xl p-6 text-white relative overflow-hidden shadow-lg h-52 flex flex-col justify-between group"
-                      )}
-                    >
-                      <div className="absolute -right-10 -top-10 bg-white/10 w-40 h-40 rounded-full blur-3xl" />
-                      <div className="absolute -left-10 -bottom-10 bg-black/20 w-40 h-40 rounded-full blur-3xl" />
-
-                      {/* Top: brand + actions */}
-                      <div className="flex justify-between items-start z-10">
-                        <span className={cn("font-bold text-lg tracking-wider", style.titleClass)}>
-                          Control Finance
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Wifi className="h-4 w-4 text-white/40 rotate-90" />
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className="size-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer">
-                                <MoreVertical className="h-4 w-4" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="min-w-40">
-                              <DropdownMenuItem
-                                onClick={() => openEdit(cartao)}
-                                className="gap-2 cursor-pointer"
-                              >
-                                <Pencil className="h-3.5 w-3.5" /> Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setDeletingId(cartao.id)}
-                                className="gap-2 text-red-600 focus:text-red-600 cursor-pointer"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" /> Desativar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-
-                      {/* Chip + contactless */}
-                      <div className="z-10 flex items-center gap-3">
-                        <div className="w-10 h-7 bg-linear-to-br from-yellow-400 to-yellow-600 rounded-md border border-yellow-600/50 shadow-inner" />
-                      </div>
-
-                      {/* Bottom: titular + number */}
-                      <div className="z-10">
-                        <div className="flex justify-between items-end">
-                          <div>
-                            <p
-                              className={cn("text-xs uppercase tracking-wider mb-1", style.accent)}
-                            >
-                              Titular
-                            </p>
-                            <p className={cn("font-medium tracking-wide", style.titleClass)}>
-                              {cartao.nome.toUpperCase()}
-                            </p>
-                          </div>
-                        </div>
-                        <div
-                          className={cn(
-                            "mt-2 text-sm tracking-[0.15em] font-mono",
-                            style.numberClass
-                          )}
-                        >
-                          •••• •••• •••• ••••
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ── Card Info ── */}
-                    <div className="space-y-4">
-                      {/* Limite + Garantia */}
-                      <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-700/30">
-                        <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase">
-                            Limite Disponível
-                          </p>
-                          <p className="text-lg font-bold text-slate-800 dark:text-white">
-                            {formatCurrency(cartao.limiteDisponivel ?? cartao.limite)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase">
-                            Garantia
-                          </p>
-                          <p
-                            className={cn(
-                              "text-sm font-bold",
-                              cartao.garantia > 0
-                                ? "text-green-600 dark:text-green-400"
-                                : "text-slate-400 dark:text-slate-500"
-                            )}
-                          >
-                            {cartao.garantia > 0
-                              ? `+ ${formatCurrency(cartao.garantia)}`
-                              : formatCurrency(0)}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Fechamento / Vencimento */}
-                      <div className="flex justify-between items-center text-sm">
-                        <div className="flex flex-col">
-                          <span className="text-slate-500 dark:text-slate-400 text-xs">
-                            Fechamento
-                          </span>
-                          <span className="font-semibold text-slate-700 dark:text-slate-200">
-                            Dia {cartao.diaFechamento}
-                          </span>
-                        </div>
-                        <div className="flex flex-col text-right">
-                          <span className="text-slate-500 dark:text-slate-400 text-xs">
-                            Vencimento
-                          </span>
-                          <span className="font-semibold text-red-500">
-                            Dia {cartao.diaVencimento}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Usage bar */}
+                    <div className="flex justify-between items-start">
                       <div>
-                        <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 mb-1">
-                          <span>Usado: {formatCurrency(cartao.limiteUsado)}</span>
-                          <span>de {formatCurrency(cartao.limite)}</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700/40 overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-full rounded-full transition-all duration-500",
-                              cartao.limiteUsado / cartao.limite > 0.8
-                                ? "bg-red-500"
-                                : cartao.limiteUsado / cartao.limite > 0.5
-                                  ? "bg-amber-500"
-                                  : "bg-emerald-600"
-                            )}
-                            style={{
-                              width: `${Math.min((cartao.limiteUsado / cartao.limite) * 100, 100)}%`,
-                            }}
-                          />
-                        </div>
+                        <p className="text-[8px] uppercase tracking-widest opacity-60 mb-1">Instituição</p>
+                        <p className="text-xs font-bold tracking-widest uppercase">{cartao.nome}</p>
                       </div>
-
-                      {/* Action buttons */}
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          onClick={() => setViewingFaturaId({ id: cartao.id, nome: cartao.nome })}
-                          className="flex-1 py-2 text-xs font-semibold bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          Fatura
+                      <div className="flex items-center gap-0.5">
+                        <Wifi className="h-4 w-4 opacity-40 rotate-90" />
+                        <button onClick={(e) => { e.stopPropagation(); openEdit(cartao); }} className="size-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer">
+                          <Pencil className="h-3 w-3" />
                         </button>
-                        <button
-                          onClick={() => openGarantia(cartao, "adicionar")}
-                          className="flex-1 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-700/40 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          <ArrowUpFromLine className="h-3.5 w-3.5" />
-                          Garantia
-                        </button>
-                        <button
-                          onClick={() => openGarantia(cartao, "resgatar")}
-                          disabled={cartao.garantia <= 0}
-                          className="py-2 px-3 text-xs font-semibold bg-slate-100 dark:bg-slate-700/40 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                          title="Resgatar Garantia"
-                        >
-                          <ArrowDownToLine className="h-3.5 w-3.5" />
+                        <button onClick={(e) => { e.stopPropagation(); setDeletingId(cartao.id); }} className="size-7 flex items-center justify-center text-white/40 hover:text-red-300 hover:bg-white/15 rounded-lg transition-colors cursor-pointer">
+                          <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
                     </div>
-                  </motion.div>
+                    <div>
+                      <div className="flex justify-between text-[9px] mb-2">
+                        <span className="opacity-60">Disponível: {formatCurrency(disponivel)}</span>
+                        <span className="font-bold">Total: {formatCurrency(cartao.limite)}</span>
+                      </div>
+                      <div className="w-full h-1 bg-slate-700/60 rounded-full overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-all duration-500", availablePct < 20 ? "bg-rose-400" : "bg-emerald-400")}
+                          style={{ width: `${availablePct}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-end">
+                      <span className="mono-data text-sm tracking-widest">•••• ••••</span>
+                      <div className="text-right">
+                        <p className="text-[7px] uppercase opacity-50">Vencimento</p>
+                        <p className="text-[10px] font-bold">DIA {cartao.diaVencimento}</p>
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
-            </AnimatePresence>
+            </div>
+          )}
+
+          {/* ═══ Fatura Section ═══ */}
+          <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden">
+            <div className="px-5 sm:px-10 py-5 sm:py-8 border-b border-slate-50 dark:border-slate-700/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-8">
+                <div>
+                  <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">Fatura Atual</p>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <button onClick={prev} className="p-1 hover:text-slate-600 text-slate-400 cursor-pointer transition-colors">
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <span className="text-xl serif-italic text-slate-900 dark:text-white">{mesLabel}</span>
+                      <button onClick={next} className="p-1 hover:text-slate-600 text-slate-400 cursor-pointer transition-colors">
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded-full uppercase tracking-widest">Aberta</span>
+                  </div>
+                </div>
+                <div className="h-10 w-px bg-slate-100 dark:bg-slate-700" />
+                <div>
+                  <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">Valor Total</p>
+                  <span className="text-xl mono-data font-bold text-slate-900 dark:text-white">{formatCurrency(faturaTotalMes)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {selectedCartaoId && (
+                  <button
+                    onClick={() => { const c = cartoes.find(x => x.id === selectedCartaoId); if (c) openGarantia(c, "adicionar"); }}
+                    className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:bg-white dark:hover:bg-slate-700 transition-all cursor-pointer"
+                  >
+                    Garantia
+                  </button>
+                )}
+                {selectedCartaoId && (
+                  <button
+                    onClick={() => { const c = cartoes.find(x => x.id === selectedCartaoId); if (c) setViewingFaturaId({ id: c.id, nome: c.nome }); }}
+                    className="bg-emerald-600 text-white px-8 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-100 cursor-pointer hover:brightness-105 transition-all"
+                  >
+                    Ver Fatura
+                  </button>
+                )}
+              </div>
+            </div>
+            <FaturaMesSection
+              cartoes={selectedCartaoId ? cartoes.filter(c => c.id === selectedCartaoId) : cartoes}
+              mesParam={mesParam}
+              mesLabel={mesLabel}
+            />
           </div>
-
-          {/* ═══ Fatura do Mês (inline) ═══ */}
-          <FaturaMesSection cartoes={cartoes} mesParam={mesParam} mesLabel={mesLabel} />
         </>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-panel rounded-2xl p-12"
-        >
-          <EmptyState
-            icon={<CreditCard className="h-6 w-6" />}
-            title="Nenhum cartão"
-            description="Adicione um cartão de crédito para começar a rastrear suas faturas"
-            action={
-              <button
-                onClick={() => setShowForm(true)}
-                className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar cartão
-              </button>
-            }
-          />
-        </motion.div>
       )}
-
       {/* ═══ Create Dialog ═══ */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -839,8 +620,16 @@ export default function CartoesPage() {
       <Dialog open={editingCard !== null} onOpenChange={() => setEditingCard(null)}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold tracking-tight">Editar Cartão</DialogTitle>
-            <DialogDescription>Altere os dados do cartão</DialogDescription>
+            <DialogTitle className="sr-only">Editar Cartão</DialogTitle>
+            <DialogDescription className="sr-only">
+              Altere os dados do cartão selecionado.
+            </DialogDescription>
+            <DialogShellHeader
+              icon={<CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Editar cartão"
+              description="Atualize limite e datas de fechamento e vencimento do cartão."
+              tone="emerald"
+            />
           </DialogHeader>
           <div className="pb-4">
             <form onSubmit={editFormState.handleSubmit(onSubmitEdit)} className="space-y-5">
@@ -928,12 +717,17 @@ export default function CartoesPage() {
       {/* ═══ Fatura Dialog ═══ */}
       <Dialog open={viewingFaturaId !== null} onOpenChange={() => setViewingFaturaId(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
-          <DialogHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5 bg-muted/20">
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <CreditCard className="h-4 w-4" />
-              {viewingFaturaId?.nome}
-            </DialogTitle>
-            <DialogDescription>Faturas pendentes</DialogDescription>
+          <DialogHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 sm:pb-5">
+            <DialogTitle className="sr-only">Faturas pendentes</DialogTitle>
+            <DialogDescription className="sr-only">
+              Faturas pendentes do cartão selecionado.
+            </DialogDescription>
+            <DialogShellHeader
+              icon={<CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title={viewingFaturaId?.nome ? `Faturas de ${viewingFaturaId.nome}` : "Faturas pendentes"}
+              description="Veja a lista de faturas abertas e acompanhe os lançamentos vinculados."
+              tone="blue"
+            />
           </DialogHeader>
           <div className="overflow-y-auto flex-1 px-5 sm:px-7 pb-5 pt-2">
             {viewingFaturaId && <FaturaView cartaoId={viewingFaturaId.id} />}
@@ -946,11 +740,16 @@ export default function CartoesPage() {
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-0 gap-0">
           <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 space-y-3">
             <DialogHeader className="space-y-1">
-              <DialogTitle className="text-lg font-bold tracking-tight flex items-center gap-2">
-                <Shield className="h-5 w-5 text-emerald-500" />
-                Garantia — {garantiaCard?.nome}
-              </DialogTitle>
-              <DialogDescription>Adicione ou resgate a garantia deste cartão.</DialogDescription>
+              <DialogTitle className="sr-only">Garantia do cartão</DialogTitle>
+              <DialogDescription className="sr-only">
+                Adicione ou resgate a garantia deste cartão.
+              </DialogDescription>
+              <DialogShellHeader
+                icon={<Shield className="h-5 w-5 sm:h-6 sm:w-6" />}
+                title={garantiaCard?.nome ? `Garantia de ${garantiaCard.nome}` : "Garantia do cartão"}
+                description="Adicione ou resgate garantia e acompanhe o bônus aplicado ao limite."
+                tone="emerald"
+              />
             </DialogHeader>
 
             <div className="rounded-xl bg-emerald-500/8 border border-emerald-500/15 p-3.5 space-y-1.5">
@@ -1167,12 +966,18 @@ export default function CartoesPage() {
       {/* ═══ Delete Confirmation ═══ */}
       <AlertDialog open={deletingId !== null} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Desativar cartão?</AlertDialogTitle>
-            <AlertDialogDescription>
+          <AlertDialogHeader className="items-start text-left">
+            <AlertDialogTitle className="sr-only">Desativar cartão?</AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
               O cartão será desativado e não aparecerá mais na listagem. As faturas existentes serão
               mantidas.
             </AlertDialogDescription>
+            <DialogShellHeader
+              icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Desativar cartão?"
+              description="O cartão será desativado e não aparecerá mais na listagem. As faturas existentes serão mantidas."
+              tone="rose"
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>

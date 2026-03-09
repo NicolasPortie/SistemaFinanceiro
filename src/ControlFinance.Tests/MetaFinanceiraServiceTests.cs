@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Application.Services;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -12,6 +13,7 @@ public class MetaFinanceiraServiceTests
 {
     private readonly Mock<IMetaFinanceiraRepository> _metaRepoMock;
     private readonly Mock<ICategoriaRepository> _categoriaRepoMock;
+    private readonly Mock<IFeatureGateService> _featureGateMock;
     private readonly Mock<ILogger<MetaFinanceiraService>> _loggerMock;
     private readonly MetaFinanceiraService _service;
 
@@ -19,11 +21,26 @@ public class MetaFinanceiraServiceTests
     {
         _metaRepoMock = new Mock<IMetaFinanceiraRepository>();
         _categoriaRepoMock = new Mock<ICategoriaRepository>();
+        _featureGateMock = new Mock<IFeatureGateService>();
         _loggerMock = new Mock<ILogger<MetaFinanceiraService>>();
+
+        // Por padrão, retornar lista vazia de metas ativas (evita NRE no gate check)
+        _metaRepoMock
+            .Setup(r => r.ObterPorUsuarioAsync(It.IsAny<int>(), It.IsAny<StatusMeta?>()))
+            .ReturnsAsync(new List<MetaFinanceira>());
+
+        // Por padrão, permitir acesso nos testes
+        _featureGateMock
+            .Setup(fg => fg.VerificarAcessoAsync(It.IsAny<int>(), It.IsAny<Recurso>()))
+            .ReturnsAsync(FeatureGateResult.Permitir(-1));
+        _featureGateMock
+            .Setup(fg => fg.VerificarLimiteAsync(It.IsAny<int>(), It.IsAny<Recurso>(), It.IsAny<int>()))
+            .ReturnsAsync(FeatureGateResult.Permitir(-1));
 
         _service = new MetaFinanceiraService(
             _metaRepoMock.Object,
             _categoriaRepoMock.Object,
+            _featureGateMock.Object,
             _loggerMock.Object);
     }
 

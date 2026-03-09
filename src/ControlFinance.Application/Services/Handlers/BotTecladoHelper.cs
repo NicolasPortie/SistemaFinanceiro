@@ -10,6 +10,7 @@ namespace ControlFinance.Application.Services.Handlers;
 public static class BotTecladoHelper
 {
     private static readonly ConcurrentDictionary<long, List<List<(string Label, string Data)>>> _tecladosPendentes = new();
+    private static readonly ConcurrentDictionary<long, bool> _contactRequestPending = new();
 
     /// <summary>
     /// Define um teclado inline a ser enviado com a próxima resposta.
@@ -37,4 +38,14 @@ public static class BotTecladoHelper
     {
         _tecladosPendentes.TryRemove(chatId, out _);
     }
+
+    /// <summary>
+    /// Solicita que o controller envie um ReplyKeyboard com "Compartilhar contato" ao next reply.
+    /// </summary>
+    public static void SolicitarContato(long chatId) => _contactRequestPending[chatId] = true;
+
+    /// <summary>
+    /// Consome a solicitação de contato pendente. Retorna true se havia pedido.
+    /// </summary>
+    public static bool ConsumirSolicitacaoContato(long chatId) => _contactRequestPending.TryRemove(chatId, out _);
 }

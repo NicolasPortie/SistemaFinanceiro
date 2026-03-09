@@ -22,4 +22,9 @@ public interface ITelegramBotService
     /// </summary>
     /// <param name="caption">Legenda opcional enviada pelo usuário junto com a foto.</param>
     Task<string> ProcessarImagemAsync(long chatId, byte[] imageData, string mimeType, string nomeUsuario, string? caption = null);
+
+    /// <summary>
+    /// Processa um contato compartilhado no Telegram para auto-vinculação por celular.
+    /// </summary>
+    Task<string> ProcessarContatoAsync(long chatId, string phoneNumber, string nomeUsuario);
 }

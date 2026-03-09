@@ -1,30 +1,25 @@
-﻿"use client";
+"use client";
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/contexts/auth-context";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginData } from "@/lib/schemas";
-import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  LogIn,
-  Wallet,
-  Shield,
-  Zap,
-  MoreHorizontal,
-  ShieldCheck,
-} from "lucide-react";
 import { toast } from "sonner";
+import { Eye, EyeOff, ArrowRight, Mic, Camera, TrendingUp, ShieldCheck } from "lucide-react";
+import { AppleLoginButton } from "@/components/auth/apple-login-button";
+import { GoogleLoginButton } from "@/components/auth/google-login-button";
+import { Input } from "@/components/ui/input";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const { login, usuario } = useAuth();
+  const [socialTokenToComplete, setSocialTokenToComplete] = useState<{ provider: "google" | "apple"; token: string; nome?: string } | null>(null);
+  const [celularCompletar, setCelularCompletar] = useState("");
+  const { login, loginComGoogle, loginComApple, usuario } = useAuth();
   const router = useRouter();
 
   const {
@@ -36,14 +31,10 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    if (usuario) {
-      router.replace("/dashboard");
-    }
+    if (usuario) router.replace("/dashboard");
   }, [usuario, router]);
 
-  if (usuario) {
-    return null;
-  }
+  if (usuario) return null;
 
   const onSubmit = async (data: LoginData) => {
     try {
@@ -56,249 +47,356 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-auth-gradient font-sans text-slate-900 dark:text-slate-100 antialiased min-h-screen overflow-x-hidden overflow-y-auto relative">
-      {/* Background blurs */}
-      <div className="absolute top-[-10%] left-[-10%] w-150 h-150 bg-emerald-500/20 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-125 h-125 bg-teal-500/10 rounded-full blur-[120px] pointer-events-none" />
+    <main className="flex min-h-screen">
+      {/* ── Left Panel — Brand & Visual ── */}
+      <div className="hidden lg:flex lg:w-[55%] relative flex-col justify-between p-10 bg-stone-50 overflow-hidden">
+        {/* Subtle background pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.4]"
+          style={{
+            backgroundImage: "radial-gradient(circle, #d6d3d1 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
+          }}
+        />
 
-      <div className="relative z-10 h-full w-full flex flex-col p-6 sm:p-8 lg:p-12">
-        {/* Header / Logo */}
-        <header className="flex items-center gap-3 text-white/90">
-          <div className="size-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-lg shadow-black/10">
-            <Wallet className="h-5 w-5 text-white" />
-          </div>
-          <h2 className="text-white text-xl font-bold tracking-tight">Control Finance</h2>
-        </header>
+        {/* Soft emerald glow */}
+        <div className="absolute top-1/4 right-0 w-125 h-125 bg-emerald-100/40 rounded-full blur-[150px] z-0" />
+        <div className="absolute bottom-0 left-1/4 w-100 h-100 bg-emerald-50/60 rounded-full blur-[120px] z-0" />
 
-        {/* Main content */}
-        <main className="flex-1 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16 xl:gap-24 w-full max-w-6xl mx-auto">
-          {/* ── Left: Hero text (desktop) ── */}
-          <div className="w-full lg:w-120 xl:w-135 shrink-0 text-center lg:text-left pt-8 lg:pt-0">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-white text-4xl sm:text-5xl lg:text-7xl font-black leading-tight tracking-[-0.03em] mb-6 lg:mb-8"
-            >
-              Suas <span className="whitespace-nowrap">finanças no</span> <br />
-              <span className="text-emerald-300">controle total</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.15 }}
-              className="text-emerald-100 text-base sm:text-lg lg:text-xl font-normal opacity-80 max-w-lg mx-auto lg:mx-0"
-            >
-              Dashboard e Metas em um só lugar. Acompanhe seu progresso com interfaces modernas e
-              intuitivas.
-            </motion.p>
-          </div>
+        {/* Logo */}
+        <div className="relative z-10">
+          <Image src="/logo-text.png" alt="Ravier" width={100} height={30} className="object-contain" />
+        </div>
 
-          {/* ── Right: Login card ── */}
-          <div className="w-full lg:w-auto flex justify-center items-center py-8 lg:py-12">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="w-full max-w-110 login-glass-card p-7 sm:p-8 lg:p-10 rounded-3xl shadow-2xl relative overflow-hidden"
-            >
-              {/* Card header */}
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                  Bem-vindo de volta
-                </h2>
-                <p className="text-slate-500 dark:text-slate-400 mt-2">
-                  Acesse sua conta para gerenciar suas finanças.
-                </p>
+        {/* Headline */}
+        <div className="relative z-10 max-w-lg">
+          <h1
+            className="text-5xl xl:text-6xl font-bold leading-[1.08] tracking-tight text-stone-800 mb-6"
+            style={{ fontFamily: "'Georgia', serif" }}
+          >
+            Suas finanças no{" "}
+            <span className="italic text-emerald-700">piloto automático.</span>
+          </h1>
+          <p className="text-stone-500 text-lg leading-relaxed max-w-md">
+            Grave um áudio, tire foto do recibo ou mande um texto. O Ravier cuida do resto.
+          </p>
+
+          {/* Feature pills */}
+          <div className="flex items-center gap-3 mt-8">
+            {[
+              { icon: <Mic className="size-3.5" />, label: "Áudio" },
+              { icon: <Camera className="size-3.5" />, label: "Foto" },
+              { icon: <TrendingUp className="size-3.5" />, label: "Simulações" },
+            ].map((pill) => (
+              <div
+                key={pill.label}
+                className="flex items-center gap-2 px-3.5 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-stone-200/60 text-stone-600 text-xs font-semibold shadow-sm"
+              >
+                {pill.icon}
+                {pill.label}
               </div>
+            ))}
+          </div>
+        </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                {/* Email */}
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-0.5"
-                    htmlFor="email"
-                  >
-                    Email
-                  </label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
-                    </div>
-                    <input
-                      className="block w-full pl-11 pr-4 h-12 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400"
-                      id="email"
-                      placeholder="exemplo@email.com"
-                      type="email"
-                      autoComplete="email"
-                      {...register("email")}
-                    />
+        {/* Floating animated cards */}
+        <div className="relative z-10 flex gap-4">
+          <div className="flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-md shadow-stone-200/50 border border-stone-100 animate-[float_6s_ease-in-out_infinite]">
+            <div className="size-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <Mic className="size-5 text-emerald-700" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-stone-800">Áudio processado</p>
+              <p className="text-[11px] text-stone-400">&quot;Gastei 80 de gasolina&quot;</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-md shadow-stone-200/50 border border-stone-100 animate-[float_5s_ease-in-out_infinite_0.5s]">
+            <div className="size-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <TrendingUp className="size-5 text-emerald-700" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-stone-800">Meta: 78%</p>
+              <p className="text-[11px] text-emerald-600 font-semibold">Reserva de emergência</p>
+            </div>
+          </div>
+        </div>
+
+        {/* CSS Animation */}
+        <style jsx>{`
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+          }
+        `}</style>
+      </div>
+
+      {/* ── Right Panel — Form ── */}
+      <div className="w-full lg:w-[45%] flex items-center justify-center p-6 sm:p-10 bg-white">
+        <div className="w-full max-w-md">
+          {/* Mobile logo */}
+          <div className="lg:hidden mb-10">
+            <Image src="/logo-text.png" alt="Ravier" width={100} height={30} className="object-contain" />
+          </div>
+
+          {/* Heading */}
+          <h2
+            className="text-2xl sm:text-3xl font-bold text-stone-800 mb-2"
+            style={{ fontFamily: "'Georgia', serif" }}
+          >
+            Acesse sua conta
+          </h2>
+          <p className="text-sm text-stone-400 mb-8">
+            Entre para acessar sua conta.
+          </p>
+
+          <div className="mb-6">
+            <GoogleLoginButton
+              text="signin_with"
+              onSuccess={async (credential) => {
+                try {
+                  await loginComGoogle(credential);
+                  toast.success("Login com Google realizado com sucesso!");
+                  router.replace("/dashboard");
+                } catch (err) {
+                  const msg = err instanceof Error ? err.message : "";
+                  if (msg.includes("Cadastro incompleto") || msg.includes("celular é obrigatório")) {
+                    setSocialTokenToComplete({ provider: "google", token: credential });
+                  } else {
+                    toast.error(msg || "Erro ao entrar com Google");
+                  }
+                }
+              }}
+              onError={() => {
+                toast.error("Erro ao autenticar com o Google");
+              }}
+            />
+
+            <div className="mt-3">
+              <AppleLoginButton
+                text="signin"
+                onSuccess={async (idToken, nome) => {
+                  try {
+                    await loginComApple(idToken, undefined, nome);
+                    toast.success("Login com Apple realizado com sucesso!");
+                    router.replace("/dashboard");
+                  } catch (err) {
+                    const msg = err instanceof Error ? err.message : "";
+                    if (msg.includes("Cadastro incompleto") || msg.includes("celular é obrigatório")) {
+                      setSocialTokenToComplete({ provider: "apple", token: idToken, nome });
+                    } else {
+                      toast.error(msg || "Erro ao entrar com Apple");
+                    }
+                  }
+                }}
+                onError={() => toast.error("Erro ao autenticar com a Apple")}
+              />
+            </div>
+            
+            <div className="relative mt-6 mb-2">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-stone-200"></div>
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest">
+                <span className="bg-white px-3 text-stone-400">
+                  Ou use seu e-mail
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {socialTokenToComplete ? (
+              <motion.div
+                key="social-celular"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="w-full"
+              >
+                <div className="mb-6 p-4 rounded-xl bg-orange-50 border border-orange-100 flex items-start gap-3">
+                  <div className="p-2 bg-orange-100/50 rounded-lg text-orange-600 mt-0.5">
+                    <ShieldCheck className="size-4" />
                   </div>
-                  {errors.email && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-xs text-red-500 pl-1 font-medium"
-                    >
-                      {errors.email.message}
-                    </motion.p>
-                  )}
+                  <div>
+                    <h3 className="text-sm font-semibold text-orange-900 mb-1">Quase lá!</h3>
+                    <p className="text-xs text-orange-700/90 leading-relaxed">
+                      Sua conta é nova. Precisamos do seu celular (WhatsApp/Telegram) para enviar alertas de orçamento e garantir suporte via assistente IA.
+                    </p>
+                  </div>
                 </div>
 
-                {/* Password */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center px-0.5">
-                    <label
-                      className="text-sm font-semibold text-slate-700 dark:text-slate-300"
-                      htmlFor="senha"
-                    >
-                      Senha
-                    </label>
-                    <Link
-                      href="/recuperar-senha"
-                      className="text-xs font-semibold text-emerald-600 hover:underline"
-                    >
-                      Esqueceu sua senha?
-                    </Link>
-                  </div>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
-                    </div>
-                    <input
-                      className="block w-full pl-11 pr-12 h-12 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 outline-none transition-all placeholder:text-slate-400"
-                      id="senha"
-                      placeholder="••••••••"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      {...register("senha")}
-                    />
-                    <button
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      tabIndex={-1}
-                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                    >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                  </div>
-                  {errors.senha && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-xs text-red-500 pl-1 font-medium"
-                    >
-                      {errors.senha.message}
-                    </motion.p>
-                  )}
-                </div>
-
-                {/* Submit */}
-                <button
-                  className="w-full h-12 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-600/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-2 shadow-lg shadow-emerald-600/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-                  type="submit"
-                  disabled={isSubmitting}
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!celularCompletar || celularCompletar.replace(/\D/g, "").length < 10) {
+                      toast.error("Por favor, informe um celular válido.");
+                      return;
+                    }
+                    try {
+                      if (socialTokenToComplete.provider === "google") {
+                        await loginComGoogle(socialTokenToComplete.token, celularCompletar);
+                      } else {
+                        await loginComApple(socialTokenToComplete.token, celularCompletar, socialTokenToComplete.nome);
+                      }
+                      toast.success("Conta criada com sucesso!");
+                      router.replace("/dashboard");
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Erro ao finalizar cadastro");
+                    }
+                  }}
+                  className="space-y-4"
                 >
-                  {isSubmitting ? (
-                    <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div>
+                    <label
+                      htmlFor="celularCompletar"
+                      className="block text-[11px] font-semibold tracking-widest text-stone-500 uppercase mb-1.5"
+                    >
+                      Celular <span className="text-stone-400 font-normal lowercase">(WhatsApp/Telegram)</span>
+                    </label>
+                    <Input
+                      id="celularCompletar"
+                      type="tel"
+                      value={celularCompletar}
+                      onChange={(e) => setCelularCompletar(e.target.value)}
+                      placeholder="(11) 99999-9999"
+                      className="bg-stone-50 border-stone-200 h-11 focus-visible:ring-emerald-500/20 focus-visible:border-emerald-500 rounded-xl"
+                      autoFocus
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full relative group overflow-hidden bg-stone-900 text-white rounded-xl h-11 text-[13px] font-bold tracking-wide flex items-center justify-center transition-all duration-300 hover:bg-stone-800 hover:shadow-lg hover:shadow-stone-900/10 active:scale-[0.98]"
+                  >
+                    <span className="relative z-10 flex items-center gap-2">
+                      Concluir Cadastro
+                      <ArrowRight className="size-4 opacity-70 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSocialTokenToComplete(null)}
+                    className="w-full text-center text-[12px] font-semibold text-stone-500 hover:text-stone-800 transition-colors py-2"
+                  >
+                    Voltar e tentar outra opção
+                  </button>
+                </form>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="form"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full"
+              >
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Email */}
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-[11px] font-semibold tracking-widest text-stone-500 uppercase mb-1.5"
+              >
+                E-mail
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="seu@email.com"
+                className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
+              )}
+            </div>
+
+            {/* Password */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label
+                  htmlFor="senha"
+                  className="text-[11px] font-semibold tracking-widest text-stone-500 uppercase"
+                >
+                  Senha
+                </label>
+                <Link
+                  href="/recuperar-senha"
+                  className="text-[11px] font-semibold tracking-widest text-emerald-700 uppercase hover:text-emerald-800 transition-colors"
+                >
+                  Esqueci a senha
+                </Link>
+              </div>
+              <div className="relative group">
+                <input
+                  id="senha"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-stone-200 bg-stone-50 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
+                  {...register("senha")}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-stone-400 hover:text-stone-600 focus:outline-none transition-colors"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
                   ) : (
-                    <>
-                      Entrar
-                      <LogIn className="h-5 w-5" />
-                    </>
+                    <Eye className="w-4 h-4" />
                   )}
                 </button>
-              </form>
-
-              {/* Register link */}
-              <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-center gap-2 text-sm">
-                  <span className="text-slate-500 dark:text-slate-400">Não possui uma conta?</span>
-                  <Link className="font-bold text-emerald-600 hover:underline" href="/registro">
-                    Criar conta gratuita
-                  </Link>
-                </div>
               </div>
-
-              {/* Trust badges */}
-              <div className="mt-8 flex items-center justify-center gap-6">
-                <div className="flex items-center gap-1 grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all cursor-default">
-                  <Shield className="h-4 w-4 text-emerald-600" />
-                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
-                    Seguro
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all cursor-default">
-                  <Zap className="h-4 w-4 text-emerald-600" />
-                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
-                    Rápido
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </main>
-
-        {/* Footer */}
-        <footer className="mt-auto flex flex-col lg:flex-row items-end justify-between gap-8 pb-4 max-w-6xl mx-auto w-full">
-          {/* Preview cards (desktop only) */}
-          <div className="hidden lg:flex flex-row gap-6 w-full lg:w-2/3 auth-subtle-preview">
-            {/* Dashboard preview */}
-            <div className="auth-glass-card rounded-t-2xl p-5 flex-1 flex flex-col justify-between min-h-35 opacity-40 hover:opacity-100 transition-opacity duration-500">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-white font-semibold text-xs">Dashboard Mensal</span>
-                <MoreHorizontal className="h-4 w-4 text-white/70" />
-              </div>
-              <div className="flex items-end gap-2 h-12">
-                <div className="flex-1 bg-white/20 rounded-t-sm h-[40%]" />
-                <div className="flex-1 bg-white/40 rounded-t-sm h-[70%]" />
-                <div className="flex-1 bg-emerald-600/60 rounded-t-sm h-[90%] border-t border-white/30" />
-                <div className="flex-1 bg-white/20 rounded-t-sm h-[55%]" />
-                <div className="flex-1 bg-white/30 rounded-t-sm h-[30%]" />
-              </div>
+              {errors.senha && (
+                <p className="text-xs text-red-500 mt-1">{errors.senha.message}</p>
+              )}
             </div>
 
-            {/* Goals & Investment previews */}
-            <div className="flex-1 flex flex-row gap-4">
-              <div className="auth-glass-card rounded-t-2xl p-4 flex items-center gap-4 flex-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
-                <div className="size-10 rounded-full border-2 border-emerald-600 border-t-white/20 flex items-center justify-center">
-                  <span className="text-[9px] text-white font-bold">85%</span>
-                </div>
-                <div>
-                  <p className="text-white/60 text-[9px] uppercase font-bold tracking-wider">
-                    Metas
-                  </p>
-                  <p className="text-white text-xs font-semibold">Reserva</p>
-                </div>
-              </div>
-              <div className="auth-glass-card rounded-t-2xl p-4 flex items-center gap-4 flex-1 opacity-40 hover:opacity-100 transition-opacity duration-500">
-                <div className="size-10 rounded-full border-2 border-green-400 border-t-white/20 flex items-center justify-center">
-                  <span className="text-[9px] text-white font-bold">42%</span>
-                </div>
-                <div>
-                  <p className="text-white/60 text-[9px] uppercase font-bold tracking-wider">
-                    Investimento
-                  </p>
-                  <p className="text-white text-xs font-semibold">Ações</p>
-                </div>
-              </div>
-            </div>
-          </div>
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3.5 rounded-xl text-sm font-bold tracking-wider uppercase text-white bg-emerald-700 hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 group"
+            >
+              {isSubmitting ? "Entrando..." : (
+                <>
+                  Entrar
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                </>
+              )}
+            </button>
+            </form>
+          </motion.div>
+          )}
+          </AnimatePresence>
 
-          {/* Copyright */}
-          <div className="w-full lg:w-1/3 flex flex-col items-center lg:items-end justify-center h-full">
-            <p className="text-white/30 text-[10px] tracking-wide mb-2 uppercase">
-              © {new Date().getFullYear()} Control Finance Inc. Todos os direitos reservados.
-            </p>
-            <p className="text-white/40 text-[10px] flex items-center gap-1">
-              <ShieldCheck className="h-3 w-3" />
-              Sua conexão é segura e criptografada ponta-a-ponta.
-            </p>
+          {/* Sign up link */}
+          <p className="text-center text-sm text-stone-500 mt-8">
+            Ainda não tem uma conta?{" "}
+            <Link
+              href="/registro"
+              className="font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+            >
+              Crie sua conta
+            </Link>
+          </p>
+
+          {/* Footer */}
+          <div className="flex items-center justify-center gap-4 mt-12 text-[11px] text-stone-400">
+            <span>Termos de uso</span>
+            <span className="text-stone-200">·</span>
+            <span>Privacidade</span>
+            <span className="text-stone-200">·</span>
+            <span>© {new Date().getFullYear()} Ravier</span>
           </div>
-        </footer>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

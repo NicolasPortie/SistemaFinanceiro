@@ -56,21 +56,24 @@ public class ConsultaHandler : IConsultaHandler
         return _resumoService.FormatarResumo(resumo);
     }
 
-    public async Task<string> GerarExtratoFormatadoAsync(Usuario usuario)
+    public async Task<string> GerarExtratoFormatadoAsync(Usuario usuario, DateTime? de = null, DateTime? ate = null)
     {
         try
         {
-            var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(usuario.Id);
-            var recentes = lancamentos
-                .OrderByDescending(l => l.Data)
-                .ThenByDescending(l => l.CriadoEm)
-                .Take(15)
-                .ToList();
+            var lancamentos = await _lancamentoRepo.ObterPorUsuarioAsync(usuario.Id, de, ate);
+            var temFiltro = de.HasValue || ate.HasValue;
+
+            var recentes = temFiltro
+                ? lancamentos.OrderByDescending(l => l.Data).ThenByDescending(l => l.CriadoEm).ToList()
+                : lancamentos.OrderByDescending(l => l.Data).ThenByDescending(l => l.CriadoEm).Take(15).ToList();
 
             if (!recentes.Any())
-                return "💭 Nenhum lançamento registrado ainda.\n\nQue tal começar? Diga algo como:\n\"Gastei 30 no almoço\"";
+                return temFiltro
+                    ? "Nenhum lançamento encontrado nesse período."
+                    : "💭 Nenhum lançamento registrado ainda.\n\nQue tal começar? Diga algo como:\n\"Gastei 30 no almoço\"";
 
-            var texto = "📋 *Seus últimos lançamentos*\n\n";
+            var titulo = temFiltro ? "📋 *Lançamentos do período*" : "📋 *Seus últimos lançamentos*";
+            var texto = titulo + "\n\n";
             var totalReceita = 0m;
             var totalDespesa = 0m;
 
@@ -303,7 +306,7 @@ public class ConsultaHandler : IConsultaHandler
         return texto;
     }
 
-    public async Task<string> DetalharCategoriaAsync(Usuario usuario, string? respostaIA)
+    public async Task<string> DetalharCategoriaAsync(Usuario usuario, string? respostaIA, DateTime? de = null, DateTime? ate = null)
     {
         var nomeCategoria = respostaIA?.Trim();
         if (string.IsNullOrWhiteSpace(nomeCategoria))
@@ -327,8 +330,9 @@ public class ConsultaHandler : IConsultaHandler
         }
 
         var hoje = DateTime.UtcNow;
-        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var fimMes = inicioMes.AddMonths(1);
+        var temFiltro = de.HasValue || ate.HasValue;
+        var inicioMes = de ?? new DateTime(hoje.Year, hoje.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fimMes = ate ?? inicioMes.AddMonths(1);
 
         var lancamentos = await _lancamentoRepo.ObterPorUsuarioETipoAsync(
             usuario.Id, TipoLancamento.Gasto, inicioMes, fimMes);
@@ -339,11 +343,15 @@ public class ConsultaHandler : IConsultaHandler
             .ThenByDescending(l => l.CriadoEm)
             .ToList();
 
+        var periodoLabel = temFiltro
+            ? $"{inicioMes:MM/yyyy}" + (de?.Month != ate?.Month ? $" a {fimMes:MM/yyyy}" : "")
+            : $"{hoje:MM/yyyy}";
+
         if (!lancamentosCat.Any())
-            return $"🏷️ *{categoria.Nome}*\n\nSem gastos nesta categoria em {hoje:MM/yyyy}.";
+            return $"🏷️ *{categoria.Nome}*\n\nSem gastos nesta categoria em {periodoLabel}.";
 
         var total = lancamentosCat.Sum(l => l.Valor);
-        var texto = $"🏷️ *Detalhes — {categoria.Nome}* ({inicioMes:MM/yyyy})\n\n";
+        var texto = $"🏷️ *Detalhes — {categoria.Nome}* ({periodoLabel})\n\n";
 
         foreach (var l in lancamentosCat)
         {

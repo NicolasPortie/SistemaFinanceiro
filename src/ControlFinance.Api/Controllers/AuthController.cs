@@ -88,6 +88,36 @@ public class AuthController : BaseAuthController
         return Ok(MontarSessaoRespostaComCsrf(response!));
     }
 
+    [HttpPost("google")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> LoginGoogle([FromBody] GoogleLoginDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var (response, erro) = await _authService.LoginGoogleAsync(dto.IdToken, ClientIp, dto.Celular);
+        if (erro != null)
+            return Unauthorized(new { erro });
+
+        DefinirCookiesAutenticacao(response!);
+        return Ok(MontarSessaoRespostaComCsrf(response!));
+    }
+
+    [HttpPost("apple")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> LoginApple([FromBody] AppleLoginDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var (response, erro) = await _authService.LoginAppleAsync(dto.IdToken, ClientIp, dto.Celular, dto.Nome);
+        if (erro != null)
+            return Unauthorized(new { erro });
+
+        DefinirCookiesAutenticacao(response!);
+        return Ok(MontarSessaoRespostaComCsrf(response!));
+    }
+
     [HttpGet("csrf")]
     public IActionResult ObterCsrfToken()
     {
@@ -130,17 +160,6 @@ public class AuthController : BaseAuthController
         if (perfil == null) return NotFound();
 
         return Ok(perfil);
-    }
-
-    [Authorize]
-    [HttpPost("telegram/gerar-codigo")]
-    public async Task<IActionResult> GerarCodigoTelegram()
-    {
-        var (response, erro) = await _authService.GerarCodigoTelegramAsync(UsuarioId);
-        if (erro != null)
-            return BadRequest(new { erro });
-
-        return Ok(response);
     }
 
     [Authorize]

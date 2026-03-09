@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ControlFinance.Application.DTOs;
 
-// === Dashboard ===
 public class AdminDashboardDto
 {
     public int TotalUsuarios { get; set; }
@@ -26,7 +25,6 @@ public class CadastrosPorDiaDto
     public int Quantidade { get; set; }
 }
 
-// === Usuários ===
 public class AdminUsuarioDto
 {
     public int Id { get; set; }
@@ -46,9 +44,6 @@ public class AdminUsuarioDto
 
 public class EstenderAcessoDto
 {
-    /// <summary>
-    /// Dias a adicionar ao prazo atual (ou a partir de hoje se expirado/permanente).
-    /// </summary>
     [Range(1, 3650, ErrorMessage = "Dias deve ser entre 1 e 3650.")]
     public int Dias { get; set; }
 }
@@ -58,22 +53,6 @@ public class AdminUsuarioDetalheDto : AdminUsuarioDto
     public int SessoesAtivas { get; set; }
 }
 
-// === Lançamentos ===
-public class AdminLancamentoDto
-{
-    public int Id { get; set; }
-    public string UsuarioNome { get; set; } = string.Empty;
-    public string Descricao { get; set; } = string.Empty;
-    public decimal Valor { get; set; }
-    public string Tipo { get; set; } = string.Empty;
-    public string Categoria { get; set; } = string.Empty;
-    public string FormaPagamento { get; set; } = string.Empty;
-    public string Origem { get; set; } = string.Empty;
-    public DateTime Data { get; set; }
-    public DateTime CriadoEm { get; set; }
-}
-
-// === Códigos de Convite ===
 public class AdminCodigoConviteDto
 {
     public int Id { get; set; }
@@ -95,29 +74,19 @@ public class AdminCodigoConviteDto
 
 public class CriarCodigoConviteDto
 {
-    [StringLength(200, ErrorMessage = "Descrição deve ter no máximo 200 caracteres")]
+    [StringLength(200, ErrorMessage = "Descricao deve ter no maximo 200 caracteres")]
     public string? Descricao { get; set; }
 
-    /// <summary>
-    /// Horas de validade do código para ativação. 0 ou null = código permanente (nunca expira).
-    /// </summary>
-    [Range(0, 87600, ErrorMessage = "Validade deve ser entre 0 (permanente) e 87600 horas (10 anos)")]
+    [Range(0, 87600, ErrorMessage = "Validade deve ser entre 0 e 87600 horas")]
     public int HorasValidade { get; set; } = 48;
 
-    /// <summary>
-    /// Duração do acesso ao sistema em dias após ativação. 0 = acesso permanente.
-    /// </summary>
-    [Range(0, 3650, ErrorMessage = "Duração de acesso deve ser entre 0 (permanente) e 3650 dias (10 anos)")]
+    [Range(0, 3650, ErrorMessage = "Duracao de acesso deve ser entre 0 e 3650 dias")]
     public int DiasAcesso { get; set; } = 30;
 
-    /// <summary>
-    /// Quantidade de códigos a gerar de uma vez (batch).
-    /// </summary>
     [Range(1, 50, ErrorMessage = "Quantidade deve ser entre 1 e 50")]
     public int Quantidade { get; set; } = 1;
 }
 
-// === Sessões ===
 public class AdminSessaoDto
 {
     public int Id { get; set; }
@@ -128,7 +97,6 @@ public class AdminSessaoDto
     public string? IpCriacao { get; set; }
 }
 
-// === Segurança ===
 public class AdminSegurancaResumoDto
 {
     public int SessoesAtivas { get; set; }

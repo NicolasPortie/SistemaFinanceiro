@@ -71,6 +71,8 @@ public class CriarContaBancariaRequest
 
     public TipoContaBancaria Tipo { get; set; } = TipoContaBancaria.Corrente;
 
+    public string? Instituicao { get; set; }
+
     [Range(0, 999_999_999.99, ErrorMessage = "Saldo não pode ser negativo além do limite.")]
     public decimal Saldo { get; set; } = 0;
 }
@@ -81,6 +83,8 @@ public class AtualizarContaBancariaRequest
     public string? Nome { get; set; }
 
     public TipoContaBancaria? Tipo { get; set; }
+
+    public string? Instituicao { get; set; }
 
     public decimal? Saldo { get; set; }
 }
@@ -173,4 +177,26 @@ public class AtualizarLembreteRequest
 
     /// <summary>Data limite opcional: até quando pagar esta conta fixa (yyyy-MM-dd). Envie string vazia para remover.</summary>
     public string? DataFimRecorrencia { get; set; }
+}
+
+// ====== Autenticação ======
+public class GoogleLoginDto
+{
+    [Required]
+    public string IdToken { get; set; } = string.Empty;
+
+    public string? Celular { get; set; }
+}
+
+public class AppleLoginDto
+{
+    [Required]
+    public string IdToken { get; set; } = string.Empty;
+
+    public string? Celular { get; set; }
+
+    /// <summary>
+    /// Nome do usuário (Apple só envia na primeira autorização).
+    /// </summary>
+    public string? Nome { get; set; }
 }

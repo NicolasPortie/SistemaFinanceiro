@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Control Finance - Minhas Metas</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Playfair+Display:ital,wght@1,400;1,700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --ivory-bg: #F9F9F7;
+            --pure-white: #FFFFFF;
+            --deep-navy: #0F172A;
+            --charcoal: #334155;
+            --emerald-accent: #10B981;
+            --emerald-600: #059669;
+            --gold-accent: #B89332;
+            --border-soft: rgba(15, 23, 42, 0.06);
+            --shadow-elegant: 0 10px 30px -10px rgba(0, 0, 0, 0.04), 0 4px 12px -4px rgba(0, 0, 0, 0.02);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--ivory-bg);
+            color: var(--deep-navy);
+            -webkit-font-smoothing: antialiased;
+        }
+        .serif-italic {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+        }
+        .mono-data {
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+        }
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+        .glass-card {
+            background: var(--pure-white);
+            border: 1px solid var(--border-soft);
+            box-shadow: var(--shadow-elegant);
+        }
+        .nav-link {
+            @apply text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all px-2 py-1;
+        }
+        .nav-link.active {
+            @apply text-slate-900 border-b-2 border-emerald-500;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 20;
+        }
+        .status-tag {
+            @apply text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md min-w-[85px] text-center;
+        }
+        .status-prazo { @apply bg-emerald-50 text-emerald-600; }
+        .status-atrasada { @apply bg-rose-50 text-rose-600; }
+        .status-adiantada { @apply bg-indigo-50 text-indigo-600; }
+        .dot-timeline {
+            display: flex;
+            gap: 3px;
+        }
+        .dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+        }
+        .dot-active { background-color: var(--emerald-accent); }
+        .dot-inactive { background-color: #E2E8F0; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden selection:bg-emerald-100 selection:text-emerald-900">
+<div class="noise-overlay"></div>
+<header class="h-20 flex-shrink-0 flex items-center justify-between px-10 bg-white border-b border-[var(--border-soft)] z-50">
+<div class="flex items-center gap-12">
+<span class="font-bold text-[var(--deep-navy)] tracking-tighter text-2xl serif-italic">Control<span class="font-light text-slate-300 not-italic">F</span></span>
+<nav class="flex items-center gap-8">
+<a class="nav-link" href="#">Tesouraria</a>
+<a class="nav-link active" href="#">Metas</a>
+<a class="nav-link" href="#">Performance</a>
+<a class="nav-link" href="#">Relatórios</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<button class="bg-emerald-500 text-white px-6 py-2.5 rounded-full text-[9px] font-bold uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span>
+            Nova Meta
+        </button>
+<div class="w-px h-6 bg-slate-100"></div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600">NP</div>
+</div>
+</div>
+</header>
+<main class="flex-1 overflow-hidden p-8 lg:p-12">
+<div class="max-w-[1600px] mx-auto h-full flex flex-col space-y-8">
+<div class="flex items-end justify-between">
+<div>
+<h1 class="text-3xl serif-italic text-[var(--deep-navy)] mb-2">Minhas Metas</h1>
+<p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Gerenciamento de Objetivos e Disciplina de Aportes</p>
+</div>
+<div class="flex gap-4">
+<div class="glass-card px-6 py-4 rounded-2xl flex items-center gap-4">
+<div class="text-right">
+<p class="text-[8px] text-slate-400 uppercase font-bold tracking-widest">Patrimônio Alocado</p>
+<p class="text-lg mono-data font-bold">R$ 1.482.500</p>
+</div>
+<span class="material-symbols-outlined text-emerald-500">account_balance_wallet</span>
+</div>
+</div>
+</div>
+<div class="glass-card flex-1 rounded-[2.5rem] overflow-hidden flex flex-col bg-white">
+<div class="p-10 border-b border-slate-50 grid grid-cols-12 gap-6 text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] items-center">
+<div class="col-span-3">Objetivo Estratégico</div>
+<div class="col-span-2">Real vs. Target Velocity</div>
+<div class="col-span-2">Acúmulo Atual / Meta</div>
+<div class="col-span-2">Tendência (6M)</div>
+<div class="col-span-1 text-center">Status</div>
+<div class="col-span-2 text-right pr-4">Ações</div>
+</div>
+<div class="flex-1 overflow-y-auto hide-scrollbar divide-y divide-slate-50">
+<div class="grid grid-cols-12 gap-6 p-10 items-center hover:bg-slate-50/50 transition-colors group">
+<div class="col-span-3 flex items-center gap-5">
+<div class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors">
+<span class="material-symbols-outlined">auto_graph</span>
+</div>
+<div>
+<h3 class="text-sm font-bold text-[var(--deep-navy)] mb-1">Liberdade Financeira</h3>
+<div class="flex items-center gap-3">
+<p class="text-[9px] text-slate-400 uppercase font-medium tracking-tighter">Aposentadoria</p>
+<div class="flex flex-col gap-1">
+<span class="text-[7px] text-slate-300 font-bold uppercase tracking-widest">Calendário de Aportes</span>
+<div class="dot-timeline">
+<div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div>
+<div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div>
+<div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-2 space-y-2">
+<div class="flex justify-between text-[8px] font-bold uppercase tracking-tighter mb-1">
+<span class="text-emerald-600">Real: 82%</span>
+<span class="text-slate-400">Target: 75%</span>
+</div>
+<div class="h-2 w-full bg-slate-100 rounded-full relative overflow-hidden">
+<div class="absolute top-0 left-0 h-[2px] bg-emerald-500 w-[82%] rounded-full z-10"></div>
+<div class="absolute bottom-0 left-0 h-[2px] bg-slate-300 w-[75%] rounded-full opacity-50"></div>
+</div>
+</div>
+<div class="col-span-2">
+<p class="text-xs mono-data font-bold text-[var(--deep-navy)]">R$ 820.500 <span class="text-slate-300 font-light mx-1">/</span> R$ 1.000.000</p>
+<p class="text-[8px] text-emerald-600 font-bold mt-1">+ R$ 12.400 este mês</p>
+</div>
+<div class="col-span-2">
+<p class="text-[7px] font-bold text-slate-400 mb-1 uppercase tracking-widest">TENDÊNCIA 6M: <span class="text-emerald-500">+14.2%</span></p>
+<svg class="w-full h-8" viewBox="0 0 120 30">
+<path d="M0,25 L20,20 L40,22 L60,15 L80,10 L100,12 L120,5" fill="none" stroke="#10B981" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+</div>
+<div class="col-span-1 flex justify-center">
+<span class="status-tag status-prazo">No Prazo</span>
+</div>
+<div class="col-span-2 flex justify-end gap-6 text-[9px] font-bold uppercase tracking-widest pr-4">
+<a class="text-[var(--emerald-600)] hover:brightness-90 transition-all flex items-center gap-1" href="#"><span class="material-symbols-outlined text-[14px]">add_circle</span>Aportar</a>
+<a class="text-slate-400 hover:text-[var(--emerald-600)] transition-all flex items-center gap-1" href="#"><span class="material-symbols-outlined text-[14px]">settings</span>Gerenciar</a>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6 p-10 items-center hover:bg-slate-50/50 transition-colors group">
+<div class="col-span-3 flex items-center gap-5">
+<div class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-rose-50 group-hover:text-rose-500 transition-colors">
+<span class="material-symbols-outlined">emergency_home</span>
+</div>
+<div>
+<h3 class="text-sm font-bold text-[var(--deep-navy)] mb-1">Reserva de Emergência</h3>
+<div class="flex items-center gap-3">
+<p class="text-[9px] text-slate-400 uppercase font-medium tracking-tighter">6 meses custos</p>
+<div class="flex flex-col gap-1">
+<span class="text-[7px] text-slate-300 font-bold uppercase tracking-widest">Calendário de Aportes</span>
+<div class="dot-timeline">
+<div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-inactive"></div>
+<div class="dot dot-inactive"></div><div class="dot dot-inactive"></div><div class="dot dot-active"></div><div class="dot dot-active"></div>
+<div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-2 space-y-2">
+<div class="flex justify-between text-[8px] font-bold uppercase tracking-tighter mb-1">
+<span class="text-rose-500">Real: 45%</span>
+<span class="text-slate-400">Target: 60%</span>
+</div>
+<div class="h-2 w-full bg-slate-100 rounded-full relative overflow-hidden">
+<div class="absolute top-0 left-0 h-[2px] bg-rose-400 w-[45%] rounded-full z-10"></div>
+<div class="absolute bottom-0 left-0 h-[2px] bg-slate-300 w-[60%] rounded-full opacity-50"></div>
+</div>
+</div>
+<div class="col-span-2">
+<p class="text-xs mono-data font-bold text-[var(--deep-navy)]">R$ 22.500 <span class="text-slate-300 font-light mx-1">/</span> R$ 50.000</p>
+<p class="text-[8px] text-rose-500 font-bold mt-1">Déficit de R$ 7.500</p>
+</div>
+<div class="col-span-2">
+<p class="text-[7px] font-bold text-slate-400 mb-1 uppercase tracking-widest">TENDÊNCIA 6M: <span class="text-rose-500">-2.1%</span></p>
+<svg class="w-full h-8" viewBox="0 0 120 30">
+<path d="M0,25 L20,28 L40,24 L60,26 L80,22 L100,24 L120,22" fill="none" stroke="#F43F5E" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+</div>
+<div class="col-span-1 flex justify-center">
+<span class="status-tag status-atrasada">Atrasada</span>
+</div>
+<div class="col-span-2 flex justify-end gap-6 text-[9px] font-bold uppercase tracking-widest pr-4">
+<a class="text-[var(--emerald-600)] hover:brightness-90 transition-all flex items-center gap-1" href="#"><span class="material-symbols-outlined text-[14px]">add_circle</span>Aportar</a>
+<a class="text-slate-400 hover:text-[var(--emerald-600)] transition-all flex items-center gap-1" href="#"><span class="material-symbols-outlined text-[14px]">settings</span>Gerenciar</a>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6 p-10 items-center hover:bg-slate-50/50 transition-colors group">
+<div class="col-span-3 flex items-center gap-5">
+<div class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors">
+<span class="material-symbols-outlined">flight_takeoff</span>
+</div>
+<div>
+<h3 class="text-sm font-bold text-[var(--deep-navy)] mb-1">Expedição Japão 2025</h3>
+<div class="flex items-center gap-3">
+<p class="text-[9px] text-slate-400 uppercase font-medium tracking-tighter">Viagem</p>
+<div class="flex flex-col gap-1">
+<span class="text-[7px] text-slate-300 font-bold uppercase tracking-widest">Calendário de Aportes</span>
+<div class="dot-timeline">
+<div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div>
+<div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div>
+<div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-active"></div><div class="dot dot-inactive"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-2 space-y-2">
+<div class="flex justify-between text-[8px] font-bold uppercase tracking-tighter mb-1">
+<span class="text-indigo-600">Real: 92%</span>
+<span class="text-slate-400">Target: 80%</span>
+</div>
+<div class="h-2 w-full bg-slate-100 rounded-full relative overflow-hidden">
+<div class="absolute top-0 left-0 h-[2px] bg-indigo-500 w-[92%] rounded-full z-10"></div>
+<div class="absolute bottom-0 left-0 h-[2px] bg-slate-300 w-[80%] rounded-full opacity-50"></div>
+</div>
+</div>
+<div class="col-span-2">
+<p class="text-xs mono-data font-bold text-[var(--deep-navy)]">R$ 27.600 <span class="text-slate-300 font-light mx-1">/</span> R$ 30.000</p>
+<p class="text-[8px] text-indigo-600 font-bold mt-1">Conclusão em 2 meses</p>
+</div>
+<div class="col-span-2">
+<p class="text-[7px] font-bold text-slate-400 mb-1 uppercase tracking-widest">TENDÊNCIA 6M: <span class="text-indigo-500">+31.5%</span></p>
+<svg class="w-full h-8" viewBox="0 0 120 30">
+<path d="M0,28 L20,24 L40,18 L60,15 L80,8 L100,5 L120,2" fill="none" stroke="#6366F1" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+</div>
+<div class="col-span-1 flex justify-center">
+<span class="status-tag status-adiantada">Adiantada</span>
+</div>
+<div class="col-span-2 flex justify-end gap-6 text-[9px] font-bold uppercase tracking-widest pr-4">
+<a class="text-[var(--emerald-600)] hover:brightness-90 transition-all flex items-center gap-1" href="#"><span class="material-symbols-outlined text-[14px]">add_circle</span>Aportar</a>
+<a class="text-slate-400 hover:text-[var(--emerald-600)] transition-all flex items-center gap-1" href="#"><span class="material-symbols-outlined text-[14px]">settings</span>Gerenciar</a>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-6 p-10 items-center hover:bg-slate-50/50 transition-colors group">
+<div class="col-span-3 flex items-center gap-5">
+<div class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber-50 group-hover:text-amber-600 transition-colors">
+<span class="material-symbols-outlined">apartment</span>
+</div>
+<div>
+<h3 class="text-sm font-bold text-[var(--deep-navy)] mb-1">Imóvel Comercial</h3>
+<div class="flex items-center gap-3">
+<p class="text-[9px] text-slate-400 uppercase font-medium tracking-tighter">Diversificação</p>
+<div class="flex flex-col gap-1">
+<span class="text-[7px] text-slate-300 font-bold uppercase tracking-widest">Calendário de Aportes</span>
+<div class="dot-timeline">
+<div class="dot dot-active"></div><div class="dot dot-inactive"></div><div class="dot dot-inactive"></div><div class="dot dot-inactive"></div>
+<div class="dot dot-inactive"></div><div class="dot dot-inactive"></div><div class="dot dot-inactive"></div><div class="dot dot-inactive"></div>
+<div class="dot dot-inactive"></div><div class="dot dot-inactive"></div><div class="dot dot-inactive"></div><div class="dot dot-inactive"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-2 space-y-2">
+<div class="flex justify-between text-[8px] font-bold uppercase tracking-tighter mb-1">
+<span class="text-emerald-600">Real: 18%</span>
+<span class="text-slate-400">Target: 15%</span>
+</div>
+<div class="h-2 w-full bg-slate-100 rounded-full relative overflow-hidden">
+<div class="absolute top-0 left-0 h-[2px] bg-emerald-500 w-[18%] rounded-full z-10"></div>
+<div class="absolute bottom-0 left-0 h-[2px] bg-slate-300 w-[15%] rounded-full opacity-50"></div>
+</div>
+</div>
+<div class="col-span-2">
+<p class="text-xs mono-data font-bold text-[var(--deep-navy)]">R$ 135.000 <span class="text-slate-300 font-light mx-1">/</span> R$ 750.000</p>
+<p class="text-[8px] text-slate-400 font-bold mt-1">Fase de captação</p>
+</div>
+<div class="col-span-2">
+<p class="text-[7px] font-bold text-slate-400 mb-1 uppercase tracking-widest">TENDÊNCIA 6M: <span class="text-emerald-500">+8.4%</span></p>
+<svg class="w-full h-8" viewBox="0 0 120 30">
+<path d="M0,25 L20,26 L40,24 L60,25 L80,23 L100,22 L120,20" fill="none" stroke="#10B981" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+</div>
+<div class="col-span-1 flex justify-center">
+<span class="status-tag status-prazo">No Prazo</span>
+</div>
+<div class="col-span-2 flex justify-end gap-6 text-[9px] font-bold uppercase tracking-widest pr-4">
+<a class="text-[var(--emerald-600)] hover:brightness-90 transition-all flex items-center gap-1" href="#"><span class="material-symbols-outlined text-[14px]">add_circle</span>Aportar</a>
+<a class="text-slate-400 hover:text-[var(--emerald-600)] transition-all flex items-center gap-1" href="#"><span class="material-symbols-outlined text-[14px]">settings</span>Gerenciar</a>
+</div>
+</div>
+</div>
+<div class="p-8 border-t border-slate-50 bg-slate-50/20 flex items-center justify-between">
+<p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Total de 4 metas ativas • Atualizado em: 15 Abr 2024, 09:42</p>
+<div class="flex gap-4">
+<button class="px-6 py-3 rounded-xl bg-white border border-slate-100 text-[9px] font-bold text-slate-500 uppercase tracking-widest hover:border-emerald-200 transition-all">Ver Metas Finalizadas</button>
+<button class="px-6 py-3 rounded-xl bg-slate-900 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">Exportar Planejamento</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+</body></html>

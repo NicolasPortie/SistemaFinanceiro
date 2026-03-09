@@ -197,6 +197,20 @@ if (telegramConfigurado)
     builder.Services.AddHostedService<LembretePagamentoBackgroundService>();
 }
 
+// === WhatsApp Bridge ===
+var whatsappEnabled = builder.Configuration.GetValue<bool>("WhatsApp:Enabled");
+var whatsappBridgeUrl = builder.Configuration["WhatsApp:BridgeUrl"] ?? "http://whatsapp-bridge:3100";
+if (whatsappEnabled)
+{
+    builder.Services.AddHttpClient("WhatsAppBridge", client =>
+    {
+        client.BaseAddress = new Uri(whatsappBridgeUrl);
+        client.Timeout = TimeSpan.FromSeconds(30);
+        var secret = builder.Configuration["WhatsApp:BridgeSecret"] ?? "";
+        client.DefaultRequestHeaders.Add("X-WhatsApp-Bridge-Secret", secret);
+    });
+}
+
 // === Health Checks ===
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
@@ -217,6 +231,18 @@ var autoMigrate = app.Environment.IsDevelopment()
             app.Logger.LogInformation("Aplicando migrations do banco de dados...");
             await db.Database.MigrateAsync();
             app.Logger.LogInformation("Migrations aplicadas com sucesso.");
+
+            // Fix: rename PascalCase columns created by earlier migrations to snake_case
+            await db.Database.ExecuteSqlRawAsync(@"
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='usuarios' AND column_name='GoogleId') THEN
+                        ALTER TABLE usuarios RENAME COLUMN ""GoogleId"" TO google_id;
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='usuarios' AND column_name='AppleId') THEN
+                        ALTER TABLE usuarios RENAME COLUMN ""AppleId"" TO apple_id;
+                    END IF;
+                END $$;
+            ");
         }
         catch (Exception ex)
         {
@@ -293,6 +319,11 @@ var autoMigrate = app.Environment.IsDevelopment()
         }
     }
 
+    // === Seed de planos e recursos ===
+    var planoConfigRepo = scope.ServiceProvider.GetRequiredService<ControlFinance.Domain.Interfaces.IPlanoConfigRepository>();
+    await ControlFinance.Infrastructure.Data.PlanoConfigSeeder.SeedAsync(
+        planoConfigRepo, builder.Configuration, app.Logger);
+
     // Migrar dados sensíveis para criptografia (executar uma vez via: dotnet run -- --encrypt-data)
     if (args.Contains("--encrypt-data"))
     {
@@ -339,6 +370,16 @@ if (telegramConfigurado)
 else
 {
     app.Logger.LogWarning("⚠️ Telegram Bot Token não configurado. Bot desativado.");
+}
+
+// === WhatsApp Bridge Log ===
+if (whatsappEnabled)
+{
+    app.Logger.LogInformation("✅ WhatsApp Bridge habilitado. URL: {Url}", whatsappBridgeUrl);
+}
+else
+{
+    app.Logger.LogWarning("⚠️ WhatsApp Bridge não habilitado. Defina WhatsApp:Enabled=true para ativar.");
 }
 
 // === Middleware Pipeline ===

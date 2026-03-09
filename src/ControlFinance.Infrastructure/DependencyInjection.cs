@@ -47,13 +47,28 @@ public static class DependencyInjection
         services.AddScoped<ILogLembreteTelegramRepository, LogLembreteTelegramRepository>();
         services.AddScoped<ILogDecisaoRepository, LogDecisaoRepository>();
 
+        // Chat InApp (Falcon Chat)
+        services.AddScoped<IConversaChatRepository, ConversaChatRepository>();
+
         // Codigo Verificacao
         services.AddScoped<ICodigoVerificacaoRepository, CodigoVerificacaoRepository>();
+
+        // Assinatura / Stripe
+        services.AddScoped<IAssinaturaRepository, AssinaturaRepository>();
+
+        // Planos
+        services.AddScoped<IPlanoConfigRepository, PlanoConfigRepository>();
 
         // Importação de Extratos
         services.AddScoped<IImportacaoHistoricoRepository, ImportacaoHistoricoRepository>();
         services.AddScoped<IRegraCategorizacaoRepository, RegraCategorizacaoRepository>();
         services.AddScoped<IMapeamentoCategorizacaoRepository, MapeamentoCategorizacaoRepository>();
+
+        // Família
+        services.AddScoped<IFamiliaRepository, FamiliaRepository>();
+        services.AddScoped<IConviteFamiliaRepository, ConviteFamiliaRepository>();
+        services.AddScoped<IRecursoFamiliarRepository, RecursoFamiliarRepository>();
+        services.AddScoped<IOrcamentoFamiliarRepository, OrcamentoFamiliarRepository>();
 
         // AI Service (Groq)
         services.AddHttpClient<IAiService, GroqAiService>();

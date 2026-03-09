@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
+import { DialogShellHeader } from "@/components/shared/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
@@ -184,292 +185,90 @@ export default function LimitesPage() {
       ? Math.round(limites.reduce((s, l) => s + l.percentualConsumido, 0) / limites.length)
       : 0;
 
-  return (
-    <div className="space-y-6">
-      {/* ═══ Page Header ═══ */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/50 dark:border-slate-700/30 rounded-2xl p-4 lg:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm"
-      >
-        <div className="flex items-center gap-3">
-          <div className="size-10 flex items-center justify-center bg-emerald-600/10 rounded-xl">
-            <Gauge className="h-5 w-5 text-emerald-600" />
-          </div>
-          <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
-              Limites por Categoria
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Defina limites de gasto para manter o controle financeiro
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => refetch()}
-                  className="p-2.5 hover:bg-white/60 dark:hover:bg-slate-700/60 rounded-xl transition-colors cursor-pointer"
-                >
-                  <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Atualizar dados</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <button
-            onClick={() => setShowForm(true)}
-            disabled={categoriasDisponiveis.length === 0}
-            className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Definir Limite</span>
-            <span className="sm:hidden">Novo</span>
-          </button>
-        </div>
-      </motion.div>
+  const totalGasto = limites.reduce((s, l) => s + l.gastoAtual, 0);
+  const totalOrcamento = limites.reduce((s, l) => s + l.valorLimite, 0);
+  const dayOfMonth = new Date().getDate() || 1;
+  const pressureLabel =
+    avgUse >= 85 ? "Crítica" : avgUse >= 70 ? "Alta" : avgUse >= 50 ? "Moderada" : "Baixa";
+  const pressureDesc =
+    avgUse >= 85
+      ? "Orçamento em situação crítica"
+      : avgUse >= 70
+        ? "Atenção aos gastos recomendada"
+        : avgUse >= 50
+          ? "Controle de gastos dentro do esperado"
+          : "Orçamento sob controle";
+  const mostCritical = limites.length > 0
+    ? [...limites].sort((a, b) => b.percentualConsumido - a.percentualConsumido)[0]
+    : null;
 
-      {/* ═══ Content ═══ */}
+  return (
+    <div className="flex flex-col gap-6 sm:gap-8 lg:gap-10">
+      {/* ── Hero Banner ───────────────────────────────────────────── */}
+      <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 xl:p-12 flex flex-col md:flex-row items-center gap-6 sm:gap-8 lg:gap-12 xl:gap-16">
+        <div className="flex-1">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl serif-italic text-[#0F172A] mb-3 sm:mb-4">Controle de Gastos</h2>
+          <p className="text-slate-500 text-sm leading-relaxed mb-8 max-w-lg">
+            Visão consolidada do seu orçamento mensal por categoria. Acompanhe a execução dos limites em tempo real para evitar surpresas no fechamento.
+          </p>
+          <div className="flex gap-6 sm:gap-8 lg:gap-12 xl:gap-16 flex-wrap">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Gasto Total Acumulado</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl mono-data font-medium text-[#0F172A]">{formatCurrency(totalGasto)}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Orçamento Total</p>
+              <p className="text-xl sm:text-2xl lg:text-3xl mono-data font-medium text-emerald-600">{formatCurrency(totalOrcamento)}</p>
+            </div>
+          </div>
+        </div>
+        <div className="w-full md:w-[360px] lg:w-[420px] shrink-0">
+          <div className="flex justify-between items-end mb-3">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Progresso do Orçamento</span>
+            <span className="text-2xl mono-data font-bold text-[#0F172A]">{avgUse}%</span>
+          </div>
+          <div className="bg-slate-100 h-12 rounded-xl relative overflow-hidden">
+            <div
+              className={`h-full flex items-center px-4 transition-all ${avgUse > 80 ? "bg-rose-500" : avgUse > 60 ? "bg-amber-500" : "bg-emerald-500"}`}
+              style={{ width: `${Math.min(avgUse, 100)}%` }}
+            >
+              {avgUse > 15 && (
+                <span className="text-white text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">Realizado</span>
+              )}
+            </div>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Orçado</span>
+            </div>
+          </div>
+          <p className="mt-4 text-[11px] text-slate-400 italic">
+            Você utilizou {formatCurrency(totalGasto)} dos {formatCurrency(totalOrcamento)} planejados para este ciclo.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Section Header ───────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center gap-6">
+          <h3 className="text-2xl serif-italic text-[#0F172A]">Limites por Categoria</h3>
+          <div className="h-px w-24 bg-slate-200" />
+        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          disabled={categoriasDisponiveis.length === 0}
+          className="flex items-center gap-2 text-emerald-600 font-bold text-[10px] uppercase tracking-widest hover:translate-x-1 transition-transform cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Plus className="h-4 w-4" />
+          Ajustar Limites
+        </button>
+      </div>
+
+      {/* ── Limits Table ─────────────────────────────────────────── */}
       {loading ? (
-        <CardSkeleton count={4} />
+        <CardSkeleton count={3} />
       ) : isError ? (
         <ErrorState message={error?.message} onRetry={() => refetch()} />
-      ) : limites.length > 0 ? (
-        <>
-          {/* ═══ Stat Cards ═══ */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-            {/* Total limites */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0 }}
-              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-            >
-              <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-              <div className="flex items-center justify-between relative z-10">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Cadastrados
-                </span>
-                <div className="size-9 flex items-center justify-center bg-emerald-600/10 rounded-xl">
-                  <Gauge className="h-4 w-4 text-emerald-600" />
-                </div>
-              </div>
-              <div className="relative z-10">
-                <p className="text-2xl font-bold text-slate-800 dark:text-white">
-                  {limites.length}
-                </p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500">limites ativos</p>
-              </div>
-            </motion.div>
-
-            {/* Dentro do limite */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-            >
-              <div className="absolute -right-6 -bottom-6 bg-emerald-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-              <div className="flex items-center justify-between relative z-10">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Dentro do Limite
-                </span>
-                <div className="size-9 flex items-center justify-center bg-emerald-500/10 rounded-xl">
-                  <Shield className="h-4 w-4 text-emerald-500" />
-                </div>
-              </div>
-              <div className="relative z-10">
-                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {okCount}
-                </p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500">categorias ok</p>
-              </div>
-            </motion.div>
-
-            {/* Em alerta */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300"
-            >
-              <div className="absolute -right-6 -bottom-6 bg-amber-500/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-amber-500/15 transition-all" />
-              <div className="flex items-center justify-between relative z-10">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Em Alerta
-                </span>
-                <div className="size-9 flex items-center justify-center bg-amber-500/10 rounded-xl">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                </div>
-              </div>
-              <div className="relative z-10">
-                <p
-                  className={`text-2xl font-bold ${alertCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-800 dark:text-white"}`}
-                >
-                  {alertCount}
-                </p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500">precisam atenção</p>
-              </div>
-            </motion.div>
-
-            {/* Uso médio */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="glass-panel p-5 rounded-2xl flex flex-col justify-between h-32 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-300 ring-2 ring-emerald-600/20"
-            >
-              <div className="absolute -right-6 -bottom-6 bg-emerald-600/10 w-28 h-28 rounded-full blur-2xl group-hover:bg-emerald-600/15 transition-all" />
-              <div className="flex items-center justify-between relative z-10">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Uso Médio
-                </span>
-                <div className="size-9 flex items-center justify-center bg-emerald-600/10 rounded-xl">
-                  <BarChart3 className="h-4 w-4 text-emerald-600" />
-                </div>
-              </div>
-              <div className="relative z-10">
-                <p className="text-2xl font-bold text-slate-800 dark:text-white">{avgUse}%</p>
-                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-2 overflow-hidden">
-                  <div
-                    className={`h-1.5 rounded-full transition-all duration-1000 ${avgUse > 80 ? "bg-red-500" : avgUse > 60 ? "bg-amber-500" : "bg-emerald-600"}`}
-                    style={{ width: `${Math.min(avgUse, 100)}%` }}
-                  />
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* ═══ Limits Grid ═══ */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <AnimatePresence>
-              {limites.map((l, i) => (
-                <motion.div
-                  key={l.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="glass-panel p-5 rounded-2xl group transition-all hover:shadow-lg hover:-translate-y-0.5 duration-300 relative overflow-hidden"
-                >
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-11 w-11 items-center justify-center rounded-2xl ${statusBgColor(l.status)} transition-transform duration-300 group-hover:scale-110`}
-                      >
-                        {statusIcon(l.status)}
-                      </div>
-                      <div>
-                        <h4 className="font-bold tracking-tight text-sm text-slate-800 dark:text-white">
-                          {l.categoriaNome}
-                        </h4>
-                        <Badge
-                          variant="secondary"
-                          className={`text-[10px] font-semibold mt-0.5 border ${statusBadgeCls(l.status)}`}
-                        >
-                          {statusLabel(l.status)}
-                        </Badge>
-                      </div>
-                    </div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            className="h-8 w-8 rounded-xl flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 sm:opacity-0 sm:group-hover:opacity-100 transition-all cursor-pointer"
-                            onClick={() => setDeleteId(l.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>Remover limite</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-
-                  {/* Circular progress + stats */}
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="relative h-16 w-16 shrink-0">
-                      <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="26"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="5"
-                          className="text-slate-200 dark:text-slate-700"
-                        />
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="26"
-                          fill="none"
-                          strokeWidth="5"
-                          strokeLinecap="round"
-                          className={progressColor(l.status)}
-                          stroke="currentColor"
-                          strokeDasharray={`${Math.min(l.percentualConsumido, 100) * 1.634} 163.4`}
-                          style={{ transition: "stroke-dasharray 1s ease-out" }}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-sm font-extrabold tabular-nums text-slate-800 dark:text-white">
-                          {l.percentualConsumido.toFixed(0)}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1 space-y-1.5">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium text-xs">
-                          Gasto
-                        </span>
-                        <span className="font-bold tabular-nums text-slate-800 dark:text-white text-sm">
-                          {formatCurrency(l.gastoAtual)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium text-xs">
-                          Limite
-                        </span>
-                        <span className="font-bold tabular-nums text-slate-800 dark:text-white text-sm">
-                          {formatCurrency(l.valorLimite)}
-                        </span>
-                      </div>
-                      <div className="border-t border-slate-200 dark:border-slate-700/50 my-1" />
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium text-xs">
-                          Disponível
-                        </span>
-                        <span
-                          className={`font-bold tabular-nums text-sm ${l.valorLimite - l.gastoAtual >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
-                        >
-                          {formatCurrency(Math.max(l.valorLimite - l.gastoAtual, 0))}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom progress bar */}
-                  <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700/50 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-1000 ${progressColor(l.status)}`}
-                      style={{ width: `${Math.min(l.percentualConsumido, 100)}%` }}
-                    />
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-panel rounded-2xl p-12"
-        >
+      ) : limites.length === 0 ? (
+        <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-6 sm:p-8 lg:p-12">
           <EmptyState
             icon={<Gauge className="h-6 w-6" />}
             title="Nenhum limite definido"
@@ -477,14 +276,208 @@ export default function LimitesPage() {
             action={
               <button
                 onClick={() => setShowForm(true)}
-                className="bg-emerald-600 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer text-sm"
+                className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer text-sm"
               >
                 <Plus className="h-4 w-4" />
                 Definir primeiro limite
               </button>
             }
           />
-        </motion.div>
+        </div>
+      ) : (
+        <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden">
+          {/* Desktop Header row — hidden on mobile */}
+          <div className="hidden lg:grid grid-cols-12 gap-4 px-6 xl:px-10 py-6 bg-slate-50 border-b border-slate-100/80">
+            <div className="col-span-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">Categoria</div>
+            <div className="col-span-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">Status</div>
+            <div className="col-span-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">Consumo &amp; Média Diária</div>
+            <div className="col-span-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 text-right">Limite Definido</div>
+            <div className="col-span-1 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 text-right">Ação</div>
+          </div>
+
+          {/* Mobile card view */}
+          <div className="lg:hidden divide-y divide-slate-50">
+            {limites.map((l) => {
+              const diff = l.valorLimite - l.gastoAtual;
+              const diffText = diff >= 0 ? `Faltam ${formatCurrency(diff)}` : `Excedido em ${formatCurrency(Math.abs(diff))}`;
+              const diffColor = diff < 0 ? "text-rose-600" : l.status === "atencao" ? "text-amber-600" : "text-emerald-600";
+              const pct = Math.min(l.percentualConsumido, 100);
+              const barColor = l.status === "ok" ? "bg-emerald-500" : l.status === "atencao" ? "bg-amber-500" : "bg-rose-500";
+              const pctColor = l.status === "ok" ? "text-emerald-600" : l.status === "atencao" ? "text-amber-500" : "text-rose-600";
+              let pillCls = ""; let pillLabel = "";
+              if (l.status === "ok") { pillCls = "bg-emerald-50 text-emerald-600 border-emerald-100"; pillLabel = "OK"; }
+              else if (l.status === "atencao") { pillCls = "bg-amber-50 text-amber-600 border-amber-100"; pillLabel = "Atenção"; }
+              else if (l.status === "excedido") { pillCls = "bg-rose-50 text-rose-600 border-rose-100"; pillLabel = "Excedido"; }
+              else { pillCls = "bg-rose-50 text-rose-600 border-rose-100"; pillLabel = "Crítico"; }
+              return (
+                <div key={l.id} className="p-4 sm:p-6 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                        <Gauge className="h-4 w-4 text-slate-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider truncate">{l.categoriaNome}</h4>
+                        <p className={`text-[10px] font-medium ${diffColor}`}>{diffText}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border ${pillCls}`}>{pillLabel}</span>
+                      <button onClick={() => setDeleteId(l.id)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer" title="Remover">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-slate-500">Limite: {formatCurrency(l.valorLimite)}</span>
+                      <span className={`font-bold ${pctColor}`}>{l.percentualConsumido.toFixed(0)}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Data rows — hidden on mobile */}
+          <div className="hidden lg:block">
+          {limites.map((l, i) => {
+            const diff = l.valorLimite - l.gastoAtual;
+            const diffText =
+              diff >= 0
+                ? `Faltam ${formatCurrency(diff)} para o limite`
+                : `Excedido em ${formatCurrency(Math.abs(diff))}`;
+            const diffColor =
+              diff < 0
+                ? "text-rose-600"
+                : l.status === "atencao"
+                  ? "text-amber-600"
+                  : "text-emerald-600";
+            const mediaDiaria = l.gastoAtual / dayOfMonth;
+            const pct = Math.min(l.percentualConsumido, 100);
+            const barColor =
+              l.status === "ok"
+                ? "bg-emerald-500"
+                : l.status === "atencao"
+                  ? "bg-amber-500"
+                  : "bg-rose-500";
+            const pctColor =
+              l.status === "ok"
+                ? "text-emerald-600"
+                : l.status === "atencao"
+                  ? "text-amber-500"
+                  : "text-rose-600";
+            let pillCls = "";
+            let pillLabel = "";
+            if (l.status === "ok") {
+              pillCls = "bg-emerald-50 text-emerald-600 border-emerald-100";
+              pillLabel = "Dentro do Limite";
+            } else if (l.status === "atencao") {
+              pillCls = "bg-amber-50 text-amber-600 border-amber-100";
+              pillLabel = "Atenção";
+            } else if (l.status === "excedido") {
+              pillCls = "bg-rose-50 text-rose-600 border-rose-100";
+              pillLabel = "Excedido";
+            } else {
+              pillCls = "bg-rose-50 text-rose-600 border-rose-100";
+              pillLabel = "Crítico";
+            }
+            const isLast = i === limites.length - 1;
+            return (
+              <div
+                key={l.id}
+                className={`grid grid-cols-12 gap-4 px-6 xl:px-10 py-8 items-center group hover:bg-slate-50/50 transition-all${!isLast ? " border-b border-slate-50" : ""}`}
+              >
+                {/* Categoria */}
+                <div className="col-span-4 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                    <Gauge className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider truncate">{l.categoriaNome}</h4>
+                    <p className={`text-[10px] font-medium ${diffColor}`}>{diffText}</p>
+                  </div>
+                </div>
+                {/* Status */}
+                <div className="col-span-2">
+                  <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${pillCls}`}>
+                    {pillLabel}
+                  </span>
+                </div>
+                {/* Consumo & Média Diária */}
+                <div className="col-span-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] mono-data font-bold text-slate-500 whitespace-nowrap">
+                      Média: {formatCurrency(mediaDiaria)}/dia
+                    </span>
+                    <span className={`text-[10px] font-bold ${pctColor}`}>
+                      {l.percentualConsumido.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+                {/* Limite Definido */}
+                <div className="col-span-2 text-right">
+                  <p className="text-sm mono-data font-medium text-[#0F172A]">{formatCurrency(l.valorLimite)}</p>
+                </div>
+                {/* Ação */}
+                <div className="col-span-1 flex justify-end">
+                  <button
+                    onClick={() => setDeleteId(l.id)}
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                    title="Remover limite"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Bottom Insights ───────────────────────────────────────── */}
+      {!loading && !isError && limites.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 pb-4">
+          {/* Análise */}
+          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 lg:col-span-2">
+            <div className="flex items-start gap-6">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-emerald-200">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+              <div>
+                <h5 className="serif-italic text-xl text-emerald-900 mb-2">Análise de Gastos por Categoria</h5>
+                <p className="text-sm text-emerald-800/80 leading-relaxed">
+                  {mostCritical && mostCritical.percentualConsumido >= 80
+                    ? `A categoria "${mostCritical.categoriaNome}" está com ${mostCritical.percentualConsumido.toFixed(0)}% do limite consumido — requer atenção imediata. `
+                    : ""}
+                  {okCount === limites.length
+                    ? "Todas as categorias estão dentro do limite. Excelente controle financeiro!"
+                    : alertCount > 0
+                      ? `${alertCount} ${alertCount === 1 ? "categoria precisa" : "categorias precisam"} de atenção. Monitore os gastos para evitar estouro do orçamento.`
+                      : "Acompanhe seus limites regularmente para manter o orçamento equilibrado."}
+                </p>
+              </div>
+            </div>
+          </div>
+          {/* Status de Pressão Orçamentária */}
+          <div className="bg-[#0F172A] rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 text-white flex flex-col justify-between min-h-[140px] sm:min-h-[180px]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-60">Status de Pressão Orçamentária</p>
+            <div>
+              <span className="text-3xl serif-italic">{pressureLabel}</span>
+              <p className="text-[10px] opacity-60 mt-2 uppercase tracking-widest">{pressureDesc}</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ═══ New Limit Dialog ═══ */}
@@ -623,19 +616,25 @@ export default function LimitesPage() {
 
       {/* ═══ Delete Dialog ═══ */}
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover limite?</AlertDialogTitle>
-            <AlertDialogDescription>
+        <AlertDialogContent>
+          <AlertDialogHeader className="items-start text-left">
+            <AlertDialogTitle className="sr-only">Remover limite?</AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
               Tem certeza que deseja remover este limite? Essa ação não pode ser desfeita.
             </AlertDialogDescription>
+            <DialogShellHeader
+              icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
+              title="Remover limite?"
+              description="Tem certeza que deseja remover este limite? Essa ação não pode ser desfeita."
+              tone="rose"
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemover}
               loading={removerLimite.isPending}
-              className="bg-red-600 text-white hover:bg-red-700 rounded-xl gap-2"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2"
             >
               <Trash2 className="h-4 w-4" />
               Remover

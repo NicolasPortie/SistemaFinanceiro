@@ -23,6 +23,7 @@ public class DecisaoGastoServiceTests
     private readonly Mock<IPerfilComportamentalService> _perfilComportamentalMock;
     private readonly Mock<IImpactoMetaService> _impactoMetaServiceMock;
     private readonly Mock<ILogDecisaoRepository> _logDecisaoRepoMock;
+    private readonly Mock<IFeatureGateService> _featureGateMock;
     private readonly Mock<ILogger<DecisaoGastoService>> _loggerMock;
     private readonly DecisaoGastoService _service;
 
@@ -40,7 +41,13 @@ public class DecisaoGastoServiceTests
         _perfilComportamentalMock = new Mock<IPerfilComportamentalService>();
         _impactoMetaServiceMock = new Mock<IImpactoMetaService>();
         _logDecisaoRepoMock = new Mock<ILogDecisaoRepository>();
+        _featureGateMock = new Mock<IFeatureGateService>();
         _loggerMock = new Mock<ILogger<DecisaoGastoService>>();
+
+        // Por padrão, permitir acesso ao Consultor IA nos testes
+        _featureGateMock
+            .Setup(fg => fg.VerificarAcessoAsync(It.IsAny<int>(), It.IsAny<Recurso>()))
+            .ReturnsAsync(FeatureGateResult.Permitir(-1));
 
         _service = new DecisaoGastoService(
             _perfilServiceMock.Object,
@@ -55,6 +62,7 @@ public class DecisaoGastoServiceTests
             _perfilComportamentalMock.Object,
             _impactoMetaServiceMock.Object,
             _logDecisaoRepoMock.Object,
+            _featureGateMock.Object,
             _loggerMock.Object);
     }
 

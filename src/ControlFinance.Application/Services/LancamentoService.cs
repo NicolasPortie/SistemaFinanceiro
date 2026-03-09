@@ -1,4 +1,5 @@
 using ControlFinance.Application.DTOs;
+using ControlFinance.Application.Exceptions;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
@@ -16,6 +17,7 @@ public class LancamentoService : ILancamentoService
     private readonly IParcelaRepository _parcelaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFeatureGateService _featureGate;
     private readonly ILogger<LancamentoService> _logger;
 
     public LancamentoService(
@@ -25,6 +27,7 @@ public class LancamentoService : ILancamentoService
         IParcelaRepository parcelaRepo,
         ICartaoCreditoRepository cartaoRepo,
         IUnitOfWork unitOfWork,
+        IFeatureGateService featureGate,
         ILogger<LancamentoService> logger)
     {
         _lancamentoRepo = lancamentoRepo;
@@ -33,11 +36,15 @@ public class LancamentoService : ILancamentoService
         _parcelaRepo = parcelaRepo;
         _cartaoRepo = cartaoRepo;
         _unitOfWork = unitOfWork;
+        _featureGate = featureGate;
         _logger = logger;
     }
 
     public async Task<Lancamento> RegistrarAsync(int usuarioId, RegistrarLancamentoDto dto)
     {
+        // ── Feature Gate: limite de lançamentos mensais ──
+        await VerificarLimiteLancamentosAsync(usuarioId, dto.Data ?? DateTime.UtcNow);
+
         // Validação de valor
         if (dto.Valor <= 0)
             throw new ArgumentException("O valor do lançamento deve ser maior que zero.");
@@ -368,5 +375,24 @@ public class LancamentoService : ILancamentoService
             await _lancamentoRepo.RemoverEmMassaAsync(lancamentos);
             _logger.LogInformation("{Count} lançamentos removidos pelo usuário {UsuarioId}", lancamentos.Count, usuarioId);
         }
+    }
+
+    // ── Feature Gate ─────────────────────────────────────────────────
+
+    private async Task VerificarLimiteLancamentosAsync(int usuarioId, DateTime dataReferencia)
+    {
+        var inicioMes = new DateTime(dataReferencia.Year, dataReferencia.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fimMes = inicioMes.AddMonths(1);
+
+        var lancamentosMes = await _lancamentoRepo.ObterPorUsuarioAsync(usuarioId, inicioMes, fimMes);
+        var resultado = await _featureGate.VerificarLimiteAsync(usuarioId, Recurso.LancamentosMensal, lancamentosMes.Count);
+
+        if (!resultado.Permitido)
+            throw new FeatureGateException(
+                resultado.Mensagem!,
+                Recurso.LancamentosMensal,
+                resultado.Limite,
+                resultado.UsoAtual,
+                resultado.PlanoSugerido);
     }
 }
