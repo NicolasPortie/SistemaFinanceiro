@@ -431,7 +431,7 @@ export default function DashboardPage() {
                         itemStyle={{ fontSize: '13px', fontWeight: 'bold' }}
                         labelStyle={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px', textTransform: 'uppercase', fontWeight: 600 }}
                         cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                        formatter={(_value: number | undefined, _name: string, props: { payload?: { saldo?: number } }) => [formatCurrency(props.payload?.saldo ?? 0), 'Saldo']}
+                        formatter={(_value, _name, props) => [formatCurrency((props.payload as Record<string, number>)?.saldo ?? 0), 'Saldo']}
                       />
                       <Bar dataKey="saldoAbs" radius={[6, 6, 6, 6]}>
                         {chartData.map((entry, index) => (
