@@ -47,6 +47,7 @@ public class WhatsAppBotService : IWhatsAppBotService
     {
         ReferenceHandler = ReferenceHandler.IgnoreCycles,
         PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = false
     };
 
