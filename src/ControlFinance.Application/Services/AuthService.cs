@@ -24,6 +24,7 @@ public class AuthService : IAuthService
     private readonly ICodigoConviteRepository _codigoConviteRepo;
     private readonly IRegistroPendenteRepository _registroPendenteRepo;
     private readonly IAssinaturaService _assinaturaService;
+    private readonly IBotWelcomeService _botWelcomeService;
     private readonly IConfiguration _config;
     private readonly ILogger<AuthService> _logger;
 
@@ -36,6 +37,7 @@ public class AuthService : IAuthService
         IRegistroPendenteRepository registroPendenteRepo,
         IEmailService emailService,
         IAssinaturaService assinaturaService,
+        IBotWelcomeService botWelcomeService,
         IConfiguration config,
         ILogger<AuthService> logger)
     {
@@ -47,6 +49,7 @@ public class AuthService : IAuthService
         _registroPendenteRepo = registroPendenteRepo;
         _emailService = emailService;
         _assinaturaService = assinaturaService;
+        _botWelcomeService = botWelcomeService;
         _config = config;
         _logger = logger;
     }
@@ -73,6 +76,7 @@ public class AuthService : IAuthService
             // Atualizar registro pendente existente
             pendente.Nome = SanitizarTexto(dto.Nome);
             pendente.SenhaHash = HashSenha(dto.Senha);
+            pendente.Celular = dto.Celular;
             pendente.CodigoVerificacao = codigoVerificacao;
             pendente.ExpiraEm = expiraEm;
             pendente.TentativasVerificacao = 0;
@@ -86,6 +90,7 @@ public class AuthService : IAuthService
                 Email = emailNormalizado,
                 Nome = SanitizarTexto(dto.Nome),
                 SenhaHash = HashSenha(dto.Senha),
+                Celular = dto.Celular,
                 CodigoVerificacao = codigoVerificacao,
                 ExpiraEm = expiraEm,
                 TentativasVerificacao = 0
@@ -149,11 +154,13 @@ public class AuthService : IAuthService
         }
 
         // Criar usuário
+        var celularNormalizado = Domain.Helpers.CelularHelper.Normalizar(pendente.Celular);
         var usuario = new Usuario
         {
             Nome = pendente.Nome,
             Email = emailNormalizado,
             SenhaHash = pendente.SenhaHash,
+            Celular = celularNormalizado,
             EmailConfirmado = true,
             Ativo = true
         };
@@ -165,6 +172,13 @@ public class AuthService : IAuthService
         await _registroPendenteRepo.RemoverAsync(pendente.Id);
 
         _logger.LogInformation("Novo usuário registrado via verificação de e-mail: {UserId}", usuario.Id);
+
+        // Enviar boas-vindas via bots (fire-and-forget)
+        _ = Task.Run(async () =>
+        {
+            try { await _botWelcomeService.EnviarBoasVindasAsync(celularNormalizado, usuario.Nome); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Falha ao enviar boas-vindas para {UserId}", usuario.Id); }
+        });
 
         var response = await GerarTokenResponseAsync(usuario, ipAddress);
         return (response, null);
@@ -343,6 +357,13 @@ public class AuthService : IAuthService
             }
 
             _logger.LogInformation("Novo usuário registrado via Google: {UserId}", usuario.Id);
+
+            // Enviar boas-vindas via bots (fire-and-forget)
+            _ = Task.Run(async () =>
+            {
+                try { await _botWelcomeService.EnviarBoasVindasAsync(celular!, usuario.Nome); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Falha ao enviar boas-vindas para {UserId}", usuario.Id); }
+            });
         }
 
         if (usuario.TentativasLoginFalhadas > 0 || usuario.BloqueadoAte.HasValue)
@@ -461,6 +482,13 @@ public class AuthService : IAuthService
             }
 
             _logger.LogInformation("Novo usuário registrado via Apple: {UserId}", usuario.Id);
+
+            // Enviar boas-vindas via bots (fire-and-forget)
+            _ = Task.Run(async () =>
+            {
+                try { await _botWelcomeService.EnviarBoasVindasAsync(celular!, usuario.Nome); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Falha ao enviar boas-vindas para {UserId}", usuario.Id); }
+            });
         }
 
         if (usuario.TentativasLoginFalhadas > 0 || usuario.BloqueadoAte.HasValue)

@@ -1,4 +1,5 @@
 using ControlFinance.Application;
+using ControlFinance.Application.Interfaces;
 using ControlFinance.Infrastructure;
 using ControlFinance.Infrastructure.Data;
 using ControlFinance.Api.BackgroundServices;
@@ -148,6 +149,9 @@ if (telegramConfigurado)
 {
     builder.Services.AddSingleton<ITelegramBotClient>(new TelegramBotClient(botToken));
 }
+
+// === Bot Welcome Service ===
+builder.Services.AddScoped<IBotWelcomeService, ControlFinance.Api.Services.BotWelcomeService>();
 
 // === Controllers ===
 builder.Services.AddControllers()
