@@ -120,6 +120,7 @@ services:
       PORT: 3100
       API_BASE_URL: http://api:5000
       BRIDGE_SECRET: ${WHATSAPP_BRIDGE_SECRET}
+      WEBHOOK_SECRET: ${WHATSAPP_WEBHOOK_SECRET}
       AUTH_DIR: /app/auth_data
       LOG_LEVEL: info
       PHONE_NUMBER: ${WHATSAPP_PHONE_NUMBER:-}

@@ -46,7 +46,7 @@ public class BotWelcomeService : IBotWelcomeService
             if (!whatsappEnabled) return;
 
             var msg = $"Olá, {nome}! 👋\n\n" +
-                      "Bem-vindo(a) ao *ControlFinance*! 🎉\n\n" +
+                      "Bem-vindo(a) ao *Ravier*! 🎉\n\n" +
                       "Sou seu assistente financeiro por WhatsApp. " +
                       "Você pode me enviar seus gastos por aqui e eu registro tudo automaticamente.\n\n" +
                       "Exemplos:\n" +
