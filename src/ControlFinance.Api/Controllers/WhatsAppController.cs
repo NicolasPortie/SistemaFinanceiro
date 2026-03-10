@@ -107,11 +107,20 @@ public class WhatsAppController : ControllerBase
                         request.PhoneNumber, imageBytes, imageMime, nomeUsuario, request.ImageCaption);
                     break;
 
+                case "document" when !string.IsNullOrEmpty(request.DocumentData):
+                    _logger.LogInformation("Documento WhatsApp de {Phone} ({Nome})", request.PhoneNumber, nomeUsuario);
+                    var documentBytes = Convert.FromBase64String(request.DocumentData);
+                    var documentMime = request.DocumentMimeType ?? "application/octet-stream";
+                    var documentFileName = request.DocumentFileName ?? "documento";
+                    resposta = await _botService.ProcessarDocumentoAsync(
+                        request.PhoneNumber, documentBytes, documentMime, documentFileName, nomeUsuario, request.DocumentCaption);
+                    break;
+
                 case "text":
                 default:
                     if (string.IsNullOrWhiteSpace(request.Text))
                     {
-                        resposta = "❓ Tipo de mensagem não suportado. Envie texto, áudio ou foto.";
+                        resposta = "❓ Tipo de mensagem não suportado. Envie texto, áudio, imagem ou documento.";
                         break;
                     }
                     _logger.LogInformation("Texto WhatsApp de {Phone} ({Nome}): {Txt}",

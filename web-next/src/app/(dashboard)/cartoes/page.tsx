@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useMemo } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import {
   useCartoes,
@@ -14,7 +14,7 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { cartaoSchema, type CartaoData } from "@/lib/schemas";
 import type { Cartao } from "@/lib/api";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -22,7 +22,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Eye,
   Calendar,
   Wifi,
   DollarSign,
@@ -108,12 +107,7 @@ function useMonthSelector() {
     } else setMonth((m) => m + 1);
   };
 
-  const reset = () => {
-    setYear(nextMonth.getFullYear());
-    setMonth(nextMonth.getMonth());
-  };
-
-  return { mesParam, label, isCurrentMonth, prev, next, reset };
+  return { mesParam, label, isCurrentMonth, prev, next };
 }
 
 export default function CartoesPage() {
@@ -124,10 +118,12 @@ export default function CartoesPage() {
   const [garantiaCard, setGarantiaCard] = useState<Cartao | null>(null);
   const [selectedCartaoId, setSelectedCartaoId] = useState<number | null>(null);
   const [garantiaTab, setGarantiaTab] = useState<string>("adicionar");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
 
-  const { mesParam, label: mesLabel, prev, next, reset } = useMonthSelector();
+  const { mesParam, label: mesLabel, prev, next } = useMonthSelector();
 
-  const { data: cartoes = [], isLoading, isError, error, refetch } = useCartoes();
+  const { data: cartoes = [], isLoading, isError, error } = useCartoes();
   const criarCartao = useCriarCartao();
   const atualizarCartao = useAtualizarCartao();
   const desativarCartao = useDesativarCartao();
@@ -254,6 +250,18 @@ export default function CartoesPage() {
     );
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["cartoes"] }),
+        queryClient.invalidateQueries({ queryKey: ["fatura"] }),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const totalDisponivel = cartoes.reduce((s, c) => s + (c.limiteDisponivel ?? c.limite), 0);
 
   // Fetch faturas for all cards to show monthly total in stat card
@@ -277,15 +285,21 @@ export default function CartoesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [faturaQueries.map((q) => q.dataUpdatedAt).join(",")]);
 
-
   if (isError) {
     return (
       <div className="flex flex-col gap-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-slate-900 dark:text-white">Cartões de Crédito</h1>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold mt-2">Gestão de Limites e Faturas</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-slate-900 dark:text-white">
+            Cartões de Crédito
+          </h1>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold mt-2">
+            Gestão de Limites e Faturas
+          </p>
         </div>
-        <ErrorState message={error?.message ?? "Erro ao carregar cartões"} onRetry={refetch} />
+        <ErrorState
+          message={error?.message ?? "Erro ao carregar cartões"}
+          onRetry={handleRefresh}
+        />
       </div>
     );
   }
@@ -307,15 +321,27 @@ export default function CartoesPage() {
         className="flex flex-col sm:flex-row sm:items-end justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-slate-900 dark:text-white">Cartões de Crédito</h1>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold mt-2">Gestão de Limites e Faturas</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-slate-900 dark:text-white">
+            Cartões de Crédito
+          </h1>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold mt-2">
+            Gestão de Limites e Faturas
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <button
-            onClick={() => refetch()}
-            className="p-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm transition-colors cursor-pointer"
+            onClick={handleRefresh}
+            aria-label="Atualizar cartões e faturas"
+            aria-busy={isRefreshing}
+            disabled={isRefreshing}
+            className="p-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm transition-colors cursor-pointer disabled:cursor-wait disabled:opacity-60"
           >
-            <RefreshCw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+            <RefreshCw
+              className={cn(
+                "h-4 w-4 text-slate-500 dark:text-slate-400",
+                isRefreshing && "animate-spin"
+              )}
+            />
           </button>
           <button
             onClick={() => setShowForm(true)}
@@ -333,30 +359,59 @@ export default function CartoesPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0 }}
               className="exec-card p-5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex items-center justify-between border-l-4 border-emerald-500"
             >
               <div>
-                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">Limite Total</p>
-                <span className="text-xl mono-data text-slate-900 dark:text-white font-medium">{formatCurrency(totalLimite)}</span>
+                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">
+                  Limite Total
+                </p>
+                <span className="text-xl mono-data text-slate-900 dark:text-white font-medium">
+                  {formatCurrency(totalLimite)}
+                </span>
               </div>
               <Wallet className="text-slate-300 h-8 w-8 shrink-0" />
             </motion.div>
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-              className="exec-card p-5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex items-center justify-between border-l-4 border-emerald-300"
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className={cn(
+                "exec-card p-5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex items-center justify-between border-l-4",
+                totalDisponivel >= 0 ? "border-emerald-300" : "border-rose-400"
+              )}
             >
               <div>
-                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">Limite Disponível Total</p>
-                <span className="text-xl mono-data text-emerald-600 font-medium">{formatCurrency(totalDisponivel)}</span>
+                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">
+                  Limite Disponível Total
+                </p>
+                <span
+                  className={cn(
+                    "text-xl mono-data font-medium",
+                    totalDisponivel >= 0 ? "text-emerald-600" : "text-rose-500"
+                  )}
+                >
+                  {formatCurrency(totalDisponivel)}
+                </span>
               </div>
               <CheckCircle className="text-slate-300 h-8 w-8 shrink-0" />
             </motion.div>
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
               className="exec-card p-5 sm:p-6 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex items-center justify-between border-l-4 border-rose-400"
             >
               <div>
-                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">Fatura Global</p>
-                <span className="text-xl mono-data text-rose-500 font-bold">{formatCurrency(faturaTotalMes)}</span>
+                <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">
+                  Fatura Global
+                </p>
+                <span className="text-xl mono-data text-rose-500 font-bold">
+                  {formatCurrency(faturaTotalMes)}
+                </span>
               </div>
               <Receipt className="text-slate-300 h-8 w-8 shrink-0" />
             </motion.div>
@@ -364,72 +419,115 @@ export default function CartoesPage() {
 
           {/* ═══ Horizontal Card Strip ═══ */}
           {cartoes.length === 0 ? (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-6 sm:p-10 lg:p-12">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-6 sm:p-10 lg:p-12"
+            >
               <EmptyState
                 icon={<CreditCard className="h-6 w-6" />}
                 title="Nenhum cartão"
                 description="Adicione um cartão de crédito para começar a rastrear suas faturas"
                 action={
-                  <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 cursor-pointer w-full sm:w-auto justify-center">
+                  <button
+                    onClick={() => setShowForm(true)}
+                    className="flex items-center gap-2 bg-emerald-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 cursor-pointer w-full sm:w-auto justify-center"
+                  >
                     <Plus className="h-4 w-4" /> Novo Cartão
                   </button>
                 }
               />
             </motion.div>
           ) : (
-            <div className="flex gap-6 overflow-x-auto pb-2 hide-scrollbar">
-              {cartoes.map((cartao, i) => {
-                const bgClass = cardBgStyles[i % cardBgStyles.length];
-                const isSelected = selectedCartaoId === cartao.id;
-                const disponivel = cartao.limiteDisponivel ?? cartao.limite;
-                const availablePct = cartao.limite > 0 ? Math.min((disponivel / cartao.limite) * 100, 100) : 0;
-                return (
-                  <div
-                    key={cartao.id}
-                    onClick={() => setSelectedCartaoId(prev => prev === cartao.id ? null : cartao.id)}
-                    className={cn(
-                      "shrink-0 w-64 sm:w-80 h-40 sm:h-48 rounded-xl sm:rounded-[2rem] p-5 sm:p-8 text-white flex flex-col justify-between border border-slate-700 shadow-xl cursor-pointer transition-all hover:-translate-y-1",
-                      bgClass,
-                      isSelected && "ring-2 ring-emerald-500 ring-offset-4"
-                    )}
-                  >
-                    <div className="flex justify-between items-start">
+            <div className="space-y-3">
+              <div className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar snap-x snap-mandatory sm:gap-6">
+                {cartoes.map((cartao, i) => {
+                  const bgClass = cardBgStyles[i % cardBgStyles.length];
+                  const isSelected = selectedCartaoId === cartao.id;
+                  const disponivel = cartao.limiteDisponivel ?? cartao.limite;
+                  const availablePct =
+                    cartao.limite > 0 ? Math.min((disponivel / cartao.limite) * 100, 100) : 0;
+                  return (
+                    <div
+                      key={cartao.id}
+                      onClick={() =>
+                        setSelectedCartaoId((prev) => (prev === cartao.id ? null : cartao.id))
+                      }
+                      className={cn(
+                        "snap-start shrink-0 w-72 sm:w-80 h-40 sm:h-48 rounded-xl sm:rounded-[2rem] p-5 sm:p-8 text-white flex flex-col justify-between border border-slate-700 shadow-xl cursor-pointer transition-all hover:-translate-y-1",
+                        bgClass,
+                        isSelected && "ring-2 ring-emerald-500 ring-offset-4"
+                      )}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-[8px] uppercase tracking-widest opacity-60 mb-1">
+                            Instituição
+                          </p>
+                          <p className="text-xs font-bold tracking-widest uppercase">
+                            {cartao.nome}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <Wifi className="h-4 w-4 opacity-40 rotate-90" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEdit(cartao);
+                            }}
+                            aria-label={`Editar cartão ${cartao.nome}`}
+                            className="size-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingId(cartao.id);
+                            }}
+                            aria-label={`Excluir cartão ${cartao.nome}`}
+                            className="size-7 flex items-center justify-center text-white/40 hover:text-red-300 hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
                       <div>
-                        <p className="text-[8px] uppercase tracking-widest opacity-60 mb-1">Instituição</p>
-                        <p className="text-xs font-bold tracking-widest uppercase">{cartao.nome}</p>
+                        <div className="flex justify-between text-[9px] mb-2">
+                          <span
+                            className={cn(
+                              "opacity-60",
+                              disponivel < 0 && "text-rose-200 opacity-100"
+                            )}
+                          >
+                            Disponível: {formatCurrency(disponivel)}
+                          </span>
+                          <span className="font-bold">Total: {formatCurrency(cartao.limite)}</span>
+                        </div>
+                        <div className="w-full h-1 bg-slate-700/60 rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              availablePct < 20 ? "bg-rose-400" : "bg-emerald-400"
+                            )}
+                            style={{ width: `${availablePct}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-0.5">
-                        <Wifi className="h-4 w-4 opacity-40 rotate-90" />
-                        <button onClick={(e) => { e.stopPropagation(); openEdit(cartao); }} className="size-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer">
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); setDeletingId(cartao.id); }} className="size-7 flex items-center justify-center text-white/40 hover:text-red-300 hover:bg-white/15 rounded-lg transition-colors cursor-pointer">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-[9px] mb-2">
-                        <span className="opacity-60">Disponível: {formatCurrency(disponivel)}</span>
-                        <span className="font-bold">Total: {formatCurrency(cartao.limite)}</span>
-                      </div>
-                      <div className="w-full h-1 bg-slate-700/60 rounded-full overflow-hidden">
-                        <div
-                          className={cn("h-full rounded-full transition-all duration-500", availablePct < 20 ? "bg-rose-400" : "bg-emerald-400")}
-                          style={{ width: `${availablePct}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-end">
-                      <span className="mono-data text-sm tracking-widest">•••• ••••</span>
-                      <div className="text-right">
-                        <p className="text-[7px] uppercase opacity-50">Vencimento</p>
-                        <p className="text-[10px] font-bold">DIA {cartao.diaVencimento}</p>
+                      <div className="flex justify-between items-end">
+                        <span className="mono-data text-sm tracking-widest">•••• ••••</span>
+                        <div className="text-right">
+                          <p className="text-[7px] uppercase opacity-50">Vencimento</p>
+                          <p className="text-[10px] font-bold">DIA {cartao.diaVencimento}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <p className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                Toque em um cartão para focar a fatura e liberar ações.
+              </p>
             </div>
           )}
 
@@ -438,30 +536,51 @@ export default function CartoesPage() {
             <div className="px-5 sm:px-10 py-5 sm:py-8 border-b border-slate-50 dark:border-slate-700/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-8">
                 <div>
-                  <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">Fatura Atual</p>
+                  <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">
+                    Fatura Atual
+                  </p>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <button onClick={prev} className="p-1 hover:text-slate-600 text-slate-400 cursor-pointer transition-colors">
+                      <button
+                        onClick={prev}
+                        aria-label="Exibir fatura do mês anterior"
+                        className="p-1 hover:text-slate-600 text-slate-400 cursor-pointer transition-colors"
+                      >
                         <ChevronLeft className="h-4 w-4" />
                       </button>
-                      <span className="text-xl serif-italic text-slate-900 dark:text-white">{mesLabel}</span>
-                      <button onClick={next} className="p-1 hover:text-slate-600 text-slate-400 cursor-pointer transition-colors">
+                      <span className="text-xl serif-italic text-slate-900 dark:text-white">
+                        {mesLabel}
+                      </span>
+                      <button
+                        onClick={next}
+                        aria-label="Exibir fatura do mês seguinte"
+                        className="p-1 hover:text-slate-600 text-slate-400 cursor-pointer transition-colors"
+                      >
                         <ChevronRight className="h-4 w-4" />
                       </button>
                     </div>
-                    <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded-full uppercase tracking-widest">Aberta</span>
+                    <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded-full uppercase tracking-widest">
+                      Aberta
+                    </span>
                   </div>
                 </div>
                 <div className="h-10 w-px bg-slate-100 dark:bg-slate-700" />
                 <div>
-                  <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">Valor Total</p>
-                  <span className="text-xl mono-data font-bold text-slate-900 dark:text-white">{formatCurrency(faturaTotalMes)}</span>
+                  <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-2">
+                    Valor Total
+                  </p>
+                  <span className="text-xl mono-data font-bold text-slate-900 dark:text-white">
+                    {formatCurrency(faturaTotalMes)}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 {selectedCartaoId && (
                   <button
-                    onClick={() => { const c = cartoes.find(x => x.id === selectedCartaoId); if (c) openGarantia(c, "adicionar"); }}
+                    onClick={() => {
+                      const c = cartoes.find((x) => x.id === selectedCartaoId);
+                      if (c) openGarantia(c, "adicionar");
+                    }}
                     className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-6 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:bg-white dark:hover:bg-slate-700 transition-all cursor-pointer"
                   >
                     Garantia
@@ -469,7 +588,10 @@ export default function CartoesPage() {
                 )}
                 {selectedCartaoId && (
                   <button
-                    onClick={() => { const c = cartoes.find(x => x.id === selectedCartaoId); if (c) setViewingFaturaId({ id: c.id, nome: c.nome }); }}
+                    onClick={() => {
+                      const c = cartoes.find((x) => x.id === selectedCartaoId);
+                      if (c) setViewingFaturaId({ id: c.id, nome: c.nome });
+                    }}
                     className="bg-emerald-600 text-white px-8 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-100 cursor-pointer hover:brightness-105 transition-all"
                   >
                     Ver Fatura
@@ -478,7 +600,9 @@ export default function CartoesPage() {
               </div>
             </div>
             <FaturaMesSection
-              cartoes={selectedCartaoId ? cartoes.filter(c => c.id === selectedCartaoId) : cartoes}
+              cartoes={
+                selectedCartaoId ? cartoes.filter((c) => c.id === selectedCartaoId) : cartoes
+              }
               mesParam={mesParam}
               mesLabel={mesLabel}
             />
@@ -488,7 +612,6 @@ export default function CartoesPage() {
       {/* ═══ Create Dialog ═══ */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-
           <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/[0.08] bg-emerald-600/[0.03] p-3.5 sm:p-4">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10 transition-all duration-500">
@@ -504,10 +627,7 @@ export default function CartoesPage() {
           </DialogHeader>
 
           <div>
-            <form
-              onSubmit={form.handleSubmit(onSubmitCreate)}
-              className="space-y-4 sm:space-y-5"
-            >
+            <form onSubmit={form.handleSubmit(onSubmitCreate)} className="space-y-4 sm:space-y-5">
               <div className="space-y-4 rounded-2xl border border-emerald-600/[0.08] dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -724,7 +844,9 @@ export default function CartoesPage() {
             </DialogDescription>
             <DialogShellHeader
               icon={<CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />}
-              title={viewingFaturaId?.nome ? `Faturas de ${viewingFaturaId.nome}` : "Faturas pendentes"}
+              title={
+                viewingFaturaId?.nome ? `Faturas de ${viewingFaturaId.nome}` : "Faturas pendentes"
+              }
               description="Veja a lista de faturas abertas e acompanhe os lançamentos vinculados."
               tone="blue"
             />
@@ -746,7 +868,9 @@ export default function CartoesPage() {
               </DialogDescription>
               <DialogShellHeader
                 icon={<Shield className="h-5 w-5 sm:h-6 sm:w-6" />}
-                title={garantiaCard?.nome ? `Garantia de ${garantiaCard.nome}` : "Garantia do cartão"}
+                title={
+                  garantiaCard?.nome ? `Garantia de ${garantiaCard.nome}` : "Garantia do cartão"
+                }
                 description="Adicione ou resgate garantia e acompanhe o bônus aplicado ao limite."
                 tone="emerald"
               />
@@ -892,8 +1016,8 @@ export default function CartoesPage() {
                         className={cn(
                           "h-11 rounded-xl pl-9 tabular-nums font-semibold",
                           resgateExcedeGarantia &&
-                          valorResgateBase > 0 &&
-                          "border-red-500 focus-visible:ring-red-500/30"
+                            valorResgateBase > 0 &&
+                            "border-red-500 focus-visible:ring-red-500/30"
                         )}
                         placeholder="0,00"
                         value={resgateForm.watch("valorResgate")}

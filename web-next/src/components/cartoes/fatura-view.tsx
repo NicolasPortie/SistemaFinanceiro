@@ -55,7 +55,10 @@ export function FaturaSection({ fatura, defaultOpen }: FaturaSectionProps) {
           <span className="text-sm font-bold tabular-nums">{formatCurrency(fatura.total)}</span>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); togglePaga.mutate(fatura.faturaId); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePaga.mutate(fatura.faturaId);
+            }}
             disabled={togglePaga.isPending}
             title={fatura.status === "Paga" ? "Marcar como não paga" : "Marcar como paga"}
             className={cn(

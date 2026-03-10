@@ -3,6 +3,7 @@
 // Type-safe validation schemas for all forms
 // ============================================================
 
+import { getPhoneDigits } from "@/lib/phone";
 import { z } from "zod";
 
 export const loginSchema = z.object({
@@ -16,9 +17,12 @@ export const registroSchema = z.object({
   celular: z
     .string()
     .min(1, "Celular é obrigatório")
-    .min(10, "Celular deve ter pelo menos 10 dígitos")
     .max(20, "Celular muito longo")
-    .regex(/^\+?[\d\s()\-]+$/, "Formato de celular inválido"),
+    .regex(/^\+?[\d\s()\-]+$/, "Formato de celular inválido")
+    .refine((value) => {
+      const digits = getPhoneDigits(value);
+      return digits.length >= 10 && digits.length <= 11;
+    }, "Celular deve ter DDD e 10 ou 11 dígitos"),
   senha: z
     .string()
     .min(8, "Mínimo 8 caracteres")
@@ -135,6 +139,9 @@ export const atualizarPerfilSchema = z.object({
     .string()
     .max(20, "Celular muito longo")
     .regex(/^$|^\+?[\d\s()\-]+$/, "Formato de celular inválido")
+    .refine((value) => value === "" || value === undefined || getPhoneDigits(value).length >= 10, {
+      message: "Celular deve ter DDD e 10 ou 11 dígitos",
+    })
     .optional()
     .or(z.literal("")),
 });
@@ -170,7 +177,7 @@ export const recuperarSenhaSchema = z.object({
 export const redefinirSenhaSchema = z
   .object({
     email: z.string().min(1, "E-mail é obrigatório").email("E-mail inválido"),
-    codigo: z.string().min(6, "Código deve ter 6 dígitos").max(6, "Código deve ter 6 dígitos"),
+    codigo: z.string().regex(/^\d{6}$/, "Código deve ter 6 dígitos"),
     novaSenha: z
       .string()
       .min(8, "Mínimo 8 caracteres")
@@ -185,7 +192,7 @@ export const redefinirSenhaSchema = z
   });
 
 export const verificarRegistroSchema = z.object({
-  codigo: z.string().min(6, "Código deve ter 6 dígitos").max(6, "Código deve ter 6 dígitos"),
+  codigo: z.string().regex(/^\d{6}$/, "Código deve ter 6 dígitos"),
 });
 
 export const decisaoGastoSchema = z.object({

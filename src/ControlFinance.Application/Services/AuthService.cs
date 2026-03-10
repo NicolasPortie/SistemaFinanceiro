@@ -250,7 +250,7 @@ public class AuthService : IAuthService
             return (null, $"Conta temporariamente bloqueada. Tente novamente em {minutosRestantes} minutos.");
         }
 
-        if (!VerificarSenha(dto.Senha, usuario.SenhaHash))
+        if (string.IsNullOrWhiteSpace(usuario.SenhaHash) || !VerificarSenha(dto.Senha, usuario.SenhaHash))
         {
             // Incrementar tentativas falhadas
             var maxTentativas = _config.GetValue("Security:MaxLoginAttempts", 5);

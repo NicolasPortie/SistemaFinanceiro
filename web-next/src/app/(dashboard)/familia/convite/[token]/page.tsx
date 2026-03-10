@@ -3,35 +3,32 @@
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Loader2,
-  Mail,
-  Timer,
-  Users,
-  XCircle,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Mail, Timer, Users, XCircle } from "lucide-react";
 
 import { api, type ConviteFamilia } from "@/lib/api";
 import { formatShortDate } from "@/lib/format";
 import { queryKeys, useAceitarConviteFamilia, useRecusarConviteFamilia } from "@/hooks/use-queries";
-import { FamilyHero, FamilyPanel, FamilyPrimaryAction, FamilyShell } from "@/components/familia/family-layout";
+import {
+  FamilyHero,
+  FamilyPanel,
+  FamilyPrimaryAction,
+  FamilyShell,
+} from "@/components/familia/family-layout";
 import { Button } from "@/components/ui/button";
 
-export default function ConviteTokenPage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+export default function ConviteTokenPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const router = useRouter();
   const aceitar = useAceitarConviteFamilia();
   const recusar = useRecusarConviteFamilia();
   const [resultado, setResultado] = useState<"aceito" | "recusado" | null>(null);
 
-  const { data: convite, isLoading, isError, error } = useQuery<ConviteFamilia>({
+  const {
+    data: convite,
+    isLoading,
+    isError,
+    error,
+  } = useQuery<ConviteFamilia>({
     queryKey: queryKeys.familiaConvite(token),
     queryFn: () => api.familia.obterConvite(token),
     retry: false,
@@ -83,7 +80,10 @@ export default function ConviteTokenPage({
             <CenteredState
               icon={<AlertTriangle className="h-8 w-8 text-red-500" />}
               title="Convite não encontrado"
-              description={(error as Error)?.message || "Esse convite pode ter expirado ou já ter sido utilizado."}
+              description={
+                (error as Error)?.message ||
+                "Esse convite pode ter expirado ou já ter sido utilizado."
+              }
               action={
                 <Button variant="outline" onClick={() => router.push("/dashboard")}>
                   Ir para dashboard
@@ -170,7 +170,11 @@ export default function ConviteTokenPage({
                   </FamilyPrimaryAction>
                 </div>
               ) : (
-                <Button variant="outline" className="h-12 w-full" onClick={() => router.push("/dashboard")}>
+                <Button
+                  variant="outline"
+                  className="h-12 w-full"
+                  onClick={() => router.push("/dashboard")}
+                >
                   Ir para dashboard
                 </Button>
               )}
@@ -205,22 +209,16 @@ function CenteredState({
   );
 }
 
-function InfoCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
+function InfoCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3 rounded-[1.5rem] border border-slate-200/70 bg-slate-50/70 p-4 dark:border-white/8 dark:bg-slate-900/35">
       <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
         {icon}
       </div>
       <div>
-        <p className="text-xs uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{label}</p>
+        <p className="text-xs uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+          {label}
+        </p>
         <p className="text-sm font-semibold text-slate-900 dark:text-white">{value}</p>
       </div>
     </div>
@@ -242,7 +240,9 @@ function StatusBanner({
       : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/15 dark:bg-amber-500/10 dark:text-amber-300";
 
   return (
-    <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium ${toneClass}`}>
+    <div
+      className={`flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium ${toneClass}`}
+    >
       {icon}
       <span>{message}</span>
     </div>

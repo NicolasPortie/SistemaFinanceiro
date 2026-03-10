@@ -97,7 +97,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.AcessoExpiraEm).HasColumnName("acesso_expira_em").IsRequired(false);
             entity.Property(e => e.RendaMensal).HasColumnName("renda_mensal").HasColumnType("numeric(18,2)").IsRequired(false);
             entity.Property(e => e.Cpf).HasColumnName("cpf").HasMaxLength(600)
-                .HasConversion(deterministicConverter).IsRequired(false); // 🔒 PII criptografado
+                .HasConversion(deterministicNullableConverter).IsRequired(false); // 🔒 PII criptografado
             entity.Property(e => e.Role).HasColumnName("role").HasDefaultValue(Domain.Enums.RoleUsuario.Usuario);
 
             entity.HasIndex(e => e.Email).IsUnique();

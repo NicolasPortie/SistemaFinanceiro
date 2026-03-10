@@ -157,9 +157,16 @@ function RichBlocoRenderer({ bloco }: { bloco: RichBloco }) {
     case "resumo":
       return <SummaryCards dados={bloco.dados as DadosResumo} />;
     case "grafico_pizza":
-      return <PieChartBlock titulo={bloco.titulo} dados={bloco.dados as { itens: ItemGraficoPizza[] }} />;
+      return (
+        <PieChartBlock titulo={bloco.titulo} dados={bloco.dados as { itens: ItemGraficoPizza[] }} />
+      );
     case "grafico_barras":
-      return <BarChartBlock titulo={bloco.titulo} dados={bloco.dados as { itens: ItemGraficoBarras[] }} />;
+      return (
+        <BarChartBlock
+          titulo={bloco.titulo}
+          dados={bloco.dados as { itens: ItemGraficoBarras[] }}
+        />
+      );
     case "lista_transacoes":
       return (
         <TransactionList
@@ -169,7 +176,9 @@ function RichBlocoRenderer({ bloco }: { bloco: RichBloco }) {
         />
       );
     case "progresso":
-      return <ProgressBars titulo={bloco.titulo} dados={bloco.dados as { itens: ItemProgresso[] }} />;
+      return (
+        <ProgressBars titulo={bloco.titulo} dados={bloco.dados as { itens: ItemProgresso[] }} />
+      );
     case "comparativo":
       return <ComparativoBlock titulo={bloco.titulo} dados={bloco.dados as DadosComparativo} />;
     case "fatura":
@@ -274,9 +283,7 @@ function PieChartBlock({
   return (
     <div className="rounded-xl bg-white/50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] p-3">
       {titulo && (
-        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-          {titulo}
-        </p>
+        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">{titulo}</p>
       )}
       <div className="relative">
         <ResponsiveContainer width="100%" height={180}>
@@ -303,11 +310,12 @@ function PieChartBlock({
                 return (
                   <div className="rounded-lg border border-border/50 bg-popover px-3 py-2 shadow-lg text-xs">
                     <p className="font-semibold">{item.name}</p>
-                    <p className="tabular-nums font-bold">
-                      {formatCurrency(item.value as number)}
-                    </p>
+                    <p className="tabular-nums font-bold">{formatCurrency(item.value as number)}</p>
                     <p className="text-muted-foreground">
-                      {((item.payload as Record<string, unknown>)?.percentual as number)?.toFixed(1)}%
+                      {((item.payload as Record<string, unknown>)?.percentual as number)?.toFixed(
+                        1
+                      )}
+                      %
                     </p>
                   </div>
                 );
@@ -359,9 +367,7 @@ function BarChartBlock({
   return (
     <div className="rounded-xl bg-white/50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] p-3">
       {titulo && (
-        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-          {titulo}
-        </p>
+        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">{titulo}</p>
       )}
       <ResponsiveContainer width="100%" height={160}>
         <BarChart data={dados.itens} barGap={2}>
@@ -391,9 +397,7 @@ function BarChartBlock({
                         style={{ backgroundColor: item.color }}
                       />
                       {item.name === "receitas" ? "Receitas" : "Gastos"}:{" "}
-                      <span className="font-bold">
-                        {formatCurrency(item.value as number)}
-                      </span>
+                      <span className="font-bold">{formatCurrency(item.value as number)}</span>
                     </p>
                   ))}
                 </div>
@@ -448,25 +452,17 @@ function TransactionList({
           <Receipt className="size-3.5 text-slate-400" />
           <div className="text-left">
             {titulo && (
-              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                {titulo}
-              </p>
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">{titulo}</p>
             )}
             {subtitulo && (
-              <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                {subtitulo}
-              </p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500">{subtitulo}</p>
             )}
           </div>
         </div>
         {hasMore && (
           <div className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
             {expanded ? "Recolher" : `Ver todos (${dados.itens.length})`}
-            {expanded ? (
-              <ChevronUp className="size-3" />
-            ) : (
-              <ChevronDown className="size-3" />
-            )}
+            {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
           </div>
         )}
       </button>
@@ -474,10 +470,7 @@ function TransactionList({
       {/* Items */}
       <div className="divide-y divide-slate-100 dark:divide-white/[0.04]">
         {visibleItems.map((item, idx) => (
-          <div
-            key={idx}
-            className="flex items-center justify-between px-3 py-2 text-xs"
-          >
+          <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <div
                 className={cn(
@@ -531,13 +524,7 @@ function TransactionList({
 
 // ── Progress Bars ──
 
-function ProgressBars({
-  titulo,
-  dados,
-}: {
-  titulo?: string;
-  dados: { itens: ItemProgresso[] };
-}) {
+function ProgressBars({ titulo, dados }: { titulo?: string; dados: { itens: ItemProgresso[] } }) {
   if (!dados.itens?.length) return null;
 
   const statusColor = (status: string) => {
@@ -575,9 +562,7 @@ function ProgressBars({
       {titulo && (
         <div className="flex items-center gap-2 mb-3">
           <Target className="size-3.5 text-slate-400" />
-          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-            {titulo}
-          </p>
+          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">{titulo}</p>
         </div>
       )}
       <div className="space-y-3">
@@ -587,7 +572,9 @@ function ProgressBars({
               <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
                 {item.nome}
               </span>
-              <span className={cn("text-[10px] font-bold tabular-nums", statusTextColor(item.status))}>
+              <span
+                className={cn("text-[10px] font-bold tabular-nums", statusTextColor(item.status))}
+              >
                 {formatCurrency(item.atual)} / {formatCurrency(item.limite)}
               </span>
             </div>
@@ -598,13 +585,13 @@ function ProgressBars({
               />
             </div>
             <div className="flex items-center justify-between mt-0.5">
-              <span className={cn("text-[10px] font-medium tabular-nums", statusTextColor(item.status))}>
+              <span
+                className={cn("text-[10px] font-medium tabular-nums", statusTextColor(item.status))}
+              >
                 {item.percentual.toFixed(0)}%
               </span>
               {item.info && (
-                <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                  {item.info}
-                </span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">{item.info}</span>
               )}
             </div>
           </div>
@@ -616,22 +603,14 @@ function ProgressBars({
 
 // ── Comparativo Block ──
 
-function ComparativoBlock({
-  titulo,
-  dados,
-}: {
-  titulo?: string;
-  dados: DadosComparativo;
-}) {
+function ComparativoBlock({ titulo, dados }: { titulo?: string; dados: DadosComparativo }) {
   const variacaoGastos = dados.gastosAtual - dados.gastosAnterior;
   const gastosSubiram = variacaoGastos > 0;
 
   return (
     <div className="rounded-xl bg-white/50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] p-3 space-y-3">
       {titulo && (
-        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-          {titulo}
-        </p>
+        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">{titulo}</p>
       )}
 
       {/* Comparison cards */}
@@ -648,9 +627,7 @@ function ComparativoBlock({
           </p>
         </div>
         <div className="text-center p-2 rounded-lg bg-slate-50 dark:bg-white/[0.02]">
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">
-            {dados.mesAtual}
-          </p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">{dados.mesAtual}</p>
           <p className="text-xs font-bold text-red-600 dark:text-red-400 tabular-nums">
             {formatCurrency(dados.gastosAtual)}
           </p>
@@ -670,11 +647,7 @@ function ComparativoBlock({
               : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
           )}
         >
-          {gastosSubiram ? (
-            <TrendingUp className="size-3" />
-          ) : (
-            <TrendingDown className="size-3" />
-          )}
+          {gastosSubiram ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
           {gastosSubiram ? "+" : ""}
           {dados.variacaoGastosPercent.toFixed(1)}% nos gastos
         </div>
@@ -688,13 +661,8 @@ function ComparativoBlock({
           </p>
           <div className="space-y-1">
             {dados.categoriasMudaram.map((cat) => (
-              <div
-                key={cat.categoria}
-                className="flex items-center justify-between text-[11px]"
-              >
-                <span className="text-slate-600 dark:text-slate-400">
-                  {cat.categoria}
-                </span>
+              <div key={cat.categoria} className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-600 dark:text-slate-400">{cat.categoria}</span>
                 <span
                   className={cn(
                     "font-bold tabular-nums",
@@ -740,9 +708,7 @@ function FaturaBlock({
           <div className="flex items-center gap-2">
             <CreditCard className="size-3.5 text-violet-500" />
             {titulo && (
-              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                {titulo}
-              </p>
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">{titulo}</p>
             )}
           </div>
           <span
@@ -758,11 +724,7 @@ function FaturaBlock({
             {dados.status}
           </span>
         </div>
-        {subtitulo && (
-          <p className="text-[10px] text-slate-400 dark:text-slate-500">
-            {subtitulo}
-          </p>
-        )}
+        {subtitulo && <p className="text-[10px] text-slate-400 dark:text-slate-500">{subtitulo}</p>}
         <div className="flex items-center justify-between mt-2">
           <p className="text-lg font-bold text-slate-800 dark:text-slate-200 tabular-nums">
             {formatCurrency(dados.total)}
@@ -795,10 +757,7 @@ function FaturaBlock({
         <>
           <div className="divide-y divide-slate-100 dark:divide-white/[0.04]">
             {visibleItems.map((item, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between px-3 py-2 text-xs"
-              >
+              <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-slate-700 dark:text-slate-300 truncate">
                     {item.descricao}
@@ -831,11 +790,7 @@ function FaturaBlock({
               className="w-full py-2 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-center gap-1"
             >
               {expanded ? "Recolher" : `Ver todos (${dados.itens.length})`}
-              {expanded ? (
-                <ChevronUp className="size-3" />
-              ) : (
-                <ChevronDown className="size-3" />
-              )}
+              {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
             </button>
           )}
         </>

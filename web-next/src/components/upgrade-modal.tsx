@@ -73,7 +73,8 @@ export function UpgradeModal() {
               )}
 
               <p className="text-sm">
-                <strong>{recursoLabel}</strong> não está disponível ou atingiu o limite do seu plano atual.
+                <strong>{recursoLabel}</strong> não está disponível ou atingiu o limite do seu plano
+                atual.
               </p>
             </div>
           </DialogDescription>
@@ -125,9 +126,7 @@ export function PremiumGate({
 
   return (
     <div className="relative">
-      <div className="pointer-events-none opacity-30 blur-[1px] select-none">
-        {children}
-      </div>
+      <div className="pointer-events-none opacity-30 blur-[1px] select-none">{children}</div>
       <div className="absolute inset-0 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}

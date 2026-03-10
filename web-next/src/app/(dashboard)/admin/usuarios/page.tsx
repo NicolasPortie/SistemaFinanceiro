@@ -33,7 +33,13 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -144,7 +150,9 @@ function getRoleBadge(role: string) {
     return (
       <div className="flex items-center gap-2">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">Administrador</span>
+        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+          Administrador
+        </span>
       </div>
     );
   }
@@ -251,19 +259,12 @@ export default function AdminUsuariosPage() {
     return {
       todos: usuarios.length,
       ativos: usuarios.filter(
-        (u) =>
-          u.ativo &&
-          !isBloqueado(u) &&
-          !(u.acessoExpiraEm && new Date(u.acessoExpiraEm) < now)
+        (u) => u.ativo && !isBloqueado(u) && !(u.acessoExpiraEm && new Date(u.acessoExpiraEm) < now)
       ).length,
       inativos: usuarios.filter((u) => !u.ativo).length,
       bloqueados: usuarios.filter((u) => isBloqueado(u)).length,
       expirados: usuarios.filter(
-        (u) =>
-          u.ativo &&
-          !isBloqueado(u) &&
-          u.acessoExpiraEm &&
-          new Date(u.acessoExpiraEm) < now
+        (u) => u.ativo && !isBloqueado(u) && u.acessoExpiraEm && new Date(u.acessoExpiraEm) < now
       ).length,
     };
   }, [usuarios]);
@@ -276,20 +277,13 @@ export default function AdminUsuariosPage() {
 
     if (statusFilter === "ativos")
       list = list.filter(
-        (u) =>
-          u.ativo &&
-          !isBloqueado(u) &&
-          !(u.acessoExpiraEm && new Date(u.acessoExpiraEm) < now)
+        (u) => u.ativo && !isBloqueado(u) && !(u.acessoExpiraEm && new Date(u.acessoExpiraEm) < now)
       );
     else if (statusFilter === "inativos") list = list.filter((u) => !u.ativo);
     else if (statusFilter === "bloqueados") list = list.filter((u) => isBloqueado(u));
     else if (statusFilter === "expirados")
       list = list.filter(
-        (u) =>
-          u.ativo &&
-          !isBloqueado(u) &&
-          u.acessoExpiraEm &&
-          new Date(u.acessoExpiraEm) < now
+        (u) => u.ativo && !isBloqueado(u) && u.acessoExpiraEm && new Date(u.acessoExpiraEm) < now
       );
 
     if (!roleFilter.admin) list = list.filter((u) => u.role !== "Admin");
@@ -324,11 +318,7 @@ export default function AdminUsuariosPage() {
     } else {
       pages.push(1);
       if (safePage > 3) pages.push("...");
-      for (
-        let i = Math.max(2, safePage - 1);
-        i <= Math.min(totalPages - 1, safePage + 1);
-        i++
-      ) {
+      for (let i = Math.max(2, safePage - 1); i <= Math.min(totalPages - 1, safePage + 1); i++) {
         pages.push(i);
       }
       if (safePage < totalPages - 2) pages.push("...");
@@ -491,9 +481,7 @@ export default function AdminUsuariosPage() {
                       }}
                       className="rounded border-slate-200 dark:border-slate-600 text-emerald-500 focus:ring-emerald-500"
                     />
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
-                      Usuários
-                    </span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300">Usuários</span>
                   </label>
                 </div>
               </div>
@@ -545,9 +533,7 @@ export default function AdminUsuariosPage() {
                   />
                 </div>
                 <button
-                  onClick={() =>
-                    queryClient.invalidateQueries({ queryKey: ["admin", "usuarios"] })
-                  }
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ["admin", "usuarios"] })}
                   className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 transition-all"
                 >
                   <RotateCcw className="h-4 w-4" />
@@ -668,9 +654,7 @@ export default function AdminUsuariosPage() {
                               )}
                             >
                               <CalendarClock className="h-3 w-3" />
-                              {new Date(u.acessoExpiraEm) < new Date()
-                                ? "Expirou "
-                                : "Expira "}
+                              {new Date(u.acessoExpiraEm) < new Date() ? "Expirou " : "Expira "}
                               {formatDate(u.acessoExpiraEm)}
                             </p>
                           )}
@@ -821,8 +805,7 @@ export default function AdminUsuariosPage() {
                                       onClick={() => resetarLogin.mutate(u.id)}
                                     >
                                       <RotateCcw className="h-4 w-4" />
-                                      Zerar tentativas erradas (
-                                      {u.tentativasLoginFalhadas}×)
+                                      Zerar tentativas erradas ({u.tentativasLoginFalhadas}×)
                                     </DropdownMenuItem>
                                   )}
 
@@ -881,10 +864,7 @@ export default function AdminUsuariosPage() {
                   <div className="flex items-center gap-1">
                     {getPageNumbers().map((p, idx) =>
                       p === "..." ? (
-                        <span
-                          key={`dots-${idx}`}
-                          className="px-2 text-slate-300 text-[11px]"
-                        >
+                        <span key={`dots-${idx}`} className="px-2 text-slate-300 text-[11px]">
                           ...
                         </span>
                       ) : (
@@ -918,10 +898,7 @@ export default function AdminUsuariosPage() {
       </div>
 
       {/* ── Dialogs ── */}
-      <UserDetailDialog
-        usuario={selectedUser}
-        onClose={() => setSelectedUser(null)}
-      />
+      <UserDetailDialog usuario={selectedUser} onClose={() => setSelectedUser(null)} />
 
       <ExtenderAcessoDialog
         usuario={extendTarget}
@@ -929,8 +906,7 @@ export default function AdminUsuariosPage() {
         onDiasChange={setExtendDias}
         isPending={estenderAcesso.isPending}
         onConfirm={() =>
-          extendTarget &&
-          estenderAcesso.mutate({ id: extendTarget.id, dias: extendDias })
+          extendTarget && estenderAcesso.mutate({ id: extendTarget.id, dias: extendDias })
         }
         onClose={() => {
           setExtendTarget(null);
@@ -938,15 +914,10 @@ export default function AdminUsuariosPage() {
         }}
       />
 
-      <AlertDialog
-        open={!!confirmAction}
-        onOpenChange={() => setConfirmAction(null)}
-      >
+      <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader className="items-start text-left">
-            <AlertDialogTitle className="sr-only">
-              {confirmAction?.label}
-            </AlertDialogTitle>
+            <AlertDialogTitle className="sr-only">{confirmAction?.label}</AlertDialogTitle>
             <AlertDialogDescription className="sr-only">
               {confirmAction?.description}
             </AlertDialogDescription>
@@ -959,13 +930,8 @@ export default function AdminUsuariosPage() {
                 )
               }
               title={confirmAction?.label ?? "Confirmar ação"}
-              description={
-                confirmAction?.description ??
-                "Revise a ação antes de continuar."
-              }
-              tone={
-                confirmAction?.variant === "destructive" ? "rose" : "amber"
-              }
+              description={confirmAction?.description ?? "Revise a ação antes de continuar."}
+              tone={confirmAction?.variant === "destructive" ? "rose" : "amber"}
             />
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1024,9 +990,7 @@ function UserDetailDialog({
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-bold text-foreground">
-                  {u?.nome ?? usuario?.nome}
-                </h2>
+                <h2 className="text-lg font-bold text-foreground">{u?.nome ?? usuario?.nome}</h2>
                 {u && getRoleBadge(u.role)}
               </div>
               <p className="text-[13px] text-muted-foreground font-mono mt-0.5 flex items-center gap-1.5">
@@ -1120,9 +1084,7 @@ function UserDetailDialog({
                           <Send className="h-3.5 w-3.5" /> Vinculado
                         </span>
                       ) : (
-                        <span className="text-muted-foreground">
-                          Não vinculado
-                        </span>
+                        <span className="text-muted-foreground">Não vinculado</span>
                       ),
                     },
                     {
@@ -1216,9 +1178,7 @@ function ExtenderAcessoDialog({
   onClose: () => void;
 }) {
   const agora = new Date();
-  const expiraAtual = usuario?.acessoExpiraEm
-    ? new Date(usuario.acessoExpiraEm)
-    : null;
+  const expiraAtual = usuario?.acessoExpiraEm ? new Date(usuario.acessoExpiraEm) : null;
   const estaExpirado = expiraAtual !== null && expiraAtual < agora;
   const baseData = expiraAtual && !estaExpirado ? expiraAtual : agora;
   const novaExpiracao = new Date(baseData.getTime() + dias * 86400_000);
@@ -1239,17 +1199,13 @@ function ExtenderAcessoDialog({
           <div className="space-y-4 py-6">
             <div className="rounded-xl border border-border/40 bg-muted/30 p-3 space-y-1">
               <p className="font-semibold text-sm">{usuario?.nome}</p>
-              <p className="text-[11px] text-muted-foreground/60">
-                {usuario?.email}
-              </p>
+              <p className="text-[11px] text-muted-foreground/60">{usuario?.email}</p>
               <div className="flex items-center gap-1.5 text-[11px] mt-1">
                 <CalendarClock className="h-3.5 w-3.5 text-muted-foreground/50" />
                 {expiraAtual ? (
                   <span
                     className={cn(
-                      estaExpirado
-                        ? "text-red-500 font-semibold"
-                        : "text-muted-foreground/70"
+                      estaExpirado ? "text-red-500 font-semibold" : "text-muted-foreground/70"
                     )}
                   >
                     Acesso atual: {estaExpirado ? "expirou em" : "expira em"}{" "}
@@ -1291,9 +1247,7 @@ function ExtenderAcessoDialog({
                   max={3650}
                   value={dias}
                   onChange={(e) =>
-                    onDiasChange(
-                      Math.max(1, Math.min(3650, Number(e.target.value)))
-                    )
+                    onDiasChange(Math.max(1, Math.min(3650, Number(e.target.value))))
                   }
                   className="h-9 rounded-lg w-24 text-center font-semibold tabular-nums"
                 />
@@ -1302,9 +1256,7 @@ function ExtenderAcessoDialog({
             </div>
 
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-              <p className="text-[11px] text-muted-foreground/60 mb-0.5">
-                Nova data de expiração
-              </p>
+              <p className="text-[11px] text-muted-foreground/60 mb-0.5">Nova data de expiração</p>
               <p className="font-bold text-primary">
                 {novaExpiracao.toLocaleDateString("pt-BR", {
                   day: "2-digit",
@@ -1314,14 +1266,12 @@ function ExtenderAcessoDialog({
               </p>
               {estaExpirado && (
                 <p className="text-[11px] text-amber-600 mt-1">
-                  Como o acesso já expirou, os dias serão contados a partir de
-                  hoje.
+                  Como o acesso já expirou, os dias serão contados a partir de hoje.
                 </p>
               )}
               {expiraAtual === null && (
                 <p className="text-[11px] text-amber-600 mt-1">
-                  O usuário tem acesso permanente. Após estender, passará a ter
-                  prazo definido.
+                  O usuário tem acesso permanente. Após estender, passará a ter prazo definido.
                 </p>
               )}
             </div>

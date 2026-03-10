@@ -81,6 +81,19 @@ public class GroqAiServiceTests
             .ReturnsAsync(responseMessage);
     }
 
+    private void SetupGroqResponses(params HttpResponseMessage[] responses)
+    {
+        var sequence = _httpMessageHandlerMock
+            .Protected()
+            .SetupSequence<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>());
+
+        foreach (var response in responses)
+            sequence = sequence.ReturnsAsync(response);
+    }
+
     [Fact]
     public async Task ProcessarMensagemCompletaAsync_RegistrarLancamento_RetornaDadosCorretos()
     {
@@ -160,7 +173,7 @@ public class GroqAiServiceTests
         {
             comandoInterno = "ver_resumo",
             resposta = "Vou buscar seu resumo",
-            parametro = (string)null
+            parametro = (string?)null
         });
 
         // Act
@@ -359,5 +372,107 @@ public class GroqAiServiceTests
         Assert.NotNull(result?.Lancamento);
         Assert.Equal(1, result.Lancamento.NumeroParcelas);
         Assert.Equal("nao_informado", result.Lancamento.FormaPagamento);
+    }
+    [Fact]
+    public async Task ProcessarMensagemCompletaAsync_RespostaGenerica_DisparaFallbackLivre()
+    {
+        var toolCallGenerica = new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(
+                JsonSerializer.Serialize(new
+                {
+                    choices = new[]
+                    {
+                        new
+                        {
+                            message = new
+                            {
+                                tool_calls = new[]
+                                {
+                                    new
+                                    {
+                                        type = "function",
+                                        function = new
+                                        {
+                                            name = "responder_generico",
+                                            arguments = JsonSerializer.Serialize(new
+                                            {
+                                                comandoInterno = "none",
+                                                resposta = "Nao entendi sua pergunta. Pode fornecer mais detalhes?"
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }),
+                System.Text.Encoding.UTF8,
+                "application/json")
+        };
+
+        var fallbackLivre = new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(
+                JsonSerializer.Serialize(new
+                {
+                    choices = new[]
+                    {
+                        new
+                        {
+                            message = new
+                            {
+                                content = "Sim, consigo analisar fotos e imagens. Pode enviar a foto."
+                            }
+                        }
+                    }
+                }),
+                System.Text.Encoding.UTF8,
+                "application/json")
+        };
+
+        SetupGroqResponses(toolCallGenerica, fallbackLivre);
+
+        var result = await _aiService.ProcessarMensagemCompletaAsync("e foto? voce consegue?", "contexto");
+
+        Assert.NotNull(result);
+        Assert.Equal("resposta_livre", result.Intencao);
+        Assert.Contains("foto", result.Resposta, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("mais detalhes", result.Resposta, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task TranscreverAudioAsync_MimeComCodecParameter_NormalizaMimeNoRequest()
+    {
+        string? requestBody = null;
+
+        var response = new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent("{\"text\":\"gastei 20 no mercado\"}", System.Text.Encoding.UTF8, "application/json")
+        };
+
+        _httpMessageHandlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((request, _) =>
+            {
+                requestBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            })
+            .ReturnsAsync(response);
+
+        var audioOgg = new byte[] { 0x4F, 0x67, 0x67, 0x53, 0x00, 0x02, 0x00, 0x00 };
+
+        var result = await _aiService.TranscreverAudioAsync(audioOgg, "audio/ogg; codecs=opus");
+
+        Assert.True(result.Sucesso);
+        Assert.NotNull(requestBody);
+        Assert.Contains("Content-Type: audio/ogg", requestBody!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("audio.ogg", requestBody!, StringComparison.OrdinalIgnoreCase);
     }
 }

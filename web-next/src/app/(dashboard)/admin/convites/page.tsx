@@ -55,16 +55,12 @@ function formatDuration(dias: number | null): string {
   if (dias >= 365) {
     const anos = Math.floor(dias / 365);
     const mesesRestantes = Math.floor((dias % 365) / 30);
-    return mesesRestantes > 0
-      ? `${anos} ano(s) e ${mesesRestantes} mês(es)`
-      : `${anos} ano(s)`;
+    return mesesRestantes > 0 ? `${anos} ano(s) e ${mesesRestantes} mês(es)` : `${anos} ano(s)`;
   }
   if (dias >= 30) {
     const meses = Math.floor(dias / 30);
     const diasRestantes = dias % 30;
-    return diasRestantes > 0
-      ? `${meses} mês(es) e ${diasRestantes} dia(s)`
-      : `${meses} mês(es)`;
+    return diasRestantes > 0 ? `${meses} mês(es) e ${diasRestantes} dia(s)` : `${meses} mês(es)`;
   }
   return `${dias} dia(s)`;
 }
@@ -250,7 +246,6 @@ export default function AdminConvitesPage() {
 
   const ativos = convites?.filter((c) => !c.usado && !c.expirado) ?? [];
 
-
   // ── Loading ──────────────
   if (isLoading) {
     return (
@@ -275,9 +270,7 @@ export default function AdminConvitesPage() {
       <div className="flex items-center justify-center h-full">
         <ErrorState
           message="Erro ao carregar convites."
-          onRetry={() =>
-            queryClient.invalidateQueries({ queryKey: ["admin", "convites"] })
-          }
+          onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "convites"] })}
         />
       </div>
     );
@@ -349,9 +342,7 @@ export default function AdminConvitesPage() {
                       </span>
                     </div>
                     {c.descricao && (
-                      <p className="text-[11px] text-slate-400 line-clamp-1 mt-1">
-                        {c.descricao}
-                      </p>
+                      <p className="text-[11px] text-slate-400 line-clamp-1 mt-1">{c.descricao}</p>
                     )}
                     <div className="mt-2 flex items-center justify-between text-[9px] text-slate-400">
                       <span>{timeAgo(c.criadoEm)}</span>
@@ -379,9 +370,7 @@ export default function AdminConvitesPage() {
               <div
                 className="h-full bg-emerald-500 transition-all"
                 style={{
-                  width: convites?.length
-                    ? `${(ativos.length / convites.length) * 100}%`
-                    : "0%",
+                  width: convites?.length ? `${(ativos.length / convites.length) * 100}%` : "0%",
                 }}
               />
             </div>
@@ -553,9 +542,7 @@ export default function AdminConvitesPage() {
                             : "Expira em"}
                       </span>
                       {selectedConvite.permanente ? (
-                        <p className="text-sm font-bold text-emerald-600">
-                          Sem prazo
-                        </p>
+                        <p className="text-sm font-bold text-emerald-600">Sem prazo</p>
                       ) : selectedConvite.expiraEm ? (
                         <>
                           <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
@@ -576,9 +563,7 @@ export default function AdminConvitesPage() {
                         </span>
                         <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                           {selectedConvite.usosRealizados} /{" "}
-                          {selectedConvite.ilimitado
-                            ? "∞"
-                            : selectedConvite.usoMaximo}
+                          {selectedConvite.ilimitado ? "∞" : selectedConvite.usoMaximo}
                         </p>
                       </div>
                     )}
@@ -623,9 +608,7 @@ export default function AdminConvitesPage() {
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4">
               <p className="text-[11px] uppercase tracking-widest font-bold">
-                {convites?.length
-                  ? "Selecione um convite na lista"
-                  : "Nenhum convite gerado"}
+                {convites?.length ? "Selecione um convite na lista" : "Nenhum convite gerado"}
               </p>
               {!convites?.length && (
                 <Button
@@ -653,18 +636,12 @@ export default function AdminConvitesPage() {
       </div>
 
       {/* ── Remove Dialog ── */}
-      <AlertDialog
-        open={removingId !== null}
-        onOpenChange={() => setRemovingId(null)}
-      >
+      <AlertDialog open={removingId !== null} onOpenChange={() => setRemovingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader className="items-start text-left">
-            <AlertDialogTitle className="sr-only">
-              Remover link de cadastro?
-            </AlertDialogTitle>
+            <AlertDialogTitle className="sr-only">Remover link de cadastro?</AlertDialogTitle>
             <AlertDialogDescription className="sr-only">
-              Esta ação não pode ser desfeita. O link será removido
-              permanentemente.
+              Esta ação não pode ser desfeita. O link será removido permanentemente.
             </AlertDialogDescription>
             <DialogShellHeader
               icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
@@ -688,10 +665,7 @@ export default function AdminConvitesPage() {
       </AlertDialog>
 
       {/* ── Create Dialog ── */}
-      <Dialog
-        open={showCreate}
-        onOpenChange={(open) => !open && handleCloseCreate()}
-      >
+      <Dialog open={showCreate} onOpenChange={(open) => !open && handleCloseCreate()}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
@@ -811,9 +785,7 @@ export default function AdminConvitesPage() {
               </div>
               <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-border/30">
                 <div>
-                  <p className="text-sm font-semibold">
-                    Sem prazo (nunca expira)
-                  </p>
+                  <p className="text-sm font-semibold">Sem prazo (nunca expira)</p>
                   <p className="text-[11px] text-muted-foreground/60">
                     O link pode ser usado a qualquer momento
                   </p>
@@ -848,11 +820,7 @@ export default function AdminConvitesPage() {
                   min={1}
                   max={50}
                   value={quantidade}
-                  onChange={(e) =>
-                    setQuantidade(
-                      Math.max(1, Math.min(50, Number(e.target.value)))
-                    )
-                  }
+                  onChange={(e) => setQuantidade(Math.max(1, Math.min(50, Number(e.target.value))))}
                   className="h-10 rounded-full bg-muted/30 border-border/60"
                 />
               </div>
@@ -872,11 +840,7 @@ export default function AdminConvitesPage() {
 
           {/* Footer */}
           <div className="flex justify-end gap-3 pt-2">
-            <Button
-              variant="outline"
-              onClick={handleCloseCreate}
-              className="rounded-full"
-            >
+            <Button variant="outline" onClick={handleCloseCreate} className="rounded-full">
               Cancelar
             </Button>
             <Button

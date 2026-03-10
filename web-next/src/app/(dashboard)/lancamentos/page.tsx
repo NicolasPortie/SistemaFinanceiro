@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useResumo,
   useCategorias,
@@ -11,7 +11,6 @@ import {
   useAtualizarLancamento,
   useRemoverLancamento,
   useRemoverVariosLancamentos,
-  queryKeys,
 } from "@/hooks/use-queries";
 import { formatCurrency, formatDate, formatFormaPagamento } from "@/lib/format";
 import type { Lancamento } from "@/lib/api";
@@ -44,7 +43,6 @@ import {
   Tag,
   Calendar,
   DollarSign,
-  MoreVertical,
   RefreshCw,
   MessageSquare,
   Globe,
@@ -83,14 +81,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -107,24 +97,30 @@ const categoryColorMap: Record<string, string> = {
   Outros: "bg-gray-500",
 };
 
-const categoryBadgeColors: Record<string, string> = {
-  Alimentação: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400",
-  Transporte: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  Moradia: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
-  Lazer: "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400",
-  Saúde: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  Educação: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400",
-  Salário: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  Roupas: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400",
-  Outros: "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-400",
-};
-
 function getCategoryColor(cat: string) {
   return categoryColorMap[cat] || "bg-primary";
 }
 
-function getCategoryBadge(cat: string) {
-  return categoryBadgeColors[cat] || "bg-primary/10 text-primary";
+function getOrigemLabel(origem?: string) {
+  if (origem === "Imagem") return "Foto";
+  if (origem === "Audio") return "Áudio";
+  if (origem === "Documento") return "Documento";
+  if (origem === "Importacao") return "Importação";
+  return "Manual";
+}
+
+function SourceIcon({
+  origem,
+  className = "h-3.5 w-3.5",
+}: {
+  origem?: string;
+  className?: string;
+}) {
+  if (origem === "Imagem") return <ImageIcon className={className} />;
+  if (origem === "Audio") return <MessageSquare className={className} />;
+  if (origem === "Documento") return <FileUp className={className} />;
+  if (origem === "Importacao") return <FileUp className={className} />;
+  return <Globe className={className} />;
 }
 
 // ── Payment Method Icons ─────────────────────────────────────
@@ -174,6 +170,7 @@ function useMonthSelector() {
   };
 
   const next = () => {
+    if (isCurrentMonth) return;
     if (month === 11) {
       setMonth(0);
       setYear((y) => y + 1);
@@ -205,9 +202,10 @@ export default function LancamentosPage() {
   const [filtroCategoria, setFiltroCategoria] = useState<string>("todas");
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
 
-  const { label, isCurrentMonth, prev, next, reset, firstDay, lastDay, mesParam } =
+  const { label, prev, next, reset, firstDay, lastDay, mesParam, isCurrentMonth } =
     useMonthSelector();
 
   const { data: resumo, isLoading: loadingResumo, isError, error } = useResumo(mesParam);
@@ -267,6 +265,11 @@ export default function LancamentosPage() {
     (filtroTipo !== "todos" ? 1 : 0) +
     (filtroCategoria !== "todas" ? 1 : 0) +
     (busca.trim() ? 1 : 0);
+
+  useEffect(() => {
+    setPagina(1);
+    setSelectedIds([]);
+  }, [filtroTipo, filtroCategoria, busca, firstDay, lastDay]);
 
   const onSubmit = async (data: LancamentoData) => {
     const valor = parseFloat(data.valor.replace(",", "."));
@@ -366,9 +369,17 @@ export default function LancamentosPage() {
     }
   };
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.resumo() });
-    queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["resumo"] }),
+        queryClient.invalidateQueries({ queryKey: ["lancamentos"] }),
+      ]);
+      setSelectedIds([]);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const openEdit = (lancamento: Lancamento) => {
@@ -393,7 +404,6 @@ export default function LancamentosPage() {
 
   return (
     <div className="space-y-5 sm:space-y-8">
-
       {/* ═══ Page Header ═══ */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
@@ -408,13 +418,18 @@ export default function LancamentosPage() {
             Gestão de Fluxo de Caixa
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800/80 px-3 py-1.5 rounded-full border border-[rgba(15,23,42,0.06)] dark:border-slate-700/60 shadow-sm">
-            <button onClick={prev} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer">
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:flex-nowrap">
+          <div className="flex w-full items-center justify-between gap-1.5 rounded-full border border-[rgba(15,23,42,0.06)] bg-white px-3 py-1.5 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/80 sm:w-auto sm:justify-start">
+            <button
+              onClick={prev}
+              aria-label="Exibir mês anterior"
+              className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
+            >
               <ChevronLeft className="h-3.5 w-3.5 text-slate-400" />
             </button>
             <button
               onClick={reset}
+              aria-label={`Voltar para ${label}`}
               className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700 dark:text-slate-200 min-w-24 justify-center select-none cursor-pointer uppercase tracking-[0.2em] hover:text-emerald-600 transition-colors"
             >
               <CalendarDays className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
@@ -422,20 +437,26 @@ export default function LancamentosPage() {
             </button>
             <button
               onClick={next}
-              className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
+              disabled={isCurrentMonth}
+              aria-label="Exibir mês seguinte"
+              className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
             >
               <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
             </button>
           </div>
           <button
             onClick={handleRefresh}
-            className="p-2 text-slate-400 hover:text-emerald-500 transition-colors rounded-full hover:bg-white dark:hover:bg-slate-800 cursor-pointer"
+            type="button"
+            aria-label="Atualizar resumo e lista de lançamentos"
+            aria-busy={isRefreshing}
+            disabled={isRefreshing}
+            className="p-2 text-slate-400 hover:text-emerald-500 transition-colors rounded-full hover:bg-white dark:hover:bg-slate-800 cursor-pointer disabled:cursor-wait disabled:opacity-60"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
           </button>
           <button
             onClick={() => setShowForm(true)}
-            className="bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white px-5 py-2.5 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center gap-2 cursor-pointer shadow-lg"
+            className="flex-1 justify-center bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white px-5 py-2.5 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center gap-2 cursor-pointer shadow-lg sm:flex-none"
           >
             <Plus className="h-3.5 w-3.5" />
             Novo Lançamento
@@ -489,8 +510,12 @@ export default function LancamentosPage() {
             className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-between"
           >
             <div>
-              <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-4">Receita Mensal</p>
-              <span className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(resumo.totalReceitas)}</span>
+              <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-4">
+                Receita Mensal
+              </p>
+              <span className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">
+                {formatCurrency(resumo.totalReceitas)}
+              </span>
             </div>
             <TrendingUp className="h-8 w-8 text-emerald-500 opacity-20" />
           </motion.div>
@@ -502,8 +527,12 @@ export default function LancamentosPage() {
             className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-between"
           >
             <div>
-              <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-4">Despesa Mensal</p>
-              <span className="text-lg sm:text-2xl font-bold text-rose-500">{formatCurrency(resumo.totalGastos)}</span>
+              <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-4">
+                Despesa Mensal
+              </p>
+              <span className="text-lg sm:text-2xl font-bold text-rose-500">
+                {formatCurrency(resumo.totalGastos)}
+              </span>
             </div>
             <TrendingDown className="h-8 w-8 text-rose-500 opacity-20" />
           </motion.div>
@@ -515,8 +544,15 @@ export default function LancamentosPage() {
             className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-between"
           >
             <div>
-              <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-4">Saldo do Período</p>
-              <span className={cn("text-lg sm:text-2xl font-bold", resumo.saldo >= 0 ? "text-emerald-600" : "text-rose-500")}>
+              <p className="text-[9px] text-slate-400 font-medium uppercase tracking-[0.3em] mb-4">
+                Saldo do Período
+              </p>
+              <span
+                className={cn(
+                  "text-lg sm:text-2xl font-bold",
+                  resumo.saldo >= 0 ? "text-emerald-600" : "text-rose-500"
+                )}
+              >
                 {formatCurrency(resumo.saldo)}
               </span>
             </div>
@@ -530,72 +566,99 @@ export default function LancamentosPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="exec-card p-3 rounded-2xl sm:rounded-[2rem] flex flex-wrap items-center gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8"
+        className="exec-card rounded-2xl p-4 sm:rounded-[2rem] sm:px-6 sm:py-3 lg:px-8"
       >
-        <div className="flex-1 relative min-w-0">
-          <Search className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 dark:text-slate-600" />
-          <input
-            placeholder="Pesquisar por descrição..."
-            value={busca}
-            onChange={(e) => { setBusca(e.target.value); setPagina(1); }}
-            className="w-full bg-transparent border-none text-[12px] pl-6 focus:ring-0 placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:italic text-slate-700 dark:text-slate-200 outline-none"
-          />
-          {busca && (
-            <button
-              onClick={() => { setBusca(""); setPagina(1); }}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors cursor-pointer"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          <div className="relative min-w-0 flex-1 sm:min-w-[16rem]">
+            <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300 dark:text-slate-600" />
+            <input
+              id="lancamentos-busca"
+              name="busca"
+              aria-label="Pesquisar lançamentos por descrição"
+              placeholder="Pesquisar por descrição..."
+              value={busca}
+              onChange={(e) => {
+                setBusca(e.target.value);
+                setPagina(1);
+              }}
+              className="w-full bg-transparent border-none text-[12px] pl-6 pr-6 focus:ring-0 placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:italic text-slate-700 dark:text-slate-200 outline-none"
+            />
+            {busca && (
+              <button
+                onClick={() => {
+                  setBusca("");
+                  setPagina(1);
+                }}
+                aria-label="Limpar busca"
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="h-px w-full bg-slate-100 dark:bg-slate-700 sm:h-8 sm:w-px" />
+
+          <div className="flex items-center gap-1 rounded-xl border border-slate-100 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800/50">
+            {(["todos", "receita", "gasto"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => {
+                  setFiltroTipo(t);
+                  setPagina(1);
+                }}
+                aria-pressed={filtroTipo === t}
+                className={cn(
+                  "flex-1 px-3 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap sm:flex-none sm:px-4 sm:py-1.5",
+                  filtroTipo === t
+                    ? t === "gasto"
+                      ? "bg-rose-500 text-white shadow-sm"
+                      : "bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400"
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                )}
+              >
+                {t === "todos" ? "Todas" : t === "receita" ? "Receitas" : "Despesas"}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-px w-full bg-slate-100 dark:bg-slate-700 sm:h-8 sm:w-px" />
+
+          <label htmlFor="lancamentos-categoria-filter" className="sr-only">
+            Filtrar por categoria
+          </label>
+          <select
+            id="lancamentos-categoria-filter"
+            name="categoria"
+            aria-label="Filtrar lançamentos por categoria"
+            value={filtroCategoria}
+            onChange={(e) => {
+              setFiltroCategoria(e.target.value);
+              setPagina(1);
+            }}
+            className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 outline-none transition-colors focus:border-emerald-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 sm:w-auto sm:border-none sm:bg-transparent sm:px-0 sm:py-0 sm:focus:border-none"
+          >
+            <option value="todas">Categoria</option>
+            {categorias.map((c) => (
+              <option key={c.id} value={c.nome}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+
+          {activeFilters > 0 && (
+            <>
+              <div className="h-px w-full bg-slate-100 dark:bg-slate-700 sm:h-8 sm:w-px" />
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1.5 self-start text-[9px] font-bold uppercase tracking-widest text-rose-400 hover:text-rose-600 transition-colors cursor-pointer sm:self-auto"
+              >
+                <X className="h-3 w-3" />
+                Limpar
+              </button>
+            </>
           )}
         </div>
-
-        <div className="h-8 w-px bg-slate-100 dark:bg-slate-700 flex-shrink-0" />
-
-        <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-100 dark:border-slate-700 flex-shrink-0">
-          {(["todos", "receita", "gasto"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => { setFiltroTipo(t); setPagina(1); }}
-              className={cn(
-                "px-4 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all cursor-pointer whitespace-nowrap",
-                filtroTipo === t
-                  ? t === "gasto"
-                    ? "bg-rose-500 text-white shadow-sm"
-                    : "bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400"
-                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              )}
-            >
-              {t === "todos" ? "Todas" : t === "receita" ? "Receitas" : "Despesas"}
-            </button>
-          ))}
-        </div>
-
-        <div className="h-8 w-px bg-slate-100 dark:bg-slate-700 flex-shrink-0" />
-
-        <select
-          value={filtroCategoria}
-          onChange={(e) => { setFiltroCategoria(e.target.value); setPagina(1); }}
-          className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 border-none bg-transparent cursor-pointer focus:ring-0 outline-none flex-shrink-0 dark:bg-slate-900"
-        >
-          <option value="todas">Categoria</option>
-          {categorias.map((c) => (
-            <option key={c.id} value={c.nome}>{c.nome}</option>
-          ))}
-        </select>
-
-        {activeFilters > 0 && (
-          <>
-            <div className="h-8 w-px bg-slate-100 dark:bg-slate-700 flex-shrink-0" />
-            <button
-              onClick={clearFilters}
-              className="text-[9px] font-bold uppercase tracking-widest text-rose-400 hover:text-rose-600 transition-colors cursor-pointer flex items-center gap-1.5 flex-shrink-0"
-            >
-              <X className="h-3 w-3" />
-              Limpar
-            </button>
-          </>
-        )}
       </motion.div>
 
       {/* ═══ Transaction Table ═══ */}
@@ -609,17 +672,30 @@ export default function LancamentosPage() {
         <div className="hidden lg:flex items-center border-b border-slate-50 dark:border-slate-700/50">
           <div className="px-8 py-6 flex-shrink-0">
             <Checkbox
-              checked={!!lancamentosData?.items?.length && selectedIds.length === lancamentosData.items.length}
+              checked={
+                !!lancamentosData?.items?.length &&
+                selectedIds.length === lancamentosData.items.length
+              }
               onCheckedChange={(c: boolean) => toggleSelectAll(c)}
               aria-label="Selecionar todos"
             />
           </div>
           <div className="grid grid-cols-[0.7fr_1.4fr_0.8fr_0.8fr_0.9fr] flex-1 pr-8">
-            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Data</span>
-            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Descrição</span>
-            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Categoria</span>
-            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Origem</span>
-            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] text-right">Valor</span>
+            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+              Data
+            </span>
+            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+              Descrição
+            </span>
+            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+              Categoria
+            </span>
+            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+              Origem
+            </span>
+            <span className="py-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] text-right">
+              Valor
+            </span>
           </div>
           <div className="w-24 flex-shrink-0" />
         </div>
@@ -627,7 +703,9 @@ export default function LancamentosPage() {
         {loadingLancamentos ? (
           <div className="p-6 sm:p-12 flex flex-col items-center justify-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
-            <p className="text-[11px] text-slate-400 uppercase tracking-widest font-bold">Carregando...</p>
+            <p className="text-[11px] text-slate-400 uppercase tracking-widest font-bold">
+              Carregando...
+            </p>
           </div>
         ) : lancamentosData && lancamentosData.items.length > 0 ? (
           <>
@@ -650,6 +728,7 @@ export default function LancamentosPage() {
                         <Checkbox
                           checked={selectedIds.includes(l.id)}
                           onCheckedChange={(c: boolean) => toggleSelectRow(l.id, c)}
+                          aria-label={`Selecionar lançamento ${l.descricao}`}
                         />
                       </div>
                       <div className="grid grid-cols-[0.7fr_1.4fr_0.8fr_0.8fr_0.9fr] flex-1 pr-0 py-7 gap-4">
@@ -662,11 +741,17 @@ export default function LancamentosPage() {
                           <span className="text-[13px] font-semibold text-slate-900 dark:text-white truncate">
                             {l.descricao}
                           </span>
-                          <span className={cn(
-                            "text-[9px] font-bold uppercase tracking-tighter mt-0.5",
-                            l.tipo === "receita" ? "text-emerald-500 opacity-70" : "text-slate-400"
-                          )}>
-                            {l.origem === "Imagem" ? "Foto" : l.origem === "Audio" ? "Áudio" : l.origem === "Importacao" ? "Extrato Bancário" : "Manual"}
+                          <span
+                            className={cn(
+                              "text-[9px] font-bold uppercase tracking-tighter mt-0.5",
+                              l.tipo === "receita"
+                                ? "text-emerald-500 opacity-70"
+                                : "text-slate-400"
+                            )}
+                          >
+                            {l.origem === "Importacao"
+                              ? "Extrato bancário"
+                              : getOrigemLabel(l.origem)}
                             {l.parcelado && ` · ${l.numeroParcelas}x`}
                           </span>
                         </div>
@@ -678,24 +763,34 @@ export default function LancamentosPage() {
                         </div>
                         {/* Origem */}
                         <div className="flex items-center gap-2 self-center">
-                          {l.origem === "Imagem" ? (
-                            <ImageIcon className="h-3.5 w-3.5 text-violet-400" />
-                          ) : l.origem === "Audio" ? (
-                            <MessageSquare className="h-3.5 w-3.5 text-sky-400" />
-                          ) : l.origem === "Importacao" ? (
-                            <FileUp className="h-3.5 w-3.5 text-emerald-400" />
-                          ) : (
-                            <Globe className="h-3.5 w-3.5 text-slate-400" />
-                          )}
+                          <SourceIcon
+                            origem={l.origem}
+                            className={cn(
+                              "h-3.5 w-3.5",
+                              l.origem === "Imagem"
+                                ? "text-violet-400"
+                                : l.origem === "Audio"
+                                  ? "text-sky-400"
+                                  : l.origem === "Documento"
+                                    ? "text-amber-400"
+                                    : l.origem === "Importacao"
+                                      ? "text-emerald-400"
+                                      : "text-slate-400"
+                            )}
+                          />
                           <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                            {l.origem === "Imagem" ? "Foto" : l.origem === "Audio" ? "Áudio" : l.origem === "Importacao" ? "Importação" : "Texto"}
+                            {getOrigemLabel(l.origem)}
                           </span>
                         </div>
                         {/* Valor */}
-                        <span className={cn(
-                          "text-[13px] font-mono font-bold text-right self-center whitespace-nowrap",
-                          l.tipo === "receita" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"
-                        )}>
+                        <span
+                          className={cn(
+                            "text-[13px] font-mono font-bold text-right self-center whitespace-nowrap",
+                            l.tipo === "receita"
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-rose-500"
+                          )}
+                        >
                           {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
                         </span>
                       </div>
@@ -704,30 +799,115 @@ export default function LancamentosPage() {
                         className="w-24 flex-shrink-0 py-7 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <button onClick={() => openEdit(l)} className="text-slate-300 hover:text-emerald-500 transition-colors cursor-pointer" title="Editar">
+                        <button
+                          onClick={() => openEdit(l)}
+                          className="text-slate-300 hover:text-emerald-500 transition-colors cursor-pointer"
+                          title="Editar"
+                        >
                           <Pencil className="h-4 w-4" />
                         </button>
-                        <button onClick={() => setDeletingId(l.id)} className="text-slate-300 hover:text-rose-500 transition-colors cursor-pointer" title="Excluir">
+                        <button
+                          onClick={() => setDeletingId(l.id)}
+                          className="text-slate-300 hover:text-rose-500 transition-colors cursor-pointer"
+                          title="Excluir"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
 
                     {/* Mobile card */}
-                    <div
-                      className="lg:hidden flex items-center gap-3 px-6 py-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer"
-                      onClick={() => setViewingItem(l)}
-                    >
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <Checkbox checked={selectedIds.includes(l.id)} onCheckedChange={(c: boolean) => toggleSelectRow(l.id, c)} />
+                    <div className="lg:hidden px-4 py-4 sm:px-6" onClick={() => setViewingItem(l)}>
+                      <div className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white/80 p-4 transition-colors hover:bg-slate-50/70 dark:border-slate-700/50 dark:bg-slate-900/40 dark:hover:bg-slate-800/40">
+                        <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.includes(l.id)}
+                            onCheckedChange={(c: boolean) => toggleSelectRow(l.id, c)}
+                            aria-label={`Selecionar lançamento ${l.descricao}`}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-[13px] font-semibold text-slate-800 dark:text-white">
+                                {l.descricao}
+                              </p>
+                              <p className="mt-1 text-[10px] font-medium text-slate-400">
+                                {formatDate(l.data)}
+                              </p>
+                            </div>
+                            <span
+                              className={cn(
+                                "shrink-0 text-[13px] font-mono font-bold whitespace-nowrap",
+                                l.tipo === "receita" ? "text-emerald-600" : "text-rose-500"
+                              )}
+                            >
+                              {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-700/50 dark:text-slate-300">
+                              {l.categoria}
+                            </span>
+                            <span
+                              className={cn(
+                                "rounded-full px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.18em]",
+                                l.tipo === "receita"
+                                  ? "bg-emerald-50 text-emerald-600"
+                                  : "bg-rose-50 text-rose-500"
+                              )}
+                            >
+                              {l.tipo === "receita" ? "Receita" : "Despesa"}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.18em] text-slate-400 dark:bg-slate-800 dark:text-slate-400">
+                              <SourceIcon
+                                origem={l.origem}
+                                className={cn(
+                                  "h-3 w-3",
+                                  l.origem === "Imagem"
+                                    ? "text-violet-400"
+                                    : l.origem === "Audio"
+                                      ? "text-sky-400"
+                                      : l.origem === "Documento"
+                                        ? "text-amber-400"
+                                        : l.origem === "Importacao"
+                                          ? "text-emerald-400"
+                                          : "text-slate-400"
+                                )}
+                              />
+                              {getOrigemLabel(l.origem)}
+                            </span>
+                            {l.parcelado && (
+                              <span className="rounded-full bg-slate-50 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.18em] text-slate-400 dark:bg-slate-800 dark:text-slate-400">
+                                {l.numeroParcelas}x
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            className="flex items-center justify-end gap-3"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => openEdit(l)}
+                              aria-label={`Editar lançamento ${l.descricao}`}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500 transition-colors hover:border-emerald-200 hover:text-emerald-600 dark:border-slate-700 dark:text-slate-400"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingId(l.id)}
+                              aria-label={`Excluir lançamento ${l.descricao}`}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 px-3 py-2 text-[9px] font-bold uppercase tracking-[0.18em] text-rose-500 transition-colors hover:bg-rose-50 dark:border-rose-500/20"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Excluir
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">{l.descricao}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">{l.categoria} · {formatDate(l.data)}</p>
-                      </div>
-                      <span className={cn("text-[13px] font-mono font-bold whitespace-nowrap", l.tipo === "receita" ? "text-emerald-600" : "text-rose-500")}>
-                        {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
-                      </span>
                     </div>
                   </motion.div>
                 ))}
@@ -736,7 +916,7 @@ export default function LancamentosPage() {
 
             {/* Pagination */}
             {lancamentosData.totalPaginas > 1 && (
-              <div className="px-4 sm:px-6 lg:px-10 py-4 sm:py-6 border-t border-slate-50 dark:border-slate-700/50 bg-slate-50/20 dark:bg-slate-800/20 flex items-center justify-between">
+              <div className="flex flex-col gap-3 border-t border-slate-50 bg-slate-50/20 px-4 py-4 dark:border-slate-700/50 dark:bg-slate-800/20 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6 lg:px-10">
                 <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
                   {startIdx}–{endIdx} de {lancamentosData.total}
                 </p>
@@ -744,14 +924,18 @@ export default function LancamentosPage() {
                   <button
                     disabled={pagina <= 1}
                     onClick={() => setPagina((p) => p - 1)}
+                    aria-label="Ir para a página anterior"
                     className="p-2 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
-                  <span className="px-4 py-2 text-[10px] font-bold text-slate-900 dark:text-white font-mono">Página {pagina}</span>
+                  <span className="px-4 py-2 text-[10px] font-bold text-slate-900 dark:text-white font-mono">
+                    Página {pagina}
+                  </span>
                   <button
                     disabled={pagina >= lancamentosData.totalPaginas}
                     onClick={() => setPagina((p) => p + 1)}
+                    aria-label="Ir para a próxima página"
                     className="p-2 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -793,7 +977,6 @@ export default function LancamentosPage() {
           </div>
         )}
       </motion.div>
-
 
       {/* ═══ New Transaction Dialog ═══ */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
@@ -1128,10 +1311,14 @@ export default function LancamentosPage() {
                         <SelectContent>
                           {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => {
                             const valorNum = parseFloat((valorDigitado || "").replace(",", "."));
-                            const valorParcela = !isNaN(valorNum) && valorNum > 0 ? valorNum / n : 0;
+                            const valorParcela =
+                              !isNaN(valorNum) && valorNum > 0 ? valorNum / n : 0;
                             return (
                               <SelectItem key={n} value={n.toString()}>
-                                {n}x{n === 1 ? " (à vista)" : ""}{valorParcela > 0 && n > 1 ? ` — ${formatCurrency(valorParcela)}/mês` : ""}
+                                {n}x{n === 1 ? " (à vista)" : ""}
+                                {valorParcela > 0 && n > 1
+                                  ? ` — ${formatCurrency(valorParcela)}/mês`
+                                  : ""}
                               </SelectItem>
                             );
                           })}
@@ -1145,7 +1332,8 @@ export default function LancamentosPage() {
                             <div className="mt-2 flex items-center gap-2 rounded-xl border border-emerald-500/15 dark:border-emerald-400/20 bg-emerald-50/50 dark:bg-emerald-950/30 px-3 py-2">
                               <CreditCard className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                               <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                                {nParcelas}x de <strong>{formatCurrency(valorNum / nParcelas)}</strong>
+                                {nParcelas}x de{" "}
+                                <strong>{formatCurrency(valorNum / nParcelas)}</strong>
                                 <span className="text-emerald-600/60 dark:text-emerald-400/60 ml-1">
                                   (total: {formatCurrency(valorNum)})
                                 </span>

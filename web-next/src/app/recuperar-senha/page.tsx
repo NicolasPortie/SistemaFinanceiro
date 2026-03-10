@@ -14,11 +14,7 @@ import {
 } from "@/lib/schemas";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Wallet,
-  Mail,
-  MailCheck,
   KeyRound,
-  Lock,
   Eye,
   EyeOff,
   ArrowRight,
@@ -26,7 +22,6 @@ import {
   CheckCircle2,
   ShieldCheck,
   Shield,
-  MoreHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,7 +40,6 @@ export default function RecuperarSenhaPage() {
 
   // Reset step: 6 digit inputs (pre-filled from verify)
   const [resetDigits, setResetDigits] = useState(["", "", "", "", "", ""]);
-  const resetRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Forms
   const emailForm = useForm<RecuperarSenhaData>({
@@ -93,22 +87,6 @@ export default function RecuperarSenhaPage() {
     for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
     setVerifyDigits(next);
     verifyRefs.current[Math.min(pasted.length, 5)]?.focus();
-  };
-
-  // ── Reset code digit handlers ──
-  const handleResetDigit = (index: number, value: string) => {
-    if (!/^\d?$/.test(value)) return;
-    const next = [...resetDigits];
-    next[index] = value;
-    setResetDigits(next);
-    resetForm.setValue("codigo", next.join(""));
-    if (value && index < 5) resetRefs.current[index + 1]?.focus();
-  };
-
-  const handleResetKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !resetDigits[index] && index > 0) {
-      resetRefs.current[index - 1]?.focus();
-    }
   };
 
   // ── Step 1: Send recovery email ──
@@ -190,7 +168,13 @@ export default function RecuperarSenhaPage() {
         {/* Logo */}
         <div className="relative z-10 block">
           <Link href="/">
-            <Image src="/logo-text.png" alt="Ravier" width={100} height={30} className="object-contain" />
+            <Image
+              src="/logo-text.png"
+              alt="Ravier"
+              width={100}
+              height={30}
+              className="object-contain"
+            />
           </Link>
         </div>
 
@@ -240,8 +224,13 @@ export default function RecuperarSenhaPage() {
         {/* CSS Animation */}
         <style jsx>{`
           @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
+            0%,
+            100% {
+              transform: translateY(0px);
+            }
+            50% {
+              transform: translateY(-8px);
+            }
           }
         `}</style>
       </div>
@@ -252,7 +241,13 @@ export default function RecuperarSenhaPage() {
           {/* Mobile logo */}
           <div className="lg:hidden mb-10 flex justify-center">
             <Link href="/">
-              <Image src="/logo-text.png" alt="Ravier" width={100} height={30} className="object-contain" />
+              <Image
+                src="/logo-text.png"
+                alt="Ravier"
+                width={100}
+                height={30}
+                className="object-contain"
+              />
             </Link>
           </div>
 
@@ -478,7 +473,11 @@ export default function RecuperarSenhaPage() {
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute inset-y-0 right-0 pr-4 flex items-center text-stone-400 hover:text-stone-600 focus:outline-none transition-colors"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                     {resetForm.formState.errors.novaSenha && (
@@ -502,10 +501,11 @@ export default function RecuperarSenhaPage() {
                         type={showConfPassword ? "text" : "password"}
                         autoComplete="new-password"
                         placeholder="Repita a nova senha"
-                        className={`w-full px-4 py-3 pr-12 rounded-xl border bg-stone-50 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 transition-all ${passwordsMatch
-                          ? "border-green-400 focus:border-green-400 focus:ring-green-500/20"
-                          : "border-stone-200 focus:border-emerald-500 focus:ring-emerald-500/40"
-                          }`}
+                        className={`w-full px-4 py-3 pr-12 rounded-xl border bg-stone-50 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 transition-all ${
+                          passwordsMatch
+                            ? "border-green-400 focus:border-green-400 focus:ring-green-500/20"
+                            : "border-stone-200 focus:border-emerald-500 focus:ring-emerald-500/40"
+                        }`}
                         {...resetForm.register("confirmarSenha")}
                       />
                       {passwordsMatch ? (

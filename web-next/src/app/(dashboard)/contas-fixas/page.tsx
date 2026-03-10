@@ -11,7 +11,7 @@ import {
   usePagarContaFixa,
   useContasBancarias,
 } from "@/hooks/use-queries";
-import { formatCurrency, formatShortDate } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import type { FrequenciaLembrete } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -29,12 +29,9 @@ import {
   AlertCircle,
   Search,
   X,
-  RefreshCw,
   Calendar,
   FileText,
   AlertTriangle,
-  Clock,
-  MoreVertical,
   Home,
   Wifi,
   Dumbbell,
@@ -81,13 +78,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import type { LembretePagamento } from "@/lib/api";
 
 // ── Category icon helper ─────────────────────────────────
@@ -222,6 +212,42 @@ function getStatusInfo(dataVenc: string) {
     bg: "bg-emerald-100 dark:bg-emerald-500/15",
     icon: CheckCircle2,
     badgeClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+  };
+}
+
+function getLembreteStatusInfo(lembrete: LembretePagamento) {
+  if (lembrete.pagoCicloAtual) {
+    return {
+      label: "Pago",
+      className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    };
+  }
+
+  if (!lembrete.ativo) {
+    return {
+      label: "Inativa",
+      className: "bg-slate-100 text-slate-600 dark:bg-slate-700/80 dark:text-slate-300",
+    };
+  }
+
+  const status = getStatusInfo(lembrete.dataVencimento);
+  if (status.label === "Vencido") {
+    return {
+      label: "Vencida",
+      className: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200",
+    };
+  }
+
+  if (status.label === "Em dia") {
+    return {
+      label: "OK",
+      className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    };
+  }
+
+  return {
+    label: "Próxima",
+    className: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200",
   };
 }
 
@@ -443,14 +469,19 @@ export default function ContasFixasPage() {
       {/* ── Header ───────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl serif-italic text-[#0F172A]">Contas Fixas</h1>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl serif-italic text-slate-900 dark:text-white">
+            Contas Fixas
+          </h1>
           <p className="text-[10px] uppercase tracking-[0.4em] font-bold text-slate-400">
             Gerenciamento de Compromissos Recorrentes
           </p>
         </div>
         <button
-          onClick={() => { createForm.reset(); setShowForm(true); }}
-          className="bg-emerald-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-3 shadow-lg shadow-emerald-100 cursor-pointer w-full sm:w-auto justify-center"
+          onClick={() => {
+            createForm.reset();
+            setShowForm(true);
+          }}
+          className="bg-emerald-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-3 shadow-lg shadow-emerald-500/25 dark:shadow-emerald-500/20 cursor-pointer w-full sm:w-auto justify-center"
         >
           <Plus className="h-5 w-5" />
           Nova Conta Fixa
@@ -470,7 +501,7 @@ export default function ContasFixasPage() {
               Valor Mensal Total
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl mono-data font-medium text-[#0F172A]">
+              <span className="text-3xl mono-data font-medium text-slate-900 dark:text-white">
                 {formatCurrency(stats.total)}
               </span>
               <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">
@@ -486,18 +517,31 @@ export default function ContasFixasPage() {
             </p>
             {stats.proximaVencer ? (
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 shrink-0">
+                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-500/15 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
                   <Calendar className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <span className="block text-lg font-semibold text-[#0F172A] leading-tight truncate">
+                  <span className="block text-lg font-semibold text-slate-900 dark:text-white leading-tight truncate">
                     {stats.proximaVencer.descricao}
                   </span>
-                  <span className="text-[10px] mono-data text-slate-500 uppercase">
+                  <span className="text-[10px] mono-data text-slate-500 dark:text-slate-400 uppercase">
                     {(() => {
                       const d = new Date(stats.proximaVencer!.dataVencimento);
-                      const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-                      return `Vence em ${String(d.getDate()).padStart(2,"0")} ${months[d.getMonth()]} (${formatCurrency(stats.proximaVencer!.valor ?? 0)})`;
+                      const months = [
+                        "Jan",
+                        "Fev",
+                        "Mar",
+                        "Abr",
+                        "Mai",
+                        "Jun",
+                        "Jul",
+                        "Ago",
+                        "Set",
+                        "Out",
+                        "Nov",
+                        "Dez",
+                      ];
+                      return `Vence em ${String(d.getDate()).padStart(2, "0")} ${months[d.getMonth()]} (${formatCurrency(stats.proximaVencer!.valor ?? 0)})`;
                     })()}
                   </span>
                 </div>
@@ -517,7 +561,7 @@ export default function ContasFixasPage() {
                 {String(stats.vencidos).padStart(2, "0")}
               </span>
               {stats.vencidos > 0 && (
-                <span className="px-4 py-1.5 bg-rose-50 text-rose-600 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-2">
+                <span className="px-4 py-1.5 bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-200 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                   Atenção Necessária
                 </span>
@@ -529,10 +573,9 @@ export default function ContasFixasPage() {
 
       {/* ── Main Table Card ─────────────────────────────────── */}
       <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden">
-
         {/* Filter bar header */}
-        <div className="p-4 sm:p-6 lg:p-8 border-b border-slate-100 bg-slate-50/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
+        <div className="p-4 sm:p-6 lg:p-8 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/20 dark:bg-slate-800/45 flex flex-col gap-4">
+          <div className="flex items-start gap-3">
             <Search className="h-4 w-4 text-slate-400" />
             <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               {activeFilters > 0
@@ -540,49 +583,63 @@ export default function ContasFixasPage() {
                 : "Filtros Ativos: Todos os Compromissos"}
             </h3>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            {[
-              { key: "todos", label: "Todos" },
-              { key: "ativas", label: "Ativas" },
-              { key: "inativas", label: "Inativas" },
-            ].map((f) => (
-              <button
-                key={f.key}
-                onClick={() => { setFiltroStatus(f.key); setPage(0); }}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer",
-                  filtroStatus === f.key
-                    ? "bg-emerald-600 text-white"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
-            <div className="relative">
-              <input
-                placeholder="Buscar..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="bg-white border border-slate-200 rounded-full py-2 pl-4 pr-9 text-[10px] w-full sm:w-56 outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600/30 transition-all text-slate-700 placeholder-slate-400"
-              />
-              {busca && (
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { key: "todos", label: "Todos" },
+                { key: "ativas", label: "Ativas" },
+                { key: "inativas", label: "Inativas" },
+              ].map((f) => (
                 <button
-                  onClick={() => setBusca("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  key={f.key}
+                  onClick={() => {
+                    setFiltroStatus(f.key);
+                    setPage(0);
+                  }}
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer",
+                    filtroStatus === f.key
+                      ? "bg-emerald-600 text-white"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700/80 dark:text-slate-200 dark:hover:bg-slate-700"
+                  )}
                 >
-                  <X className="h-3.5 w-3.5" />
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:min-w-[244px] sm:flex-row sm:items-center">
+              <div className="relative w-full">
+                <input
+                  id="contas-fixas-busca"
+                  name="busca"
+                  aria-label="Buscar contas fixas"
+                  placeholder="Buscar..."
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="bg-white/95 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-700 rounded-full py-2 pl-4 pr-9 text-[10px] w-full outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600/30 transition-all text-slate-700 dark:text-slate-100 placeholder-slate-400 dark:placeholder:text-slate-500"
+                />
+                {busca && (
+                  <button
+                    onClick={() => setBusca("")}
+                    aria-label="Limpar busca de contas fixas"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {activeFilters > 0 && (
+                <button
+                  onClick={() => {
+                    setFiltroStatus("todos");
+                    setBusca("");
+                  }}
+                  className="text-[9px] font-bold uppercase tracking-widest text-rose-500 hover:text-rose-700 dark:text-rose-300 dark:hover:text-rose-200 transition-colors cursor-pointer sm:ml-1"
+                >
+                  Limpar
                 </button>
               )}
             </div>
-            {activeFilters > 0 && (
-              <button
-                onClick={() => { setFiltroStatus("todos"); setBusca(""); }}
-                className="text-[9px] font-bold uppercase tracking-widest text-rose-500 hover:text-rose-700 transition-colors cursor-pointer"
-              >
-                Limpar
-              </button>
-            )}
           </div>
         </div>
 
@@ -590,286 +647,454 @@ export default function ContasFixasPage() {
         {isLoading ? (
           <div className="p-6 sm:p-8 lg:p-12 flex flex-col items-center justify-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
-            <p className="text-sm text-slate-500">Carregando contas fixas...</p>
+            <p className="text-sm text-slate-500 dark:text-slate-300">Carregando contas fixas...</p>
           </div>
         ) : (
           <>
-          {/* Mobile card view */}
-          <div className="lg:hidden divide-y divide-slate-50">
-            {filtered.length === 0 ? (
-              <div className="p-6 sm:p-8">
-                <EmptyState
-                  icon={<CalendarClock className="h-6 w-6" />}
-                  title={activeFilters > 0 ? "Nenhum lembrete encontrado" : "Nenhum lembrete cadastrado"}
-                  description={activeFilters > 0 ? "Tente remover os filtros" : "Adicione contas fixas para manter o controle"}
-                  action={
-                    activeFilters > 0 ? (
-                      <Button variant="outline" onClick={() => { setFiltroStatus("todos"); setBusca(""); }} className="gap-2 rounded-xl">
-                        <X className="h-4 w-4" /> Limpar filtros
-                      </Button>
-                    ) : (
-                      <button onClick={() => setShowForm(true)} className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer text-sm">
-                        <Plus className="h-4 w-4" /> Criar primeiro lembrete
-                      </button>
-                    )
-                  }
-                />
-              </div>
-            ) : (
-              paged.map((l) => {
-                const catInfo = getCategoryIcon(l.categoria ?? "");
-                const CatIcon = catInfo.icon;
-                let statusLabel = "";
-                let statusClass = "";
-                if (l.pagoCicloAtual) { statusLabel = "Pago"; statusClass = "bg-emerald-50 text-emerald-600"; }
-                else if (!l.ativo) { statusLabel = "Inativa"; statusClass = "bg-slate-100 text-slate-500"; }
-                else if (isVencido(l.dataVencimento)) { statusLabel = "Vencida"; statusClass = "bg-rose-50 text-rose-600"; }
-                else {
-                  const diff = Math.ceil((new Date(l.dataVencimento).getTime() - new Date(new Date().toISOString().split("T")[0]).getTime()) / 86400000);
-                  if (diff <= 5) { statusLabel = "Próxima"; statusClass = "bg-amber-50 text-amber-600"; }
-                  else { statusLabel = "OK"; statusClass = "bg-emerald-50 text-emerald-600"; }
-                }
-                return (
-                  <div key={l.id} className={cn("p-4 sm:p-5 space-y-2.5", !l.ativo && "opacity-60")}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={cn("w-9 h-9 shrink-0 flex items-center justify-center rounded-xl", catInfo.color)}>
-                          <CatIcon className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-semibold text-[#0F172A] truncate">{l.descricao}</h4>
-                          <p className="text-xs mono-data font-bold text-slate-700">{l.valor != null ? formatCurrency(l.valor) : "—"}</p>
-                        </div>
-                      </div>
-                      <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest shrink-0", statusClass)}>
-                        {statusLabel}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-slate-500">
-                      <span>Venc: dia {l.diaRecorrente || "—"}</span>
-                      <span>{l.dataVencimento ? (() => { const d = new Date(l.dataVencimento); const m = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]; return `${String(d.getDate()).padStart(2,"0")} ${m[d.getMonth()]}`; })() : "—"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 pt-1">
-                      {l.ativo !== false && !l.pagoCicloAtual && (
-                        <button onClick={() => openPagar(l)} className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg cursor-pointer" title="Pagar">
-                          <Banknote className="h-4 w-4" />
-                        </button>
-                      )}
-                      <button onClick={() => openEdit(l)} className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg cursor-pointer" title="Editar">
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => setDeleteId(l.id)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer ml-auto" title="Remover">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Desktop table — hidden on mobile */}
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50">
-                  <th className="px-10 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                    Descrição
-                  </th>
-                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                    Valor Mensal
-                  </th>
-                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                    Frequência
-                  </th>
-                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">
-                    Dia Venc.
-                  </th>
-                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                    Próx. Vencimento
-                  </th>
-                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                    Telegram
-                  </th>
-                  <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                    Status
-                  </th>
-                  <th className="px-10 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="p-6 sm:p-12">
-                      <EmptyState
-                        icon={<CalendarClock className="h-6 w-6" />}
-                        title={activeFilters > 0 ? "Nenhum lembrete encontrado" : "Nenhum lembrete cadastrado"}
-                        description={
-                          activeFilters > 0
-                            ? "Tente remover os filtros para ver mais resultados"
-                            : "Adicione contas fixas e lembretes de pagamento para manter o controle"
-                        }
-                        action={
-                          activeFilters > 0 ? (
-                            <Button variant="outline" onClick={() => { setFiltroStatus("todos"); setBusca(""); }} className="gap-2 rounded-xl">
-                              <X className="h-4 w-4" /> Limpar filtros
-                            </Button>
-                          ) : (
-                            <button
-                              onClick={() => setShowForm(true)}
-                              className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm"
-                            >
-                              <Plus className="h-4 w-4" /> Criar primeiro lembrete
-                            </button>
-                          )
-                        }
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  paged.map((l) => {
-                    const catInfo = getCategoryIcon(l.categoria ?? "");
-                    const CatIcon = catInfo.icon;
-                    const freqLabel =
-                      l.frequencia === "Semanal" ? "Semanal"
-                        : l.frequencia === "Quinzenal" ? "Quinzenal"
-                        : l.frequencia === "Anual" ? "Anual"
-                        : l.recorrenteMensal || l.frequencia === "Mensal" ? "Mensal"
-                        : "Único";
-                    const diaLabel = l.diaRecorrente ? `${l.diaRecorrente}` : "—";
-                    const nextDate = l.ativo === false ? null : l.dataVencimento;
-                    const nextFmt = nextDate
-                      ? (() => {
-                          const d = new Date(nextDate);
-                          const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-                          return `${String(d.getDate()).padStart(2,"0")} ${months[d.getMonth()]} ${d.getFullYear()}`;
-                        })()
-                      : "—";
-                    let statusLabel = "";
-                    let statusClass = "";
-                    if (l.pagoCicloAtual) {
-                      statusLabel = "Pago";
-                      statusClass = "bg-emerald-50 text-emerald-600";
-                    } else if (!l.ativo) {
-                      statusLabel = "Inativa";
-                      statusClass = "bg-slate-100 text-slate-500";
-                    } else if (isVencido(l.dataVencimento)) {
-                      statusLabel = "Vencida";
-                      statusClass = "bg-rose-50 text-rose-600";
-                    } else {
-                      const diff = Math.ceil(
-                        (new Date(l.dataVencimento).getTime() - new Date(new Date().toISOString().split("T")[0]).getTime()) / 86400000
-                      );
-                      if (diff <= 5) {
-                        statusLabel = "Próxima";
-                        statusClass = "bg-amber-50 text-amber-600";
-                      } else {
-                        statusLabel = "OK";
-                        statusClass = "bg-emerald-50 text-emerald-600";
-                      }
+            {/* Mobile card view */}
+            <div className="lg:hidden divide-y divide-slate-50 dark:divide-slate-800/80">
+              {filtered.length === 0 ? (
+                <div className="p-6 sm:p-8">
+                  <EmptyState
+                    icon={<CalendarClock className="h-6 w-6" />}
+                    title={
+                      activeFilters > 0
+                        ? "Nenhum lembrete encontrado"
+                        : "Nenhum lembrete cadastrado"
                     }
-                    return (
-                      <tr key={l.id} className={cn("hover:bg-slate-50/50 transition-colors group", !l.ativo && "opacity-60")}>
-                        <td className="px-10 py-6">
-                          <div className="flex items-center gap-3">
-                            <div className={cn("w-9 h-9 shrink-0 flex items-center justify-center rounded-xl", catInfo.color)}>
-                              <CatIcon className="h-4 w-4" />
-                            </div>
-                            <span className="text-sm font-semibold text-[#0F172A]">{l.descricao}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-6">
-                          <span className="text-sm mono-data font-bold text-slate-700">
-                            {l.valor != null ? formatCurrency(l.valor) : "—"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-6">
-                          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">
-                            {freqLabel}
-                          </span>
-                        </td>
-                        <td className="px-6 py-6 text-center">
-                          <span className="text-sm mono-data text-slate-600">{diaLabel}</span>
-                        </td>
-                        <td className="px-6 py-6">
-                          <span className={cn("text-[11px] mono-data uppercase", isVencido(l.dataVencimento) && l.ativo !== false && !l.pagoCicloAtual ? "text-rose-500" : "text-slate-500")}>
-                            {nextFmt}
-                          </span>
-                        </td>
-                        <td className="px-6 py-6">
-                          <Switch
-                            checked={l.lembreteTelegramAtivo === true}
-                            onCheckedChange={(checked) =>
-                              atualizarLembrete.mutate({ id: l.id, data: { lembreteTelegramAtivo: checked } })
-                            }
-                          />
-                        </td>
-                        <td className="px-6 py-6">
-                          <span className={cn("px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest", statusClass)}>
-                            {statusLabel}
-                          </span>
-                        </td>
-                        <td className="px-10 py-6 text-right">
-                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {l.ativo !== false && !l.pagoCicloAtual && (
-                              <button
-                                onClick={() => openPagar(l)}
-                                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                                title="Registrar pagamento"
-                              >
-                                <Banknote className="h-4 w-4" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => openEdit(l)}
-                              className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteId(l.id)}
-                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                    description={
+                      activeFilters > 0
+                        ? "Tente remover os filtros"
+                        : "Adicione contas fixas para manter o controle"
+                    }
+                    action={
+                      activeFilters > 0 ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setFiltroStatus("todos");
+                            setBusca("");
+                          }}
+                          className="gap-2 rounded-xl"
+                        >
+                          <X className="h-4 w-4" /> Limpar filtros
+                        </Button>
+                      ) : (
+                        <button
+                          onClick={() => setShowForm(true)}
+                          className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer text-sm"
+                        >
+                          <Plus className="h-4 w-4" /> Criar primeiro lembrete
+                        </button>
+                      )
+                    }
+                  />
+                </div>
+              ) : (
+                paged.map((l) => {
+                  const catInfo = getCategoryIcon(l.categoria ?? "");
+                  const CatIcon = catInfo.icon;
+                  let statusLabel = getLembreteStatusInfo(l).label;
+                  let statusClass = getLembreteStatusInfo(l).className;
+                  if (l.pagoCicloAtual) {
+                    statusLabel = "Pago";
+                    statusClass =
+                      "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300";
+                  } else if (!l.ativo) {
+                    statusLabel = "Inativa";
+                    statusClass =
+                      "bg-slate-100 text-slate-600 dark:bg-slate-700/80 dark:text-slate-300";
+                  } else if (isVencido(l.dataVencimento)) {
+                    statusLabel = "Vencida";
+                    statusClass = "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200";
+                  } else {
+                    const diff = Math.ceil(
+                      (new Date(l.dataVencimento).getTime() -
+                        new Date(new Date().toISOString().split("T")[0]).getTime()) /
+                        86400000
                     );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                    if (diff <= 5) {
+                      statusLabel = "Próxima";
+                      statusClass =
+                        "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200";
+                    } else {
+                      statusLabel = "OK";
+                      statusClass =
+                        "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300";
+                    }
+                  }
+                  return (
+                    <div
+                      key={l.id}
+                      className={cn("p-4 sm:p-5 space-y-2.5", !l.ativo && "opacity-60")}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={cn(
+                              "w-9 h-9 shrink-0 flex items-center justify-center rounded-xl",
+                              catInfo.color
+                            )}
+                          >
+                            <CatIcon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                              {l.descricao}
+                            </h4>
+                            <p className="text-xs mono-data font-bold text-slate-700 dark:text-slate-100">
+                              {l.valor != null ? formatCurrency(l.valor) : "—"}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={cn(
+                            "px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest shrink-0",
+                            statusClass
+                          )}
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                        <span>Venc: dia {l.diaRecorrente || "—"}</span>
+                        <span>
+                          {l.dataVencimento
+                            ? (() => {
+                                const d = new Date(l.dataVencimento);
+                                const m = [
+                                  "Jan",
+                                  "Fev",
+                                  "Mar",
+                                  "Abr",
+                                  "Mai",
+                                  "Jun",
+                                  "Jul",
+                                  "Ago",
+                                  "Set",
+                                  "Out",
+                                  "Nov",
+                                  "Dez",
+                                ];
+                                return `${String(d.getDate()).padStart(2, "0")} ${m[d.getMonth()]}`;
+                              })()
+                            : "—"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        {l.ativo !== false && !l.pagoCicloAtual && (
+                          <button
+                            onClick={() => openPagar(l)}
+                            aria-label={`Registrar pagamento de ${l.descricao}`}
+                            className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 dark:hover:bg-emerald-500/10 rounded-lg cursor-pointer"
+                            title="Pagar"
+                          >
+                            <Banknote className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openEdit(l)}
+                          aria-label={`Editar conta fixa ${l.descricao}`}
+                          className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 dark:hover:bg-emerald-500/10 rounded-lg cursor-pointer"
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteId(l.id)}
+                          aria-label={`Remover conta fixa ${l.descricao}`}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-200 dark:hover:bg-rose-500/10 rounded-lg cursor-pointer ml-auto"
+                          title="Remover"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop table — hidden on mobile */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/50 dark:bg-slate-800/60">
+                    <th className="px-10 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                      Descrição
+                    </th>
+                    <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                      Valor Mensal
+                    </th>
+                    <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                      Frequência
+                    </th>
+                    <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">
+                      Dia Venc.
+                    </th>
+                    <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                      Próx. Vencimento
+                    </th>
+                    <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                      Telegram
+                    </th>
+                    <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                      Status
+                    </th>
+                    <th className="px-10 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/80">
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-6 sm:p-12">
+                        <EmptyState
+                          icon={<CalendarClock className="h-6 w-6" />}
+                          title={
+                            activeFilters > 0
+                              ? "Nenhum lembrete encontrado"
+                              : "Nenhum lembrete cadastrado"
+                          }
+                          description={
+                            activeFilters > 0
+                              ? "Tente remover os filtros para ver mais resultados"
+                              : "Adicione contas fixas e lembretes de pagamento para manter o controle"
+                          }
+                          action={
+                            activeFilters > 0 ? (
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setFiltroStatus("todos");
+                                  setBusca("");
+                                }}
+                                className="gap-2 rounded-xl"
+                              >
+                                <X className="h-4 w-4" /> Limpar filtros
+                              </Button>
+                            ) : (
+                              <button
+                                onClick={() => setShowForm(true)}
+                                className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer text-sm"
+                              >
+                                <Plus className="h-4 w-4" /> Criar primeiro lembrete
+                              </button>
+                            )
+                          }
+                        />
+                      </td>
+                    </tr>
+                  ) : (
+                    paged.map((l) => {
+                      const catInfo = getCategoryIcon(l.categoria ?? "");
+                      const CatIcon = catInfo.icon;
+                      const freqLabel =
+                        l.frequencia === "Semanal"
+                          ? "Semanal"
+                          : l.frequencia === "Quinzenal"
+                            ? "Quinzenal"
+                            : l.frequencia === "Anual"
+                              ? "Anual"
+                              : l.recorrenteMensal || l.frequencia === "Mensal"
+                                ? "Mensal"
+                                : "Único";
+                      const diaLabel = l.diaRecorrente ? `${l.diaRecorrente}` : "—";
+                      const nextDate = l.ativo === false ? null : l.dataVencimento;
+                      const nextFmt = nextDate
+                        ? (() => {
+                            const d = new Date(nextDate);
+                            const months = [
+                              "Jan",
+                              "Fev",
+                              "Mar",
+                              "Abr",
+                              "Mai",
+                              "Jun",
+                              "Jul",
+                              "Ago",
+                              "Set",
+                              "Out",
+                              "Nov",
+                              "Dez",
+                            ];
+                            return `${String(d.getDate()).padStart(2, "0")} ${months[d.getMonth()]} ${d.getFullYear()}`;
+                          })()
+                        : "—";
+                      let statusLabel = getLembreteStatusInfo(l).label;
+                      let statusClass = getLembreteStatusInfo(l).className;
+                      if (l.pagoCicloAtual) {
+                        statusLabel = "Pago";
+                        statusClass =
+                          "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300";
+                      } else if (!l.ativo) {
+                        statusLabel = "Inativa";
+                        statusClass =
+                          "bg-slate-100 text-slate-600 dark:bg-slate-700/80 dark:text-slate-300";
+                      } else if (isVencido(l.dataVencimento)) {
+                        statusLabel = "Vencida";
+                        statusClass =
+                          "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200";
+                      } else {
+                        const diff = Math.ceil(
+                          (new Date(l.dataVencimento).getTime() -
+                            new Date(new Date().toISOString().split("T")[0]).getTime()) /
+                            86400000
+                        );
+                        if (diff <= 5) {
+                          statusLabel = "Próxima";
+                          statusClass =
+                            "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200";
+                        } else {
+                          statusLabel = "OK";
+                          statusClass =
+                            "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300";
+                        }
+                      }
+                      return (
+                        <tr
+                          key={l.id}
+                          className={cn(
+                            "hover:bg-slate-50/50 dark:hover:bg-slate-800/35 transition-colors group",
+                            !l.ativo && "opacity-60"
+                          )}
+                        >
+                          <td className="px-10 py-6">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={cn(
+                                  "w-9 h-9 shrink-0 flex items-center justify-center rounded-xl",
+                                  catInfo.color
+                                )}
+                              >
+                                <CatIcon className="h-4 w-4" />
+                              </div>
+                              <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                                {l.descricao}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-6">
+                            <span className="text-sm mono-data font-bold text-slate-700 dark:text-slate-100">
+                              {l.valor != null ? formatCurrency(l.valor) : "—"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-6">
+                            <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
+                              {freqLabel}
+                            </span>
+                          </td>
+                          <td className="px-6 py-6 text-center">
+                            <span className="text-sm mono-data text-slate-600 dark:text-slate-300">
+                              {diaLabel}
+                            </span>
+                          </td>
+                          <td className="px-6 py-6">
+                            <span
+                              className={cn(
+                                "text-[11px] mono-data uppercase",
+                                isVencido(l.dataVencimento) &&
+                                  l.ativo !== false &&
+                                  !l.pagoCicloAtual
+                                  ? "text-rose-500"
+                                  : "text-slate-500 dark:text-slate-400"
+                              )}
+                            >
+                              {nextFmt}
+                            </span>
+                          </td>
+                          <td className="px-6 py-6">
+                            <Switch
+                              checked={l.lembreteTelegramAtivo === true}
+                              aria-label={`Ativar lembrete no Telegram para ${l.descricao}`}
+                              onCheckedChange={(checked) =>
+                                atualizarLembrete.mutate({
+                                  id: l.id,
+                                  data: { lembreteTelegramAtivo: checked },
+                                })
+                              }
+                            />
+                          </td>
+                          <td className="px-6 py-6">
+                            <span
+                              className={cn(
+                                "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest",
+                                statusClass
+                              )}
+                            >
+                              {statusLabel}
+                            </span>
+                          </td>
+                          <td className="px-10 py-6 text-right">
+                            <div className="flex justify-end gap-2 opacity-100 lg:opacity-60 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 transition-opacity">
+                              {l.ativo !== false && !l.pagoCicloAtual && (
+                                <button
+                                  onClick={() => openPagar(l)}
+                                  aria-label={`Registrar pagamento de ${l.descricao}`}
+                                  className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:text-emerald-300 dark:hover:bg-emerald-500/10 rounded-lg transition-colors cursor-pointer"
+                                  title="Registrar pagamento"
+                                >
+                                  <Banknote className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => openEdit(l)}
+                                aria-label={`Editar conta fixa ${l.descricao}`}
+                                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:text-emerald-300 dark:hover:bg-emerald-500/10 rounded-lg transition-colors cursor-pointer"
+                                title="Editar"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteId(l.id)}
+                                aria-label={`Remover conta fixa ${l.descricao}`}
+                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-200 dark:hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                                title="Remover"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
 
         {/* Pagination */}
         {filtered.length > PAGE_SIZE && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 lg:px-10 py-4 sm:py-6 border-t border-slate-50">
-            <p className="text-[10px] text-slate-500 font-medium">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 lg:px-10 py-4 sm:py-6 border-t border-slate-50 dark:border-slate-800/80">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
               Mostrando{" "}
-              <span className="font-bold text-slate-700">
-                {Math.min(page * PAGE_SIZE + 1, filtered.length)}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)}
+              <span className="font-bold text-slate-700 dark:text-slate-100">
+                {Math.min(page * PAGE_SIZE + 1, filtered.length)}–
+                {Math.min((page + 1) * PAGE_SIZE, filtered.length)}
               </span>{" "}
               de{" "}
-              <span className="font-bold text-slate-700">{filtered.length}</span>{" "}
+              <span className="font-bold text-slate-700 dark:text-slate-100">
+                {filtered.length}
+              </span>{" "}
               contas
             </p>
             <div className="flex items-center gap-2">
               <button
                 disabled={page === 0}
                 onClick={() => setPage((p) => p - 1)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                aria-label="Ir para a página anterior de contas fixas"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 <ChevronLeft className="h-3.5 w-3.5" /> Anterior
               </button>
               <button
                 disabled={page >= totalPages - 1}
                 onClick={() => setPage((p) => p + 1)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                aria-label="Ir para a próxima página de contas fixas"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 Próxima <ChevronRight className="h-3.5 w-3.5" />
               </button>
@@ -1154,68 +1379,68 @@ export default function ContasFixasPage() {
 
                   {(createForm.watch("frequencia") === "Semanal" ||
                     createForm.watch("frequencia") === "Quinzenal") && (
-                      <motion.div
-                        key="semanal"
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.2 }}
-                        className="space-y-3"
-                      >
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                            Dia da semana
-                          </Label>
-                          <div className="grid grid-cols-7 gap-1">
-                            {DIAS_SEMANA.map((dia, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => createForm.setValue("diaSemana", String(idx))}
-                                className={cn(
-                                  "p-1.5 sm:p-2 rounded-lg text-[10px] sm:text-xs font-medium transition-all cursor-pointer border",
-                                  createForm.watch("diaSemana") === String(idx)
-                                    ? "border-emerald-600 bg-emerald-600/15 text-emerald-600"
-                                    : "border-transparent hover:bg-muted/40 text-muted-foreground"
-                                )}
-                              >
-                                {dia.slice(0, 3)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                            Data do primeiro pagamento
-                          </Label>
-                          <div className="relative">
-                            <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
-                            <Input
-                              type="date"
-                              {...createForm.register("dataVencimento")}
+                    <motion.div
+                      key="semanal"
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-3"
+                    >
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Dia da semana
+                        </Label>
+                        <div className="grid grid-cols-7 gap-1">
+                          {DIAS_SEMANA.map((dia, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => createForm.setValue("diaSemana", String(idx))}
                               className={cn(
-                                "h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all",
-                                createForm.formState.errors.dataVencimento && "border-red-500"
+                                "p-1.5 sm:p-2 rounded-lg text-[10px] sm:text-xs font-medium transition-all cursor-pointer border",
+                                createForm.watch("diaSemana") === String(idx)
+                                  ? "border-emerald-600 bg-emerald-600/15 text-emerald-600"
+                                  : "border-transparent hover:bg-muted/40 text-muted-foreground"
                               )}
-                            />
-                          </div>
-                          {createForm.formState.errors.dataVencimento && (
-                            <p className="text-xs text-red-500 font-medium">
-                              {createForm.formState.errors.dataVencimento.message}
-                            </p>
-                          )}
+                            >
+                              {dia.slice(0, 3)}
+                            </button>
+                          ))}
                         </div>
-                        <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
-                          <Repeat className="h-3 w-3" />
-                          {createForm.watch("frequencia") === "Semanal"
-                            ? "Repete toda semana"
-                            : "Repete a cada 15 dias"}
-                          {createForm.watch("diaSemana")
-                            ? ` (${DIAS_SEMANA[parseInt(createForm.watch("diaSemana") || "0")]})`
-                            : ""}
-                        </p>
-                      </motion.div>
-                    )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Data do primeiro pagamento
+                        </Label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 pointer-events-none" />
+                          <Input
+                            type="date"
+                            {...createForm.register("dataVencimento")}
+                            className={cn(
+                              "h-11 rounded-xl pl-10 border-border/40 bg-background focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-all",
+                              createForm.formState.errors.dataVencimento && "border-red-500"
+                            )}
+                          />
+                        </div>
+                        {createForm.formState.errors.dataVencimento && (
+                          <p className="text-xs text-red-500 font-medium">
+                            {createForm.formState.errors.dataVencimento.message}
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5">
+                        <Repeat className="h-3 w-3" />
+                        {createForm.watch("frequencia") === "Semanal"
+                          ? "Repete toda semana"
+                          : "Repete a cada 15 dias"}
+                        {createForm.watch("diaSemana")
+                          ? ` (${DIAS_SEMANA[parseInt(createForm.watch("diaSemana") || "0")]})`
+                          : ""}
+                      </p>
+                    </motion.div>
+                  )}
 
                   {createForm.watch("frequencia") === "Anual" && (
                     <motion.div
@@ -1539,52 +1764,52 @@ export default function ContasFixasPage() {
 
               {(editForm.watch("frequencia") === "Semanal" ||
                 editForm.watch("frequencia") === "Quinzenal") && (
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Dia da semana
-                      </Label>
-                      <div className="grid grid-cols-7 gap-1">
-                        {DIAS_SEMANA.map((dia, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => editForm.setValue("diaSemana", String(idx))}
-                            className={cn(
-                              "p-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer border",
-                              editForm.watch("diaSemana") === String(idx)
-                                ? "border-emerald-600 bg-emerald-600/15 text-emerald-600"
-                                : "border-transparent hover:bg-muted/40 text-muted-foreground"
-                            )}
-                          >
-                            {dia.slice(0, 3)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Data do primeiro pagamento
-                      </Label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                        <Input
-                          type="date"
-                          {...editForm.register("dataVencimento")}
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Dia da semana
+                    </Label>
+                    <div className="grid grid-cols-7 gap-1">
+                      {DIAS_SEMANA.map((dia, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => editForm.setValue("diaSemana", String(idx))}
                           className={cn(
-                            "h-11 rounded-xl pl-9",
-                            editForm.formState.errors.dataVencimento && "border-red-500"
+                            "p-1.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer border",
+                            editForm.watch("diaSemana") === String(idx)
+                              ? "border-emerald-600 bg-emerald-600/15 text-emerald-600"
+                              : "border-transparent hover:bg-muted/40 text-muted-foreground"
                           )}
-                        />
-                      </div>
-                      {editForm.formState.errors.dataVencimento && (
-                        <p className="text-xs text-red-500 font-medium">
-                          {editForm.formState.errors.dataVencimento.message}
-                        </p>
-                      )}
+                        >
+                          {dia.slice(0, 3)}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                )}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Data do primeiro pagamento
+                    </Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                      <Input
+                        type="date"
+                        {...editForm.register("dataVencimento")}
+                        className={cn(
+                          "h-11 rounded-xl pl-9",
+                          editForm.formState.errors.dataVencimento && "border-red-500"
+                        )}
+                      />
+                    </div>
+                    {editForm.formState.errors.dataVencimento && (
+                      <p className="text-xs text-red-500 font-medium">
+                        {editForm.formState.errors.dataVencimento.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {editForm.watch("frequencia") === "Anual" && (
                 <div className="space-y-2">
@@ -1652,9 +1877,7 @@ export default function ContasFixasPage() {
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader className="items-start text-left">
-            <AlertDialogTitle className="sr-only">
-              Desativar lembrete?
-            </AlertDialogTitle>
+            <AlertDialogTitle className="sr-only">Desativar lembrete?</AlertDialogTitle>
             <AlertDialogDescription className="sr-only">
               Tem certeza que deseja desativar este lembrete? Ele não aparecerá mais na lista.
             </AlertDialogDescription>
@@ -1666,9 +1889,7 @@ export default function ContasFixasPage() {
             />
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">
-              Cancelar
-            </AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDesativar}
               loading={desativarLembrete.isPending}
@@ -1752,11 +1973,7 @@ export default function ContasFixasPage() {
                 </SelectTrigger>
                 <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
                   {contasBancarias.map((c) => (
-                    <SelectItem
-                      key={c.id}
-                      value={String(c.id)}
-                      className="dark:focus:bg-slate-800"
-                    >
+                    <SelectItem key={c.id} value={String(c.id)} className="dark:focus:bg-slate-800">
                       {c.nome}
                     </SelectItem>
                   ))}

@@ -53,6 +53,11 @@ public static class DependencyInjection
         services.AddScoped<IWhatsAppBotService, WhatsAppBotService>();
 
         // Chat Engine — motor compartilhado multi-canal (InApp, Telegram, WhatsApp)
+        services.AddScoped<IChatContextoFinanceiroService, ChatContextoFinanceiroService>();
+        services.AddScoped<IChatExclusaoLancamentoService, ChatExclusaoLancamentoService>();
+        services.AddScoped<IChatCategoriaService, ChatCategoriaService>();
+        services.AddScoped<IChatDiagnosticoService, ChatDiagnosticoService>();
+        services.AddScoped<IChatRichContentService, ChatRichContentService>();
         services.AddScoped<IChatEngineService, ChatEngineService>();
 
         // Suporte — chatbot de atendimento ao cliente com IA

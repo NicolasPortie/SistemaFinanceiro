@@ -543,6 +543,8 @@ let csrfTokenCache: string | null = null;
 const PRE_AUTH_PATHS = [
   "/auth/csrf",
   "/auth/login",
+  "/auth/google",
+  "/auth/apple",
   "/auth/registrar",
   "/auth/verificar-registro",
   "/auth/reenviar-codigo-registro",
@@ -556,6 +558,10 @@ function precisaCsrf(method: string, path: string): boolean {
   if (m === "GET" || m === "HEAD" || m === "OPTIONS" || m === "TRACE") return false;
   if (PRE_AUTH_PATHS.some((p) => path === p || path.startsWith(p + "/"))) return false;
   return true;
+}
+
+function deveTentarRefresh(path: string): boolean {
+  return !PRE_AUTH_PATHS.some((p) => path === p || path.startsWith(p + "/"));
 }
 
 async function obterCsrfToken(forceRefresh = false): Promise<string | null> {
@@ -663,7 +669,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   // Unauthorized — try refresh (singleton pattern prevents concurrent refreshes)
-  if (res.status === 401 && !_isRetry) {
+  if (res.status === 401 && !_isRetry && deveTentarRefresh(path)) {
     if (!refreshPromise) {
       refreshPromise = tryRefreshToken().finally(() => {
         refreshPromise = null;
@@ -766,8 +772,13 @@ export interface RespostaChatDto {
 
 export const api = {
   auth: {
-    registrar: (data: { nome: string; email: string; senha: string; celular: string; codigoConvite?: string }) =>
-      request<RegistroPendenteResponse>("/auth/registrar", { method: "POST", body: data }),
+    registrar: (data: {
+      nome: string;
+      email: string;
+      senha: string;
+      celular: string;
+      codigoConvite?: string;
+    }) => request<RegistroPendenteResponse>("/auth/registrar", { method: "POST", body: data }),
 
     verificarRegistro: (data: { email: string; codigo: string }) =>
       request<AuthResponse>("/auth/verificar-registro", { method: "POST", body: data }),
@@ -1000,8 +1011,7 @@ export const api = {
         body: { plano },
       }),
 
-    portal: () =>
-      request<PortalSessionResponse>("/assinaturas/portal", { method: "POST" }),
+    portal: () => request<PortalSessionResponse>("/assinaturas/portal", { method: "POST" }),
   },
 
   admin: {
@@ -1066,7 +1076,8 @@ export const api = {
     whatsapp: {
       status: () => request<WhatsAppStatusResponse>("/whatsapp/status"),
       qr: () => request<WhatsAppQrResponse>("/whatsapp/qr"),
-      disconnect: () => request<{ success: boolean; message?: string }>("/whatsapp/disconnect", { method: "POST" }),
+      disconnect: () =>
+        request<{ success: boolean; message?: string }>("/whatsapp/disconnect", { method: "POST" }),
     },
   },
 
@@ -1110,16 +1121,24 @@ export const api = {
       if (mes) params.set("mes", String(mes));
       if (ano) params.set("ano", String(ano));
       const qs = params.toString();
-      return request<GastoCategoriaFamiliar[]>(`/familia/dashboard/categorias${qs ? `?${qs}` : ""}`);
+      return request<GastoCategoriaFamiliar[]>(
+        `/familia/dashboard/categorias${qs ? `?${qs}` : ""}`
+      );
     },
     dashboardEvolucao: (meses?: number) =>
-      request<EvolucaoMensalFamiliar[]>(`/familia/dashboard/evolucao${meses ? `?meses=${meses}` : ""}`),
+      request<EvolucaoMensalFamiliar[]>(
+        `/familia/dashboard/evolucao${meses ? `?meses=${meses}` : ""}`
+      ),
     // Metas conjuntas
-    listarMetas: () => request<MetaFinanceira[]>("/familia/metas").then(m => m.map(normalizeMeta)),
+    listarMetas: () =>
+      request<MetaFinanceira[]>("/familia/metas").then((m) => m.map(normalizeMeta)),
     criarMeta: (data: CriarMetaRequest) =>
       request<MetaFinanceira>("/familia/metas", { method: "POST", body: data }).then(normalizeMeta),
     atualizarValorMeta: (id: number, valorAtual: number) =>
-      request<MetaFinanceira>(`/familia/metas/${id}/valor`, { method: "PATCH", body: { valorAtual } }).then(normalizeMeta),
+      request<MetaFinanceira>(`/familia/metas/${id}/valor`, {
+        method: "PATCH",
+        body: { valorAtual },
+      }).then(normalizeMeta),
     removerMeta: (id: number) => request(`/familia/metas/${id}`, { method: "DELETE" }),
     // Categorias compartilhadas
     listarCategorias: () => request<CategoriaFamiliar[]>("/familia/categorias"),
@@ -1172,8 +1191,12 @@ export const api = {
         if (res.status === 403 && err?.codigo === "FEATURE_GATE") {
           const gateError = new FeatureGateError(
             err.erro || "Recurso não disponível no seu plano.",
-            err.recurso, err.recursoNome || err.recurso,
-            err.limite, err.usoAtual, err.planoSugerido, err.planoNomeSugerido || err.planoSugerido
+            err.recurso,
+            err.recursoNome || err.recurso,
+            err.limite,
+            err.usoAtual,
+            err.planoSugerido,
+            err.planoNomeSugerido || err.planoSugerido
           );
           if (typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("feature-gate-blocked", { detail: gateError }));
@@ -1185,7 +1208,11 @@ export const api = {
       return res.json();
     },
 
-    enviarImagem: async (arquivo: File, conversaId?: number, legenda?: string): Promise<RespostaChatDto> => {
+    enviarImagem: async (
+      arquivo: File,
+      conversaId?: number,
+      legenda?: string
+    ): Promise<RespostaChatDto> => {
       const formData = new FormData();
       formData.append("arquivo", arquivo);
       if (conversaId) formData.append("conversaId", String(conversaId));
@@ -1207,8 +1234,55 @@ export const api = {
         if (res.status === 403 && err?.codigo === "FEATURE_GATE") {
           const gateError = new FeatureGateError(
             err.erro || "Recurso não disponível no seu plano.",
-            err.recurso, err.recursoNome || err.recurso,
-            err.limite, err.usoAtual, err.planoSugerido, err.planoNomeSugerido || err.planoSugerido
+            err.recurso,
+            err.recursoNome || err.recurso,
+            err.limite,
+            err.usoAtual,
+            err.planoSugerido,
+            err.planoNomeSugerido || err.planoSugerido
+          );
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("feature-gate-blocked", { detail: gateError }));
+          }
+          throw gateError;
+        }
+        throw new Error(err?.erro || err?.mensagem || `Erro ${res.status}`);
+      }
+      return res.json();
+    },
+
+    enviarDocumento: async (
+      arquivo: File,
+      conversaId?: number,
+      legenda?: string
+    ): Promise<RespostaChatDto> => {
+      const formData = new FormData();
+      formData.append("arquivo", arquivo);
+      if (conversaId) formData.append("conversaId", String(conversaId));
+      if (legenda) formData.append("legenda", legenda);
+
+      const csrfToken = await obterCsrfToken();
+      const headers: Record<string, string> = {};
+      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
+      const res = await fetch(`${API_BASE}/chat/documento`, {
+        method: "POST",
+        headers,
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        if (res.status === 403 && err?.codigo === "FEATURE_GATE") {
+          const gateError = new FeatureGateError(
+            err.erro || "Recurso nao disponivel no seu plano.",
+            err.recurso,
+            err.recursoNome || err.recurso,
+            err.limite,
+            err.usoAtual,
+            err.planoSugerido,
+            err.planoNomeSugerido || err.planoSugerido
           );
           if (typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("feature-gate-blocked", { detail: gateError }));

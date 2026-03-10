@@ -89,11 +89,11 @@ export function useResumoHistorico(mesesAtras: number = 6) {
         .map((r, i) =>
           r.data
             ? {
-              mes: meses[i],
-              receitas: r.data.totalReceitas,
-              gastos: r.data.totalGastos,
-              saldo: r.data.saldo,
-            }
+                mes: meses[i],
+                receitas: r.data.totalReceitas,
+                gastos: r.data.totalGastos,
+                saldo: r.data.saldo,
+              }
             : null
         )
         .filter((d): d is NonNullable<typeof d> => d !== null),

@@ -146,16 +146,48 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
     }
   }
 
+  // ── Documento / PDF / imagem enviada como arquivo ──
+  else if (content.documentMessage) {
+    payload.type = 'document'
+    payload.documentMimeType = content.documentMessage.mimetype || 'application/octet-stream'
+    payload.documentFileName = content.documentMessage.fileName || 'documento'
+    payload.documentCaption = content.documentMessage.caption || undefined
+    payload.text = content.documentMessage.caption || undefined
+
+    try {
+      const documentBuffer = await downloadMedia(content.documentMessage, 'document')
+      payload.documentData = documentBuffer.toString('base64')
+      logger.info(
+        {
+          phone: phoneNumber,
+          size: documentBuffer.length,
+          fileName: payload.documentFileName,
+          mimeType: payload.documentMimeType,
+        },
+        '📄 Documento recebido'
+      )
+    } catch (err) {
+      logger.error({ err, phone: phoneNumber }, 'Erro ao baixar documento')
+      await sleep(calcReadDelay(20))
+      await sock.sendMessage(msg.key.remoteJid!, {
+        text: '❌ Não consegui processar seu documento. Tente novamente.',
+      })
+      recordSentMessage()
+      recordSentTo(phoneNumber)
+      return
+    }
+  }
+
   // ── Tipos não suportados ──
   else {
     const msgType = Object.keys(content).find((k) => k !== 'messageContextInfo') || 'unknown'
     logger.debug({ phone: phoneNumber, type: msgType }, '⏭️ Tipo de mensagem não suportado — ignorando')
 
     // Informar o usuário educadamente
-    if (['videoMessage', 'stickerMessage', 'documentMessage', 'contactMessage', 'locationMessage'].some(t => t in content)) {
+    if (['videoMessage', 'stickerMessage', 'contactMessage', 'locationMessage'].some(t => t in content)) {
       await sleep(calcReadDelay(20))
       await sock.sendMessage(msg.key.remoteJid!, {
-        text: '📋 No momento, aceito apenas *mensagens de texto*, *áudios* (voice notes) e *imagens*.\n\nEnvie sua informação em um desses formatos! 😊',
+        text: '📋 No momento, aceito *mensagens de texto*, *áudios*, *imagens* e *documentos/PDF*.\n\nEnvie sua informação em um desses formatos.',
       })
       recordSentMessage()
       recordSentTo(phoneNumber)

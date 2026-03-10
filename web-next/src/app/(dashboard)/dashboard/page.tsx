@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/contexts/auth-context";
 import {
   useResumo,
   useCartoes,
@@ -36,22 +35,52 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
-  ResponsiveContainer,
   BarChart,
   Bar,
-  Cell
+  Cell,
 } from "recharts";
 
 /* ─── Constants ─────────────────────────────────────────── */
 const meses = [
-  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
 ];
-const mesNamesAbrev = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const mesNamesAbrev = [
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Set",
+  "Out",
+  "Nov",
+  "Dez",
+];
 
 const categoryColors = [
-  "#10b981", "#6366f1", "#94a3b8", "#e2e8f0", "#f59e0b",
-  "#3b82f6", "#8b5cf6", "#ef4444", "#06b6d4", "#ec4899",
+  "#10b981",
+  "#6366f1",
+  "#94a3b8",
+  "#e2e8f0",
+  "#f59e0b",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ef4444",
+  "#06b6d4",
+  "#ec4899",
 ];
 
 /* ─── Hooks ─────────────────────────────────────────────── */
@@ -65,38 +94,110 @@ function useMonthSelector() {
   const label = `${meses[month]} ${year}`;
 
   const prev = () => {
-    if (month === 0) { setMonth(11); setYear((y) => y - 1); } else setMonth((m) => m - 1);
+    if (month === 0) {
+      setMonth(11);
+      setYear((y) => y - 1);
+    } else setMonth((m) => m - 1);
   };
   const next = () => {
     if (isCurrentMonth) return;
-    if (month === 11) { setMonth(0); setYear((y) => y + 1); } else setMonth((m) => m + 1);
+    if (month === 11) {
+      setMonth(0);
+      setYear((y) => y + 1);
+    } else setMonth((m) => m + 1);
   };
-  const reset = () => { setYear(now.getFullYear()); setMonth(now.getMonth()); };
+  const reset = () => {
+    setYear(now.getFullYear());
+    setMonth(now.getMonth());
+  };
 
   return { mesParam, label, isCurrentMonth, prev, next, reset };
+}
+
+function ChartSurface({
+  children,
+  className,
+}: {
+  children: (size: { width: number; height: number }) => React.ReactNode;
+  className?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const updateSize = () => {
+      const nextWidth = Math.round(element.clientWidth);
+      const nextHeight = Math.round(element.clientHeight);
+      setSize((current) =>
+        current.width === nextWidth && current.height === nextHeight
+          ? current
+          : { width: nextWidth, height: nextHeight }
+      );
+    };
+
+    updateSize();
+
+    const observer = new ResizeObserver(() => updateSize());
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
+
+  const isReady = size.width > 0 && size.height > 0;
+
+  return (
+    <div ref={containerRef} className={className}>
+      {isReady ? (
+        children(size)
+      ) : (
+        <div
+          aria-hidden="true"
+          className="h-full w-full rounded-[1.5rem] bg-slate-100/80 dark:bg-slate-800/60"
+        />
+      )}
+    </div>
+  );
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Dashboard Page — Executive Design
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 export default function DashboardPage() {
-  const { usuario } = useAuth();
   const queryClient = useQueryClient();
   const { mesParam, label, isCurrentMonth, prev, next, reset } = useMonthSelector();
 
-  const { data: resumo, isLoading: loadingResumo, isError: errorResumo, error: resumoError } = useResumo(mesParam);
-  const { data: cartoes = [], isLoading: loadingCartoes } = useCartoes();
+  const {
+    data: resumo,
+    isLoading: loadingResumo,
+    isError: errorResumo,
+    error: resumoError,
+  } = useResumo(mesParam);
+  const { isLoading: loadingCartoes } = useCartoes();
   const { data: lancamentos } = useLancamentos({ pagina: 1, tamanhoPagina: 8 });
   const { data: metas = [] } = useMetas();
   const { data: limites = [] } = useLimites();
   const [periodoMeses, setPeriodoMeses] = useState<1 | 6 | 12 | 24>(6);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { data: historicoData, isLoading: loadingHistorico } = useResumoHistorico(periodoMeses);
 
   const loading = loadingResumo || loadingCartoes;
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.resumo(mesParam) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.cartoes });
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["resumo"] }),
+        queryClient.invalidateQueries({ queryKey: ["lancamentos"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.cartoes }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.limites }),
+        queryClient.invalidateQueries({ queryKey: ["metas"] }),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const metasAtivas = metas.filter((m) => m.status === "ativa");
@@ -113,12 +214,9 @@ export default function DashboardPage() {
   const R = 40;
   const C = 2 * Math.PI * R; // circumference
 
-  // Bar chart max
-  const maxHistorico = historicoData
-    ? Math.max(...historicoData.map((d) => Math.max(d.receitas, d.gastos)), 1)
-    : 1;
   const saldoHistoricoAtual = historicoData?.[historicoData.length - 1]
-    ? historicoData[historicoData.length - 1].receitas - historicoData[historicoData.length - 1].gastos
+    ? historicoData[historicoData.length - 1].receitas -
+      historicoData[historicoData.length - 1].gastos
     : 0;
   const melhorMesHistorico = historicoData?.reduce((melhor, atual) => {
     const saldoMelhor = melhor.receitas - melhor.gastos;
@@ -127,15 +225,16 @@ export default function DashboardPage() {
   }, historicoData[0]);
 
   // Chart Data preparation
-  const chartData = historicoData?.map((d) => {
-    const saldo = d.receitas - d.gastos;
-    return {
-      ...d,
-      nomeMes: mesNamesAbrev[parseInt(d.mes.split("-")[1]) - 1],
-      saldo,
-      saldoAbs: Math.abs(saldo),
-    };
-  }) || [];
+  const chartData =
+    historicoData?.map((d) => {
+      const saldo = d.receitas - d.gastos;
+      return {
+        ...d,
+        nomeMes: mesNamesAbrev[parseInt(d.mes.split("-")[1]) - 1],
+        saldo,
+        saldoAbs: Math.abs(saldo),
+      };
+    }) || [];
 
   // Relevant limits
   const limitesRelevantes = limites.filter((l) => l.percentualConsumido >= 0);
@@ -149,12 +248,10 @@ export default function DashboardPage() {
         <ErrorState message={resumoError?.message} onRetry={handleRefresh} />
       ) : resumo ? (
         <div className="grid grid-cols-12 gap-6 xl:gap-8">
-
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
               LEFT COLUMN — Saldo + Receita/Saídas + Metas
               ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           <div className="col-span-12 lg:col-span-3 space-y-6 flex flex-col">
-
             {/* Hero: Saldo Atual */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -162,7 +259,11 @@ export default function DashboardPage() {
               className="exec-card relative flex min-h-35 flex-col justify-center overflow-hidden rounded-2xl p-5 group sm:min-h-45 sm:rounded-[2.5rem] sm:p-8 lg:p-10"
             >
               <div className="absolute -right-4 -top-4 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity">
-                <svg className="w-24 h-24 text-slate-900 dark:text-white" fill="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-24 h-24 text-slate-900 dark:text-white"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path d="M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
                 </svg>
               </div>
@@ -170,19 +271,25 @@ export default function DashboardPage() {
                 Saldo Atual
               </p>
               <div className="flex flex-col gap-1.5">
-                <span className={cn(
-                  "text-2xl sm:text-3xl xl:text-4xl font-bold tracking-tight",
-                  resumo.saldo >= 0 ? "text-slate-900 dark:text-white" : "text-rose-500"
-                )}>
+                <span
+                  className={cn(
+                    "text-2xl sm:text-3xl xl:text-4xl font-bold tracking-tight",
+                    resumo.saldo >= 0 ? "text-slate-900 dark:text-white" : "text-rose-500"
+                  )}
+                >
                   <AnimatedCurrency value={resumo.saldo} />
                 </span>
                 {resumo.totalReceitas > 0 && (
-                  <span className={cn(
-                    "text-[10px] mono-data font-bold",
-                    resumo.saldo >= 0 ? "text-emerald-600" : "text-rose-500"
-                  )}>
+                  <span
+                    className={cn(
+                      "text-[10px] mono-data font-bold",
+                      resumo.saldo >= 0 ? "text-emerald-600" : "text-rose-500"
+                    )}
+                  >
                     {resumo.saldo >= 0 ? "+" : ""}
-                    {Math.round(((resumo.totalReceitas - resumo.totalGastos) / resumo.totalReceitas) * 100)}
+                    {Math.round(
+                      ((resumo.totalReceitas - resumo.totalGastos) / resumo.totalReceitas) * 100
+                    )}
                     % da receita livre
                   </span>
                 )}
@@ -231,7 +338,10 @@ export default function DashboardPage() {
                 <h4 className="text-[9px] font-bold text-slate-900 dark:text-white uppercase tracking-[0.3em]">
                   Metas Estratégicas
                 </h4>
-                <Link href="/metas" className="text-slate-300 dark:text-slate-600 hover:text-emerald-500 transition-colors">
+                <Link
+                  href="/metas"
+                  className="text-slate-300 dark:text-slate-600 hover:text-emerald-500 transition-colors"
+                >
                   <Target className="h-4 w-4" />
                 </Link>
               </div>
@@ -270,8 +380,13 @@ export default function DashboardPage() {
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Target className="h-7 w-7 text-slate-200 dark:text-slate-600 mb-3" />
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest">Nenhuma meta ativa</p>
-                  <Link href="/metas" className="text-[9px] text-emerald-600 font-bold hover:underline mt-2 uppercase tracking-wider">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest">
+                    Nenhuma meta ativa
+                  </p>
+                  <Link
+                    href="/metas"
+                    className="text-[9px] text-emerald-600 font-bold hover:underline mt-2 uppercase tracking-wider"
+                  >
                     Criar meta
                   </Link>
                 </div>
@@ -283,25 +398,26 @@ export default function DashboardPage() {
               CENTER COLUMN — Chart + Donut + Limits
               ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           <div className="col-span-12 lg:col-span-5 space-y-6">
-
             {/* Monthly Flow Chart */}
             {!loadingHistorico && historicoData && historicoData.length >= 1 && (
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="exec-card relative flex h-65 flex-col overflow-hidden rounded-2xl p-5 sm:h-85 sm:rounded-[2.5rem] sm:p-8 lg:p-10"
+                className="exec-card relative flex h-[22rem] flex-col overflow-hidden rounded-2xl p-5 sm:h-85 sm:rounded-[2.5rem] sm:p-8 lg:p-10"
               >
-                <div className="flex items-center justify-between mb-8">
+                <div className="mb-6 flex flex-col gap-4 sm:mb-8 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <h4 className="text-[9px] font-bold text-slate-900 dark:text-white uppercase tracking-[0.3em]">
                       Fluxo Mensal
                     </h4>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="mt-2 flex items-center gap-2">
                       {([1, 6, 12, 24] as const).map((m) => (
                         <button
                           key={m}
                           onClick={() => setPeriodoMeses(m)}
+                          aria-label={`Exibir histórico de ${m} ${m === 1 ? "mês" : "meses"}`}
+                          aria-pressed={periodoMeses === m}
                           className={cn(
                             "text-[8px] font-bold px-2 py-0.5 rounded-full border transition-all cursor-pointer",
                             periodoMeses === m
@@ -314,7 +430,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-right">
+                  <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-3 sm:text-right">
                     <div>
                       <span className="block text-[7px] text-slate-400 uppercase tracking-widest font-bold">
                         Receitas
@@ -335,10 +451,12 @@ export default function DashboardPage() {
                       <span className="block text-[7px] text-slate-400 uppercase tracking-widest font-bold">
                         Saldo
                       </span>
-                      <span className={cn(
-                        "text-[12px] mono-data font-bold",
-                        saldoHistoricoAtual >= 0 ? "text-emerald-600" : "text-rose-500"
-                      )}>
+                      <span
+                        className={cn(
+                          "text-[12px] mono-data font-bold",
+                          saldoHistoricoAtual >= 0 ? "text-emerald-600" : "text-rose-500"
+                        )}
+                      >
                         {formatCurrency(saldoHistoricoAtual)}
                       </span>
                     </div>
@@ -356,40 +474,79 @@ export default function DashboardPage() {
                   </span>
                   {melhorMesHistorico && (
                     <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                      Melhor mês: {mesNamesAbrev[parseInt(melhorMesHistorico.mes.split("-")[1]) - 1]}
+                      Melhor mês:{" "}
+                      {mesNamesAbrev[parseInt(melhorMesHistorico.mes.split("-")[1]) - 1]}
                     </span>
                   )}
                 </div>
 
                 {/* Comparative line chart area */}
-                <div className="flex-1 min-h-0 w-full mt-4 -ml-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-slate-800" />
-                      <XAxis 
-                        dataKey="nomeMes" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 10, fill: '#94a3b8' }} 
+                <ChartSurface className="mt-2 h-full min-h-0 w-full sm:mt-4 sm:-ml-4">
+                  {({ width, height }) => (
+                    <LineChart
+                      width={width}
+                      height={height}
+                      data={chartData}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="currentColor"
+                        className="text-slate-100 dark:text-slate-800"
+                      />
+                      <XAxis
+                        dataKey="nomeMes"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: "#94a3b8" }}
                         dy={10}
                       />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 10, fill: '#94a3b8' }}
-                        tickFormatter={(value) => `R$ ${value >= 1000 ? (value / 1000).toFixed(1) + 'k' : value}`}
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: "#94a3b8" }}
+                        tickFormatter={(value) =>
+                          `R$ ${value >= 1000 ? (value / 1000).toFixed(1) + "k" : value}`
+                        }
                       />
-                      <RechartsTooltip 
-                        contentStyle={{ borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
-                        itemStyle={{ fontSize: '13px', fontWeight: 'bold' }}
-                        labelStyle={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px', textTransform: 'uppercase', fontWeight: 600 }}
+                      <RechartsTooltip
+                        contentStyle={{
+                          borderRadius: "16px",
+                          border: "1px solid rgba(0,0,0,0.05)",
+                          boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+                        }}
+                        itemStyle={{ fontSize: "13px", fontWeight: "bold" }}
+                        labelStyle={{
+                          fontSize: "11px",
+                          color: "#94a3b8",
+                          marginBottom: "6px",
+                          textTransform: "uppercase",
+                          fontWeight: 600,
+                        }}
                         formatter={(value: number | undefined) => [formatCurrency(value || 0)]}
                       />
-                      <Line type="monotone" dataKey="receitas" name="Receita" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} />
-                      <Line type="monotone" dataKey="gastos" name="Saída" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#f43f5e' }} />
+                      <Line
+                        type="monotone"
+                        dataKey="receitas"
+                        name="Receita"
+                        stroke="#10b981"
+                        strokeWidth={3}
+                        dot={{ r: 4, strokeWidth: 2, fill: "#fff" }}
+                        activeDot={{ r: 6, strokeWidth: 0, fill: "#10b981" }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="gastos"
+                        name="Saída"
+                        stroke="#f43f5e"
+                        strokeWidth={3}
+                        dot={{ r: 4, strokeWidth: 2, fill: "#fff" }}
+                        activeDot={{ r: 6, strokeWidth: 0, fill: "#f43f5e" }}
+                      />
                     </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                  )}
+                </ChartSurface>
               </motion.div>
             )}
 
@@ -399,7 +556,7 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.12 }}
-                className="exec-card relative flex h-65 flex-col overflow-hidden rounded-2xl p-5 sm:h-85 sm:rounded-[2.5rem] sm:p-8 lg:p-10"
+                className="exec-card relative flex h-[20rem] flex-col overflow-hidden rounded-2xl p-5 sm:h-85 sm:rounded-[2.5rem] sm:p-8 lg:p-10"
               >
                 <div className="flex items-center justify-between mb-8">
                   <div>
@@ -409,38 +566,66 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="flex-1 min-h-0 w-full -ml-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-slate-800" />
-                      <XAxis 
-                        dataKey="nomeMes" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 10, fill: '#94a3b8' }} 
+                <ChartSurface className="h-full min-h-0 w-full sm:-ml-4">
+                  {({ width, height }) => (
+                    <BarChart
+                      width={width}
+                      height={height}
+                      data={chartData}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="currentColor"
+                        className="text-slate-100 dark:text-slate-800"
+                      />
+                      <XAxis
+                        dataKey="nomeMes"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: "#94a3b8" }}
                         dy={10}
                       />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 10, fill: '#94a3b8' }}
-                        tickFormatter={(value) => `R$ ${Math.abs(value) >= 1000 ? (value / 1000).toFixed(1) + 'k' : value}`}
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: "#94a3b8" }}
+                        tickFormatter={(value) =>
+                          `R$ ${Math.abs(value) >= 1000 ? (value / 1000).toFixed(1) + "k" : value}`
+                        }
                       />
-                      <RechartsTooltip 
-                        contentStyle={{ borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
-                        itemStyle={{ fontSize: '13px', fontWeight: 'bold' }}
-                        labelStyle={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px', textTransform: 'uppercase', fontWeight: 600 }}
-                        cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                        formatter={(_value, _name, props) => [formatCurrency((props.payload as Record<string, number>)?.saldo ?? 0), 'Saldo']}
+                      <RechartsTooltip
+                        contentStyle={{
+                          borderRadius: "16px",
+                          border: "1px solid rgba(0,0,0,0.05)",
+                          boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+                        }}
+                        itemStyle={{ fontSize: "13px", fontWeight: "bold" }}
+                        labelStyle={{
+                          fontSize: "11px",
+                          color: "#94a3b8",
+                          marginBottom: "6px",
+                          textTransform: "uppercase",
+                          fontWeight: 600,
+                        }}
+                        cursor={{ fill: "rgba(0,0,0,0.02)" }}
+                        formatter={(_value, _name, props) => [
+                          formatCurrency((props.payload as Record<string, number>)?.saldo ?? 0),
+                          "Saldo",
+                        ]}
                       />
                       <Bar dataKey="saldoAbs" radius={[6, 6, 6, 6]}>
                         {chartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.saldo >= 0 ? '#10b981' : '#f43f5e'} />
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={entry.saldo >= 0 ? "#10b981" : "#f43f5e"}
+                          />
                         ))}
                       </Bar>
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                  )}
+                </ChartSurface>
               </motion.div>
             )}
 
@@ -454,7 +639,15 @@ export default function DashboardPage() {
               {/* SVG Donut */}
               <div className="relative flex h-32 w-32 shrink-0 items-center justify-center xl:h-40 xl:w-40">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r={R} fill="transparent" stroke="#f1f5f9" strokeWidth="8" className="dark:stroke-slate-700" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r={R}
+                    fill="transparent"
+                    stroke="#f1f5f9"
+                    strokeWidth="8"
+                    className="dark:stroke-slate-700"
+                  />
                   {(() => {
                     let cum = 0;
                     return categorySegments.slice(0, 4).map((seg) => {
@@ -464,7 +657,9 @@ export default function DashboardPage() {
                       return (
                         <circle
                           key={seg.categoria}
-                          cx="50" cy="50" r={R}
+                          cx="50"
+                          cy="50"
+                          r={R}
                           fill="transparent"
                           stroke={seg.color}
                           strokeWidth="8"
@@ -482,7 +677,9 @@ export default function DashboardPage() {
                       <p className="text-lg xl:text-xl font-bold text-slate-900 dark:text-white">
                         {formatCurrency(categoryTotal)}
                       </p>
-                      <p className="text-[7px] text-slate-400 uppercase tracking-widest font-bold">Total Gastos</p>
+                      <p className="text-[7px] text-slate-400 uppercase tracking-widest font-bold">
+                        Total Gastos
+                      </p>
                     </>
                   ) : (
                     <p className="text-[9px] text-slate-400 uppercase tracking-widest">Sem dados</p>
@@ -498,9 +695,15 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 gap-3">
                   {categorySegments.length > 0 ? (
                     categorySegments.slice(0, 4).map((seg) => (
-                      <div key={seg.categoria} className="flex items-center justify-between text-[10px] px-1.5 py-0.5">
+                      <div
+                        key={seg.categoria}
+                        className="flex items-center justify-between text-[10px] px-1.5 py-0.5"
+                      >
                         <span className="flex items-center gap-2.5 text-slate-500 font-medium uppercase tracking-wider truncate">
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: seg.color }} />
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: seg.color }}
+                          />
                           {seg.categoria}
                         </span>
                         <span className="text-slate-900 dark:text-white mono-data font-bold">
@@ -509,7 +712,9 @@ export default function DashboardPage() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest">Sem gastos no período</p>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest">
+                      Sem gastos no período
+                    </p>
                   )}
                 </div>
               </div>
@@ -527,7 +732,10 @@ export default function DashboardPage() {
                   <h4 className="text-[9px] font-bold text-slate-900 dark:text-white uppercase tracking-[0.3em]">
                     Acompanhamento de Limites
                   </h4>
-                  <Link href="/limites" className="text-[8px] text-slate-400 uppercase tracking-widest hover:text-emerald-600 transition-colors">
+                  <Link
+                    href="/limites"
+                    className="text-[8px] text-slate-400 uppercase tracking-widest hover:text-emerald-600 transition-colors"
+                  >
                     Gasto vs Limite
                   </Link>
                 </div>
@@ -536,8 +744,11 @@ export default function DashboardPage() {
                     const pct = Math.min(l.percentualConsumido, 100);
                     const isOver = l.percentualConsumido > 80;
                     return (
-                      <div key={l.id} className="flex items-center gap-4 xl:gap-6">
-                        <span className="text-[9px] font-bold text-slate-500 w-20 xl:w-24 uppercase tracking-tighter truncate">
+                      <div
+                        key={l.id}
+                        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 xl:gap-6"
+                      >
+                        <span className="text-[9px] font-bold text-slate-500 sm:w-20 xl:w-24 uppercase tracking-tighter truncate">
                           {l.categoriaNome}
                         </span>
                         <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -549,10 +760,12 @@ export default function DashboardPage() {
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <span className={cn(
-                          "text-[10px] mono-data w-28 xl:w-32 text-right truncate",
-                          isOver ? "text-rose-500 font-bold" : "text-slate-900 dark:text-white"
-                        )}>
+                        <span
+                          className={cn(
+                            "text-[10px] mono-data sm:w-28 xl:w-32 sm:text-right truncate",
+                            isOver ? "text-rose-500 font-bold" : "text-slate-900 dark:text-white"
+                          )}
+                        >
                           {formatCurrency(l.gastoAtual)} / {formatCurrency(l.valorLimite)}
                         </span>
                       </div>
@@ -567,19 +780,23 @@ export default function DashboardPage() {
               RIGHT COLUMN — Toolbar + Últimas Transações
               ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           <div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:gap-5">
-
             {/* Toolbar */}
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-end gap-2 sm:gap-3 flex-wrap"
+              className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 lg:justify-end"
             >
-              <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800/80 px-3 py-1.5 rounded-full border border-[rgba(15,23,42,0.06)] dark:border-slate-700/60 shadow-sm">
-                <button onClick={prev} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer">
+              <div className="flex w-full items-center justify-between gap-1.5 rounded-full border border-[rgba(15,23,42,0.06)] bg-white px-3 py-1.5 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/80 sm:w-auto sm:justify-start">
+                <button
+                  onClick={prev}
+                  aria-label="Exibir mês anterior"
+                  className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
+                >
                   <ChevronLeft className="h-3.5 w-3.5 text-slate-400" />
                 </button>
                 <button
                   onClick={reset}
+                  aria-label={`Voltar para ${label}`}
                   className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700 dark:text-slate-200 min-w-24 justify-center select-none cursor-pointer uppercase tracking-[0.2em] hover:text-emerald-600 transition-colors"
                 >
                   <CalendarDays className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
@@ -588,19 +805,24 @@ export default function DashboardPage() {
                 <button
                   onClick={next}
                   disabled={isCurrentMonth}
+                  aria-label="Exibir mês seguinte"
                   className="p-1 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                 >
                   <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
                 </button>
               </div>
 
-              <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
+              <div className="hidden h-5 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
 
               <button
                 onClick={handleRefresh}
-                className="p-2 text-slate-400 hover:text-emerald-500 transition-colors rounded-full hover:bg-white dark:hover:bg-slate-800 cursor-pointer"
+                type="button"
+                aria-label="Atualizar indicadores do dashboard"
+                aria-busy={isRefreshing}
+                disabled={isRefreshing}
+                className="p-2 text-slate-400 hover:text-emerald-500 transition-colors rounded-full hover:bg-white dark:hover:bg-slate-800 cursor-pointer disabled:cursor-wait disabled:opacity-60"
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
               </button>
 
               <Link href="/lancamentos">
@@ -633,40 +855,93 @@ export default function DashboardPage() {
               {/* Transaction List */}
               <div className="flex-1 overflow-y-auto hide-scrollbar bg-white dark:bg-transparent">
                 {(lancamentos?.items ?? []).length > 0 ? (
-                  <table className="w-full border-collapse">
-                    <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
+                  <>
+                    <div className="divide-y divide-slate-50 dark:divide-slate-700/30 md:hidden">
                       {(lancamentos?.items ?? []).slice(0, 8).map((l) => (
-                        <tr key={l.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                          <td className="px-4 sm:px-6 xl:px-8 py-3 sm:py-4 xl:py-5">
-                            <p className="mb-0.5 max-w-35 truncate text-[12px] font-semibold text-slate-900 dark:text-white sm:max-w-45">
-                              {l.descricao}
-                            </p>
-                            <p className="text-[9px] text-slate-400 mono-data uppercase">
-                              {formatDate(l.data)}
-                            </p>
-                          </td>
-                          <td className="px-4 sm:px-6 xl:px-8 py-3 sm:py-4 xl:py-5 text-right whitespace-nowrap">
-                            <p className={cn(
-                              "text-[12px] mono-data font-bold",
-                              l.tipo === "receita" ? "text-emerald-600" : "text-rose-500"
-                            )}>
+                        <article key={l.id} className="space-y-3 px-4 py-4 sm:px-6">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-[13px] font-semibold text-slate-900 dark:text-white">
+                                {l.descricao}
+                              </p>
+                              <p className="mt-1 text-[9px] uppercase tracking-[0.18em] text-slate-400">
+                                {formatDate(l.data)}
+                              </p>
+                            </div>
+                            <p
+                              className={cn(
+                                "shrink-0 text-[12px] font-bold mono-data",
+                                l.tipo === "receita" ? "text-emerald-600" : "text-rose-500"
+                              )}
+                            >
                               {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
                             </p>
-                            <p className={cn(
-                              "text-[9px] uppercase font-medium",
-                              l.tipo === "receita" ? "text-emerald-500 font-bold opacity-80" : "text-slate-400"
-                            )}>
-                              {l.categoria}
-                            </p>
-                          </td>
-                        </tr>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span
+                              className={cn(
+                                "inline-flex rounded-full px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.2em]",
+                                l.tipo === "receita"
+                                  ? "bg-emerald-50 text-emerald-600"
+                                  : "bg-rose-50 text-rose-500"
+                              )}
+                            >
+                              {l.tipo === "receita" ? "Receita" : "Despesa"}
+                            </span>
+                            <span className="truncate text-[9px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                              {l.categoria || "Sem categoria"}
+                            </span>
+                          </div>
+                        </article>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+
+                    <table className="hidden w-full border-collapse md:table">
+                      <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
+                        {(lancamentos?.items ?? []).slice(0, 8).map((l) => (
+                          <tr
+                            key={l.id}
+                            className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                          >
+                            <td className="px-4 sm:px-6 xl:px-8 py-3 sm:py-4 xl:py-5">
+                              <p className="mb-0.5 max-w-35 truncate text-[12px] font-semibold text-slate-900 dark:text-white sm:max-w-45">
+                                {l.descricao}
+                              </p>
+                              <p className="text-[9px] text-slate-400 mono-data uppercase">
+                                {formatDate(l.data)}
+                              </p>
+                            </td>
+                            <td className="px-4 sm:px-6 xl:px-8 py-3 sm:py-4 xl:py-5 text-right whitespace-nowrap">
+                              <p
+                                className={cn(
+                                  "text-[12px] mono-data font-bold",
+                                  l.tipo === "receita" ? "text-emerald-600" : "text-rose-500"
+                                )}
+                              >
+                                {l.tipo === "receita" ? "+" : "−"} {formatCurrency(l.valor)}
+                              </p>
+                              <p
+                                className={cn(
+                                  "text-[9px] uppercase font-medium",
+                                  l.tipo === "receita"
+                                    ? "text-emerald-500 font-bold opacity-80"
+                                    : "text-slate-400"
+                                )}
+                              >
+                                {l.categoria}
+                              </p>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <TrendingDown className="h-8 w-8 text-slate-200 dark:text-slate-600 mb-3" />
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest">Nenhuma transação</p>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest">
+                      Nenhuma transação
+                    </p>
                   </div>
                 )}
               </div>
@@ -681,7 +956,6 @@ export default function DashboardPage() {
               </div>
             </motion.div>
           </div>
-
         </div>
       ) : (
         <EmptyState

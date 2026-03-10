@@ -220,6 +220,26 @@ public class WhatsAppBotServiceTests
     // ════════════════ Desvinculação ════════════════
 
     [Fact]
+    public async Task ProcessarDocumentoAsync_UsuarioVinculado_DelegaParaChatEngine()
+    {
+        var usuario = CriarUsuario(id: 1, whatsAppPhone: TestPhone, whatsAppVinculado: true);
+        _usuarioRepoMock
+            .Setup(r => r.ObterPorWhatsAppPhoneAsync(TestPhone))
+            .ReturnsAsync(usuario);
+
+        var documentData = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+        _chatEngineMock
+            .Setup(c => c.ProcessarDocumentoAsync(It.IsAny<long>(), usuario, documentData, "application/pdf", "extrato.pdf", "fatura"))
+            .ReturnsAsync("Documento processado");
+
+        var resultado = await _service.ProcessarDocumentoAsync(TestPhone, documentData, "application/pdf", "extrato.pdf", TestName, "fatura");
+
+        Assert.Contains("Documento", resultado, StringComparison.OrdinalIgnoreCase);
+        _chatEngineMock.Verify(c => c.ProcessarDocumentoAsync(
+            It.IsAny<long>(), usuario, documentData, "application/pdf", "extrato.pdf", "fatura"), Times.Once);
+    }
+
+    [Fact]
     public async Task ProcessarMensagemAsync_ComandoDesvincular_PedeConfirmacao()
     {
         // Arrange

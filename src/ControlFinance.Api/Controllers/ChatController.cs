@@ -341,6 +341,79 @@ public class ChatController : BaseAuthController
     // Helpers
     // ═══════════════════════════════════════════
 
+    /// <summary>Enviar documento ou arquivo anexado para extração + processamento</summary>
+    [HttpPost("documento")]
+    [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB
+    public async Task<IActionResult> EnviarDocumento([FromForm] IFormFile arquivo, [FromForm] int? conversaId, [FromForm] string? legenda)
+    {
+        if (arquivo == null || arquivo.Length == 0)
+            return BadRequest(new { erro = "Arquivo não enviado." });
+
+        try
+        {
+            var usuario = await _usuarioRepo.ObterPorIdAsync(UsuarioId);
+            if (usuario == null) return Unauthorized();
+
+            var gate = await _featureGate.VerificarAcessoAsync(UsuarioId, Recurso.ChatInApp);
+            if (!gate.Permitido)
+                throw new FeatureGateException(gate.Mensagem ?? "Recurso não disponível no seu plano.", Recurso.ChatInApp, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
+
+            using var ms = new MemoryStream();
+            await arquivo.CopyToAsync(ms);
+            var documentData = ms.ToArray();
+            var mimeType = arquivo.ContentType ?? "application/octet-stream";
+            var fileName = string.IsNullOrWhiteSpace(arquivo.FileName) ? "documento" : arquivo.FileName;
+
+            var conversa = await ObterOuCriarConversaAsync(conversaId, usuario, legenda ?? fileName);
+            var resposta = await _chatEngine.ProcessarDocumentoAsync(usuario, documentData, mimeType, fileName, legenda);
+
+            var conteudoUsuario = legenda
+                ?? (mimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+                    ? $"Imagem enviada: {fileName}"
+                    : $"Documento enviado: {fileName}");
+
+            var msgUsuario = await _conversaRepo.AdicionarMensagemAsync(new MensagemChat
+            {
+                ConversaId = conversa.Id,
+                Conteudo = conteudoUsuario,
+                Papel = "user",
+                Origem = OrigemDado.Documento
+            });
+
+            var msgAssistente = await _conversaRepo.AdicionarMensagemAsync(new MensagemChat
+            {
+                ConversaId = conversa.Id,
+                Conteudo = resposta,
+                Papel = "assistant",
+                Origem = OrigemDado.Documento
+            });
+
+            if (conversa.Titulo == "Nova conversa")
+            {
+                conversa.Titulo = GerarTituloConversa(legenda ?? fileName);
+                await _conversaRepo.AtualizarAsync(conversa);
+            }
+            else
+            {
+                await _conversaRepo.AtualizarAsync(conversa);
+            }
+
+            return Ok(new RespostaChatDto
+            {
+                ConversaId = conversa.Id,
+                Titulo = conversa.Titulo,
+                MensagemUsuario = MapMensagem(msgUsuario),
+                MensagemAssistente = MapMensagem(msgAssistente)
+            });
+        }
+        catch (FeatureGateException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar documento do chat");
+            return StatusCode(500, new { erro = "Erro ao processar documento." });
+        }
+    }
+
     private async Task<ConversaChat> ObterOuCriarConversaAsync(int? conversaId, Usuario usuario, string primeiraMensagem)
     {
         if (conversaId.HasValue)

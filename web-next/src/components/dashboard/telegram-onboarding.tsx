@@ -87,8 +87,8 @@ export function TelegramOnboarding() {
                   2 Compartilhe seu contato
                 </p>
                 <p className="text-[11px] text-muted-foreground/50 leading-relaxed">
-                  Ao abrir o bot, toque no botão &quot;Compartilhar meu contato&quot;. Seu celular será
-                  comparado com o cadastrado aqui no sistema.
+                  Ao abrir o bot, toque no botão &quot;Compartilhar meu contato&quot;. Seu celular
+                  será comparado com o cadastrado aqui no sistema.
                 </p>
               </div>
 

@@ -215,7 +215,7 @@ public class WhatsAppBotService : IWhatsAppBotService
                        "📌 \"recebi 5000 de salário\"\n" +
                        "📌 \"posso gastar 50 num lanche?\"\n" +
                        "📌 \"se eu comprar uma TV de 3000 em 10x?\"\n\n" +
-                       "🎙️ Aceito *texto*, *áudio* e *foto de cupom*.";
+                       "🎙️ Aceito *texto*, *áudio*, *foto de cupom* e *PDF/documento*.";
             if (comando is "/ajuda" or "/help")
                 return "📋 *Guia Completo*\n\n" +
                        "💵 *Lançamentos*\n" +
@@ -277,6 +277,27 @@ public class WhatsAppBotService : IWhatsAppBotService
         {
             _logger.LogError(ex, "Erro ao processar imagem WhatsApp de {Phone}", phoneNumber);
             return "Erro ao processar a imagem. Tente novamente.";
+        }
+    }
+
+    public async Task<string> ProcessarDocumentoAsync(string phoneNumber, byte[] documentData, string mimeType, string fileName, string nomeUsuario, string? caption = null)
+    {
+        var usuario = await ObterOuAutoVincularWhatsAppAsync(phoneNumber);
+        if (usuario == null)
+            return "Conta nao encontrada.\n\nCadastre-se em finance.nicolasportie.com com seu celular para vincular automaticamente.";
+        if (usuario == null)
+            return "🔗 Conta não encontrada.\n\nCadastre-se em finance.nicolasportie.com com seu celular para vincular automaticamente.";
+
+        try
+        {
+            var chatId = PhoneToChatId(phoneNumber);
+            var resposta = await _chatEngine.ProcessarDocumentoAsync(chatId, usuario, documentData, mimeType, fileName, caption);
+            return ConverterMarkdownParaWhatsApp(resposta);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar documento WhatsApp de {Phone}", phoneNumber);
+            return "Erro ao processar o documento. Tente novamente.";
         }
     }
 

@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
+import { formatPhoneInput, hasValidPhoneDigits } from "@/lib/phone";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -29,12 +30,9 @@ import {
   ShieldCheck,
   RefreshCw,
   MailCheck,
-  Shield,
   Zap,
   Wallet,
-  Lock as LockIcon,
   BarChart3,
-  Maximize2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -58,12 +56,20 @@ export default function RegistroPage() {
 
 function RegistroContent() {
   const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [socialError, setSocialError] = useState<string | null>(null);
+  const [isLocalEnv, setIsLocalEnv] = useState(false);
   const [step, setStep] = useState<Step>("form");
   const [pendingEmail, setPendingEmail] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resending, setResending] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [socialTokenToComplete, setSocialTokenToComplete] = useState<{ provider: "google" | "apple"; token: string; nome?: string } | null>(null);
+  const [socialTokenToComplete, setSocialTokenToComplete] = useState<{
+    provider: "google" | "apple";
+    token: string;
+    nome?: string;
+  } | null>(null);
   const [celularCompletar, setCelularCompletar] = useState("");
   const { registrar, verificarRegistro, loginComGoogle, loginComApple, usuario } = useAuth();
   const router = useRouter();
@@ -99,6 +105,10 @@ function RegistroContent() {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
+  useEffect(() => {
+    setIsLocalEnv(["localhost", "127.0.0.1"].includes(window.location.hostname));
+  }, []);
+
   const handleResend = useCallback(async () => {
     if (resendCooldown > 0 || resending) return;
     setResending(true);
@@ -108,6 +118,7 @@ function RegistroContent() {
       verifyForm.reset();
       toast.success("Novo código enviado!");
     } catch (err) {
+      setVerifyError(err instanceof Error ? err.message : "Código inválido");
       toast.error(err instanceof Error ? err.message : "Erro ao reenviar código");
     } finally {
       setResending(false);
@@ -126,26 +137,34 @@ function RegistroContent() {
 
   const onSubmit = async (data: RegistroData) => {
     if (!allPassed) return;
+    setFormError(null);
+    if (!hasValidPhoneDigits(data.celular)) {
+      setFormError("Informe um celular válido com DDD.");
+      return;
+    }
     try {
       const res = await registrar(data.nome, data.email, data.senha, data.celular, codigoConvite);
       if (res.pendente) {
         setPendingEmail(res.email);
         setStep("verify");
         setResendCooldown(60);
+        setVerifyError(null);
         toast.success("Código de verificação enviado para seu e-mail!");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao criar conta");
+      setFormError(err instanceof Error ? err.message : "Erro ao criar conta");
     }
   };
 
   const onVerify = async (data: VerificarRegistroData) => {
+    setVerifyError(null);
     setVerifying(true);
     try {
       await verificarRegistro(pendingEmail, data.codigo);
       toast.success("Conta criada com sucesso!");
       router.push("/dashboard");
     } catch (err) {
+      setVerifyError(err instanceof Error ? err.message : "Código inválido");
       toast.error(err instanceof Error ? err.message : "Código inválido");
     } finally {
       setVerifying(false);
@@ -171,7 +190,15 @@ function RegistroContent() {
 
         {/* Logo */}
         <div className="relative z-10">
-          <Image src="/logo-text.png" alt="Ravier" width={100} height={30} className="object-contain" />
+          <Image
+            src="/logo-text.png"
+            alt="Ravier"
+            width={100}
+            height={30}
+            className="object-contain"
+            priority
+            style={{ width: "auto", height: "auto" }}
+          />
         </div>
 
         {/* Headline */}
@@ -183,7 +210,8 @@ function RegistroContent() {
             Comece sua <span className="italic text-emerald-700">jornada financeira</span>
           </h1>
           <p className="text-stone-500 text-lg leading-relaxed max-w-md">
-            Transforme sua relação com o dinheiro em uma experiência visual e simplificada. Dashboard, metas e investimentos em um só lugar.
+            Transforme sua relação com o dinheiro em uma experiência visual e simplificada.
+            Dashboard, metas e investimentos em um só lugar.
           </p>
 
           {/* Feature pills */}
@@ -225,8 +253,13 @@ function RegistroContent() {
         {/* CSS Animation */}
         <style jsx>{`
           @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
+            0%,
+            100% {
+              transform: translateY(0px);
+            }
+            50% {
+              transform: translateY(-8px);
+            }
           }
         `}</style>
       </div>
@@ -236,7 +269,15 @@ function RegistroContent() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden mb-10">
-            <Image src="/logo-text.png" alt="Ravier" width={100} height={30} className="object-contain" />
+            <Image
+              src="/logo-text.png"
+              alt="Ravier"
+              width={100}
+              height={30}
+              className="object-contain"
+              priority
+              style={{ width: "auto", height: "auto" }}
+            />
           </div>
 
           <AnimatePresence mode="wait">
@@ -255,7 +296,8 @@ function RegistroContent() {
                   <div>
                     <h3 className="text-sm font-semibold text-orange-900 mb-1">Quase lá!</h3>
                     <p className="text-xs text-orange-700/90 leading-relaxed">
-                      Precisamos do seu celular (WhatsApp/Telegram) para enviar alertas de orçamento e garantir suporte via nosso assistente IA.
+                      Precisamos do seu celular (WhatsApp/Telegram) para enviar alertas de orçamento
+                      e garantir suporte via nosso assistente IA.
                     </p>
                   </div>
                 </div>
@@ -263,20 +305,27 @@ function RegistroContent() {
                 <form
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    if (!celularCompletar || celularCompletar.replace(/\D/g, "").length < 10) {
-                      toast.error("Por favor, informe um celular válido.");
+                    setSocialError(null);
+                    if (!hasValidPhoneDigits(celularCompletar)) {
+                      setSocialError("Informe um celular válido com DDD.");
                       return;
                     }
                     try {
                       if (socialTokenToComplete.provider === "google") {
                         await loginComGoogle(socialTokenToComplete.token, celularCompletar);
                       } else {
-                        await loginComApple(socialTokenToComplete.token, celularCompletar, socialTokenToComplete.nome);
+                        await loginComApple(
+                          socialTokenToComplete.token,
+                          celularCompletar,
+                          socialTokenToComplete.nome
+                        );
                       }
                       toast.success("Conta criada com sucesso!");
                       router.replace("/dashboard");
                     } catch (err) {
-                      toast.error(err instanceof Error ? err.message : "Erro ao finalizar cadastro");
+                      toast.error(
+                        err instanceof Error ? err.message : "Erro ao finalizar cadastro"
+                      );
                     }
                   }}
                   className="space-y-4"
@@ -286,17 +335,34 @@ function RegistroContent() {
                       htmlFor="celularCompletar"
                       className="block text-[11px] font-semibold tracking-widest text-stone-500 uppercase mb-1.5"
                     >
-                      Celular <span className="text-stone-400 font-normal lowercase">(WhatsApp/Telegram)</span>
+                      Celular{" "}
+                      <span className="text-stone-400 font-normal lowercase">
+                        (WhatsApp/Telegram)
+                      </span>
                     </label>
                     <Input
                       id="celularCompletar"
                       type="tel"
                       value={celularCompletar}
-                      onChange={(e) => setCelularCompletar(e.target.value)}
+                      aria-invalid={Boolean(socialError)}
+                      aria-describedby={socialError ? "registro-social-error" : undefined}
+                      onChange={(e) => {
+                        setSocialError(null);
+                        setCelularCompletar(formatPhoneInput(e.target.value));
+                      }}
                       placeholder="(11) 99999-9999"
                       className="bg-stone-50 border-stone-200 h-11 focus-visible:ring-emerald-500/20 focus-visible:border-emerald-500 rounded-xl"
                       autoFocus
                     />
+                    {socialError && (
+                      <p
+                        id="registro-social-error"
+                        role="alert"
+                        className="mt-1 text-xs text-red-500"
+                      >
+                        {socialError}
+                      </p>
+                    )}
                   </div>
 
                   <button
@@ -347,7 +413,10 @@ function RegistroContent() {
                         router.replace("/dashboard");
                       } catch (err) {
                         const msg = err instanceof Error ? err.message : "";
-                        if (msg.includes("Cadastro incompleto") || msg.includes("celular é obrigatório")) {
+                        if (
+                          msg.includes("Cadastro incompleto") ||
+                          msg.includes("celular é obrigatório")
+                        ) {
                           setSocialTokenToComplete({ provider: "google", token: credential });
                         } else {
                           toast.error(msg || "Erro ao entrar com Google");
@@ -369,7 +438,10 @@ function RegistroContent() {
                           router.replace("/dashboard");
                         } catch (err) {
                           const msg = err instanceof Error ? err.message : "";
-                          if (msg.includes("Cadastro incompleto") || msg.includes("celular é obrigatório")) {
+                          if (
+                            msg.includes("Cadastro incompleto") ||
+                            msg.includes("celular é obrigatório")
+                          ) {
                             setSocialTokenToComplete({ provider: "apple", token: idToken, nome });
                           } else {
                             toast.error(msg || "Erro ao entrar com Apple");
@@ -380,14 +452,18 @@ function RegistroContent() {
                     />
                   </div>
 
+                  {isLocalEnv && (
+                    <p className="mt-3 text-[11px] leading-relaxed text-stone-500">
+                      Em localhost, login social depende de origens autorizadas no provedor.
+                    </p>
+                  )}
+
                   <div className="relative mt-6 mb-2">
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full border-t border-stone-200"></div>
                     </div>
                     <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest">
-                      <span className="bg-white px-3 text-stone-400">
-                        Ou crie com seu e-mail
-                      </span>
+                      <span className="bg-white px-3 text-stone-400">Ou crie com seu e-mail</span>
                     </div>
                   </div>
                 </div>
@@ -408,7 +484,9 @@ function RegistroContent() {
                       autoComplete="name"
                       placeholder="Como quer ser chamado?"
                       className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
-                      {...register("nome")}
+                      {...register("nome", {
+                        onChange: () => setFormError(null),
+                      })}
                     />
                     {errors.nome && (
                       <p className="text-xs text-red-500 mt-1">{errors.nome.message}</p>
@@ -429,7 +507,9 @@ function RegistroContent() {
                       autoComplete="email"
                       placeholder="seu@email.com"
                       className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
-                      {...register("email")}
+                      {...register("email", {
+                        onChange: () => setFormError(null),
+                      })}
                     />
                     {errors.email && (
                       <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
@@ -451,11 +531,14 @@ function RegistroContent() {
                       inputMode="tel"
                       placeholder="(11) 99999-9999"
                       className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
-                      {...register("celular")}
+                      {...register("celular", {
+                        onChange: (event) => {
+                          setFormError(null);
+                          event.target.value = formatPhoneInput(event.target.value);
+                        },
+                      })}
                     />
-                    <p className="text-[10px] text-stone-400 mt-1">
-                      Usado para comandos rápidos.
-                    </p>
+                    <p className="text-[10px] text-stone-400 mt-1">Usado para comandos rápidos.</p>
                     {errors.celular && (
                       <p className="text-xs text-red-500 mt-1">{errors.celular.message}</p>
                     )}
@@ -476,13 +559,14 @@ function RegistroContent() {
                         autoComplete="new-password"
                         placeholder="••••••••"
                         className="w-full px-4 py-3 pr-12 rounded-xl border border-stone-200 bg-stone-50 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
-                        {...register("senha")}
+                        {...register("senha", {
+                          onChange: () => setFormError(null),
+                        })}
                       />
                       <button
                         className="absolute inset-y-0 right-0 pr-4 flex items-center text-stone-400 hover:text-stone-600 focus:outline-none"
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        tabIndex={-1}
                         aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                       >
                         {showPassword ? (
@@ -509,14 +593,15 @@ function RegistroContent() {
                             {[1, 2, 3, 4].map((level) => (
                               <div
                                 key={level}
-                                className={`h-1 rounded-full flex-1 transition-colors ${strength >= level
-                                  ? strength <= 2
-                                    ? "bg-amber-400"
-                                    : strength === 3
-                                      ? "bg-yellow-400"
-                                      : "bg-emerald-500"
-                                  : "bg-stone-200"
-                                  }`}
+                                className={`h-1 rounded-full flex-1 transition-colors ${
+                                  strength >= level
+                                    ? strength <= 2
+                                      ? "bg-amber-400"
+                                      : strength === 3
+                                        ? "bg-yellow-400"
+                                        : "bg-emerald-500"
+                                    : "bg-stone-200"
+                                }`}
                               />
                             ))}
                           </div>
@@ -524,8 +609,9 @@ function RegistroContent() {
                             {passedRules.map((rule) => (
                               <div
                                 key={rule.label}
-                                className={`flex items-center gap-1.5 text-[10px] font-bold tracking-wide ${rule.passed ? "text-emerald-600" : "text-stone-400"
-                                  }`}
+                                className={`flex items-center gap-1.5 text-[10px] font-bold tracking-wide ${
+                                  rule.passed ? "text-emerald-600" : "text-stone-400"
+                                }`}
                               >
                                 {rule.passed ? (
                                   <Check className="h-3.5 w-3.5" />
@@ -541,13 +627,27 @@ function RegistroContent() {
                     </AnimatePresence>
                   </div>
 
+                  {formError && (
+                    <div
+                      role="alert"
+                      className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                    >
+                      {formError}
+                    </div>
+                  )}
+
                   {/* Submit */}
                   <button
                     className="w-full mt-6 py-3.5 rounded-xl text-sm font-bold tracking-wider uppercase text-white bg-emerald-700 hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 group"
                     type="submit"
                     disabled={isSubmitting || !allPassed}
                   >
-                    {isSubmitting ? "Criando..." : (
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Criando...
+                      </>
+                    ) : (
                       <>
                         Criar Conta
                         <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
@@ -616,11 +716,22 @@ function RegistroContent() {
                         autoComplete="one-time-code"
                         autoFocus
                         className="block w-full pl-12 h-14 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all text-center text-xl font-mono tracking-[0.5em] placeholder:text-stone-300 placeholder:tracking-[0.5em] font-bold"
-                        {...verifyForm.register("codigo")}
+                        {...verifyForm.register("codigo", {
+                          onChange: (event) => {
+                            verifyForm.clearErrors("codigo");
+                            setVerifyError(null);
+                            event.target.value = event.target.value.replace(/\D/g, "").slice(0, 6);
+                          },
+                        })}
                       />
                     </div>
                     {verifyForm.formState.errors.codigo && (
-                      <p className="text-xs text-red-500 mt-2 text-center">{verifyForm.formState.errors.codigo.message}</p>
+                      <p className="text-xs text-red-500 mt-2 text-center">
+                        {verifyForm.formState.errors.codigo.message}
+                      </p>
+                    )}
+                    {verifyError && (
+                      <p className="text-xs text-red-500 mt-2 text-center">{verifyError}</p>
                     )}
                   </div>
 
@@ -630,7 +741,12 @@ function RegistroContent() {
                     type="submit"
                     disabled={verifying}
                   >
-                    {verifying ? "Verificando..." : (
+                    {verifying ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Verificando...
+                      </>
+                    ) : (
                       <>
                         Verificar e acessar
                         <Check className="h-4 w-4" />

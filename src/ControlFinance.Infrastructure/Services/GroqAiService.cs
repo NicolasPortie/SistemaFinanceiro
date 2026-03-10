@@ -297,13 +297,19 @@ public class GroqAiService : IAiService
         if (resposta == null)
             return true;
 
-        if (!string.Equals(resposta.Intencao, "erro", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        if (string.IsNullOrWhiteSpace(resposta.Resposta))
+        if (string.Equals(resposta.Intencao, "erro", StringComparison.OrdinalIgnoreCase))
             return true;
 
+        if (string.IsNullOrWhiteSpace(resposta.Resposta))
+            return string.Equals(resposta.Intencao, "erro", StringComparison.OrdinalIgnoreCase);
+
         var texto = resposta.Resposta.Trim().ToLowerInvariant();
+        if (texto.Contains("pode fornecer mais detalhes")
+            || texto.Contains("pode me dar mais detalhes")
+            || texto.Contains("poderia explicar melhor")
+            || texto.Contains("nao ficou claro")
+            || texto.Contains("nao ficou claro"))
+            return true;
         return texto.Contains("não entendi")
             || texto.Contains("nao entendi")
             || texto.Contains("probleminha")
@@ -868,21 +874,36 @@ public class GroqAiService : IAiService
     public async Task<ResultadoTranscricao> TranscreverAudioAsync(byte[] audioData, string mimeType)
     {
         ValidarChavesConfiguradas();
-        // Normalizar MIME types inválidos
-        mimeType = NormalizarMimeType(mimeType);
+        var mimeOriginal = mimeType;
+        var mimeInferido = InferirMimeTypeAudio(audioData);
+        var mimeTypesCandidatos = ObterMimeTypesAudioCandidatos(audioData, mimeType);
 
-        // Estimativa de duração para log (OGG/opus ~1KB/s, MP3 ~16KB/s)
-        var duracaoEstimadaSeg = EstimarDuracaoAudio(audioData.Length, mimeType);
-        _logger.LogInformation("Áudio recebido: {Tamanho}KB, MIME={Mime}, duração estimada={Duracao:F0}s", audioData.Length / 1024, mimeType, duracaoEstimadaSeg);
+        _logger.LogInformation(
+            "Audio pipeline iniciado. Bytes={Bytes} MimeOriginal={MimeOriginal} MimeInferido={MimeInferido} Candidatos={MimeCandidatos}",
+            audioData.Length,
+            mimeOriginal,
+            mimeInferido ?? "desconhecido",
+            string.Join(", ", mimeTypesCandidatos));
 
-        // Timeout dinâmico baseado na duração estimada (mínimo 30s, +2s por segundo de áudio)
-        var timeoutSegundos = Math.Max(30, (int)(duracaoEstimadaSeg * 2) + 15);
-
-        for (var i = 0; i < _groqApiKeys.Count; i++)
+        foreach (var mimeCandidato in mimeTypesCandidatos)
         {
-            var resultado = await TranscreverViaGroqWhisperAsync(audioData, mimeType, _groqApiKeys[i], i + 1, timeoutSegundos);
-            if (resultado != null && resultado.Sucesso)
+            // Estimativa de duração para log (OGG/opus ~1KB/s, MP3 ~16KB/s)
+            var duracaoEstimadaSeg = EstimarDuracaoAudio(audioData.Length, mimeCandidato);
+            _logger.LogInformation(
+                "Audio candidato em processamento. TamanhoKB={TamanhoKB} MimeCandidato={MimeCandidato} DuracaoEstimadaSeg={Duracao:F0}",
+                audioData.Length / 1024,
+                mimeCandidato,
+                duracaoEstimadaSeg);
+
+            // Timeout dinâmico baseado na duração estimada (mínimo 30s, +2s por segundo de áudio)
+            var timeoutSegundos = Math.Max(30, (int)(duracaoEstimadaSeg * 2) + 15);
+
+            for (var i = 0; i < _groqApiKeys.Count; i++)
             {
+                var resultado = await TranscreverViaGroqWhisperAsync(audioData, mimeCandidato, _groqApiKeys[i], i + 1, timeoutSegundos);
+                if (resultado == null || !resultado.Sucesso)
+                    continue;
+
                 resultado.DuracaoSegundos = duracaoEstimadaSeg;
 
                 // Detectar silêncio/alucinação: transcrição muito curta para áudio longo
@@ -892,11 +913,24 @@ public class GroqAiService : IAiService
                     resultado.Confianca = Math.Min(resultado.Confianca, -1.5); // Forçar baixa confiança
                 }
 
+                _logger.LogInformation(
+                    "Audio pipeline concluido com sucesso. MimeSelecionado={MimeSelecionado} BaixaConfianca={BaixaConfianca} Confianca={Confianca:F2} DuracaoSegundos={DuracaoSegundos:F0}",
+                    mimeCandidato,
+                    resultado.BaixaConfianca,
+                    resultado.Confianca,
+                    resultado.DuracaoSegundos);
+
                 return resultado;
             }
+
+            _logger.LogWarning("Falha ao transcrever audio usando MIME {Mime}. Tentando proximo candidato, se houver.", mimeCandidato);
         }
 
-        _logger.LogWarning("Falha ao transcrever áudio via Groq Whisper. Nenhuma chave disponível obteve sucesso.");
+        _logger.LogWarning(
+            "Falha ao transcrever audio via Groq Whisper. MimeOriginal={MimeOriginal} MimeInferido={MimeInferido} Candidatos={MimeCandidatos}",
+            mimeOriginal,
+            mimeInferido ?? "desconhecido",
+            string.Join(", ", mimeTypesCandidatos));
         return new ResultadoTranscricao();
     }
 
@@ -905,14 +939,140 @@ public class GroqAiService : IAiService
     /// </summary>
     private static string NormalizarMimeType(string mimeType)
     {
-        return mimeType switch
+        var tipoBase = mimeType.Split(';', 2, StringSplitOptions.TrimEntries)[0].Trim().ToLowerInvariant();
+
+        return tipoBase switch
         {
+            "" => "application/octet-stream",
+            "application/ogg" => "audio/ogg",
+            "audio/ogg" => "audio/ogg",
+            "audio/oga" => "audio/ogg",
+            "audio/opus" => "audio/ogg",
             "audio/m4a" => "audio/mp4",           // audio/m4a não existe na RFC; m4a é container MP4
             "audio/x-m4a" => "audio/mp4",
             "audio/x-wav" => "audio/wav",
+            "audio/wave" => "audio/wav",
             "audio/mp3" => "audio/mpeg",           // mp3 → mpeg (padrão IANA)
-            _ => mimeType
+            "audio/x-mp3" => "audio/mpeg",
+            "audio/mpeg3" => "audio/mpeg",
+            "video/webm" => "audio/webm",
+            "video/mp4" => "audio/mp4",
+            _ => tipoBase
         };
+    }
+
+    private static List<string> ObterMimeTypesAudioCandidatos(byte[] audioData, string mimeType)
+    {
+        var candidatos = new List<string>();
+
+        void Adicionar(string? candidato)
+        {
+            if (string.IsNullOrWhiteSpace(candidato))
+                return;
+
+            var normalizado = NormalizarMimeType(candidato);
+            if (string.IsNullOrWhiteSpace(normalizado))
+                return;
+
+            if (!candidatos.Contains(normalizado, StringComparer.Ordinal))
+                candidatos.Add(normalizado);
+        }
+
+        Adicionar(mimeType);
+        Adicionar(InferirMimeTypeAudio(audioData));
+
+        if (candidatos.Count == 0 || candidatos.Contains("application/octet-stream", StringComparer.Ordinal))
+        {
+            Adicionar("audio/ogg");
+            Adicionar("audio/webm");
+            Adicionar("audio/mp4");
+            Adicionar("audio/mpeg");
+            Adicionar("audio/wav");
+        }
+
+        return candidatos;
+    }
+
+    private static string? InferirMimeTypeAudio(byte[] audioData)
+    {
+        if (audioData.Length < 4)
+            return null;
+
+        if (audioData.Length >= 4
+            && audioData[0] == 0x4F
+            && audioData[1] == 0x67
+            && audioData[2] == 0x67
+            && audioData[3] == 0x53)
+            return "audio/ogg";
+
+        if (audioData.Length >= 12
+            && audioData[0] == 0x52
+            && audioData[1] == 0x49
+            && audioData[2] == 0x46
+            && audioData[3] == 0x46
+            && audioData[8] == 0x57
+            && audioData[9] == 0x41
+            && audioData[10] == 0x56
+            && audioData[11] == 0x45)
+            return "audio/wav";
+
+        if (audioData.Length >= 4
+            && audioData[0] == 0x1A
+            && audioData[1] == 0x45
+            && audioData[2] == 0xDF
+            && audioData[3] == 0xA3)
+            return "audio/webm";
+
+        if (audioData.Length >= 3
+            && audioData[0] == 0x49
+            && audioData[1] == 0x44
+            && audioData[2] == 0x33)
+            return "audio/mpeg";
+
+        if ((audioData[0] == 0xFF) && (audioData[1] & 0xE0) == 0xE0)
+            return "audio/mpeg";
+
+        if (audioData.Length >= 8
+            && audioData[4] == 0x66
+            && audioData[5] == 0x74
+            && audioData[6] == 0x79
+            && audioData[7] == 0x70)
+            return "audio/mp4";
+
+        return null;
+    }
+
+    private static string NormalizarMimeTypeImagem(byte[] imageData, string mimeType)
+    {
+        var tipoBase = mimeType.Split(';', 2, StringSplitOptions.TrimEntries)[0].Trim().ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(tipoBase) && tipoBase != "application/octet-stream")
+            return tipoBase;
+
+        if (imageData.Length >= 4
+            && imageData[0] == 0x89
+            && imageData[1] == 0x50
+            && imageData[2] == 0x4E
+            && imageData[3] == 0x47)
+            return "image/png";
+
+        if (imageData.Length >= 3
+            && imageData[0] == 0xFF
+            && imageData[1] == 0xD8
+            && imageData[2] == 0xFF)
+            return "image/jpeg";
+
+        if (imageData.Length >= 12
+            && imageData[0] == 0x52
+            && imageData[1] == 0x49
+            && imageData[2] == 0x46
+            && imageData[3] == 0x46
+            && imageData[8] == 0x57
+            && imageData[9] == 0x45
+            && imageData[10] == 0x42
+            && imageData[11] == 0x50)
+            return "image/webp";
+
+        return "image/jpeg";
     }
 
     /// <summary>
@@ -1127,16 +1287,33 @@ public class GroqAiService : IAiService
     public async Task<string> ExtrairTextoImagemAsync(byte[] imageData, string mimeType)
     {
         ValidarChavesConfiguradas();
+        var mimeOriginal = mimeType;
+        mimeType = NormalizarMimeTypeImagem(imageData, mimeType);
+        _logger.LogInformation(
+            "Imagem recebida para visao. Bytes={Bytes} MimeOriginal={MimeOriginal} MimeNormalizado={MimeNormalizado}",
+            imageData.Length,
+            mimeOriginal,
+            mimeType);
         var base64Image = Convert.ToBase64String(imageData);
-        var prompt = "Extraia todos os valores, itens e informacoes financeiras desta imagem (nota fiscal, cupom, recibo). Retorne em texto simples e organizado.";
+        var prompt = "Analise esta imagem em portugues do Brasil. Se for nota fiscal, cupom, recibo, comprovante, boleto, fatura, extrato ou tela com dados financeiros, extraia estabelecimento, data, total, forma de pagamento, itens, parcelas e o valor mais provavel da transacao. Se nao for um documento financeiro, descreva objetivamente o que aparece na imagem, os textos visiveis e qualquer indicio util para entender a intencao do usuario. Retorne texto simples, curto e informativo.";
 
         if (_groqApiKeys.Count > 0)
         {
             var visionResult = await ChamarGroqVisionAsync(prompt, base64Image, mimeType);
             if (!string.IsNullOrWhiteSpace(visionResult))
+            {
+                _logger.LogInformation(
+                    "Imagem processada com sucesso pela visao. MimeNormalizado={MimeNormalizado} TamanhoResposta={TamanhoResposta}",
+                    mimeType,
+                    visionResult.Length);
                 return visionResult;
+            }
         }
 
+        _logger.LogWarning(
+            "Imagem sem texto util apos tentativa de visao. MimeOriginal={MimeOriginal} MimeNormalizado={MimeNormalizado}",
+            mimeOriginal,
+            mimeType);
         return string.Empty;
     }
 

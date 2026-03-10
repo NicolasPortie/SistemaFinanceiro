@@ -24,6 +24,11 @@ public interface ITelegramBotService
     Task<string> ProcessarImagemAsync(long chatId, byte[] imageData, string mimeType, string nomeUsuario, string? caption = null);
 
     /// <summary>
+    /// Processa um documento enviado no Telegram (PDF ou imagem como arquivo).
+    /// </summary>
+    Task<string> ProcessarDocumentoAsync(long chatId, byte[] documentData, string mimeType, string fileName, string nomeUsuario, string? caption = null);
+
+    /// <summary>
     /// Processa um contato compartilhado no Telegram para auto-vinculação por celular.
     /// </summary>
     Task<string> ProcessarContatoAsync(long chatId, string phoneNumber, string nomeUsuario);

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useLimites, useCategorias, useDefinirLimite, useRemoverLimite } from "@/hooks/use-queries";
 import { formatCurrency } from "@/lib/format";
 import { limiteSchema, type LimiteData } from "@/lib/schemas";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -15,9 +15,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Shield,
   BarChart3,
-  RefreshCw,
 } from "lucide-react";
 import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
 import { DialogShellHeader } from "@/components/shared/dialog-shell";
@@ -49,7 +47,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 /* ────────────────────────────────────────────── */
 /* Helpers                                         */
@@ -70,10 +67,10 @@ function statusIcon(status: string) {
   }
 }
 
-function statusLabel(status: string) {
+function statusLabel(status: string, compact = false) {
   switch (status) {
     case "ok":
-      return "Dentro do limite";
+      return compact ? "OK" : "Dentro do limite";
     case "atencao":
       return "Atenção";
     case "critico":
@@ -198,64 +195,87 @@ export default function LimitesPage() {
         : avgUse >= 50
           ? "Controle de gastos dentro do esperado"
           : "Orçamento sob controle";
-  const mostCritical = limites.length > 0
-    ? [...limites].sort((a, b) => b.percentualConsumido - a.percentualConsumido)[0]
-    : null;
+  const mostCritical =
+    limites.length > 0
+      ? [...limites].sort((a, b) => b.percentualConsumido - a.percentualConsumido)[0]
+      : null;
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8 lg:gap-10">
       {/* ── Hero Banner ───────────────────────────────────────────── */}
-      <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 xl:p-12 flex flex-col md:flex-row items-center gap-6 sm:gap-8 lg:gap-12 xl:gap-16">
+      <div className="exec-card flex flex-col items-center gap-6 rounded-2xl p-5 sm:gap-8 sm:rounded-[2.5rem] sm:p-8 md:flex-row lg:gap-12 lg:rounded-[3rem] lg:p-10 xl:gap-16 xl:p-12">
         <div className="flex-1">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl serif-italic text-[#0F172A] mb-3 sm:mb-4">Controle de Gastos</h2>
+          <h2 className="mb-3 text-2xl serif-italic text-slate-900 dark:text-white sm:mb-4 sm:text-3xl lg:text-4xl xl:text-5xl">
+            Controle de Gastos
+          </h2>
           <p className="text-slate-500 text-sm leading-relaxed mb-8 max-w-lg">
-            Visão consolidada do seu orçamento mensal por categoria. Acompanhe a execução dos limites em tempo real para evitar surpresas no fechamento.
+            Visão consolidada do seu orçamento mensal por categoria. Acompanhe a execução dos
+            limites em tempo real para evitar surpresas no fechamento.
           </p>
           <div className="flex gap-6 sm:gap-8 lg:gap-12 xl:gap-16 flex-wrap">
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Gasto Total Acumulado</p>
-              <p className="text-xl sm:text-2xl lg:text-3xl mono-data font-medium text-[#0F172A]">{formatCurrency(totalGasto)}</p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">
+                Gasto Total Acumulado
+              </p>
+              <p className="text-xl mono-data font-medium text-slate-900 dark:text-white sm:text-2xl lg:text-3xl">
+                {formatCurrency(totalGasto)}
+              </p>
             </div>
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Orçamento Total</p>
-              <p className="text-xl sm:text-2xl lg:text-3xl mono-data font-medium text-emerald-600">{formatCurrency(totalOrcamento)}</p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">
+                Orçamento Total
+              </p>
+              <p className="text-xl sm:text-2xl lg:text-3xl mono-data font-medium text-emerald-600">
+                {formatCurrency(totalOrcamento)}
+              </p>
             </div>
           </div>
         </div>
-        <div className="w-full md:w-[360px] lg:w-[420px] shrink-0">
+        <div className="w-full shrink-0 md:w-[360px] lg:w-[420px]">
           <div className="flex justify-between items-end mb-3">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Progresso do Orçamento</span>
-            <span className="text-2xl mono-data font-bold text-[#0F172A]">{avgUse}%</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Progresso do Orçamento
+            </span>
+            <span className="text-2xl mono-data font-bold text-slate-900 dark:text-white">
+              {avgUse}%
+            </span>
           </div>
-          <div className="bg-slate-100 h-12 rounded-xl relative overflow-hidden">
+          <div className="relative h-12 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800/80">
             <div
               className={`h-full flex items-center px-4 transition-all ${avgUse > 80 ? "bg-rose-500" : avgUse > 60 ? "bg-amber-500" : "bg-emerald-500"}`}
               style={{ width: `${Math.min(avgUse, 100)}%` }}
             >
               {avgUse > 15 && (
-                <span className="text-white text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">Realizado</span>
+                <span className="text-white text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
+                  Realizado
+                </span>
               )}
             </div>
             <div className="absolute right-4 top-1/2 -translate-y-1/2">
-              <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Orçado</span>
+              <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                Orçado
+              </span>
             </div>
           </div>
           <p className="mt-4 text-[11px] text-slate-400 italic">
-            Você utilizou {formatCurrency(totalGasto)} dos {formatCurrency(totalOrcamento)} planejados para este ciclo.
+            Você utilizou {formatCurrency(totalGasto)} dos {formatCurrency(totalOrcamento)}{" "}
+            planejados para este ciclo.
           </p>
         </div>
       </div>
 
       {/* ── Section Header ───────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-2">
-        <div className="flex items-center gap-6">
-          <h3 className="text-2xl serif-italic text-[#0F172A]">Limites por Categoria</h3>
-          <div className="h-px w-24 bg-slate-200" />
+      <div className="flex flex-col gap-4 px-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4 sm:gap-6">
+          <h3 className="text-2xl serif-italic text-slate-900 dark:text-white">
+            Limites por Categoria
+          </h3>
+          <div className="hidden h-px w-24 bg-slate-200 dark:bg-slate-700 sm:block" />
         </div>
         <button
           onClick={() => setShowForm(true)}
           disabled={categoriasDisponiveis.length === 0}
-          className="flex items-center gap-2 text-emerald-600 font-bold text-[10px] uppercase tracking-widest hover:translate-x-1 transition-transform cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex w-full items-center justify-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-emerald-600 transition-transform hover:translate-x-1 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:justify-start sm:rounded-none sm:border-none sm:bg-transparent sm:px-0 sm:py-0"
         >
           <Plus className="h-4 w-4" />
           Ajustar Limites
@@ -287,54 +307,91 @@ export default function LimitesPage() {
       ) : (
         <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden">
           {/* Desktop Header row — hidden on mobile */}
-          <div className="hidden lg:grid grid-cols-12 gap-4 px-6 xl:px-10 py-6 bg-slate-50 border-b border-slate-100/80">
-            <div className="col-span-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">Categoria</div>
-            <div className="col-span-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">Status</div>
-            <div className="col-span-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">Consumo &amp; Média Diária</div>
-            <div className="col-span-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 text-right">Limite Definido</div>
-            <div className="col-span-1 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 text-right">Ação</div>
+          <div className="hidden lg:grid grid-cols-12 gap-4 border-b border-slate-100/80 bg-slate-50 px-6 py-6 dark:border-slate-700/50 dark:bg-slate-800/40 xl:px-10">
+            <div className="col-span-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
+              Categoria
+            </div>
+            <div className="col-span-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
+              Status
+            </div>
+            <div className="col-span-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
+              Consumo &amp; Média Diária
+            </div>
+            <div className="col-span-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 text-right">
+              Limite Definido
+            </div>
+            <div className="col-span-1 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 text-right">
+              Ação
+            </div>
           </div>
 
           {/* Mobile card view */}
-          <div className="lg:hidden divide-y divide-slate-50">
+          <div className="divide-y divide-slate-50 dark:divide-slate-800/50 lg:hidden">
             {limites.map((l) => {
               const diff = l.valorLimite - l.gastoAtual;
-              const diffText = diff >= 0 ? `Faltam ${formatCurrency(diff)}` : `Excedido em ${formatCurrency(Math.abs(diff))}`;
-              const diffColor = diff < 0 ? "text-rose-600" : l.status === "atencao" ? "text-amber-600" : "text-emerald-600";
+              const diffText =
+                diff >= 0
+                  ? `Faltam ${formatCurrency(diff)}`
+                  : `Excedido em ${formatCurrency(Math.abs(diff))}`;
+              const diffColor =
+                diff < 0
+                  ? "text-rose-600"
+                  : l.status === "atencao"
+                    ? "text-amber-600"
+                    : "text-emerald-600";
               const pct = Math.min(l.percentualConsumido, 100);
-              const barColor = l.status === "ok" ? "bg-emerald-500" : l.status === "atencao" ? "bg-amber-500" : "bg-rose-500";
-              const pctColor = l.status === "ok" ? "text-emerald-600" : l.status === "atencao" ? "text-amber-500" : "text-rose-600";
-              let pillCls = ""; let pillLabel = "";
-              if (l.status === "ok") { pillCls = "bg-emerald-50 text-emerald-600 border-emerald-100"; pillLabel = "OK"; }
-              else if (l.status === "atencao") { pillCls = "bg-amber-50 text-amber-600 border-amber-100"; pillLabel = "Atenção"; }
-              else if (l.status === "excedido") { pillCls = "bg-rose-50 text-rose-600 border-rose-100"; pillLabel = "Excedido"; }
-              else { pillCls = "bg-rose-50 text-rose-600 border-rose-100"; pillLabel = "Crítico"; }
+              const pctColor =
+                l.status === "ok"
+                  ? "text-emerald-600"
+                  : l.status === "atencao"
+                    ? "text-amber-500"
+                    : "text-rose-600";
               return (
                 <div key={l.id} className="p-4 sm:p-6 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
-                        <Gauge className="h-4 w-4 text-slate-400" />
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${statusBgColor(l.status)}`}
+                      >
+                        {statusIcon(l.status)}
                       </div>
                       <div className="min-w-0">
-                        <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider truncate">{l.categoriaNome}</h4>
+                        <h4 className="truncate text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                          {l.categoriaNome}
+                        </h4>
                         <p className={`text-[10px] font-medium ${diffColor}`}>{diffText}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border ${pillCls}`}>{pillLabel}</span>
-                      <button onClick={() => setDeleteId(l.id)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer" title="Remover">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border ${statusBadgeCls(l.status)}`}
+                      >
+                        {statusLabel(l.status, true)}
+                      </span>
+                      <button
+                        onClick={() => setDeleteId(l.id)}
+                        aria-label={`Remover limite de ${l.categoriaNome}`}
+                        className="rounded-lg p-1.5 text-slate-400 hover:text-rose-600 cursor-pointer"
+                        title="Remover"
+                      >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[10px]">
-                      <span className="text-slate-500">Limite: {formatCurrency(l.valorLimite)}</span>
-                      <span className={`font-bold ${pctColor}`}>{l.percentualConsumido.toFixed(0)}%</span>
+                      <span className="text-slate-500">
+                        Limite: {formatCurrency(l.valorLimite)}
+                      </span>
+                      <span className={`font-bold ${pctColor}`}>
+                        {l.percentualConsumido.toFixed(0)}%
+                      </span>
                     </div>
                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                      <div
+                        className={`h-full rounded-full ${progressColor(l.status)}`}
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -344,103 +401,91 @@ export default function LimitesPage() {
 
           {/* Desktop Data rows — hidden on mobile */}
           <div className="hidden lg:block">
-          {limites.map((l, i) => {
-            const diff = l.valorLimite - l.gastoAtual;
-            const diffText =
-              diff >= 0
-                ? `Faltam ${formatCurrency(diff)} para o limite`
-                : `Excedido em ${formatCurrency(Math.abs(diff))}`;
-            const diffColor =
-              diff < 0
-                ? "text-rose-600"
-                : l.status === "atencao"
-                  ? "text-amber-600"
-                  : "text-emerald-600";
-            const mediaDiaria = l.gastoAtual / dayOfMonth;
-            const pct = Math.min(l.percentualConsumido, 100);
-            const barColor =
-              l.status === "ok"
-                ? "bg-emerald-500"
-                : l.status === "atencao"
-                  ? "bg-amber-500"
-                  : "bg-rose-500";
-            const pctColor =
-              l.status === "ok"
-                ? "text-emerald-600"
-                : l.status === "atencao"
-                  ? "text-amber-500"
-                  : "text-rose-600";
-            let pillCls = "";
-            let pillLabel = "";
-            if (l.status === "ok") {
-              pillCls = "bg-emerald-50 text-emerald-600 border-emerald-100";
-              pillLabel = "Dentro do Limite";
-            } else if (l.status === "atencao") {
-              pillCls = "bg-amber-50 text-amber-600 border-amber-100";
-              pillLabel = "Atenção";
-            } else if (l.status === "excedido") {
-              pillCls = "bg-rose-50 text-rose-600 border-rose-100";
-              pillLabel = "Excedido";
-            } else {
-              pillCls = "bg-rose-50 text-rose-600 border-rose-100";
-              pillLabel = "Crítico";
-            }
-            const isLast = i === limites.length - 1;
-            return (
-              <div
-                key={l.id}
-                className={`grid grid-cols-12 gap-4 px-6 xl:px-10 py-8 items-center group hover:bg-slate-50/50 transition-all${!isLast ? " border-b border-slate-50" : ""}`}
-              >
-                {/* Categoria */}
-                <div className="col-span-4 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
-                    <Gauge className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-bold text-[#0F172A] uppercase tracking-wider truncate">{l.categoriaNome}</h4>
-                    <p className={`text-[10px] font-medium ${diffColor}`}>{diffText}</p>
-                  </div>
-                </div>
-                {/* Status */}
-                <div className="col-span-2">
-                  <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${pillCls}`}>
-                    {pillLabel}
-                  </span>
-                </div>
-                {/* Consumo & Média Diária */}
-                <div className="col-span-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] mono-data font-bold text-slate-500 whitespace-nowrap">
-                      Média: {formatCurrency(mediaDiaria)}/dia
-                    </span>
-                    <span className={`text-[10px] font-bold ${pctColor}`}>
-                      {l.percentualConsumido.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            {limites.map((l, i) => {
+              const diff = l.valorLimite - l.gastoAtual;
+              const diffText =
+                diff >= 0
+                  ? `Faltam ${formatCurrency(diff)} para o limite`
+                  : `Excedido em ${formatCurrency(Math.abs(diff))}`;
+              const diffColor =
+                diff < 0
+                  ? "text-rose-600"
+                  : l.status === "atencao"
+                    ? "text-amber-600"
+                    : "text-emerald-600";
+              const mediaDiaria = l.gastoAtual / dayOfMonth;
+              const pct = Math.min(l.percentualConsumido, 100);
+              const pctColor =
+                l.status === "ok"
+                  ? "text-emerald-600"
+                  : l.status === "atencao"
+                    ? "text-amber-500"
+                    : "text-rose-600";
+              const isLast = i === limites.length - 1;
+              return (
+                <div
+                  key={l.id}
+                  className={`grid grid-cols-12 gap-4 px-6 xl:px-10 py-8 items-center group hover:bg-slate-50/50 transition-all${!isLast ? " border-b border-slate-50" : ""}`}
+                >
+                  {/* Categoria */}
+                  <div className="col-span-4 flex items-center gap-4">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                      style={{ width: `${pct}%` }}
-                    />
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${statusBgColor(l.status)}`}
+                    >
+                      {statusIcon(l.status)}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="truncate text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                        {l.categoriaNome}
+                      </h4>
+                      <p className={`text-[10px] font-medium ${diffColor}`}>{diffText}</p>
+                    </div>
+                  </div>
+                  {/* Status */}
+                  <div className="col-span-2">
+                    <span
+                      className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${statusBadgeCls(l.status)}`}
+                    >
+                      {statusLabel(l.status)}
+                    </span>
+                  </div>
+                  {/* Consumo & Média Diária */}
+                  <div className="col-span-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] mono-data font-bold text-slate-500 whitespace-nowrap">
+                        Média: {formatCurrency(mediaDiaria)}/dia
+                      </span>
+                      <span className={`text-[10px] font-bold ${pctColor}`}>
+                        {l.percentualConsumido.toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${progressColor(l.status)}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                  {/* Limite Definido */}
+                  <div className="col-span-2 text-right">
+                    <p className="text-sm mono-data font-medium text-slate-900 dark:text-white">
+                      {formatCurrency(l.valorLimite)}
+                    </p>
+                  </div>
+                  {/* Ação */}
+                  <div className="col-span-1 flex justify-end">
+                    <button
+                      onClick={() => setDeleteId(l.id)}
+                      aria-label={`Remover limite de ${l.categoriaNome}`}
+                      className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 opacity-0 group-hover:opacity-100 cursor-pointer dark:hover:bg-rose-500/10"
+                      title="Remover limite"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-                {/* Limite Definido */}
-                <div className="col-span-2 text-right">
-                  <p className="text-sm mono-data font-medium text-[#0F172A]">{formatCurrency(l.valorLimite)}</p>
-                </div>
-                {/* Ação */}
-                <div className="col-span-1 flex justify-end">
-                  <button
-                    onClick={() => setDeleteId(l.id)}
-                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                    title="Remover limite"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
           </div>
         </div>
       )}
@@ -449,14 +494,16 @@ export default function LimitesPage() {
       {!loading && !isError && limites.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 pb-4">
           {/* Análise */}
-          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 lg:col-span-2">
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 dark:border-emerald-500/15 dark:bg-emerald-500/10 sm:rounded-[2.5rem] sm:p-8 lg:col-span-2 lg:rounded-[3rem] lg:p-10">
             <div className="flex items-start gap-6">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-emerald-200">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200 dark:shadow-emerald-500/10">
                 <BarChart3 className="h-5 w-5" />
               </div>
               <div>
-                <h5 className="serif-italic text-xl text-emerald-900 mb-2">Análise de Gastos por Categoria</h5>
-                <p className="text-sm text-emerald-800/80 leading-relaxed">
+                <h5 className="mb-2 text-xl serif-italic text-emerald-900 dark:text-emerald-100">
+                  Análise de Gastos por Categoria
+                </h5>
+                <p className="text-sm leading-relaxed text-emerald-800/80 dark:text-emerald-100/80">
                   {mostCritical && mostCritical.percentualConsumido >= 80
                     ? `A categoria "${mostCritical.categoriaNome}" está com ${mostCritical.percentualConsumido.toFixed(0)}% do limite consumido — requer atenção imediata. `
                     : ""}
@@ -471,10 +518,14 @@ export default function LimitesPage() {
           </div>
           {/* Status de Pressão Orçamentária */}
           <div className="bg-[#0F172A] rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 text-white flex flex-col justify-between min-h-[140px] sm:min-h-[180px]">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-60">Status de Pressão Orçamentária</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-60">
+              Status de Pressão Orçamentária
+            </p>
             <div>
               <span className="text-3xl serif-italic">{pressureLabel}</span>
-              <p className="text-[10px] opacity-60 mt-2 uppercase tracking-widest">{pressureDesc}</p>
+              <p className="text-[10px] opacity-60 mt-2 uppercase tracking-widest">
+                {pressureDesc}
+              </p>
             </div>
           </div>
         </div>
@@ -483,8 +534,6 @@ export default function LimitesPage() {
       {/* ═══ New Limit Dialog ═══ */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-
-
           {/* Header */}
           <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/[0.08] bg-emerald-600/[0.03] p-3.5 sm:p-4">
@@ -492,7 +541,9 @@ export default function LimitesPage() {
                 <Gauge className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <DialogTitle className="text-lg sm:text-xl font-semibold">Definir Limite</DialogTitle>
+                <DialogTitle className="text-lg sm:text-xl font-semibold">
+                  Definir Limite
+                </DialogTitle>
                 <DialogDescription className="text-muted-foreground text-xs sm:text-[13px] mt-0.5">
                   Configure um limite de gasto para uma categoria
                 </DialogDescription>
@@ -502,10 +553,7 @@ export default function LimitesPage() {
 
           {/* Form body */}
           <div>
-            <form
-              onSubmit={form.handleSubmit(handleSalvar)}
-              className="space-y-4 sm:space-y-5"
-            >
+            <form onSubmit={form.handleSubmit(handleSalvar)} className="space-y-4 sm:space-y-5">
               {/* Main fields */}
               <div className="space-y-4 rounded-2xl border border-emerald-600/[0.08] dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-4 sm:p-5">
                 <div className="space-y-1.5">

@@ -11,6 +11,10 @@ public class WhatsAppWebhookRequest
     public string? ImageData { get; set; }
     public string? ImageMimeType { get; set; }
     public string? ImageCaption { get; set; }
+    public string? DocumentData { get; set; }
+    public string? DocumentMimeType { get; set; }
+    public string? DocumentFileName { get; set; }
+    public string? DocumentCaption { get; set; }
     public string? PushName { get; set; }
     public long Timestamp { get; set; }
     public bool IsVoiceNote { get; set; }

@@ -27,8 +27,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CreditCard,
-  Banknote,
-  Smartphone,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -76,13 +74,6 @@ import { Switch } from "@/components/ui/switch";
 /* ────────────────────────────────────────────── */
 
 type AnalysisMode = "rapida" | "projecao";
-
-const paymentMethods = [
-  { value: "debito", label: "Débito", icon: Banknote },
-  { value: "credito", label: "Crédito", icon: CreditCard },
-];
-
-const parcelasOpcoes = [1, 2, 3, 4, 6, 8, 10, 12];
 
 /* ────────────────────────────────────────────── */
 /* Helper functions                                */
@@ -261,19 +252,24 @@ export default function ConsultorFinanceiroPage() {
   /* ── render ── */
   return (
     <div className="flex flex-col gap-5 sm:gap-8">
-
       {/* ── Page Header ────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-[#0F172A] mb-2">Simulação</h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Consultor Financeiro Estratégico</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-slate-900 dark:text-white mb-2">
+            Simulação
+          </h1>
+          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">
+            Consultor Financeiro Estratégico
+          </p>
         </div>
         <button
+          type="button"
           onClick={() => {
             setTab(tab === "historico" ? "nova" : "historico");
             if (tab !== "historico") carregarHistorico();
           }}
-          className="flex items-center gap-2 exec-card px-5 py-3 rounded-2xl text-[9px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+          aria-pressed={tab === "historico"}
+          className="flex items-center gap-2 exec-card px-5 py-3 rounded-2xl text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
         >
           <History className="h-4 w-4" />
           {tab === "historico" ? "Nova Análise" : "Ver Histórico"}
@@ -292,21 +288,30 @@ export default function ConsultorFinanceiroPage() {
             {/* ═══ LEFT: Input Form (4 cols) ═══ */}
             <div className="lg:col-span-4 flex flex-col gap-6">
               <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 flex flex-col overflow-hidden">
-
                 {/* Mode Toggle */}
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-4">Configuração</p>
-                <div className="flex flex-col gap-2 p-1.5 bg-slate-100 rounded-2xl mb-8">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-4">
+                  Configuração
+                </p>
+                <div className="flex flex-col gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/70 rounded-2xl mb-8">
                   <button
                     type="button"
-                    onClick={() => { setMode("rapida"); handleReset(); }}
-                    className={`w-full py-2.5 rounded-xl text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer ${mode === "rapida" ? "bg-white text-[#0F172A] shadow-sm" : "text-slate-500 hover:bg-white/50"}`}
+                    onClick={() => {
+                      setMode("rapida");
+                      handleReset();
+                    }}
+                    aria-pressed={mode === "rapida"}
+                    className={`w-full py-2.5 rounded-xl text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer ${mode === "rapida" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-900/50"}`}
                   >
                     Pensamento Rápido
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMode("projecao"); handleReset(); }}
-                    className={`w-full py-2.5 rounded-xl text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer ${mode === "projecao" ? "bg-white text-[#0F172A] shadow-sm" : "text-slate-500 hover:bg-white/50"}`}
+                    onClick={() => {
+                      setMode("projecao");
+                      handleReset();
+                    }}
+                    aria-pressed={mode === "projecao"}
+                    className={`w-full py-2.5 rounded-xl text-[8px] font-bold uppercase tracking-widest transition-all cursor-pointer ${mode === "projecao" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-900/50"}`}
                   >
                     Projeção Estratégica
                   </button>
@@ -323,43 +328,76 @@ export default function ConsultorFinanceiroPage() {
                       className="flex flex-col gap-6"
                       onSubmit={rapidaForm.handleSubmit(handleRapida)}
                     >
-                      <div className="border-b border-slate-50 pb-6">
-                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Valor (R$) *</label>
+                      <div className="border-b border-slate-50 dark:border-slate-800 pb-6">
+                        <label
+                          htmlFor="simulacao-rapida-valor"
+                          className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2"
+                        >
+                          Valor (R$) *
+                        </label>
                         <div className="flex items-baseline gap-1">
-                          <span className="text-[10px] text-slate-400 font-bold">R$</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">
+                            R$
+                          </span>
                           <CurrencyInput
+                            id="simulacao-rapida-valor"
+                            name="valor_rapido"
                             placeholder="0,00"
-                            className={`flex-1 bg-transparent border-none p-0 text-xl font-semibold text-[#0F172A] focus:ring-0 outline-none placeholder:text-slate-300 ${rapidaForm.formState.errors.valor ? "text-red-500" : ""}`}
+                            className={`flex-1 bg-transparent border-none p-0 text-xl font-semibold text-slate-900 dark:text-white focus:ring-0 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-500 ${rapidaForm.formState.errors.valor ? "text-red-500" : ""}`}
                             value={rapidaForm.watch("valor")}
-                            onValueChange={(v) => rapidaForm.setValue("valor", v, { shouldValidate: rapidaForm.formState.isSubmitted })}
+                            onValueChange={(v) =>
+                              rapidaForm.setValue("valor", v, {
+                                shouldValidate: rapidaForm.formState.isSubmitted,
+                              })
+                            }
                           />
                         </div>
                         {rapidaForm.formState.errors.valor && (
-                          <p className="text-xs text-red-500 font-medium mt-1">{rapidaForm.formState.errors.valor.message}</p>
+                          <p className="text-xs text-red-500 font-medium mt-1">
+                            {rapidaForm.formState.errors.valor.message}
+                          </p>
                         )}
                       </div>
 
-                      <div className="border-b border-slate-50 pb-6">
-                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Descrição</label>
+                      <div className="border-b border-slate-50 dark:border-slate-800 pb-6">
+                        <label
+                          htmlFor="simulacao-rapida-descricao"
+                          className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2"
+                        >
+                          Descrição
+                        </label>
                         <input
-                          className="w-full bg-transparent border-none p-0 text-sm font-semibold text-[#0F172A] focus:ring-0 outline-none placeholder:text-slate-300"
+                          id="simulacao-rapida-descricao"
+                          autoComplete="off"
+                          className="w-full bg-transparent border-none p-0 text-sm font-semibold text-slate-900 dark:text-white focus:ring-0 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-500"
                           placeholder="Ex: Notebook, Tênis..."
                           {...rapidaForm.register("descricao")}
                         />
                       </div>
 
-                      <div className="border-b border-slate-50 pb-6">
-                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Categoria</label>
+                      <div className="border-b border-slate-50 dark:border-slate-800 pb-6">
+                        <label
+                          htmlFor="simulacao-rapida-categoria"
+                          className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2"
+                        >
+                          Categoria
+                        </label>
                         <Select
+                          name="categoria_rapida"
                           value={rapidaForm.watch("categoria") || ""}
                           onValueChange={(v) => rapidaForm.setValue("categoria", v)}
                         >
-                          <SelectTrigger className="h-9 rounded-xl border-slate-100 bg-slate-50 text-sm font-semibold text-[#0F172A]">
+                          <SelectTrigger
+                            id="simulacao-rapida-categoria"
+                            className="h-9 rounded-xl border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white"
+                          >
                             <SelectValue placeholder="Selecione (opcional)" />
                           </SelectTrigger>
                           <SelectContent>
                             {categorias.map((c) => (
-                              <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
+                              <SelectItem key={c.id} value={c.nome}>
+                                {c.nome}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -367,8 +405,16 @@ export default function ConsultorFinanceiroPage() {
 
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Compra Parcelada?</label>
+                          <label
+                            htmlFor="simulacao-rapida-parcelado"
+                            className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest"
+                          >
+                            Compra Parcelada?
+                          </label>
                           <Switch
+                            id="simulacao-rapida-parcelado"
+                            name="parcelado_rapido"
+                            aria-label="Ativar compra parcelada"
                             checked={parcelado}
                             onCheckedChange={(v) => rapidaForm.setValue("parcelado", v)}
                           />
@@ -381,19 +427,34 @@ export default function ConsultorFinanceiroPage() {
                               exit={{ opacity: 0, height: 0 }}
                               className="overflow-hidden mt-3 space-y-2"
                             >
-                              <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Número de Parcelas</label>
-                              <Input type="number" min={2} max={48} className="h-10 rounded-xl bg-slate-50 border-slate-100" {...rapidaForm.register("parcelas")} />
+                              <label
+                                htmlFor="simulacao-rapida-parcelas"
+                                className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1"
+                              >
+                                Número de Parcelas
+                              </label>
+                              <Input
+                                id="simulacao-rapida-parcelas"
+                                type="number"
+                                min={2}
+                                max={48}
+                                className="h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-900 dark:text-white"
+                                {...rapidaForm.register("parcelas")}
+                              />
                               {(() => {
                                 const nParcelas = parseInt(rapidaForm.watch("parcelas") || "1");
                                 const valorStr = rapidaForm.watch("valor") || "";
                                 const valorNum = parseFloat(valorStr.replace(",", "."));
                                 if (nParcelas > 1 && !isNaN(valorNum) && valorNum > 0) {
                                   return (
-                                    <div className="flex items-center gap-2 rounded-xl border border-emerald-500/15 bg-emerald-50/50 px-3 py-2">
+                                    <div className="flex items-center gap-2 rounded-xl border border-emerald-500/15 bg-emerald-50/50 dark:bg-emerald-500/10 px-3 py-2">
                                       <CreditCard className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                      <span className="text-xs font-medium text-emerald-700">
-                                        {nParcelas}x de <strong>{formatCurrency(valorNum / nParcelas)}</strong>
-                                        <span className="text-emerald-600/60 ml-1">(total: {formatCurrency(valorNum)})</span>
+                                      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                        {nParcelas}x de{" "}
+                                        <strong>{formatCurrency(valorNum / nParcelas)}</strong>
+                                        <span className="text-emerald-600/60 ml-1">
+                                          (total: {formatCurrency(valorNum)})
+                                        </span>
                                       </span>
                                     </div>
                                   );
@@ -428,44 +489,80 @@ export default function ConsultorFinanceiroPage() {
                       className="flex flex-col gap-6"
                       onSubmit={projecaoForm.handleSubmit(handleProjecao)}
                     >
-                      <div className="border-b border-slate-50 pb-6">
-                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Descrição</label>
+                      <div className="border-b border-slate-50 dark:border-slate-800 pb-6">
+                        <label
+                          htmlFor="simulacao-projecao-descricao"
+                          className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2"
+                        >
+                          Descrição
+                        </label>
                         <input
-                          className={`w-full bg-transparent border-none p-0 text-lg serif-italic placeholder:text-slate-300 text-[#0F172A] focus:ring-0 outline-none ${projecaoForm.formState.errors.descricao ? "text-red-500" : ""}`}
+                          id="simulacao-projecao-descricao"
+                          autoComplete="off"
+                          className={`w-full bg-transparent border-none p-0 text-lg serif-italic placeholder:text-slate-300 dark:placeholder:text-slate-500 text-slate-900 dark:text-white focus:ring-0 outline-none ${projecaoForm.formState.errors.descricao ? "text-red-500" : ""}`}
                           placeholder="Ex: Aquisição de Ativos"
                           {...projecaoForm.register("descricao")}
                         />
                         {projecaoForm.formState.errors.descricao && (
-                          <p className="text-xs text-red-500 font-medium mt-1">{projecaoForm.formState.errors.descricao.message}</p>
+                          <p className="text-xs text-red-500 font-medium mt-1">
+                            {projecaoForm.formState.errors.descricao.message}
+                          </p>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-6 border-b border-slate-50 pb-6">
+                      <div className="grid grid-cols-2 gap-6 border-b border-slate-50 dark:border-slate-800 pb-6">
                         <div>
-                          <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Valor</label>
+                          <label
+                            htmlFor="simulacao-projecao-valor"
+                            className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2"
+                          >
+                            Valor
+                          </label>
                           <div className="flex items-baseline gap-1">
-                            <span className="text-[10px] text-slate-400 font-bold">R$</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">
+                              R$
+                            </span>
                             <CurrencyInput
+                              id="simulacao-projecao-valor"
+                              name="valor_projecao"
                               placeholder="0,00"
-                              className={`flex-1 bg-transparent border-none p-0 mono-data text-base font-semibold text-[#0F172A] focus:ring-0 outline-none placeholder:text-slate-300 ${projecaoForm.formState.errors.valor ? "text-red-500" : ""}`}
+                              className={`flex-1 bg-transparent border-none p-0 mono-data text-base font-semibold text-slate-900 dark:text-white focus:ring-0 outline-none placeholder:text-slate-300 dark:placeholder:text-slate-500 ${projecaoForm.formState.errors.valor ? "text-red-500" : ""}`}
                               value={projecaoForm.watch("valor")}
-                              onValueChange={(v) => projecaoForm.setValue("valor", v, { shouldValidate: projecaoForm.formState.isSubmitted })}
+                              onValueChange={(v) =>
+                                projecaoForm.setValue("valor", v, {
+                                  shouldValidate: projecaoForm.formState.isSubmitted,
+                                })
+                              }
                             />
                           </div>
                           {projecaoForm.formState.errors.valor && (
-                            <p className="text-xs text-red-500 font-medium mt-1">{projecaoForm.formState.errors.valor.message}</p>
+                            <p className="text-xs text-red-500 font-medium mt-1">
+                              {projecaoForm.formState.errors.valor.message}
+                            </p>
                           )}
                         </div>
                         <div>
-                          <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Pagamento</label>
+                          <label
+                            htmlFor="simulacao-projecao-pagamento"
+                            className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2"
+                          >
+                            Pagamento
+                          </label>
                           <Select
+                            name="forma_pagamento_projecao"
                             value={projecaoForm.watch("formaPagamento") || "debito"}
                             onValueChange={(v) => {
-                              projecaoForm.setValue("formaPagamento", v as "pix" | "debito" | "credito");
+                              projecaoForm.setValue(
+                                "formaPagamento",
+                                v as "pix" | "debito" | "credito"
+                              );
                               if (v !== "credito") projecaoForm.setValue("parcelas", 1);
                             }}
                           >
-                            <SelectTrigger className="h-9 rounded-xl border-slate-100 bg-slate-50 text-sm font-semibold text-[#0F172A]">
+                            <SelectTrigger
+                              id="simulacao-projecao-pagamento"
+                              className="h-9 rounded-xl border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white"
+                            >
                               <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
                             <SelectContent>
@@ -483,31 +580,45 @@ export default function ConsultorFinanceiroPage() {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="flex flex-col gap-4 overflow-hidden border-b border-slate-50 pb-6"
+                            className="flex flex-col gap-4 overflow-hidden border-b border-slate-50 dark:border-slate-800 pb-6"
                           >
                             <div>
-                              <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-3">Parcelamento (1–12)</label>
+                              <label
+                                htmlFor="simulacao-projecao-parcelas"
+                                className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-3"
+                              >
+                                Parcelamento (1–12)
+                              </label>
                               <div className="flex items-center gap-4">
                                 <input
+                                  id="simulacao-projecao-parcelas"
+                                  name="parcelas_projecao"
                                   type="range"
                                   min={1}
                                   max={12}
                                   value={parcelas}
-                                  onChange={(e) => projecaoForm.setValue("parcelas", parseInt(e.target.value))}
+                                  onChange={(e) =>
+                                    projecaoForm.setValue("parcelas", parseInt(e.target.value))
+                                  }
                                   className="flex-1 h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600"
                                 />
-                                <span className="text-[10px] mono-data font-bold text-[#0F172A]">{String(parcelas).padStart(2, "0")}x</span>
+                                <span className="text-[10px] mono-data font-bold text-slate-900 dark:text-white">
+                                  {String(parcelas).padStart(2, "0")}x
+                                </span>
                               </div>
                               {(() => {
                                 const valorStr = projecaoForm.watch("valor") || "";
                                 const valorNum = parseFloat(valorStr.replace(",", "."));
                                 if (parcelas > 1 && !isNaN(valorNum) && valorNum > 0) {
                                   return (
-                                    <div className="flex items-center gap-2 rounded-xl border border-emerald-500/15 bg-emerald-50/50 px-3 py-2 mt-3">
+                                    <div className="flex items-center gap-2 rounded-xl border border-emerald-500/15 bg-emerald-50/50 dark:bg-emerald-500/10 px-3 py-2 mt-3">
                                       <CreditCard className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                      <span className="text-xs font-medium text-emerald-700">
-                                        {parcelas}x de <strong>{formatCurrency(valorNum / parcelas)}</strong>
-                                        <span className="text-emerald-600/60 ml-1">(total: {formatCurrency(valorNum)})</span>
+                                      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                        {parcelas}x de{" "}
+                                        <strong>{formatCurrency(valorNum / parcelas)}</strong>
+                                        <span className="text-emerald-600/60 ml-1">
+                                          (total: {formatCurrency(valorNum)})
+                                        </span>
                                       </span>
                                     </div>
                                   );
@@ -516,17 +627,28 @@ export default function ConsultorFinanceiroPage() {
                               })()}
                             </div>
                             <div>
-                              <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Cartão</label>
+                              <label
+                                htmlFor="simulacao-projecao-cartao"
+                                className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2"
+                              >
+                                Cartão
+                              </label>
                               <Select
+                                name="cartao_projecao"
                                 value={projecaoForm.watch("cartaoId") || ""}
                                 onValueChange={(v) => projecaoForm.setValue("cartaoId", v)}
                               >
-                                <SelectTrigger className="h-9 rounded-xl border-slate-100 bg-slate-50 text-sm font-semibold text-[#0F172A]">
+                                <SelectTrigger
+                                  id="simulacao-projecao-cartao"
+                                  className="h-9 rounded-xl border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white"
+                                >
                                   <SelectValue placeholder="Selecione o cartão" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {cartoes.map((c) => (
-                                    <SelectItem key={c.id} value={c.id.toString()}>{c.nome}</SelectItem>
+                                    <SelectItem key={c.id} value={c.id.toString()}>
+                                      {c.nome}
+                                    </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -554,15 +676,31 @@ export default function ConsultorFinanceiroPage() {
 
               {/* Sidebar mini-chart */}
               <AnimatePresence>
-                {resultadoSimulacao && mode === "projecao" && resultadoSimulacao.meses?.length > 0 && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="exec-card rounded-[2rem] p-6">
-                    <h4 className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-4">Resumo da Projeção</h4>
-                    <BalanceLineChart data={resultadoSimulacao.meses} />
-                  </motion.div>
-                )}
+                {resultadoSimulacao &&
+                  mode === "projecao" &&
+                  resultadoSimulacao.meses?.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="exec-card rounded-[2rem] p-6"
+                    >
+                      <h4 className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-4">
+                        Resumo da Projeção
+                      </h4>
+                      <BalanceLineChart data={resultadoSimulacao.meses} />
+                    </motion.div>
+                  )}
                 {resultadoDecisao && mode === "rapida" && isDecisaoRapida(resultadoDecisao) && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="exec-card rounded-[2rem] p-6">
-                    <h4 className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-4">Orçamento do Mês</h4>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="exec-card rounded-[2rem] p-6"
+                  >
+                    <h4 className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-4">
+                      Orçamento do Mês
+                    </h4>
                     <BudgetDonutChart
                       gastoAcumulado={resultadoDecisao.gastoAcumuladoMes}
                       saldoLivre={resultadoDecisao.saldoLivreMes}
@@ -578,7 +716,13 @@ export default function ConsultorFinanceiroPage() {
             <div className="lg:col-span-8 flex flex-col gap-6">
               <AnimatePresence mode="wait">
                 {resultadoDecisao && mode === "rapida" && (
-                  <motion.div key="rapida-result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-6">
+                  <motion.div
+                    key="rapida-result"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex flex-col gap-6"
+                  >
                     {isDecisaoRapida(resultadoDecisao) ? (
                       <RapidaResult data={resultadoDecisao} onReset={handleReset} />
                     ) : (
@@ -588,29 +732,55 @@ export default function ConsultorFinanceiroPage() {
                 )}
 
                 {resultadoSimulacao && mode === "projecao" && (
-                  <motion.div key="projecao-result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-6">
-                    <ProjecaoResult data={resultadoSimulacao} showMeses={showMeses} setShowMeses={setShowMeses} riskIcon={riskIcon} onReset={handleReset} />
+                  <motion.div
+                    key="projecao-result"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex flex-col gap-6"
+                  >
+                    <ProjecaoResult
+                      data={resultadoSimulacao}
+                      showMeses={showMeses}
+                      setShowMeses={setShowMeses}
+                      riskIcon={riskIcon}
+                      onReset={handleReset}
+                    />
                   </motion.div>
                 )}
 
                 {!hasResult && !isLoading && (
-                  <motion.div key="placeholder" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <motion.div
+                    key="placeholder"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
                     {/* Placeholder: chart mockup + AI panel */}
                     <div className="grid grid-cols-12 gap-6 h-full">
                       <div className="col-span-8 flex flex-col gap-6">
-                        <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 flex flex-col" style={{ minHeight: 340 }}>
+                        <div
+                          className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 flex flex-col"
+                          style={{ minHeight: 340 }}
+                        >
                           <div className="flex items-center justify-between mb-8">
                             <div>
-                              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] mb-2">Simulação de Fluxo de Caixa</h3>
-                              <h2 className="text-3xl serif-italic text-[#0F172A]">
+                              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] mb-2">
+                                Simulação de Fluxo de Caixa
+                              </h3>
+                              <h2 className="text-3xl serif-italic text-slate-900 dark:text-white">
                                 {mode === "rapida" ? "Análise Rápida" : "Saldo Projetado"}
                               </h2>
                             </div>
-                            <div className="bg-slate-50 px-5 py-2.5 rounded-2xl border border-slate-100 flex items-center gap-3">
-                              <Brain className="h-5 w-5 text-slate-400" />
+                            <div className="bg-slate-50 dark:bg-slate-800/70 px-5 py-2.5 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                              <Brain className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                               <div>
-                                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Aguardando</p>
-                                <p className="text-[10px] font-bold text-slate-600 uppercase">Configure &amp; Processe</p>
+                                <p className="text-[7px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                  Aguardando
+                                </p>
+                                <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">
+                                  Configure &amp; Processe
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -619,47 +789,93 @@ export default function ConsultorFinanceiroPage() {
                             {["Set", "Out", "Nov", "Dez", "Jan", "Fev"].map((m, i) => (
                               <div key={m} className="flex flex-col items-center gap-3 flex-1">
                                 <div className="flex items-end gap-1 w-12 h-40 max-h-40">
-                                  <div className="w-5 bg-slate-100 rounded-t-xl" style={{ height: `${60 + i * 6}%` }} />
-                                  <div className="w-5 bg-emerald-100 rounded-t-xl" style={{ height: `${45 + i * 5}%` }} />
+                                  <div
+                                    className="w-5 bg-slate-100 rounded-t-xl"
+                                    style={{ height: `${60 + i * 6}%` }}
+                                  />
+                                  <div
+                                    className="w-5 bg-emerald-100 rounded-t-xl"
+                                    style={{ height: `${45 + i * 5}%` }}
+                                  />
                                 </div>
-                                <span className="text-[9px] mono-data text-slate-300 uppercase">{m}</span>
+                                <span className="text-[9px] mono-data text-slate-300 uppercase">
+                                  {m}
+                                </span>
                               </div>
                             ))}
                           </div>
                           <div className="mt-6 flex items-center gap-8 justify-center border-t border-slate-50 pt-6">
                             <div className="flex items-center gap-2">
                               <div className="w-2.5 h-2.5 rounded-full bg-slate-100" />
-                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Saldo Atual</span>
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                Saldo Atual
+                              </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="w-2.5 h-2.5 rounded-full bg-emerald-200" />
-                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Saldo Projetado</span>
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                Saldo Projetado
+                              </span>
                             </div>
                           </div>
                         </div>
 
                         {/* How it works steps */}
                         <div className="exec-card rounded-[2rem] p-8">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-6">Como Funciona</p>
+                          <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-6">
+                            Como Funciona
+                          </p>
                           <div className="grid grid-cols-2 gap-4">
                             {(mode === "rapida"
                               ? [
-                                { n: 1, title: "Orçamento", desc: "Verifica se o valor cabe no saldo livre do mês" },
-                                { n: 2, title: "Histórico", desc: "Compara com a média de gastos dos últimos 3 meses" },
-                                { n: 3, title: "Tendência", desc: "Analisa se seus gastos estão subindo ou caindo" },
-                                { n: 4, title: "Saúde Financeira", desc: "Score de 0 a 100 avaliando sua situação geral" },
-                              ]
+                                  {
+                                    n: 1,
+                                    title: "Orçamento",
+                                    desc: "Verifica se o valor cabe no saldo livre do mês",
+                                  },
+                                  {
+                                    n: 2,
+                                    title: "Histórico",
+                                    desc: "Compara com a média de gastos dos últimos 3 meses",
+                                  },
+                                  {
+                                    n: 3,
+                                    title: "Tendência",
+                                    desc: "Analisa se seus gastos estão subindo ou caindo",
+                                  },
+                                  {
+                                    n: 4,
+                                    title: "Saúde Financeira",
+                                    desc: "Score de 0 a 100 avaliando sua situação geral",
+                                  },
+                                ]
                               : [
-                                { n: 1, title: "Projeção 12 meses", desc: "Simula mês a mês como fica seu saldo com a compra" },
-                                { n: 2, title: "Sazonalidade", desc: "Considera gastos sazonais (IPVA, material escolar, etc.)" },
-                                { n: 3, title: "Impacto em metas", desc: "Mostra se a compra atrasa suas metas financeiras" },
-                                { n: 4, title: "Cenários", desc: "Sugere parcelamentos com risco menor" },
-                              ]
+                                  {
+                                    n: 1,
+                                    title: "Projeção 12 meses",
+                                    desc: "Simula mês a mês como fica seu saldo com a compra",
+                                  },
+                                  {
+                                    n: 2,
+                                    title: "Sazonalidade",
+                                    desc: "Considera gastos sazonais (IPVA, material escolar, etc.)",
+                                  },
+                                  {
+                                    n: 3,
+                                    title: "Impacto em metas",
+                                    desc: "Mostra se a compra atrasa suas metas financeiras",
+                                  },
+                                  {
+                                    n: 4,
+                                    title: "Cenários",
+                                    desc: "Sugere parcelamentos com risco menor",
+                                  },
+                                ]
                             ).map(({ n, title, desc }) => (
                               <HowItWorksStep key={n} n={n} title={title} desc={desc} />
                             ))}
                           </div>
-                          <p className="text-[11px] text-slate-400 italic mt-4">
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 italic mt-4">
                             Quanto mais dados você cadastrar, mais precisa fica a análise.
                           </p>
                         </div>
@@ -673,31 +889,55 @@ export default function ConsultorFinanceiroPage() {
                               <Brain className="h-4 w-4" />
                             </div>
                             <div>
-                              <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em]">Falcon AI</h3>
-                              <h2 className="text-xl serif-italic text-[#0F172A]">Cenários Alternativos</h2>
+                              <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em]">
+                                Falcon AI
+                              </h3>
+                              <h2 className="text-xl serif-italic text-slate-900 dark:text-white">
+                                Cenários Alternativos
+                              </h2>
                             </div>
                           </div>
                           <div className="space-y-4 flex-1">
-                            <div className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100">
+                            <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700">
                               <div className="flex justify-between items-start mb-3">
-                                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[8px] font-bold uppercase tracking-widest rounded-full">Otimizado</span>
-                                <span className="text-[10px] mono-data font-bold text-emerald-600">-15% Risco</span>
+                                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[8px] font-bold uppercase tracking-widest rounded-full">
+                                  Otimizado
+                                </span>
+                                <span className="text-[10px] mono-data font-bold text-emerald-600">
+                                  -15% Risco
+                                </span>
                               </div>
-                              <p className="text-xs text-slate-400 leading-relaxed">Aguarde o processamento para ver a análise personalizada de cenários para esta compra.</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
+                                Aguarde o processamento para ver a análise personalizada de cenários
+                                para esta compra.
+                              </p>
                             </div>
-                            <div className="p-6 rounded-[2rem] border border-slate-100">
+                            <div className="p-6 rounded-[2rem] border border-slate-100 dark:border-slate-700">
                               <div className="flex justify-between items-start mb-3">
-                                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[8px] font-bold uppercase tracking-widest rounded-full">Parcelado</span>
-                                <span className="text-[10px] mono-data font-bold text-indigo-600">+Yield</span>
+                                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[8px] font-bold uppercase tracking-widest rounded-full">
+                                  Parcelado
+                                </span>
+                                <span className="text-[10px] mono-data font-bold text-indigo-600">
+                                  +Yield
+                                </span>
                               </div>
-                              <p className="text-xs text-slate-400 leading-relaxed">Opções de parcelamento com menor impacto no fluxo de caixa serão calculadas.</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
+                                Opções de parcelamento com menor impacto no fluxo de caixa serão
+                                calculadas.
+                              </p>
                             </div>
-                            <div className="p-6 rounded-[2rem] border border-slate-100">
+                            <div className="p-6 rounded-[2rem] border border-slate-100 dark:border-slate-700">
                               <div className="flex justify-between items-start mb-3">
-                                <span className="px-3 py-1 bg-amber-50 text-amber-700 text-[8px] font-bold uppercase tracking-widest rounded-full">Alternativo</span>
-                                <span className="text-[10px] mono-data font-bold text-amber-600">Liquidez</span>
+                                <span className="px-3 py-1 bg-amber-50 text-amber-700 text-[8px] font-bold uppercase tracking-widest rounded-full">
+                                  Alternativo
+                                </span>
+                                <span className="text-[10px] mono-data font-bold text-amber-600">
+                                  Liquidez
+                                </span>
                               </div>
-                              <p className="text-xs text-slate-400 leading-relaxed">Cenários alternativos de compra aparecerão aqui após a análise.</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
+                                Cenários alternativos de compra aparecerão aqui após a análise.
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -707,10 +947,17 @@ export default function ConsultorFinanceiroPage() {
                 )}
 
                 {isLoading && !hasResult && (
-                  <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
                     <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-6 sm:p-10 lg:p-12 flex flex-col items-center justify-center text-center min-h-[300px] sm:min-h-[400px]">
                       <div className="h-12 w-12 border-2 border-slate-100 border-t-emerald-600 rounded-full animate-spin mb-6" />
-                      <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400">Analisando seus dados financeiros...</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400">
+                        Analisando seus dados financeiros...
+                      </p>
                     </div>
                   </motion.div>
                 )}
@@ -719,9 +966,14 @@ export default function ConsultorFinanceiroPage() {
           </motion.div>
         ) : (
           /* ═══ HISTÓRICO TAB ═══ */
-          <motion.div key="historico" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+          <motion.div
+            key="historico"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
             <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden">
-              <div className="hidden lg:grid p-5 sm:p-8 lg:p-10 border-b border-slate-50 grid-cols-12 gap-6 text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] items-center">
+              <div className="hidden lg:grid p-5 sm:p-8 lg:p-10 border-b border-slate-50 dark:border-slate-800 grid-cols-12 gap-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] items-center">
                 <div className="col-span-4">Descrição</div>
                 <div className="col-span-2">Valor</div>
                 <div className="col-span-2">Veredito</div>
@@ -731,38 +983,104 @@ export default function ConsultorFinanceiroPage() {
 
               {historico.length > 0 ? (
                 <div className="divide-y divide-slate-50">
+                  <div className="lg:hidden divide-y divide-slate-50 dark:divide-slate-800">
+                    {historico.map((h) => (
+                      <div key={`mobile-${h.simulacaoId}`} className="px-5 py-5 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                              {h.descricao}
+                            </p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-1 uppercase tracking-wider">
+                              {h.formaPagamento}
+                              {h.numeroParcelas > 1 && ` • ${h.numeroParcelas}x`}
+                            </p>
+                          </div>
+                          <span
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-bold border uppercase tracking-widest shrink-0 ${riskColor(h.risco).badge} ${riskColor(h.risco).border}`}
+                          >
+                            {h.risco}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700 px-3 py-3">
+                            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
+                              Valor
+                            </p>
+                            <p className="text-sm mono-data font-semibold text-slate-900 dark:text-white">
+                              {formatCurrency(h.valor)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700 px-3 py-3">
+                            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
+                              Folga mensal
+                            </p>
+                            <p className="text-sm mono-data font-semibold text-slate-900 dark:text-white">
+                              {formatCurrency(h.folgaMensalMedia)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700 px-3 py-3">
+                          <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
+                            Pior mês
+                          </p>
+                          <p className="text-sm text-slate-600 dark:text-slate-300">{h.piorMes}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                   {historico.map((h) => (
-                    <div key={h.simulacaoId} className="hidden lg:grid grid-cols-12 gap-6 px-5 sm:px-8 lg:px-10 py-5 sm:py-8 items-center hover:bg-slate-50/50 transition-colors group">
+                    <div
+                      key={h.simulacaoId}
+                      className="hidden lg:grid grid-cols-12 gap-6 px-5 sm:px-8 lg:px-10 py-5 sm:py-8 items-center hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors group"
+                    >
                       <div className="col-span-4">
-                        <span className="text-sm font-bold text-[#0F172A]">{h.descricao}</span>
-                        <span className="block text-[10px] text-slate-400 font-medium mt-0.5">
-                          {h.formaPagamento}{h.numeroParcelas > 1 && ` • ${h.numeroParcelas}x`}
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                          {h.descricao}
+                        </span>
+                        <span className="block text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                          {h.formaPagamento}
+                          {h.numeroParcelas > 1 && ` • ${h.numeroParcelas}x`}
                         </span>
                       </div>
                       <div className="col-span-2">
-                        <span className="text-sm mono-data font-medium text-[#0F172A]">{formatCurrency(h.valor)}</span>
+                        <span className="text-sm mono-data font-medium text-slate-900 dark:text-white">
+                          {formatCurrency(h.valor)}
+                        </span>
                       </div>
                       <div className="col-span-2">
-                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-bold border uppercase tracking-widest ${riskColor(h.risco).badge} ${riskColor(h.risco).border}`}>
+                        <span
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-bold border uppercase tracking-widest ${riskColor(h.risco).badge} ${riskColor(h.risco).border}`}
+                        >
                           {h.risco}
                         </span>
                       </div>
                       <div className="col-span-2">
-                        <span className="text-sm mono-data font-medium text-[#0F172A]">{formatCurrency(h.folgaMensalMedia)}</span>
+                        <span className="text-sm mono-data font-medium text-slate-900 dark:text-white">
+                          {formatCurrency(h.folgaMensalMedia)}
+                        </span>
                       </div>
                       <div className="col-span-2">
-                        <span className="text-sm text-slate-500">{h.piorMes}</span>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                          {h.piorMes}
+                        </span>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="p-6 sm:p-12 flex flex-col items-center justify-center text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
-                    <History className="h-5 w-5 text-slate-300" />
+                  <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800/70 flex items-center justify-center mb-4">
+                    <History className="h-5 w-5 text-slate-300 dark:text-slate-500" />
                   </div>
-                  <p className="text-sm font-bold text-[#0F172A] mb-1">Nenhuma simulação no histórico</p>
-                  <p className="text-[11px] text-slate-400">Faça sua primeira projeção para ver o histórico aqui</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+                    Nenhuma simulação no histórico
+                  </p>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                    Faça sua primeira projeção para ver o histórico aqui
+                  </p>
                 </div>
               )}
             </div>
@@ -1495,10 +1813,11 @@ function ProjecaoResult({
                           {m.impactoCompra > 0 ? `-${formatCurrency(m.impactoCompra)}` : "-"}
                         </td>
                         <td
-                          className={`py-2.5 px-5 text-right font-bold tabular-nums ${m.saldoComCompra < 0
-                            ? "text-red-600 dark:text-red-400"
-                            : "text-emerald-600 dark:text-emerald-400"
-                            }`}
+                          className={`py-2.5 px-5 text-right font-bold tabular-nums ${
+                            m.saldoComCompra < 0
+                              ? "text-red-600 dark:text-red-400"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          }`}
                         >
                           {formatCurrency(m.saldoComCompra)}
                         </td>

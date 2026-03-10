@@ -131,8 +131,7 @@ export default function AdminSegurancaPage() {
   });
 
   const revogarSessao = useMutation({
-    mutationFn: (tokenId: number) =>
-      api.admin.seguranca.revogarSessao(tokenId),
+    mutationFn: (tokenId: number) => api.admin.seguranca.revogarSessao(tokenId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
       toast.success("Sessão encerrada com sucesso");
@@ -197,9 +196,7 @@ export default function AdminSegurancaPage() {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return users;
     return users.filter(
-      (u) =>
-        u.nome.toLowerCase().includes(q) ||
-        (u.email && u.email.toLowerCase().includes(q))
+      (u) => u.nome.toLowerCase().includes(q) || (u.email && u.email.toLowerCase().includes(q))
     );
   }, [users, searchQuery]);
 
@@ -242,9 +239,7 @@ export default function AdminSegurancaPage() {
       <div className="flex items-center justify-center h-full">
         <ErrorState
           message="Erro ao carregar dados de segurança."
-          onRetry={() =>
-            queryClient.invalidateQueries({ queryKey: ["admin", "seguranca"] })
-          }
+          onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "seguranca"] })}
         />
       </div>
     );
@@ -252,14 +247,11 @@ export default function AdminSegurancaPage() {
 
   // ── Derived data for selected user ──────────────────────
 
-  const activeSessions = selectedUser
-    ? selectedUser.sessoes.filter((s) => !isExpired(s))
-    : [];
+  const activeSessions = selectedUser ? selectedUser.sessoes.filter((s) => !isExpired(s)) : [];
 
   const sessionsSorted = selectedUser
     ? [...selectedUser.sessoes].sort(
-        (a, b) =>
-          new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
+        (a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
       )
     : [];
 
@@ -327,16 +319,10 @@ export default function AdminSegurancaPage() {
           <div className="flex-1 overflow-y-auto hide-scrollbar">
             <AnimatePresence initial={false}>
               {filteredUsers.map((user) => {
-                const active = user.sessoes.filter(
-                  (s) => !isExpired(s)
-                ).length;
+                const active = user.sessoes.filter((s) => !isExpired(s)).length;
                 const latest = user.sessoes.length
                   ? new Date(
-                      Math.max(
-                        ...user.sessoes.map((s) =>
-                          new Date(s.criadoEm).getTime()
-                        )
-                      )
+                      Math.max(...user.sessoes.map((s) => new Date(s.criadoEm).getTime()))
                     ).toISOString()
                   : null;
                 const isSelected = selectedUserId === user.id;
@@ -350,8 +336,7 @@ export default function AdminSegurancaPage() {
                     onClick={() => setSelectedUserId(user.id)}
                     className={cn(
                       "cursor-pointer transition-all border-l-4 border-transparent hover:bg-slate-50/80 dark:hover:bg-slate-800/50 p-5",
-                      isSelected &&
-                        "bg-white dark:bg-slate-800 border-emerald-500 shadow-sm"
+                      isSelected && "bg-white dark:bg-slate-800 border-emerald-500 shadow-sm"
                     )}
                   >
                     {/* Row 1: Name + session badge */}
@@ -374,8 +359,7 @@ export default function AdminSegurancaPage() {
                             : "bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
                         )}
                       >
-                        {active}{" "}
-                        {active === 1 ? "Sessão" : "Sessões"}
+                        {active} {active === 1 ? "Sessão" : "Sessões"}
                       </span>
                     </div>
 
@@ -400,9 +384,7 @@ export default function AdminSegurancaPage() {
                       ) : (
                         <span>Sem sessões</span>
                       )}
-                      {isSelected && (
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      )}
+                      {isSelected && <ChevronRight className="h-3.5 w-3.5" />}
                     </div>
                   </motion.div>
                 );
@@ -413,9 +395,7 @@ export default function AdminSegurancaPage() {
               <div className="px-6 py-14 text-center">
                 <Shield className="h-8 w-8 text-slate-200 dark:text-slate-700 mx-auto mb-3" />
                 <p className="text-[11px] text-slate-400">
-                  {searchQuery
-                    ? "Nenhum usuário encontrado."
-                    : "Nenhuma sessão ativa."}
+                  {searchQuery ? "Nenhum usuário encontrado." : "Nenhuma sessão ativa."}
                 </p>
               </div>
             )}
@@ -442,14 +422,18 @@ export default function AdminSegurancaPage() {
         <section className="flex-1 overflow-y-auto ivory-bg dark:bg-slate-950 p-4 sm:p-6 lg:p-10 hide-scrollbar">
           {/* Mobile user picker */}
           <div className="lg:hidden mb-4">
-            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Selecionar Usuário</label>
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">
+              Selecionar Usuário
+            </label>
             <select
               value={selectedUserId ?? ""}
               onChange={(e) => setSelectedUserId(Number(e.target.value))}
               className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100"
             >
               {filteredUsers.map((u) => (
-                <option key={u.id} value={u.id}>{maskNome(u.nome)} ({u.sessoes.filter(s => !isExpired(s)).length} sessões)</option>
+                <option key={u.id} value={u.id}>
+                  {maskNome(u.nome)} ({u.sessoes.filter((s) => !isExpired(s)).length} sessões)
+                </option>
               ))}
             </select>
           </div>
@@ -473,16 +457,14 @@ export default function AdminSegurancaPage() {
                   {selectedUser.bloqueado ? (
                     <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
                       <ShieldAlert className="h-3.5 w-3.5" />
-                      Conta Bloqueada •{" "}
-                      {selectedUser.bloqueado.tentativasLoginFalhadas}{" "}
-                      tentativas falhadas
+                      Conta Bloqueada • {selectedUser.bloqueado.tentativasLoginFalhadas} tentativas
+                      falhadas
                       {selectedUser.bloqueado.bloqueadoAte &&
                         ` • Até ${formatDate(selectedUser.bloqueado.bloqueadoAte)}`}
                     </p>
                   ) : (
                     <p className="text-[11px] text-slate-500 mt-1">
-                      {selectedUser.sessoes.length} sessões registradas •
-                      Conta gerenciada
+                      {selectedUser.sessoes.length} sessões registradas • Conta gerenciada
                     </p>
                   )}
                 </div>
@@ -541,9 +523,7 @@ export default function AdminSegurancaPage() {
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
                     Risco
                   </span>
-                  <span className={cn("text-2xl font-bold", riskColor)}>
-                    {riskLevel}
-                  </span>
+                  <span className={cn("text-2xl font-bold", riskColor)}>{riskLevel}</span>
                 </div>
               </div>
 
@@ -595,12 +575,7 @@ export default function AdminSegurancaPage() {
                             )}
                           >
                             {/* IP */}
-                            <td
-                              className={cn(
-                                "px-6 py-5",
-                                expired && "opacity-60"
-                              )}
-                            >
+                            <td className={cn("px-6 py-5", expired && "opacity-60")}>
                               <div>
                                 <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mono-data">
                                   {maskIp(s.ipCriacao)}
@@ -609,12 +584,7 @@ export default function AdminSegurancaPage() {
                             </td>
 
                             {/* Login time */}
-                            <td
-                              className={cn(
-                                "px-6 py-5",
-                                expired && "opacity-60"
-                              )}
-                            >
+                            <td className={cn("px-6 py-5", expired && "opacity-60")}>
                               <p className="text-[11px] text-slate-600 dark:text-slate-400">
                                 {formatDate(s.criadoEm)}
                               </p>
@@ -628,8 +598,7 @@ export default function AdminSegurancaPage() {
                                 </p>
                               ) : (
                                 <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
-                                  Ativa — {getTimeRemaining(s.expiraEm)}{" "}
-                                  restante
+                                  Ativa — {getTimeRemaining(s.expiraEm)} restante
                                 </span>
                               )}
                             </td>
@@ -674,10 +643,7 @@ export default function AdminSegurancaPage() {
                   {sessionsSorted.slice(0, 5).map((s) => {
                     const expired = isExpired(s);
                     return (
-                      <div
-                        key={`evt-${s.id}`}
-                        className="flex gap-6 items-start"
-                      >
+                      <div key={`evt-${s.id}`} className="flex gap-6 items-start">
                         <div
                           className={cn(
                             "p-2 rounded-lg shrink-0",
@@ -695,9 +661,7 @@ export default function AdminSegurancaPage() {
                         <div>
                           <div className="flex items-center gap-3 mb-1">
                             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                              {expired
-                                ? "Sessão Encerrada"
-                                : "Login com Sucesso"}
+                              {expired ? "Sessão Encerrada" : "Login com Sucesso"}
                             </span>
                             <span className="text-[10px] text-slate-400 font-medium">
                               {formatDate(s.criadoEm)}
@@ -745,16 +709,13 @@ export default function AdminSegurancaPage() {
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
                           Conta bloqueada por excesso de tentativas (
-                          {selectedUser.bloqueado.tentativasLoginFalhadas}{" "}
-                          falhas).
+                          {selectedUser.bloqueado.tentativasLoginFalhadas} falhas).
                           {selectedUser.bloqueado.bloqueadoAte && (
                             <>
                               {" "}
                               Desbloqueio automático em{" "}
                               <span className="font-bold text-rose-500 dark:text-rose-400 underline">
-                                {formatDate(
-                                  selectedUser.bloqueado.bloqueadoAte
-                                )}
+                                {formatDate(selectedUser.bloqueado.bloqueadoAte)}
                               </span>
                               .
                             </>
@@ -764,12 +725,11 @@ export default function AdminSegurancaPage() {
                     </div>
                   )}
 
-                  {selectedUser.sessoes.length === 0 &&
-                    !selectedUser.bloqueado && (
-                      <p className="text-[11px] text-slate-400 text-center py-4">
-                        Nenhum evento de segurança registrado.
-                      </p>
-                    )}
+                  {selectedUser.sessoes.length === 0 && !selectedUser.bloqueado && (
+                    <p className="text-[11px] text-slate-400 text-center py-4">
+                      Nenhum evento de segurança registrado.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -779,8 +739,7 @@ export default function AdminSegurancaPage() {
               <div className="text-center">
                 <Shield className="h-12 w-12 text-slate-200 dark:text-slate-700 mx-auto mb-4" />
                 <p className="text-sm text-slate-400">
-                  Selecione um usuário para visualizar os detalhes de
-                  segurança.
+                  Selecione um usuário para visualizar os detalhes de segurança.
                 </p>
               </div>
             </div>
@@ -791,18 +750,12 @@ export default function AdminSegurancaPage() {
       {/* ━━ Modals ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       {/* Encerrar sessão individual */}
-      <AlertDialog
-        open={!!revogarAlvo}
-        onOpenChange={() => setRevogarAlvo(null)}
-      >
+      <AlertDialog open={!!revogarAlvo} onOpenChange={() => setRevogarAlvo(null)}>
         <AlertDialogContent>
           <AlertDialogHeader className="items-start text-left">
-            <AlertDialogTitle className="sr-only">
-              Encerrar sessão?
-            </AlertDialogTitle>
+            <AlertDialogTitle className="sr-only">Encerrar sessão?</AlertDialogTitle>
             <AlertDialogDescription className="sr-only">
-              O usuário será deslogado imediatamente e precisará fazer login
-              novamente.
+              O usuário será deslogado imediatamente e precisará fazer login novamente.
             </AlertDialogDescription>
             <DialogShellHeader
               icon={<LogOut className="h-5 w-5 sm:h-6 sm:w-6" />}
@@ -814,9 +767,7 @@ export default function AdminSegurancaPage() {
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                revogarAlvo && revogarSessao.mutate(revogarAlvo.id)
-              }
+              onClick={() => revogarAlvo && revogarSessao.mutate(revogarAlvo.id)}
               loading={revogarSessao.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl gap-2"
             >
@@ -831,9 +782,7 @@ export default function AdminSegurancaPage() {
       <AlertDialog open={showRevogarTodas} onOpenChange={setShowRevogarTodas}>
         <AlertDialogContent>
           <AlertDialogHeader className="items-start text-left">
-            <AlertDialogTitle className="sr-only">
-              Encerrar TODAS as sessões?
-            </AlertDialogTitle>
+            <AlertDialogTitle className="sr-only">Encerrar TODAS as sessões?</AlertDialogTitle>
             <AlertDialogDescription className="sr-only">
               Isso vai deslogar todos os usuários do sistema.
             </AlertDialogDescription>

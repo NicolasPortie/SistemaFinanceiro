@@ -4,16 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Send,
-  Loader2,
-  Mail,
-  ArrowLeft,
-  Headphones,
-  History,
-  Plus,
-} from "lucide-react";
+import { X, Send, Loader2, Mail, ArrowLeft, Headphones, History, Plus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
@@ -119,15 +110,17 @@ export function SuporteWidget() {
 
     setActiveSessionId(sessionId);
     setMessages(nextMessages);
-    setSessions((prev) => [
-      {
-        id: sessionId,
-        titulo: "Novo atendimento",
-        updatedAt: new Date().toISOString(),
-        messages: nextMessages,
-      },
-      ...prev,
-    ].slice(0, 12));
+    setSessions((prev) =>
+      [
+        {
+          id: sessionId,
+          titulo: "Novo atendimento",
+          updatedAt: new Date().toISOString(),
+          messages: nextMessages,
+        },
+        ...prev,
+      ].slice(0, 12)
+    );
     setView("chat");
   }, [createWelcomeMessage]);
 
@@ -243,8 +236,7 @@ export function SuporteWidget() {
           {
             id: idCounter.current++,
             papel: "assistant",
-            conteudo:
-              "Desculpe, não consegui processar sua mensagem. Tente novamente.",
+            conteudo: "Desculpe, não consegui processar sua mensagem. Tente novamente.",
             criadoEm: new Date().toISOString(),
           },
         ];
@@ -313,10 +305,10 @@ export function SuporteWidget() {
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
             onClick={handleOpen}
-            className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/40 cursor-pointer active:scale-95"
+            className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/40 cursor-pointer active:scale-95 sm:bottom-6 sm:right-6 sm:h-14 sm:w-14 sm:shadow-emerald-600/30"
             aria-label="Abrir suporte"
           >
-            <Headphones className="h-6 w-6" />
+            <Headphones className="h-5 w-5 sm:h-6 sm:w-6" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -329,7 +321,7 @@ export function SuporteWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-6 right-6 z-50 flex h-130 w-95 max-h-[80vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700/50 dark:bg-[#161B22]"
+            className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-50 flex h-[78vh] max-h-[42rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700/50 dark:bg-[#161B22] sm:inset-x-auto sm:bottom-6 sm:right-6 sm:h-130 sm:w-95 sm:max-h-[80vh]"
           >
             {/* ── Header ── */}
             <div className="flex items-center justify-between px-4 py-3 bg-emerald-600 text-white shrink-0">
@@ -337,6 +329,7 @@ export function SuporteWidget() {
                 {view === "email" || view === "history" ? (
                   <button
                     onClick={() => setView("chat")}
+                    aria-label="Voltar para o chat de suporte"
                     className="p-0.5 hover:bg-white/20 rounded-md transition-colors cursor-pointer"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -348,12 +341,14 @@ export function SuporteWidget() {
                 )}
                 <div>
                   <p className="text-sm font-semibold leading-tight">
-                    {view === "email" ? "Enviar Email" : view === "history" ? "Atendimentos" : "Ravi"}
+                    {view === "email"
+                      ? "Enviar Email"
+                      : view === "history"
+                        ? "Atendimentos"
+                        : "Ravi"}
                   </p>
                   {view === "chat" && (
-                    <p className="text-[10px] text-emerald-100 leading-tight">
-                      Suporte da Ravier
-                    </p>
+                    <p className="text-[10px] text-emerald-100 leading-tight">Suporte da Ravier</p>
                   )}
                 </div>
               </div>
@@ -361,6 +356,7 @@ export function SuporteWidget() {
                 {view === "chat" && (
                   <button
                     onClick={() => setView("history")}
+                    aria-label="Ver atendimentos anteriores"
                     className="p-1.5 hover:bg-white/20 rounded-md transition-colors cursor-pointer"
                     title="Ver atendimentos anteriores"
                   >
@@ -370,6 +366,7 @@ export function SuporteWidget() {
                 {view === "chat" && (
                   <button
                     onClick={createNewSession}
+                    aria-label="Iniciar novo atendimento"
                     className="p-1.5 hover:bg-white/20 rounded-md transition-colors cursor-pointer"
                     title="Novo atendimento"
                   >
@@ -379,6 +376,7 @@ export function SuporteWidget() {
                 {view === "chat" && (
                   <button
                     onClick={() => setView("email")}
+                    aria-label="Abrir formulário de email para suporte"
                     className="p-1.5 hover:bg-white/20 rounded-md transition-colors cursor-pointer"
                     title="Enviar email para suporte"
                   >
@@ -387,6 +385,7 @@ export function SuporteWidget() {
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
+                  aria-label="Fechar suporte"
                   className="p-1.5 hover:bg-white/20 rounded-md transition-colors cursor-pointer"
                 >
                   <X className="h-4 w-4" />
@@ -398,7 +397,11 @@ export function SuporteWidget() {
               <>
                 {sessions.length > 1 && (
                   <div className="shrink-0 border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 text-[11px] text-slate-500 dark:border-slate-700/50 dark:bg-slate-900/40 dark:text-slate-400">
-                    Continuando: <span className="font-semibold text-slate-700 dark:text-slate-200">{sessions.find((session) => session.id === activeSessionId)?.titulo ?? "Atendimento atual"}</span>
+                    Continuando:{" "}
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                      {sessions.find((session) => session.id === activeSessionId)?.titulo ??
+                        "Atendimento atual"}
+                    </span>
                   </div>
                 )}
                 {/* ── Messages ── */}
@@ -409,10 +412,7 @@ export function SuporteWidget() {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
-                      className={cn(
-                        "flex",
-                        msg.papel === "user" ? "justify-end" : "justify-start"
-                      )}
+                      className={cn("flex", msg.papel === "user" ? "justify-end" : "justify-start")}
                     >
                       <div
                         className={cn(
@@ -425,13 +425,9 @@ export function SuporteWidget() {
                         {msg.papel === "assistant" ? (
                           <ReactMarkdown
                             components={{
-                              p: ({ children }) => (
-                                <p className="mb-1.5 last:mb-0">{children}</p>
-                              ),
+                              p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
                               strong: ({ children }) => (
-                                <strong className="font-semibold">
-                                  {children}
-                                </strong>
+                                <strong className="font-semibold">{children}</strong>
                               ),
                               ul: ({ children }) => (
                                 <ul className="list-disc list-inside space-y-0.5 mb-1.5">
@@ -487,6 +483,9 @@ export function SuporteWidget() {
                 <div className="shrink-0 p-3 border-t border-slate-100 dark:border-slate-700/50">
                   <div className="flex items-center gap-2">
                     <input
+                      id="support-chat-input"
+                      name="support_chat_input"
+                      aria-label="Digite sua mensagem para o suporte"
                       ref={inputRef}
                       type="text"
                       value={inputText}
@@ -499,6 +498,7 @@ export function SuporteWidget() {
                     />
                     <button
                       onClick={handleSend}
+                      aria-label="Enviar mensagem para o suporte"
                       disabled={!inputText.trim() || sendMessage.isPending}
                       className="h-10 w-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95 shrink-0"
                     >
@@ -515,6 +515,7 @@ export function SuporteWidget() {
               <div className="flex-1 overflow-y-auto p-4 space-y-3 hide-scrollbar bg-slate-50/40 dark:bg-slate-900/20">
                 <button
                   onClick={createNewSession}
+                  aria-label="Criar um novo atendimento"
                   className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-300 bg-white px-4 py-3 text-sm font-medium text-emerald-700 transition-colors hover:border-emerald-500 hover:text-emerald-800 dark:border-emerald-500/30 dark:bg-slate-900 dark:text-emerald-300"
                 >
                   <Plus className="h-4 w-4" />
@@ -529,6 +530,7 @@ export function SuporteWidget() {
                       <button
                         key={session.id}
                         onClick={() => activateSession(session)}
+                        aria-label={`Abrir atendimento ${session.titulo}`}
                         className={cn(
                           "w-full rounded-2xl border px-4 py-3 text-left transition-all",
                           isActive
@@ -560,14 +562,17 @@ export function SuporteWidget() {
               /* ── Email Form ── */
               <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto">
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Envie um email diretamente para nossa equipe de suporte.
-                  Responderemos o mais rápido possível.
+                  Envie um email diretamente para nossa equipe de suporte. Responderemos o mais
+                  rápido possível.
                 </p>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
                     Assunto
                   </label>
                   <input
+                    id="support-email-subject"
+                    name="support_email_subject"
+                    aria-label="Assunto do email de suporte"
                     type="text"
                     value={emailAssunto}
                     onChange={(e) => setEmailAssunto(e.target.value)}
@@ -581,6 +586,9 @@ export function SuporteWidget() {
                     Descrição
                   </label>
                   <textarea
+                    id="support-email-description"
+                    name="support_email_description"
+                    aria-label="Descrição do email de suporte"
                     value={emailDescricao}
                     onChange={(e) => setEmailDescricao(e.target.value)}
                     placeholder="Descreva seu problema ou dúvida em detalhes..."
@@ -590,11 +598,8 @@ export function SuporteWidget() {
                 </div>
                 <button
                   onClick={() => sendEmail.mutate()}
-                  disabled={
-                    !emailAssunto.trim() ||
-                    !emailDescricao.trim() ||
-                    sendEmail.isPending
-                  }
+                  aria-label="Enviar email para a equipe de suporte"
+                  disabled={!emailAssunto.trim() || !emailDescricao.trim() || sendEmail.isPending}
                   className="w-full h-10 rounded-xl bg-emerald-600 text-white text-sm font-medium flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
                 >
                   {sendEmail.isPending ? (

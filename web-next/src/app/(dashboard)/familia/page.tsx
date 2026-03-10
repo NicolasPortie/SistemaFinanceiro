@@ -162,23 +162,19 @@ const statusRecursoConfig: Record<
 > = {
   Desativado: {
     label: "Desativado",
-    badgeClass:
-      "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+    badgeClass: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
   },
   PendenteAceite: {
     label: "Pendente",
-    badgeClass:
-      "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+    badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
   },
   Ativo: {
     label: "Ativo",
-    badgeClass:
-      "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+    badgeClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
   },
   Recusado: {
     label: "Recusado",
-    badgeClass:
-      "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-300",
+    badgeClass: "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-300",
   },
 };
 
@@ -188,32 +184,28 @@ const quickLinks = [
     label: "Dashboard Familiar",
     description: "Veja receitas, despesas e a contribuição de cada pessoa.",
     icon: Users,
-    toneClass:
-      "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300",
+    toneClass: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300",
   },
   {
     href: "/familia/metas",
     label: "Metas Conjuntas",
     description: "Crie objetivos em conjunto e acompanhe o progresso.",
     icon: PiggyBank,
-    toneClass:
-      "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300",
+    toneClass: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300",
   },
   {
     href: "/familia/categorias",
     label: "Categorias",
     description: "Mantenha a mesma taxonomia financeira entre os membros.",
     icon: FolderOpen,
-    toneClass:
-      "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300",
+    toneClass: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300",
   },
   {
     href: "/familia/orcamentos",
     label: "Orçamentos",
     description: "Defina limites compartilhados por categoria.",
     icon: Receipt,
-    toneClass:
-      "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
+    toneClass: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
   },
 ] as const;
 
@@ -273,7 +265,8 @@ export default function FamiliaPage() {
       ? "A família já está ativa. Aqui você controla convites, acompanha o membro conectado e decide quais recursos compartilhados ficam disponíveis."
       : "A estrutura foi criada, mas ainda depende da confirmação do outro membro para virar uma operação compartilhada completa.";
 
-  const showInvitePrimaryAction = !familia || (isTitular && !familia.membroNome && !convitePendente);
+  const showInvitePrimaryAction =
+    !familia || (isTitular && !familia.membroNome && !convitePendente);
 
   return (
     <TooltipProvider>
@@ -358,7 +351,11 @@ export default function FamiliaPage() {
               <FamilyMetricCard
                 title="Status Atual"
                 value={statusFamiliaConfig[familia.status]?.label ?? familia.status}
-                subtitle={isAtiva ? "Estrutura pronta para uso conjunto" : "Aguardando confirmação do outro membro"}
+                subtitle={
+                  isAtiva
+                    ? "Estrutura pronta para uso conjunto"
+                    : "Aguardando confirmação do outro membro"
+                }
                 icon={<Users className="h-5 w-5" />}
                 tone="emerald"
               />
@@ -413,7 +410,9 @@ export default function FamiliaPage() {
                         <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
                           {familia.titularNome}
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Titular do plano</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Titular do plano
+                        </p>
                       </div>
                       {isTitular && (
                         <span className="rounded-full border border-amber-200 bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
@@ -433,7 +432,9 @@ export default function FamiliaPage() {
                           <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
                             {familia.membroNome}
                           </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Membro conectado</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Membro conectado
+                          </p>
                         </div>
                         {isMembro && (
                           <span className="rounded-full border border-blue-200 bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">

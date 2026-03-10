@@ -40,7 +40,9 @@ export default function CategoriasPage() {
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createName, setCreateName] = useState("");
-  const [editingCategoria, setEditingCategoria] = useState<{ id: number; nome: string } | null>(null);
+  const [editingCategoria, setEditingCategoria] = useState<{ id: number; nome: string } | null>(
+    null
+  );
   const [editingName, setEditingName] = useState("");
   const [removingCategoriaId, setRemovingCategoriaId] = useState<number | null>(null);
 
@@ -85,7 +87,8 @@ export default function CategoriasPage() {
                 Categorias
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                Mantenha seu plano de contas limpo em uma guia dedicada. Aqui você cria, ajusta e revisa as categorias que alimentam lançamentos, metas e limites.
+                Mantenha seu plano de contas limpo em uma guia dedicada. Aqui você cria, ajusta e
+                revisa as categorias que alimentam lançamentos, metas e limites.
               </p>
             </div>
           </div>
@@ -95,7 +98,10 @@ export default function CategoriasPage() {
               <RefreshCw className="h-4 w-4" />
               Atualizar
             </Button>
-            <Button onClick={() => setShowCreateDialog(true)} className="gap-2 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700">
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              className="gap-2 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700"
+            >
               <Plus className="h-4 w-4" />
               Nova categoria
             </Button>
@@ -164,7 +170,10 @@ export default function CategoriasPage() {
             title="Nenhuma categoria cadastrada"
             description="Crie a primeira categoria para organizar lançamentos, limites e metas com mais clareza."
             action={
-              <Button onClick={() => setShowCreateDialog(true)} className="gap-2 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700">
+              <Button
+                onClick={() => setShowCreateDialog(true)}
+                className="gap-2 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700"
+              >
                 <Plus className="h-4 w-4" />
                 Criar categoria
               </Button>
@@ -203,7 +212,10 @@ export default function CategoriasPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editingCategoria !== null} onOpenChange={(open) => !open && setEditingCategoria(null)}>
+      <Dialog
+        open={editingCategoria !== null}
+        onOpenChange={(open) => !open && setEditingCategoria(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Editar categoria</DialogTitle>
@@ -232,17 +244,24 @@ export default function CategoriasPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={removingCategoriaId !== null} onOpenChange={() => setRemovingCategoriaId(null)}>
+      <AlertDialog
+        open={removingCategoriaId !== null}
+        onOpenChange={() => setRemovingCategoriaId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remover categoria?</AlertDialogTitle>
             <AlertDialogDescription>
-              Essa ação não pode ser desfeita. Revise os lançamentos vinculados antes de confirmar a remoção.
+              Essa ação não pode ser desfeita. Revise os lançamentos vinculados antes de confirmar a
+              remoção.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemove} className="bg-red-600 text-white hover:bg-red-700">
+            <AlertDialogAction
+              onClick={handleRemove}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
               Remover
             </AlertDialogAction>
           </AlertDialogFooter>

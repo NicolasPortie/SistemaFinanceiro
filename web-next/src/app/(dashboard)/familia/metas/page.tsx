@@ -158,8 +158,7 @@ function progressStyle(percent: number) {
     return {
       barClass: "bg-blue-500",
       textClass: "text-blue-600 dark:text-blue-300",
-      subtleClass:
-        "border-blue-200 bg-blue-50/70 dark:border-blue-500/20 dark:bg-blue-500/10",
+      subtleClass: "border-blue-200 bg-blue-50/70 dark:border-blue-500/20 dark:bg-blue-500/10",
     };
   }
 
@@ -167,16 +166,14 @@ function progressStyle(percent: number) {
     return {
       barClass: "bg-amber-500",
       textClass: "text-amber-600 dark:text-amber-300",
-      subtleClass:
-        "border-amber-200 bg-amber-50/70 dark:border-amber-500/20 dark:bg-amber-500/10",
+      subtleClass: "border-amber-200 bg-amber-50/70 dark:border-amber-500/20 dark:bg-amber-500/10",
     };
   }
 
   return {
     barClass: "bg-rose-500",
     textClass: "text-rose-600 dark:text-rose-300",
-    subtleClass:
-      "border-rose-200 bg-rose-50/70 dark:border-rose-500/20 dark:bg-rose-500/10",
+    subtleClass: "border-rose-200 bg-rose-50/70 dark:border-rose-500/20 dark:bg-rose-500/10",
   };
 }
 
@@ -229,10 +226,7 @@ export default function FamiliaMetasPage() {
             metas.length
         )
       : 0;
-  const totalMensalNecessario = metas.reduce(
-    (sum, item) => sum + item.valorMensalNecessario,
-    0
-  );
+  const totalMensalNecessario = metas.reduce((sum, item) => sum + item.valorMensalNecessario, 0);
   const metasConcluidas = metas.filter(
     (item) => item.percentualConcluido >= 100 || item.status.toLowerCase() === "concluida"
   ).length;
@@ -423,7 +417,10 @@ export default function FamiliaMetasPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem onClick={() => openUpdateDialog(meta)} className="gap-2">
+                            <DropdownMenuItem
+                              onClick={() => openUpdateDialog(meta)}
+                              className="gap-2"
+                            >
                               <Edit3 className="h-3.5 w-3.5" />
                               Atualizar valor
                             </DropdownMenuItem>
@@ -457,12 +454,7 @@ export default function FamiliaMetasPage() {
                       </div>
 
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div
-                          className={cn(
-                            "rounded-[1.25rem] border p-3",
-                            progress.subtleClass
-                          )}
-                        >
+                        <div className={cn("rounded-[1.25rem] border p-3", progress.subtleClass)}>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                             Valor atual
                           </p>
@@ -491,7 +483,10 @@ export default function FamiliaMetasPage() {
                         </div>
                         <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700/50">
                           <div
-                            className={cn("h-full rounded-full transition-all duration-500", progress.barClass)}
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              progress.barClass
+                            )}
                             style={{ width: `${Math.min(meta.percentualConcluido, 100)}%` }}
                           />
                         </div>
@@ -602,9 +597,11 @@ export default function FamiliaMetasPage() {
                   Tipo
                 </Label>
                 <div className="grid gap-2">
-                  {(Object.entries(META_TYPE_CONFIG) as Array<
-                    [MetaData["tipo"], (typeof META_TYPE_CONFIG)[MetaData["tipo"]]]
-                  >).map(([key, item]) => (
+                  {(
+                    Object.entries(META_TYPE_CONFIG) as Array<
+                      [MetaData["tipo"], (typeof META_TYPE_CONFIG)[MetaData["tipo"]]]
+                    >
+                  ).map(([key, item]) => (
                     <button
                       key={key}
                       type="button"
@@ -652,9 +649,11 @@ export default function FamiliaMetasPage() {
                   Prioridade
                 </Label>
                 <div className="grid gap-2">
-                  {(Object.entries(PRIORITY_CONFIG) as Array<
-                    [MetaData["prioridade"], (typeof PRIORITY_CONFIG)[MetaData["prioridade"]]]
-                  >).map(([key, item]) => (
+                  {(
+                    Object.entries(PRIORITY_CONFIG) as Array<
+                      [MetaData["prioridade"], (typeof PRIORITY_CONFIG)[MetaData["prioridade"]]]
+                    >
+                  ).map(([key, item]) => (
                     <button
                       key={key}
                       type="button"
@@ -686,7 +685,9 @@ export default function FamiliaMetasPage() {
                   <CurrencyInput
                     value={form.watch("valorAlvo")}
                     onValueChange={(value) =>
-                      form.setValue("valorAlvo", value, { shouldValidate: form.formState.isSubmitted })
+                      form.setValue("valorAlvo", value, {
+                        shouldValidate: form.formState.isSubmitted,
+                      })
                     }
                     className={cn(
                       "h-11 rounded-xl pl-12 font-semibold tabular-nums",
@@ -732,7 +733,10 @@ export default function FamiliaMetasPage() {
                   <Input
                     type="date"
                     {...form.register("prazo")}
-                    className={cn("h-11 rounded-xl pl-10", form.formState.errors.prazo && "border-rose-500")}
+                    className={cn(
+                      "h-11 rounded-xl pl-10",
+                      form.formState.errors.prazo && "border-rose-500"
+                    )}
                   />
                 </div>
                 {form.formState.errors.prazo && (
@@ -784,7 +788,11 @@ export default function FamiliaMetasPage() {
               </div>
             </div>
 
-            <FamilyPrimaryAction type="submit" loading={criarMeta.isPending} className="h-12 w-full">
+            <FamilyPrimaryAction
+              type="submit"
+              loading={criarMeta.isPending}
+              className="h-12 w-full"
+            >
               <Target className="h-5 w-5" />
               Criar meta conjunta
             </FamilyPrimaryAction>

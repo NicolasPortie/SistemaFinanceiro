@@ -25,6 +25,11 @@ public interface IWhatsAppBotService
     Task<string> ProcessarImagemAsync(string phoneNumber, byte[] imageData, string mimeType, string nomeUsuario, string? caption = null);
 
     /// <summary>
+    /// Processa um documento enviado no WhatsApp (PDF ou imagem como arquivo).
+    /// </summary>
+    Task<string> ProcessarDocumentoAsync(string phoneNumber, byte[] documentData, string mimeType, string fileName, string nomeUsuario, string? caption = null);
+
+    /// <summary>
     /// Envia mensagem proativa para um número de WhatsApp via Bridge.
     /// </summary>
     Task<bool> EnviarMensagemAsync(string phoneNumber, string mensagem);

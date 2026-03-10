@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ControlFinance.Api\ControlFinance.Api.csproj" />
     <ProjectReference Include="..\ControlFinance.Application\ControlFinance.Application.csproj" />
     <ProjectReference Include="..\ControlFinance.Domain\ControlFinance.Domain.csproj" />
     <ProjectReference Include="..\ControlFinance.Infrastructure\ControlFinance.Infrastructure.csproj" />

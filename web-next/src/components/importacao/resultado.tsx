@@ -1,6 +1,15 @@
 "use client";
 
-import { CheckCircle2, AlertCircle, FileText, ArrowRight, RotateCcw, Copy, Ban, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  ArrowRight,
+  RotateCcw,
+  Copy,
+  Ban,
+  XCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -44,9 +53,7 @@ export function Resultado({ resultado, onNovaImportacao, onVerLancamentos }: Res
 
         <div className="text-center">
           <h3 className="text-2xl font-semibold">
-            {success
-              ? "Importação concluída!"
-              : "Falha na importação"}
+            {success ? "Importação concluída!" : "Falha na importação"}
           </h3>
           <p className="text-sm text-muted-foreground mt-1.5">
             {success
@@ -190,7 +197,12 @@ function StatCard({
               <Icon className={cn("h-4.5 w-4.5", cfg.text)} />
             </div>
             <div>
-              <p className={cn("text-2xl font-bold tabular-nums", value > 0 ? cfg.text : "text-muted-foreground")}>
+              <p
+                className={cn(
+                  "text-2xl font-bold tabular-nums",
+                  value > 0 ? cfg.text : "text-muted-foreground"
+                )}
+              >
                 {value}
               </p>
               <p className="text-xs text-muted-foreground">{label}</p>

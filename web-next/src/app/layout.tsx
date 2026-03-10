@@ -77,7 +77,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#10b981" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.svg" />
       </head>
-      <body className={`${plusJakarta.variable} ${jetbrainsMono.variable} ${playfairDisplay.variable} bg-background text-foreground font-sans antialiased`}>
+      <body
+        className={`${plusJakarta.variable} ${jetbrainsMono.variable} ${playfairDisplay.variable} bg-background text-foreground font-sans antialiased`}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

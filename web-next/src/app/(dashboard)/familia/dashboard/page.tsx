@@ -51,13 +51,7 @@ export default function FamiliaDashboardPage() {
   const [mes, setMes] = useState(now.getMonth() + 1);
   const [ano, setAno] = useState(now.getFullYear());
 
-  const {
-    data: resumo,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useFamiliaDashboard(mes, ano);
+  const { data: resumo, isLoading, isError, error, refetch } = useFamiliaDashboard(mes, ano);
   const { data: categorias = [] } = useFamiliaDashboardCategorias(mes, ano);
   const { data: evolucao = [] } = useFamiliaEvolucao(6);
 
@@ -79,7 +73,8 @@ export default function FamiliaDashboardPage() {
     setMes((current) => current + 1);
   };
 
-  const maxCategoria = categorias.length > 0 ? Math.max(...categorias.map((item) => item.total)) : 0;
+  const maxCategoria =
+    categorias.length > 0 ? Math.max(...categorias.map((item) => item.total)) : 0;
 
   return (
     <FamilyShell>
@@ -104,7 +99,12 @@ export default function FamiliaDashboardPage() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2 rounded-xl">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="gap-2 rounded-xl"
+            >
               <RefreshCw className="h-4 w-4" />
               Atualizar
             </Button>
@@ -171,14 +171,22 @@ export default function FamiliaDashboardPage() {
                 <ContributionCard
                   label="Titular"
                   value={formatCurrency(resumo.contribuicaoTitular)}
-                  percent={resumo.gastoTotal > 0 ? (resumo.contribuicaoTitular / resumo.gastoTotal) * 100 : 0}
+                  percent={
+                    resumo.gastoTotal > 0
+                      ? (resumo.contribuicaoTitular / resumo.gastoTotal) * 100
+                      : 0
+                  }
                   icon={<Crown className="h-4 w-4" />}
                   accent="amber"
                 />
                 <ContributionCard
                   label="Membro"
                   value={formatCurrency(resumo.contribuicaoMembro)}
-                  percent={resumo.gastoTotal > 0 ? (resumo.contribuicaoMembro / resumo.gastoTotal) * 100 : 0}
+                  percent={
+                    resumo.gastoTotal > 0
+                      ? (resumo.contribuicaoMembro / resumo.gastoTotal) * 100
+                      : 0
+                  }
                   icon={<User className="h-4 w-4" />}
                   accent="blue"
                 />
@@ -221,10 +229,14 @@ export default function FamiliaDashboardPage() {
                         </div>
                         <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                           <span>
-                            T: {formatCurrency(cat.gastoTitular)} / M: {formatCurrency(cat.gastoMembro)}
+                            T: {formatCurrency(cat.gastoTitular)} / M:{" "}
+                            {formatCurrency(cat.gastoMembro)}
                           </span>
                           <span>
-                            {resumo.gastoTotal > 0 ? ((cat.total / resumo.gastoTotal) * 100).toFixed(1) : "0.0"}%
+                            {resumo.gastoTotal > 0
+                              ? ((cat.total / resumo.gastoTotal) * 100).toFixed(1)
+                              : "0.0"}
+                            %
                           </span>
                         </div>
                       </motion.div>
@@ -250,7 +262,13 @@ export default function FamiliaDashboardPage() {
             <div className="space-y-4">
               {evolucao.length > 0 ? (
                 evolucao.map((item, index) => (
-                  <EvolutionRow key={item.mes} label={item.mes} receita={item.receitaTotal} gasto={item.gastoTotal} delay={index * 0.04} />
+                  <EvolutionRow
+                    key={item.mes}
+                    label={item.mes}
+                    receita={item.receitaTotal}
+                    gasto={item.gastoTotal}
+                    delay={index * 0.04}
+                  />
                 ))
               ) : (
                 <EmptyState
@@ -293,12 +311,17 @@ function ContributionCard({
           {icon}
         </div>
         <div>
-          <p className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{label}</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            {label}
+          </p>
           <p className="text-lg font-semibold text-slate-900 dark:text-white">{value}</p>
         </div>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700/50">
-        <div className={`h-full rounded-full ${barClass}`} style={{ width: `${Math.min(percent, 100)}%` }} />
+        <div
+          className={`h-full rounded-full ${barClass}`}
+          style={{ width: `${Math.min(percent, 100)}%` }}
+        />
       </div>
     </div>
   );

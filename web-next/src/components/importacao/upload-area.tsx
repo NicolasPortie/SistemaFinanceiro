@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Upload, FileText, FileSpreadsheet, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCartoes, useContasBancarias } from "@/hooks/use-queries";
@@ -34,6 +40,7 @@ interface UploadAreaProps {
 }
 
 export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [tipoImportacao, setTipoImportacao] = useState<TipoImportacao | "">("");
   const [contaBancariaId, setContaBancariaId] = useState<string>("");
@@ -94,11 +101,17 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
     [handleFile]
   );
 
+  const handleOpenFilePicker = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
   const handleSubmit = () => {
     if (!file) return;
 
     if (!tipoImportacao) {
-      setSubmitError("Selecione primeiro se o arquivo e um extrato bancário ou uma fatura de cartão.");
+      setSubmitError(
+        "Selecione primeiro se o arquivo é um extrato bancário ou uma fatura de cartão."
+      );
       return;
     }
 
@@ -106,7 +119,9 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
 
     // Fatura requer cartão
     if (isFatura && !cartaoCreditoId) {
-      setSubmitError("Selecione o cartão para aplicar corretamente o dia de fechamento desta fatura.");
+      setSubmitError(
+        "Selecione o cartão para aplicar corretamente o dia de fechamento desta fatura."
+      );
       return;
     }
 
@@ -115,7 +130,8 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
     onUpload({
       arquivo: file,
       tipoImportacao,
-      contaBancariaId: contaBancariaId ? parseInt(contaBancariaId) : undefined,
+      contaBancariaId:
+        contaBancariaId && contaBancariaId !== "0" ? parseInt(contaBancariaId) : undefined,
       cartaoCreditoId: cartaoCreditoId ? parseInt(cartaoCreditoId) : undefined,
       forcarReimportacao,
     });
@@ -123,7 +139,8 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
 
   const fileExt = file ? "." + file.name.split(".").pop()?.toLowerCase() : null;
   const formatInfo = fileExt ? FORMAT_LABELS[fileExt] : null;
-  const canSubmit = !!file && !!tipoImportacao && (tipoImportacao !== "Fatura" || !!cartaoCreditoId);
+  const canSubmit =
+    !!file && !!tipoImportacao && (tipoImportacao !== "Fatura" || !!cartaoCreditoId);
 
   return (
     <div className="space-y-6">
@@ -143,14 +160,31 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
               ? "border-emerald-300 bg-emerald-50/30 dark:border-emerald-700 dark:bg-emerald-950/10"
               : "border-muted-foreground/25 hover:border-muted-foreground/40 bg-muted/30"
         )}
-        onClick={() => document.getElementById("file-input")?.click()}
+        role="button"
+        tabIndex={0}
+        aria-label={
+          file
+            ? `Arquivo selecionado ${file.name}. Clique para substituir o arquivo.`
+            : "Selecionar arquivo para importação"
+        }
+        aria-describedby="importacao-upload-hint importacao-upload-formats"
+        onClick={handleOpenFilePicker}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleOpenFilePicker();
+          }
+        }}
       >
         <input
           id="file-input"
+          ref={fileInputRef}
+          name="arquivo_importacao"
           type="file"
           accept={ACCEPTED_EXTENSIONS.join(",")}
           onChange={handleFileInput}
           className="hidden"
+          aria-label="Selecionar arquivo para importação"
         />
 
         <AnimatePresence mode="wait">
@@ -167,11 +201,14 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
                 <span className="text-lg font-medium">{file.name}</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span>{formatInfo?.icon} {formatInfo?.label}</span>
+                <span>
+                  {formatInfo?.icon} {formatInfo?.label}
+                </span>
                 <span>•</span>
                 <span>{(file.size / 1024).toFixed(0)} KB</span>
               </div>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={(e) => {
@@ -180,6 +217,7 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
                   setFileError(null);
                 }}
                 className="text-muted-foreground hover:text-destructive"
+                aria-label="Remover arquivo selecionado"
               >
                 <X className="h-4 w-4 mr-1" />
                 Remover
@@ -195,8 +233,10 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
             >
               <Upload className="h-10 w-10 text-muted-foreground/50" />
               <div className="text-center">
-                <p className="text-sm font-medium">Arraste o arquivo aqui ou clique para selecionar</p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p id="importacao-upload-hint" className="text-sm font-medium">
+                  Arraste o arquivo aqui ou clique para selecionar
+                </p>
+                <p id="importacao-upload-formats" className="text-xs text-muted-foreground mt-1">
                   CSV, OFX, XLSX ou PDF • Máximo 5MB
                 </p>
               </div>
@@ -225,6 +265,7 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+            role="alert"
           >
             <AlertTriangle className="h-4 w-4 shrink-0" />
             {fileError}
@@ -236,17 +277,20 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Tipo */}
         <div className="space-y-2">
-          <Label>Tipo de importação</Label>
-          <Select value={tipoImportacao} onValueChange={(value) => {
-            setTipoImportacao(value as TipoImportacao);
-            setSubmitError(null);
-            if (value !== "Fatura") setCartaoCreditoId("");
-          }}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione se e extrato ou fatura" />
+          <Label htmlFor="importacao-tipo">Tipo de importação</Label>
+          <Select
+            value={tipoImportacao}
+            onValueChange={(value) => {
+              setTipoImportacao(value as TipoImportacao);
+              setSubmitError(null);
+              if (value !== "Fatura") setCartaoCreditoId("");
+            }}
+          >
+            <SelectTrigger id="importacao-tipo">
+              <SelectValue placeholder="Selecione se é extrato ou fatura" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Extrato">Extrato Bancário</SelectItem>
+              <SelectItem value="Extrato">Extrato bancário</SelectItem>
               <SelectItem value="Fatura">Fatura de Cartão</SelectItem>
             </SelectContent>
           </Select>
@@ -255,9 +299,9 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
         {/* Conta bancária (for extrato) */}
         {tipoImportacao === "Extrato" && contasAtivas.length > 0 && (
           <div className="space-y-2">
-            <Label>Conta bancária (opcional)</Label>
+            <Label htmlFor="importacao-conta-bancaria">Conta bancária (opcional)</Label>
             <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
-              <SelectTrigger>
+              <SelectTrigger id="importacao-conta-bancaria">
                 <SelectValue placeholder="Auto-detectar" />
               </SelectTrigger>
               <SelectContent>
@@ -275,9 +319,9 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
         {/* Cartão (for fatura) */}
         {tipoImportacao === "Fatura" && (
           <div className="space-y-2">
-            <Label>Cartão de crédito</Label>
+            <Label htmlFor="importacao-cartao">Cartão de crédito</Label>
             <Select value={cartaoCreditoId} onValueChange={setCartaoCreditoId}>
-              <SelectTrigger>
+              <SelectTrigger id="importacao-cartao">
                 <SelectValue placeholder="Selecione o cartão" />
               </SelectTrigger>
               <SelectContent>
@@ -319,6 +363,7 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className="flex items-center gap-2 rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-300"
+            role="alert"
           >
             <AlertTriangle className="h-4 w-4 shrink-0" />
             {submitError}
@@ -328,8 +373,12 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
 
       {/* Forçar reimportação */}
       {file && (
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <label
+          htmlFor="importacao-forcar-reimportacao"
+          className="flex items-center gap-2 text-sm cursor-pointer"
+        >
           <input
+            id="importacao-forcar-reimportacao"
             type="checkbox"
             checked={forcarReimportacao}
             onChange={(e) => setForcarReimportacao(e.target.checked)}
@@ -341,11 +390,7 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
 
       {/* Submit */}
       <div className="flex justify-end">
-        <Button
-          onClick={handleSubmit}
-          disabled={!canSubmit || isLoading}
-          className="min-w-45"
-        >
+        <Button onClick={handleSubmit} disabled={!canSubmit || isLoading} className="min-w-45">
           {isLoading ? (
             <>
               <FileSpreadsheet className="mr-2 h-4 w-4 animate-spin" />

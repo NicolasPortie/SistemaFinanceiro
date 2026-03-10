@@ -1,11 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  api,
-  type WhatsAppStatusResponse,
-  type WhatsAppQrResponse,
-} from "@/lib/api";
+import { api, type WhatsAppStatusResponse, type WhatsAppQrResponse } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -109,7 +106,10 @@ export default function AdminWhatsAppPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-36 sm:h-48 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem]" />
+            <Skeleton
+              key={i}
+              className="h-36 sm:h-48 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem]"
+            />
           ))}
         </div>
         <Skeleton className="h-64 sm:h-96 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem]" />
@@ -162,11 +162,7 @@ export default function AdminWhatsAppPage() {
         {/* Connection Status */}
         <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 relative overflow-hidden group">
           <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity text-slate-900">
-            {isConnected ? (
-              <Wifi className="w-28 h-28" />
-            ) : (
-              <WifiOff className="w-28 h-28" />
-            )}
+            {isConnected ? <Wifi className="w-28 h-28" /> : <WifiOff className="w-28 h-28" />}
           </div>
           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em] mb-6">
             Status da Conexão
@@ -296,9 +292,8 @@ export default function AdminWhatsAppPage() {
 
             <div className="pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <p className="text-[10px] text-slate-400 font-medium max-w-md">
-                Para desconectar a sessão, clique no botão ao lado. O número
-                será desvinculado e será necessário escanear o QR Code
-                novamente.
+                Para desconectar a sessão, clique no botão ao lado. O número será desvinculado e
+                será necessário escanear o QR Code novamente.
               </p>
               <button
                 onClick={() => disconnectMutation.mutate()}
@@ -306,9 +301,7 @@ export default function AdminWhatsAppPage() {
                 className="bg-rose-50 text-rose-600 px-6 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-rose-100 transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 <Power className="w-4 h-4" />
-                {disconnectMutation.isPending
-                  ? "Desconectando..."
-                  : "Desconectar"}
+                {disconnectMutation.isPending ? "Desconectando..." : "Desconectar"}
               </button>
             </div>
           </div>
@@ -339,19 +332,20 @@ export default function AdminWhatsAppPage() {
                   {loadingQr ? (
                     <div className="flex flex-col items-center gap-3">
                       <RefreshCw className="w-8 h-8 text-slate-300 animate-spin" />
-                      <p className="text-[10px] text-slate-400 font-medium">
-                        Gerando QR Code...
-                      </p>
+                      <p className="text-[10px] text-slate-400 font-medium">Gerando QR Code...</p>
                     </div>
                   ) : qrData?.qrCode ? (
-                    <img
+                    <Image
                       src={
                         qrData.qrCode.startsWith("data:")
                           ? qrData.qrCode
                           : `data:image/png;base64,${qrData.qrCode}`
                       }
                       alt="WhatsApp QR Code"
+                      width={224}
+                      height={224}
                       className="w-56 h-56 object-contain"
+                      unoptimized
                     />
                   ) : (
                     <div className="flex flex-col items-center gap-3 px-6 text-center">
@@ -380,17 +374,15 @@ export default function AdminWhatsAppPage() {
                     {[
                       "Abra o WhatsApp no seu celular",
                       "Toque em Menu (⋮) ou Configurações",
-                      "Selecione \"Dispositivos vinculados\"",
-                      "Toque em \"Vincular dispositivo\"",
+                      'Selecione "Dispositivos vinculados"',
+                      'Toque em "Vincular dispositivo"',
                       "Aponte a câmera para o QR Code ao lado",
                     ].map((step, i) => (
                       <li key={i} className="flex items-start gap-3">
                         <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0 mt-0.5">
                           {i + 1}
                         </span>
-                        <span className="text-sm text-slate-600 font-medium">
-                          {step}
-                        </span>
+                        <span className="text-sm text-slate-600 font-medium">{step}</span>
                       </li>
                     ))}
                   </ol>
@@ -403,8 +395,8 @@ export default function AdminWhatsAppPage() {
                       Ou Use o Código de Pareamento
                     </h4>
                     <p className="text-[10px] text-slate-400 font-medium mb-4">
-                      No WhatsApp, toque em &quot;Vincular com número de
-                      telefone&quot; e insira o código abaixo:
+                      No WhatsApp, toque em &quot;Vincular com número de telefone&quot; e insira o
+                      código abaixo:
                     </p>
                     <div className="flex items-center gap-3">
                       <div className="bg-white border-2 border-slate-200 rounded-xl px-6 py-3 tracking-[0.5em] text-xl font-bold text-slate-900 mono-data">
@@ -419,11 +411,7 @@ export default function AdminWhatsAppPage() {
                             : "bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300"
                         )}
                       >
-                        {copied ? (
-                          <Check className="w-5 h-5" />
-                        ) : (
-                          <Copy className="w-5 h-5" />
-                        )}
+                        {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                       </button>
                     </div>
                   </div>
@@ -432,9 +420,9 @@ export default function AdminWhatsAppPage() {
                 {/* Warning */}
                 <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
                   <p className="text-[10px] text-amber-700 font-medium">
-                    <strong>Importante:</strong> Use um número de telefone
-                    dedicado para o bot. Não use seu número pessoal. O celular
-                    com o WhatsApp precisa estar conectado à internet.
+                    <strong>Importante:</strong> Use um número de telefone dedicado para o bot. Não
+                    use seu número pessoal. O celular com o WhatsApp precisa estar conectado à
+                    internet.
                   </p>
                 </div>
               </div>

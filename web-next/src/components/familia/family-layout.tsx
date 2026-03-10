@@ -33,32 +33,28 @@ const TONE_STYLES: Record<
     glow: "bg-amber-500/10 dark:bg-amber-500/14",
     badge:
       "border-amber-200/70 bg-amber-50/80 text-amber-700 dark:border-amber-500/15 dark:bg-amber-500/10 dark:text-amber-300",
-    subtle:
-      "border-amber-200/70 bg-amber-50/60 dark:border-amber-500/15 dark:bg-amber-500/8",
+    subtle: "border-amber-200/70 bg-amber-50/60 dark:border-amber-500/15 dark:bg-amber-500/8",
   },
   blue: {
     icon: "bg-blue-50 text-blue-600 dark:bg-blue-500/12 dark:text-blue-300",
     glow: "bg-blue-500/10 dark:bg-blue-500/14",
     badge:
       "border-blue-200/70 bg-blue-50/80 text-blue-700 dark:border-blue-500/15 dark:bg-blue-500/10 dark:text-blue-300",
-    subtle:
-      "border-blue-200/70 bg-blue-50/60 dark:border-blue-500/15 dark:bg-blue-500/8",
+    subtle: "border-blue-200/70 bg-blue-50/60 dark:border-blue-500/15 dark:bg-blue-500/8",
   },
   rose: {
     icon: "bg-rose-50 text-rose-600 dark:bg-rose-500/12 dark:text-rose-300",
     glow: "bg-rose-500/10 dark:bg-rose-500/14",
     badge:
       "border-rose-200/70 bg-rose-50/80 text-rose-700 dark:border-rose-500/15 dark:bg-rose-500/10 dark:text-rose-300",
-    subtle:
-      "border-rose-200/70 bg-rose-50/60 dark:border-rose-500/15 dark:bg-rose-500/8",
+    subtle: "border-rose-200/70 bg-rose-50/60 dark:border-rose-500/15 dark:bg-rose-500/8",
   },
   slate: {
     icon: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
     glow: "bg-slate-500/10 dark:bg-slate-500/14",
     badge:
       "border-slate-200/70 bg-slate-50/80 text-slate-700 dark:border-slate-500/15 dark:bg-slate-500/10 dark:text-slate-300",
-    subtle:
-      "border-slate-200/70 bg-slate-50/60 dark:border-slate-500/15 dark:bg-slate-500/8",
+    subtle: "border-slate-200/70 bg-slate-50/60 dark:border-slate-500/15 dark:bg-slate-500/8",
   },
 };
 
@@ -66,13 +62,7 @@ function toneStyle(tone: FamilyTone) {
   return TONE_STYLES[tone] ?? TONE_STYLES.emerald;
 }
 
-export function FamilyShell({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function FamilyShell({ children, className }: { children: ReactNode; className?: string }) {
   return <PageShell className={cn("space-y-6", className)}>{children}</PageShell>;
 }
 
@@ -109,7 +99,9 @@ export function FamilyHero({
       className="exec-card relative overflow-hidden rounded-[2.5rem] p-6 lg:p-8"
     >
       <div className="absolute inset-0 bg-linear-to-br from-white via-white to-slate-50/80 dark:from-slate-900/30 dark:via-slate-900/10 dark:to-slate-800/60" />
-      <div className={cn("absolute -right-10 -top-10 h-40 w-40 rounded-full blur-3xl", styles.glow)} />
+      <div
+        className={cn("absolute -right-10 -top-10 h-40 w-40 rounded-full blur-3xl", styles.glow)}
+      />
       <div className="absolute bottom-0 left-0 h-24 w-full bg-linear-to-t from-slate-100/30 to-transparent dark:from-slate-950/20" />
 
       <div className="relative z-10 flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
@@ -125,14 +117,24 @@ export function FamilyHero({
               </Link>
             )}
             {eyebrow && (
-              <span className={cn("rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]", styles.badge)}>
+              <span
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]",
+                  styles.badge
+                )}
+              >
                 {eyebrow}
               </span>
             )}
           </div>
 
           <div className="flex items-start gap-4">
-            <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] shadow-sm", styles.icon)}>
+            <div
+              className={cn(
+                "flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] shadow-sm",
+                styles.icon
+              )}
+            >
               {icon}
             </div>
             <div className="space-y-2">
@@ -148,7 +150,9 @@ export function FamilyHero({
           {children}
         </div>
 
-        {actions && <div className="flex flex-wrap items-center gap-3 xl:justify-end">{actions}</div>}
+        {actions && (
+          <div className="flex flex-wrap items-center gap-3 xl:justify-end">{actions}</div>
+        )}
       </div>
     </motion.section>
   );
@@ -182,13 +186,20 @@ export function FamilyMetricCard({
       transition={{ delay, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       className={cn("exec-card relative overflow-hidden rounded-[2rem] p-6 lg:p-7", className)}
     >
-      <div className={cn("absolute -right-6 -top-6 h-28 w-28 rounded-full blur-3xl", styles.glow)} />
+      <div
+        className={cn("absolute -right-6 -top-6 h-28 w-28 rounded-full blur-3xl", styles.glow)}
+      />
       <div className="relative z-10 flex h-full flex-col justify-between gap-5">
         <div className="flex items-start justify-between gap-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             {title}
           </p>
-          <div className={cn("flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm", styles.icon)}>
+          <div
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm",
+              styles.icon
+            )}
+          >
             {icon}
           </div>
         </div>
@@ -239,7 +250,12 @@ export function FamilyPanel({
         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             {icon && (
-              <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm", styles.icon)}>
+              <div
+                className={cn(
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm",
+                  styles.icon
+                )}
+              >
                 {icon}
               </div>
             )}
@@ -279,7 +295,12 @@ export function FamilyDialogHeader({
 
   return (
     <div className={cn("flex items-center gap-3 rounded-2xl border p-3.5 sm:p-4", styles.subtle)}>
-      <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl shadow-sm sm:h-12 sm:w-12 sm:rounded-2xl", styles.icon)}>
+      <div
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-xl shadow-sm sm:h-12 sm:w-12 sm:rounded-2xl",
+          styles.icon
+        )}
+      >
         {icon}
       </div>
       <div className="min-w-0 flex-1">

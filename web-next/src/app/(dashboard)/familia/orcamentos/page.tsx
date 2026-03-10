@@ -94,8 +94,7 @@ const STATUS_CONFIG: Record<
       "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300",
     iconClass: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300",
     progressClass: "bg-amber-500",
-    subtleClass:
-      "border-amber-200 bg-amber-50/70 dark:border-amber-500/20 dark:bg-amber-500/10",
+    subtleClass: "border-amber-200 bg-amber-50/70 dark:border-amber-500/20 dark:bg-amber-500/10",
   },
   critical: {
     label: "Critico",
@@ -114,8 +113,7 @@ const STATUS_CONFIG: Record<
       "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300",
     iconClass: "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300",
     progressClass: "bg-rose-500",
-    subtleClass:
-      "border-rose-200 bg-rose-50/70 dark:border-rose-500/20 dark:bg-rose-500/10",
+    subtleClass: "border-rose-200 bg-rose-50/70 dark:border-rose-500/20 dark:bg-rose-500/10",
   },
 };
 
@@ -182,7 +180,11 @@ export default function FamiliaOrcamentosPage() {
     const parsedCategoriaId = parseInt(categoriaId, 10);
     const parsedValorLimite = parseCurrency(valorLimite);
 
-    if (Number.isNaN(parsedCategoriaId) || Number.isNaN(parsedValorLimite) || parsedValorLimite <= 0) {
+    if (
+      Number.isNaN(parsedCategoriaId) ||
+      Number.isNaN(parsedValorLimite) ||
+      parsedValorLimite <= 0
+    ) {
       return;
     }
 
@@ -398,12 +400,7 @@ export default function FamiliaOrcamentosPage() {
                       </div>
 
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div
-                          className={cn(
-                            "rounded-[1.25rem] border p-3",
-                            status.subtleClass
-                          )}
-                        >
+                        <div className={cn("rounded-[1.25rem] border p-3", status.subtleClass)}>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                             Gasto atual
                           </p>
@@ -542,7 +539,10 @@ export default function FamiliaOrcamentosPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editOrcamento !== null} onOpenChange={(open) => !open && setEditOrcamento(null)}>
+      <Dialog
+        open={editOrcamento !== null}
+        onOpenChange={(open) => !open && setEditOrcamento(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="sr-only">Editar orcamento</DialogTitle>
@@ -576,7 +576,9 @@ export default function FamiliaOrcamentosPage() {
 
             <div className="flex items-center justify-between rounded-[1.25rem] border border-slate-200/70 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5">
               <div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">Orcamento ativo</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Orcamento ativo
+                </p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Quando pausado, o card continua visivel mas sai do consolidado principal.
                 </p>

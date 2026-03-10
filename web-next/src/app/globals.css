@@ -287,7 +287,9 @@
   .exec-card {
     background: #ffffff;
     border: 1px solid rgba(15, 23, 42, 0.06);
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04), 0 4px 12px -4px rgba(0, 0, 0, 0.02);
+    box-shadow:
+      0 10px 30px -10px rgba(0, 0, 0, 0.04),
+      0 4px 12px -4px rgba(0, 0, 0, 0.02);
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   @media (hover: hover) {
@@ -307,7 +309,7 @@
     }
   }
   .serif-italic {
-    font-family: var(--font-playfair), 'Georgia', serif;
+    font-family: var(--font-playfair), "Georgia", serif;
     font-style: italic;
   }
   .mono-data {
@@ -376,7 +378,7 @@
     border: 1px solid rgba(16, 185, 129, 0.3);
   }
   .ivory-bg {
-    background-color: #F9F9F7;
+    background-color: #f9f9f7;
   }
   .dark .ivory-bg {
     background-color: #0a0e14;

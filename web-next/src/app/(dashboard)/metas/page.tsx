@@ -31,12 +31,10 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Trophy,
   DollarSign,
   Calendar,
   Flag,
   Zap,
-  RefreshCw,
   MoreVertical,
 } from "lucide-react";
 import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
@@ -71,7 +69,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -116,6 +113,31 @@ const desvioIcon = (desvio: string) => {
   if (desvio?.includes("atrasada")) return <TrendingDown className="h-3.5 w-3.5 text-red-500" />;
   return <Minus className="h-3.5 w-3.5 text-amber-500" />;
 };
+
+function getTrendCopy(desvio?: string | null) {
+  if (!desvio) {
+    return { short: "Estável", detail: "Tendência estável" };
+  }
+
+  const normalized = desvio.toLowerCase();
+  if (normalized.includes("adiantada")) {
+    return { short: "Adiantada", detail: "Acima do ritmo planejado" };
+  }
+
+  if (normalized.includes("atrasada")) {
+    return { short: "Atrasada", detail: "Abaixo do ritmo planejado" };
+  }
+
+  if (normalized.includes("ritmo")) {
+    return { short: "No ritmo", detail: "No ritmo planejado" };
+  }
+
+  const label = desvio.replaceAll("_", " ");
+  return {
+    short: label.charAt(0).toUpperCase() + label.slice(1),
+    detail: label.charAt(0).toUpperCase() + label.slice(1),
+  };
+}
 
 function progressColor(pct: number) {
   if (pct >= 100) return "text-emerald-500";
@@ -213,15 +235,6 @@ export default function MetasPage() {
     );
   };
 
-  const handlePausarResumir = async (meta: MetaFinanceira) => {
-    setActionLoading(meta.id);
-    const novoStatus = meta.status === "pausada" ? "ativa" : "pausada";
-    atualizarMeta.mutate(
-      { id: meta.id, data: { status: novoStatus } },
-      { onSettled: () => setActionLoading(null) }
-    );
-  };
-
   const handleRemover = async () => {
     if (!deleteId) return;
     setActionLoading(deleteId);
@@ -237,8 +250,6 @@ export default function MetasPage() {
 
   const totalAlvo = ativas.reduce((s, m) => s + m.valorAlvo, 0);
   const totalAtual = ativas.reduce((s, m) => s + m.valorAtual, 0);
-  const globalPct = totalAlvo > 0 ? Math.round((totalAtual / totalAlvo) * 100) : 0;
-
   const totalMensal = ativas.reduce((s, m) => s + m.valorMensalNecessario, 0);
 
   // calendar: which months (0=Jan…11=Dec) are "contributed" based on criadoEm
@@ -259,24 +270,44 @@ export default function MetasPage() {
       {/* ── Page Header & Summary Cards ──────────────────────────── */}
       <div className="flex items-end justify-between flex-wrap gap-4 sm:gap-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-[#0F172A] mb-2">Metas</h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Gerenciamento Estratégico de Capitais</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-[#0F172A] mb-2">
+            Metas
+          </h1>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">
+            Gerenciamento Estratégico de Capitais
+          </p>
         </div>
         <div className="flex gap-3 sm:gap-4 flex-wrap items-center w-full sm:w-auto">
           <div className="exec-card px-4 sm:px-6 py-3 sm:py-4 rounded-2xl flex flex-col flex-1 sm:flex-none sm:min-w-[170px]">
-            <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mb-1">Total Acumulado</p>
-            <p className="text-sm mono-data font-bold text-[#0F172A]">{formatCurrency(totalAtual)}</p>
+            <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mb-1">
+              Total Acumulado
+            </p>
+            <p className="text-sm mono-data font-bold text-[#0F172A]">
+              {formatCurrency(totalAtual)}
+            </p>
           </div>
           <div className="exec-card px-4 sm:px-6 py-3 sm:py-4 rounded-2xl flex flex-col flex-1 sm:flex-none sm:min-w-[170px]">
-            <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mb-1">Total Projetado</p>
-            <p className="text-sm mono-data font-bold text-[#0F172A]">{formatCurrency(totalAlvo)}</p>
+            <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mb-1">
+              Total Projetado
+            </p>
+            <p className="text-sm mono-data font-bold text-[#0F172A]">
+              {formatCurrency(totalAlvo)}
+            </p>
           </div>
           <div className="exec-card px-4 sm:px-6 py-3 sm:py-4 rounded-2xl flex flex-col flex-1 sm:flex-none sm:min-w-[170px]">
-            <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mb-1">Economia Mensal</p>
-            <p className="text-sm mono-data font-bold text-[#0F172A]">{formatCurrency(totalMensal)}<span className="text-slate-400 font-normal">/mês</span></p>
+            <p className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mb-1">
+              Economia Mensal
+            </p>
+            <p className="text-sm mono-data font-bold text-[#0F172A]">
+              {formatCurrency(totalMensal)}
+              <span className="text-slate-400 font-normal">/mês</span>
+            </p>
           </div>
           <button
-            onClick={() => { createForm.reset(); setShowForm(true); }}
+            onClick={() => {
+              createForm.reset();
+              setShowForm(true);
+            }}
             className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 sm:px-6 py-3 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 w-full sm:w-auto justify-center"
           >
             <Plus className="h-4 w-4" />
@@ -298,7 +329,10 @@ export default function MetasPage() {
             description="Crie sua primeira meta financeira para começar a acompanhar seu progresso"
             action={
               <button
-                onClick={() => { createForm.reset(); setShowForm(true); }}
+                onClick={() => {
+                  createForm.reset();
+                  setShowForm(true);
+                }}
                 className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer text-sm"
               >
                 <Plus className="h-4 w-4" />
@@ -331,14 +365,31 @@ export default function MetasPage() {
               let pillCls = "bg-emerald-50 text-emerald-600";
               let accentColor = "text-emerald-600";
               let barStroke = "bg-emerald-500";
-              if (isConcluida) { pillLabel = "Concluída"; pillCls = "bg-emerald-50 text-emerald-600"; }
-              else if (isPausada) { pillLabel = "Pausada"; pillCls = "bg-amber-50 text-amber-600"; accentColor = "text-amber-600"; barStroke = "bg-amber-400"; }
-              else if (isAtrasada) { pillLabel = "Atrasada"; pillCls = "bg-rose-50 text-rose-600"; accentColor = "text-rose-600"; barStroke = "bg-rose-500"; }
-              else if (isAdiantada) { pillLabel = "Adiantada"; pillCls = "bg-indigo-50 text-indigo-600"; accentColor = "text-indigo-600"; barStroke = "bg-indigo-500"; }
+              if (isConcluida) {
+                pillLabel = "Concluída";
+                pillCls = "bg-emerald-50 text-emerald-600";
+              } else if (isPausada) {
+                pillLabel = "Pausada";
+                pillCls = "bg-amber-50 text-amber-600";
+                accentColor = "text-amber-600";
+                barStroke = "bg-amber-400";
+              } else if (isAtrasada) {
+                pillLabel = "Atrasada";
+                pillCls = "bg-rose-50 text-rose-600";
+                accentColor = "text-rose-600";
+                barStroke = "bg-rose-500";
+              } else if (isAdiantada) {
+                pillLabel = "Adiantada";
+                pillCls = "bg-indigo-50 text-indigo-600";
+                accentColor = "text-indigo-600";
+                barStroke = "bg-indigo-500";
+              }
               let deltaText = "";
               if (isConcluida) deltaText = "META ATINGIDA!";
-              else if (isAtrasada) deltaText = `DÉFICIT DE ${formatCurrency(meta.valorAlvo - meta.valorAtual)}`;
-              else if (meta.mesesRestantes > 0) deltaText = `FALTAM ${meta.mesesRestantes} ${meta.mesesRestantes === 1 ? "MÊS" : "MESES"}`;
+              else if (isAtrasada)
+                deltaText = `DÉFICIT DE ${formatCurrency(meta.valorAlvo - meta.valorAtual)}`;
+              else if (meta.mesesRestantes > 0)
+                deltaText = `FALTAM ${meta.mesesRestantes} ${meta.mesesRestantes === 1 ? "MÊS" : "MESES"}`;
 
               return (
                 <div key={meta.id} className="p-4 sm:p-6 space-y-3">
@@ -349,26 +400,42 @@ export default function MetasPage() {
                       </div>
                       <div className="min-w-0">
                         <h3 className="text-sm font-bold text-[#0F172A] truncate">{meta.nome}</h3>
-                        {deltaText && <p className={`text-[8px] font-bold mt-0.5 ${accentColor}`}>{deltaText}</p>}
+                        {deltaText && (
+                          <p className={`text-[8px] font-bold mt-0.5 ${accentColor}`}>
+                            {deltaText}
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md whitespace-nowrap ${pillCls}`}>
+                    <span
+                      className={`text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md whitespace-nowrap ${pillCls}`}
+                    >
                       {pillLabel}
                     </span>
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[10px]">
-                      <span className="text-slate-500 font-medium">{formatCurrency(meta.valorAtual)} / {formatCurrency(meta.valorAlvo)}</span>
+                      <span className="text-slate-500 font-medium">
+                        {formatCurrency(meta.valorAtual)} / {formatCurrency(meta.valorAlvo)}
+                      </span>
                       <span className={`font-bold ${accentColor}`}>{pct}%</span>
                     </div>
                     <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full ${barStroke} rounded-full`} style={{ width: `${pct}%` }} />
+                      <div
+                        className={`h-full ${barStroke} rounded-full`}
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
                   </div>
                   <div className="flex items-center gap-3 pt-1">
                     {!isConcluida && (
                       <button
-                        onClick={() => { setEditMeta(meta); editForm.reset({ valorAtual: meta.valorAtual.toFixed(2).replace(".", ",") }); }}
+                        onClick={() => {
+                          setEditMeta(meta);
+                          editForm.reset({
+                            valorAtual: meta.valorAtual.toFixed(2).replace(".", ","),
+                          });
+                        }}
                         className="text-emerald-600 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
                       >
                         <Plus className="h-3.5 w-3.5" />
@@ -397,7 +464,8 @@ export default function MetasPage() {
               const startDate = new Date(meta.criadoEm);
               const totalMs = prazoDate.getTime() - startDate.getTime();
               const elapsedMs = Date.now() - startDate.getTime();
-              const projPct = totalMs > 0 ? Math.min(Math.round((elapsedMs / totalMs) * 100), 100) : 0;
+              const projPct =
+                totalMs > 0 ? Math.min(Math.round((elapsedMs / totalMs) * 100), 100) : 0;
 
               // Status pill
               const isAdiantada = meta.desvio?.toLowerCase().includes("adiantada");
@@ -410,17 +478,29 @@ export default function MetasPage() {
               let barStroke = "bg-emerald-500";
               let svgStroke = "#10B981";
               if (isConcluida) {
-                pillLabel = "Concluída"; pillCls = "bg-emerald-50 text-emerald-600";
-                accentColor = "text-emerald-600"; barStroke = "bg-emerald-500"; svgStroke = "#10B981";
+                pillLabel = "Concluída";
+                pillCls = "bg-emerald-50 text-emerald-600";
+                accentColor = "text-emerald-600";
+                barStroke = "bg-emerald-500";
+                svgStroke = "#10B981";
               } else if (isPausada) {
-                pillLabel = "Pausada"; pillCls = "bg-amber-50 text-amber-600";
-                accentColor = "text-amber-600"; barStroke = "bg-amber-400"; svgStroke = "#F59E0B";
+                pillLabel = "Pausada";
+                pillCls = "bg-amber-50 text-amber-600";
+                accentColor = "text-amber-600";
+                barStroke = "bg-amber-400";
+                svgStroke = "#F59E0B";
               } else if (isAtrasada) {
-                pillLabel = "Atrasada"; pillCls = "bg-rose-50 text-rose-600";
-                accentColor = "text-rose-600"; barStroke = "bg-rose-500"; svgStroke = "#F43F5E";
+                pillLabel = "Atrasada";
+                pillCls = "bg-rose-50 text-rose-600";
+                accentColor = "text-rose-600";
+                barStroke = "bg-rose-500";
+                svgStroke = "#F43F5E";
               } else if (isAdiantada) {
-                pillLabel = "Adiantada"; pillCls = "bg-indigo-50 text-indigo-600";
-                accentColor = "text-indigo-600"; barStroke = "bg-indigo-500"; svgStroke = "#6366F1";
+                pillLabel = "Adiantada";
+                pillCls = "bg-indigo-50 text-indigo-600";
+                accentColor = "text-indigo-600";
+                barStroke = "bg-indigo-500";
+                svgStroke = "#6366F1";
               }
 
               // Sub-delta text
@@ -444,23 +524,35 @@ export default function MetasPage() {
 
               // Calendar squares
               const calendar = getCalendar(meta.criadoEm);
+              const trendCopy = getTrendCopy(meta.desvio);
 
               return (
-                <div key={meta.id} className="grid grid-cols-12 gap-6 p-6 xl:p-10 items-center hover:bg-slate-50/50 transition-colors group">
+                <div
+                  key={meta.id}
+                  className="grid grid-cols-12 gap-6 p-6 xl:p-10 items-center hover:bg-slate-50/50 transition-colors group"
+                >
                   {/* Objetivo */}
                   <div className="col-span-3 flex items-center gap-5">
                     <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors shrink-0">
                       <Target className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-sm font-bold text-[#0F172A] mb-2 truncate">{meta.nome}</h3>
+                      <h3 className="text-sm font-bold text-[#0F172A] mb-2 truncate">
+                        {meta.nome}
+                      </h3>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">Calendário de Aportes</span>
+                        <span className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">
+                          Calendário de Aportes
+                        </span>
                         <div className="flex gap-1.5 flex-wrap">
                           {MONTH_LABELS.map((label, i) => (
                             <div key={i} className="flex flex-col items-center gap-0.5">
-                              <div className={`w-3.5 h-3.5 rounded-sm ${calendar[i] ? "bg-emerald-500" : "border border-slate-200 bg-transparent"}`} />
-                              <span className="text-[7px] font-bold text-slate-400 uppercase">{label}</span>
+                              <div
+                                className={`w-3.5 h-3.5 rounded-sm ${calendar[i] ? "bg-emerald-500" : "border border-slate-200 bg-transparent"}`}
+                              />
+                              <span className="text-[7px] font-bold text-slate-400 uppercase">
+                                {label}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -475,8 +567,14 @@ export default function MetasPage() {
                       <span className="text-slate-400">PROJ: {projPct}%</span>
                     </div>
                     <div className="h-2 w-full bg-slate-100 rounded-full relative overflow-hidden">
-                      <div className={`absolute top-0 left-0 h-[2px] ${barStroke} rounded-full z-10`} style={{ width: `${pct}%` }} />
-                      <div className="absolute bottom-0 left-0 h-[2px] bg-slate-300 rounded-full opacity-50" style={{ width: `${projPct}%` }} />
+                      <div
+                        className={`absolute top-0 left-0 h-[2px] ${barStroke} rounded-full z-10`}
+                        style={{ width: `${pct}%` }}
+                      />
+                      <div
+                        className="absolute bottom-0 left-0 h-[2px] bg-slate-300 rounded-full opacity-50"
+                        style={{ width: `${projPct}%` }}
+                      />
                     </div>
                   </div>
 
@@ -495,16 +593,24 @@ export default function MetasPage() {
                   {/* Tendência sparkline */}
                   <div className="col-span-2">
                     <p className="text-[7px] font-bold text-slate-400 mb-1 uppercase tracking-widest truncate">
-                      {meta.desvio || "Tendência estável"}
+                      {trendCopy.detail}
                     </p>
                     <svg className="w-full h-8" viewBox="0 0 120 30">
-                      <path d={sparkPath} fill="none" stroke={svgStroke} strokeLinecap="round" strokeWidth="1.5" />
+                      <path
+                        d={sparkPath}
+                        fill="none"
+                        stroke={svgStroke}
+                        strokeLinecap="round"
+                        strokeWidth="1.5"
+                      />
                     </svg>
                   </div>
 
                   {/* Status pill */}
                   <div className="col-span-1 flex justify-center">
-                    <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md min-w-[85px] text-center ${pillCls}`}>
+                    <span
+                      className={`text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-md min-w-[85px] text-center ${pillCls}`}
+                    >
                       {pillLabel}
                     </span>
                   </div>
@@ -513,7 +619,12 @@ export default function MetasPage() {
                   <div className="col-span-2 flex justify-end gap-8 text-[9px] font-bold uppercase tracking-widest pr-4">
                     {!isConcluida && (
                       <button
-                        onClick={() => { setEditMeta(meta); editForm.reset({ valorAtual: meta.valorAtual.toFixed(2).replace(".", ",") }); }}
+                        onClick={() => {
+                          setEditMeta(meta);
+                          editForm.reset({
+                            valorAtual: meta.valorAtual.toFixed(2).replace(".", ","),
+                          });
+                        }}
                         className="text-emerald-600 hover:brightness-90 transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         <Plus className="h-3.5 w-3.5" />
@@ -536,7 +647,9 @@ export default function MetasPage() {
           {/* Footer */}
           <div className="p-4 sm:p-6 lg:p-8 border-t border-slate-50 bg-slate-50/20 flex items-center justify-between flex-wrap gap-4">
             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-              {metas.length} meta{metas.length !== 1 ? "s" : ""} ativas • {ativas.length} ativa{ativas.length !== 1 ? "s" : ""}, {concluidas.length} concluída{concluidas.length !== 1 ? "s" : ""}
+              {metas.length} meta{metas.length !== 1 ? "s" : ""} no total • {ativas.length} ativa
+              {ativas.length !== 1 ? "s" : ""}, {concluidas.length} concluída
+              {concluidas.length !== 1 ? "s" : ""}
             </p>
             <div className="flex gap-4 flex-wrap">
               {pausadas.length > 0 && (
@@ -545,7 +658,10 @@ export default function MetasPage() {
                 </span>
               )}
               <button
-                onClick={() => { createForm.reset(); setShowForm(true); }}
+                onClick={() => {
+                  createForm.reset();
+                  setShowForm(true);
+                }}
                 className="px-6 py-3 rounded-xl bg-slate-900 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 cursor-pointer flex items-center gap-2"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -814,11 +930,31 @@ export default function MetasPage() {
             <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border/30">
               <div className="relative h-12 w-12 shrink-0">
                 <svg className="h-12 w-12 -rotate-90" viewBox="0 0 48 48">
-                  <circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/30" />
-                  <circle cx="24" cy="24" r="18" fill="none" strokeWidth="4" strokeLinecap="round" className={progressStrokeColor(editMeta.percentualConcluido)} stroke="currentColor" strokeDasharray={`${Math.min(editMeta.percentualConcluido, 100) * 1.131} 113.1`} />
+                  <circle
+                    cx="24"
+                    cy="24"
+                    r="18"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="text-muted/30"
+                  />
+                  <circle
+                    cx="24"
+                    cy="24"
+                    r="18"
+                    fill="none"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    className={progressStrokeColor(editMeta.percentualConcluido)}
+                    stroke="currentColor"
+                    strokeDasharray={`${Math.min(editMeta.percentualConcluido, 100) * 1.131} 113.1`}
+                  />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-[10px] font-extrabold tabular-nums">{editMeta.percentualConcluido.toFixed(0)}%</span>
+                  <span className="text-[10px] font-extrabold tabular-nums">
+                    {editMeta.percentualConcluido.toFixed(0)}%
+                  </span>
                 </div>
               </div>
               <div className="flex-1 min-w-0">
@@ -944,11 +1080,11 @@ function MetaCard({
               className={cn(
                 "size-11 rounded-full flex items-center justify-center shadow-sm",
                 meta.tipo === "juntar_valor" &&
-                "bg-sky-100 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400",
+                  "bg-sky-100 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400",
                 meta.tipo === "reduzir_gasto" &&
-                "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400",
+                  "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400",
                 meta.tipo === "reserva_mensal" &&
-                "bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400"
+                  "bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400"
               )}
             >
               {tiposIcon[meta.tipo] ?? <Target className="h-4 w-4" />}
@@ -1078,7 +1214,7 @@ function MetaCard({
           {meta.desvio && !isPaused && (
             <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 font-medium pt-0.5">
               {desvioIcon(meta.desvio)}
-              <span>{meta.desvio === "no_ritmo" ? "no ritmo" : meta.desvio}</span>
+              <span>{getTrendCopy(meta.desvio).short}</span>
               <span className="mx-1">·</span>
               <span className="tabular-nums">
                 {meta.mesesRestantes} {meta.mesesRestantes === 1 ? "mês" : "meses"}
@@ -1090,3 +1226,5 @@ function MetaCard({
     </motion.div>
   );
 }
+
+void MetaCard;

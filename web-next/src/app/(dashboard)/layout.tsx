@@ -105,7 +105,6 @@ const mobileItems = [
   { label: "Família", href: "/familia" },
   { label: "Categorias", href: "/categorias" },
   { label: "Ravier", href: "/chat" },
-  { label: "Configurações", href: "/configuracoes" },
 ];
 
 /* ─── User dropdown component ────────────────────────────── */
@@ -142,7 +141,10 @@ function UserDropdown() {
       </button>
 
       {open && (
-        <div className="exec-dropdown absolute right-0 top-[calc(100%+8px)] z-50 min-w-50 rounded-2xl py-2" style={{ opacity: 1, visibility: "visible", transform: "none" }}>
+        <div
+          className="exec-dropdown absolute right-0 top-[calc(100%+8px)] z-50 min-w-50 rounded-2xl py-2"
+          style={{ opacity: 1, visibility: "visible", transform: "none" }}
+        >
           <Link
             href="/configuracoes"
             onClick={() => setOpen(false)}
@@ -152,7 +154,9 @@ function UserDropdown() {
             Configurações
           </Link>
           <button
-            onClick={() => { setTheme(theme === "dark" ? "light" : "dark"); }}
+            onClick={() => {
+              setTheme(theme === "dark" ? "light" : "dark");
+            }}
             className="flex items-center gap-3 px-5 py-3 text-[10px] font-medium text-slate-500 hover:text-emerald-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors uppercase tracking-widest w-full text-left"
           >
             {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
@@ -160,7 +164,10 @@ function UserDropdown() {
           </button>
           <div className="border-t border-slate-100 dark:border-slate-700 my-1" />
           <button
-            onClick={() => { logout(); router.push("/login"); }}
+            onClick={() => {
+              logout();
+              router.push("/login");
+            }}
             className="flex items-center gap-3 px-5 py-3 text-[10px] font-medium text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors uppercase tracking-widest w-full text-left"
           >
             <LogOut className="h-3.5 w-3.5" />
@@ -199,25 +206,46 @@ function MobileNav({ isAdminMode }: { isAdminMode: boolean }) {
 
   return (
     <div className="lg:hidden">
-      <button onClick={() => setOpen(!open)} className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer">
+      <button
+        onClick={() => setOpen(!open)}
+        aria-label={open ? "Fechar menu de navegação" : "Abrir menu de navegação"}
+        aria-expanded={open}
+        aria-controls="dashboard-mobile-nav"
+        className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
+      >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           {open ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
           )}
         </svg>
       </button>
 
       {open && (
-        <div className="fixed inset-0 top-20 z-90 overflow-y-auto bg-white dark:bg-[#0a0e14]">
+        <div
+          id="dashboard-mobile-nav"
+          className="fixed inset-x-0 bottom-0 top-20 z-50 overflow-y-auto bg-white dark:bg-[#0a0e14]"
+        >
           {/* User info bar */}
           <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-slate-800">
             <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{usuario?.nome}</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                {usuario?.nome}
+              </p>
               <p className="text-[11px] text-slate-400 truncate">{usuario?.email}</p>
             </div>
           </div>
@@ -232,7 +260,10 @@ function MobileNav({ isAdminMode }: { isAdminMode: boolean }) {
             </button>
             {isAdmin && (
               <button
-                onClick={() => { setAdminMode(!isAdminMode); setOpen(false); }}
+                onClick={() => {
+                  setAdminMode(!isAdminMode);
+                  setOpen(false);
+                }}
                 className={cn(
                   "px-3 py-2.5 rounded-xl border text-[10px] font-bold uppercase tracking-widest",
                   isAdminMode
@@ -275,7 +306,11 @@ function MobileNav({ isAdminMode }: { isAdminMode: boolean }) {
               Configurações
             </Link>
             <button
-              onClick={() => { logout(); router.push("/login"); setOpen(false); }}
+              onClick={() => {
+                logout();
+                router.push("/login");
+                setOpen(false);
+              }}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors w-full text-left"
             >
               <LogOut className="h-3.5 w-3.5" />
@@ -290,18 +325,19 @@ function MobileNav({ isAdminMode }: { isAdminMode: boolean }) {
 
 /* ─── Main Shell ─────────────────────────────────────────── */
 function DashboardShell({ children }: { children: React.ReactNode }) {
-  const { usuario, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const { isAdminMode, setAdminMode } = useAdminMode();
   const pathname = usePathname();
 
   const isDashboard = pathname === "/dashboard";
   const activeNavGroups = isAdminMode ? adminNavGroups : navGroups;
-  const activeItemColor = isAdminMode ? "text-amber-600 bg-slate-50 dark:bg-slate-800" : "text-emerald-600 bg-slate-50 dark:bg-slate-800";
+  const activeItemColor = isAdminMode
+    ? "text-amber-600 bg-slate-50 dark:bg-slate-800"
+    : "text-emerald-600 bg-slate-50 dark:bg-slate-800";
   const activeHoverColor = isAdminMode ? "hover:text-amber-600" : "hover:text-emerald-600";
 
   return (
     <div className="ivory-bg min-h-screen h-screen flex flex-col overflow-hidden text-slate-800 dark:text-slate-200 selection:bg-emerald-100 selection:text-emerald-900">
-
       {/* ═══ Executive Header ═══ */}
       <header
         className={cn(
@@ -315,7 +351,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-6 lg:gap-12 h-full">
           {/* Logo */}
           <Link href="/dashboard" className="shrink-0">
-            <Image src="/LogoRavier.png" alt="Ravier" width={100} height={30} className="object-contain dark:brightness-0 dark:invert" priority />
+            <Image
+              src="/LogoRavier.png"
+              alt="Ravier"
+              width={100}
+              height={30}
+              className="object-contain dark:brightness-0 dark:invert"
+              priority
+              style={{ width: "auto", height: "auto" }}
+            />
           </Link>
 
           {/* Monitor / Ravier toggle */}
@@ -351,9 +395,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 href="/admin"
                 className={cn(
                   "flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors whitespace-nowrap",
-                  pathname === "/admin"
-                    ? "text-amber-600"
-                    : "text-slate-400 hover:text-amber-500"
+                  pathname === "/admin" ? "text-amber-600" : "text-slate-400 hover:text-amber-500"
                 )}
               >
                 <Shield className="h-3 w-3" />
@@ -377,7 +419,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                           "block px-5 py-3 text-[10px] font-medium uppercase tracking-widest whitespace-nowrap transition-colors",
                           pathname.startsWith(item.href)
                             ? activeItemColor
-                            : cn("text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800", activeHoverColor)
+                            : cn(
+                                "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800",
+                                activeHoverColor
+                              )
                         )}
                       >
                         {item.label}

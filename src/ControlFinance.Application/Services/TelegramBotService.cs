@@ -531,6 +531,26 @@ public class TelegramBotService : ITelegramBotService
         }
     }
 
+    public async Task<string> ProcessarDocumentoAsync(long chatId, byte[] documentData, string mimeType, string fileName, string nomeUsuario, string? caption = null)
+    {
+        var usuario = await ObterUsuarioVinculadoAsync(chatId);
+        if (usuario == null)
+            return "Vincule sua conta primeiro. Compartilhe seu contato no chat para vincular automaticamente pelo celular.";
+        if (usuario == null)
+            return "📱 Vincule sua conta primeiro — compartilhe seu contato no chat para vincular automaticamente pelo celular.";
+
+        try
+        {
+            var resposta = await _chatEngine.ProcessarDocumentoAsync(chatId, usuario, documentData, mimeType, fileName, caption);
+            return ConverterMarkdownParaTelegram(resposta);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao processar documento");
+            return "Erro ao processar o documento. Tente novamente.";
+        }
+    }
+
     public async Task<string> ProcessarContatoAsync(long chatId, string phoneNumber, string nomeUsuario)
     {
         // Verificar se já está vinculado
@@ -564,7 +584,7 @@ public class TelegramBotService : ITelegramBotService
                "📌 \"gastei 50 no mercado\"\n" +
                "📌 \"recebi 3000 de salário\"\n" +
                "📌 \"quanto gastei esse mês?\"\n\n" +
-               "🎙️ Aceito *texto*, *áudio* e *foto de cupom*.";
+               "🎙️ Aceito *texto*, *áudio*, *foto de cupom* e *PDF/documento*.";
     }
 
     private async Task<string> GerarFaturaFormatada(
@@ -881,7 +901,7 @@ public class TelegramBotService : ITelegramBotService
 
         return comando switch
         {
-            "/start" => $"👋 Olá, *{usuario.Nome}*! Sou o *ControlFinance*, seu assistente financeiro.\n\n💬 Fale naturalmente:\n\n📌 \"paguei 45 no mercado\"\n📌 \"recebi 5000 de salário\"\n📌 \"posso gastar 50 num lanche?\"\n📌 \"se eu comprar uma TV de 3000 em 10x?\"\n📌 \"limitar alimentação em 800\"\n📌 \"quero juntar 10 mil até dezembro\"\n\n🎙️ Aceito *texto*, *áudio* e *foto de cupom*.",
+            "/start" => $"👋 Olá, *{usuario.Nome}*! Sou o *ControlFinance*, seu assistente financeiro.\n\n💬 Fale naturalmente:\n\n📌 \"paguei 45 no mercado\"\n📌 \"recebi 5000 de salário\"\n📌 \"posso gastar 50 num lanche?\"\n📌 \"se eu comprar uma TV de 3000 em 10x?\"\n📌 \"limitar alimentação em 800\"\n📌 \"quero juntar 10 mil até dezembro\"\n\n🎙️ Aceito *texto*, *áudio*, *foto de cupom* e *PDF/documento*.",
             "/ajuda" or "/help" => "📋 *Guia Completo*\n\n" +
                 "💵 *Lançamentos*\n" +
                 "   \"gastei 50 no mercado\"\n" +

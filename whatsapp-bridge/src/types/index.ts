@@ -22,6 +22,14 @@ export interface WhatsAppIncomingMessage {
   imageMimeType?: string
   /** Caption da imagem */
   imageCaption?: string
+  /** Documento em base64 */
+  documentData?: string
+  /** Mime type do documento */
+  documentMimeType?: string
+  /** Nome do arquivo enviado */
+  documentFileName?: string
+  /** Caption do documento */
+  documentCaption?: string
   /** Nome do contato no WhatsApp (pushName) */
   pushName?: string
   /** Timestamp Unix da mensagem */

@@ -3,21 +3,10 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import {
-  Search,
-  Save,
-  Settings,
-  BarChart3,
-  Megaphone,
-  Loader2,
-} from "lucide-react";
+import { Search, Save, Settings, BarChart3, Megaphone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  api,
-  AtualizarPlanoRequest,
-  AtualizarRecursoRequest,
-} from "@/lib/api";
+import { api, AtualizarPlanoRequest, AtualizarRecursoRequest } from "@/lib/api";
 import { ErrorState } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,13 +55,8 @@ export default function AdminPlanosPage() {
   });
 
   const atualizarRecursos = useMutation({
-    mutationFn: ({
-      id,
-      recursos,
-    }: {
-      id: number;
-      recursos: AtualizarRecursoRequest[];
-    }) => api.admin.planos.atualizarRecursos(id, recursos),
+    mutationFn: ({ id, recursos }: { id: number; recursos: AtualizarRecursoRequest[] }) =>
+      api.admin.planos.atualizarRecursos(id, recursos),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "planos"] });
       toast.success("Limites atualizados!");
@@ -117,9 +101,7 @@ export default function AdminPlanosPage() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(
-        (p) =>
-          p.nome.toLowerCase().includes(q) ||
-          p.tipo.toLowerCase().includes(q)
+        (p) => p.nome.toLowerCase().includes(q) || p.tipo.toLowerCase().includes(q)
       );
     }
     return list;
@@ -135,12 +117,11 @@ export default function AdminPlanosPage() {
         id: selectedPlano.id,
         data: form,
       });
-      const recursos: AtualizarRecursoRequest[] =
-        selectedPlano.recursos.map((r) => ({
-          recurso: r.recurso,
-          limite: limites[r.recurso] ?? r.limite,
-          descricaoLimite: null,
-        }));
+      const recursos: AtualizarRecursoRequest[] = selectedPlano.recursos.map((r) => ({
+        recurso: r.recurso,
+        limite: limites[r.recurso] ?? r.limite,
+        descricaoLimite: null,
+      }));
       await atualizarRecursos.mutateAsync({
         id: selectedPlano.id,
         recursos,
@@ -174,9 +155,7 @@ export default function AdminPlanosPage() {
       <div className="flex items-center justify-center h-full">
         <ErrorState
           message="Erro ao carregar planos."
-          onRetry={() =>
-            queryClient.invalidateQueries({ queryKey: ["admin", "planos"] })
-          }
+          onRetry={() => queryClient.invalidateQueries({ queryKey: ["admin", "planos"] })}
         />
       </div>
     );
@@ -227,9 +206,7 @@ export default function AdminPlanosPage() {
                   <span
                     className={cn(
                       "text-[11px] font-bold",
-                      selectedId === plano.id
-                        ? "text-emerald-600"
-                        : "text-slate-400"
+                      selectedId === plano.id ? "text-emerald-600" : "text-slate-400"
                     )}
                   >
                     {plano.precoMensal === 0
@@ -254,9 +231,7 @@ export default function AdminPlanosPage() {
                     {plano.ativo ? plano.tipo : "Inativo"}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 line-clamp-1">
-                  {plano.descricao}
-                </p>
+                <p className="text-[11px] text-slate-400 line-clamp-1">{plano.descricao}</p>
               </button>
             ))}
           </div>
@@ -283,8 +258,7 @@ export default function AdminPlanosPage() {
             >
               {sortedPlanos.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nome} — R${" "}
-                  {p.precoMensal.toFixed(2).replace(".", ",")}
+                  {p.nome} — R$ {p.precoMensal.toFixed(2).replace(".", ",")}
                 </option>
               ))}
             </select>
@@ -333,9 +307,7 @@ export default function AdminPlanosPage() {
                     </label>
                     <Input
                       value={form.nome}
-                      onChange={(e) =>
-                        setForm({ ...form, nome: e.target.value })
-                      }
+                      onChange={(e) => setForm({ ...form, nome: e.target.value })}
                       placeholder="Ex: Premium Gold"
                       className="bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-[12px] placeholder:text-slate-300 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 h-auto"
                     />
@@ -362,9 +334,7 @@ export default function AdminPlanosPage() {
                     </label>
                     <textarea
                       value={form.descricao}
-                      onChange={(e) =>
-                        setForm({ ...form, descricao: e.target.value })
-                      }
+                      onChange={(e) => setForm({ ...form, descricao: e.target.value })}
                       rows={2}
                       className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 text-[12px] placeholder:text-slate-300 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none transition-all"
                     />
@@ -413,14 +383,11 @@ export default function AdminPlanosPage() {
               {/* ── Limites de Recursos ── */}
               <div className="exec-card rounded-[2rem] p-6 lg:p-8">
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
-                  <BarChart3 className="h-3.5 w-3.5" /> Limites de Recursos e
-                  Capacidade
+                  <BarChart3 className="h-3.5 w-3.5" /> Limites de Recursos e Capacidade
                 </h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-0">
                   {selectedPlano.recursos
-                    .sort((a, b) =>
-                      a.nomeRecurso.localeCompare(b.nomeRecurso)
-                    )
+                    .sort((a, b) => a.nomeRecurso.localeCompare(b.nomeRecurso))
                     .map((r) => {
                       const valor = limites[r.recurso] ?? r.limite;
                       const isUnlimited = valor === -1;
@@ -435,9 +402,7 @@ export default function AdminPlanosPage() {
                             <label className="text-[12px] font-semibold text-slate-700 dark:text-slate-200 block">
                               {r.nomeRecurso}
                             </label>
-                            <p className="text-[10px] text-slate-400">
-                              {r.recurso}
-                            </p>
+                            <p className="text-[10px] text-slate-400">{r.recurso}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             {isUnlimited ? (
@@ -455,8 +420,7 @@ export default function AdminPlanosPage() {
                                 onChange={(e) =>
                                   setLimites((prev) => ({
                                     ...prev,
-                                    [r.recurso]:
-                                      parseInt(e.target.value) || 0,
+                                    [r.recurso]: parseInt(e.target.value) || 0,
                                   }))
                                 }
                                 className="w-20 bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-700 rounded-xl text-right text-[12px] h-auto py-1.5 focus:ring-1 focus:ring-emerald-500"
@@ -515,27 +479,21 @@ export default function AdminPlanosPage() {
                     <input
                       type="checkbox"
                       checked={form.ativo}
-                      onChange={(e) =>
-                        setForm({ ...form, ativo: e.target.checked })
-                      }
+                      onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
                       className="rounded text-emerald-500 focus:ring-emerald-500 border-slate-200 dark:border-slate-600 w-5 h-5"
                     />
                     <div>
                       <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 transition-colors">
                         Plano Ativo
                       </span>
-                      <p className="text-[10px] text-slate-400">
-                        Visível para contratação
-                      </p>
+                      <p className="text-[10px] text-slate-400">Visível para contratação</p>
                     </div>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={form.destaque}
-                      onChange={(e) =>
-                        setForm({ ...form, destaque: e.target.checked })
-                      }
+                      onChange={(e) => setForm({ ...form, destaque: e.target.checked })}
                       className="rounded text-amber-500 focus:ring-amber-500 border-slate-200 dark:border-slate-600 w-5 h-5"
                     />
                     <div>
@@ -587,9 +545,7 @@ export default function AdminPlanosPage() {
                           }
                           className="w-16 bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-700 rounded-xl text-center text-[12px] h-auto py-1.5 focus:ring-1 focus:ring-emerald-500"
                         />
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">
-                          Dias
-                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">Dias</span>
                       </div>
                     </div>
                   )}

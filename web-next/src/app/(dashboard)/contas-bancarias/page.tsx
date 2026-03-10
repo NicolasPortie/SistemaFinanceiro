@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useMemo } from "react";
 import {
   useContasBancarias,
@@ -55,7 +56,6 @@ import {
 import { cn } from "@/lib/utils";
 import { ErrorState } from "@/components/shared/page-components";
 import { DialogShellHeader } from "@/components/shared/dialog-shell";
-
 
 // ── Colors for balance distribution bars ────────────────
 const DIST_COLORS = [
@@ -181,7 +181,12 @@ export default function ContasBancariasPage() {
 
   function openEdit(c: ContaBancaria) {
     setEditingId(c.id);
-    setForm({ nome: c.nome, tipo: c.tipo, instituicao: c.instituicao || "", saldo: c.saldo.toFixed(2).replace(".", ",") });
+    setForm({
+      nome: c.nome,
+      tipo: c.tipo,
+      instituicao: c.instituicao || "",
+      saldo: c.saldo.toFixed(2).replace(".", ","),
+    });
     setDialogOpen(true);
   }
 
@@ -196,7 +201,12 @@ export default function ContasBancariasPage() {
         data: { nome: form.nome, tipo: form.tipo, instituicao: form.instituicao || null, saldo },
       });
     } else {
-      await criarConta.mutateAsync({ nome: form.nome, tipo: form.tipo, instituicao: form.instituicao || undefined, saldo });
+      await criarConta.mutateAsync({
+        nome: form.nome,
+        tipo: form.tipo,
+        instituicao: form.instituicao || undefined,
+        saldo,
+      });
     }
     setDialogOpen(false);
     setForm(defaultForm);
@@ -218,14 +228,16 @@ export default function ContasBancariasPage() {
       {/* ── Header ────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-[#0F172A]">Contas Bancárias</h1>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl serif-italic text-slate-900 dark:text-white">
+            Contas Bancárias
+          </h1>
           <p className="text-[11px] text-slate-400 font-medium uppercase tracking-[0.2em]">
             Saldos de Referência para Débito e PIX
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="bg-emerald-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-3 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 cursor-pointer w-full sm:w-auto justify-center"
+          className="bg-emerald-600 text-white px-5 sm:px-8 py-3 sm:py-4 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-3 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/25 dark:shadow-emerald-500/20 cursor-pointer w-full sm:w-auto justify-center"
         >
           <Plus className="h-5 w-5" />
           Adicionar Conta
@@ -240,7 +252,7 @@ export default function ContasBancariasPage() {
             Saldo Consolidado
           </p>
           <div className="flex flex-col">
-            <span className="text-xl sm:text-2xl lg:text-3xl serif-italic text-[#0F172A] whitespace-nowrap">
+            <span className="text-xl sm:text-2xl lg:text-3xl serif-italic text-slate-900 dark:text-white whitespace-nowrap">
               {isLoading ? "—" : formatCurrency(stats.totalSaldo)}
             </span>
             <span className="text-[10px] mono-data text-emerald-600 font-bold mt-2">
@@ -255,7 +267,7 @@ export default function ContasBancariasPage() {
             Total em Investimentos
           </p>
           <div className="flex flex-col">
-            <span className="text-xl sm:text-2xl lg:text-3xl serif-italic text-[#0F172A] whitespace-nowrap">
+            <span className="text-xl sm:text-2xl lg:text-3xl serif-italic text-slate-900 dark:text-white whitespace-nowrap">
               {isLoading ? "—" : formatCurrency(stats.totalInvestimentos)}
             </span>
             <span className="text-[10px] mono-data text-slate-400 font-medium mt-2">
@@ -292,13 +304,13 @@ export default function ContasBancariasPage() {
           </div>
         ) : contas.length === 0 ? (
           <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] flex flex-col items-center justify-center py-16 px-4 text-center">
-            <div className="h-14 w-14 rounded-2xl bg-emerald-100 flex items-center justify-center mb-4">
-              <Landmark className="h-7 w-7 text-emerald-600" />
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-500/15">
+              <Landmark className="h-7 w-7 text-emerald-600 dark:text-emerald-300" />
             </div>
-            <p className="text-[15px] font-semibold text-slate-700 mb-1">
+            <p className="mb-1 text-[15px] font-semibold text-slate-700 dark:text-white">
               Nenhuma conta cadastrada
             </p>
-            <p className="text-[13px] text-slate-400 mb-4">
+            <p className="mb-4 text-[13px] text-slate-400 dark:text-slate-400">
               Adicione suas contas bancárias para vincular aos lançamentos
             </p>
             <button
@@ -313,6 +325,7 @@ export default function ContasBancariasPage() {
             {contas.map((c) => {
               const tipoInfo = getTipoInfo(c.tipo);
               const TipoIcon = tipoInfo.icon;
+              const bank = c.instituicao ? getBankById(c.instituicao) : undefined;
               const initials = c.nome.slice(0, 2).toUpperCase();
               const isNegative = c.saldo < 0;
               return (
@@ -326,11 +339,13 @@ export default function ContasBancariasPage() {
                   {/* Institution header */}
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                      {c.instituicao ? (
-                        <img 
-                          src={getBankById(c.instituicao)?.logoUrl} 
-                          alt={getBankById(c.instituicao)?.name} 
-                          className="w-14 h-14 rounded-2xl object-cover border border-slate-100 dark:border-slate-800" 
+                      {bank?.logoUrl ? (
+                        <Image
+                          src={bank.logoUrl}
+                          alt={bank.name}
+                          width={56}
+                          height={56}
+                          className="w-14 h-14 rounded-2xl object-cover border border-slate-100 dark:border-slate-800"
                         />
                       ) : (
                         <div
@@ -343,7 +358,7 @@ export default function ContasBancariasPage() {
                         </div>
                       )}
                       <div>
-                        <h3 className="text-sm font-bold text-[#0F172A] truncate max-w-[140px]">
+                        <h3 className="max-w-[140px] truncate text-sm font-bold text-slate-900 dark:text-white">
                           {c.nome}
                         </h3>
                         <p className="text-[9px] text-slate-400 uppercase tracking-widest font-medium">
@@ -352,7 +367,12 @@ export default function ContasBancariasPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl ml-auto", tipoInfo.color)}>
+                      <div
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-xl ml-auto",
+                          tipoInfo.color
+                        )}
+                      >
                         <TipoIcon className="h-4 w-4" />
                       </div>
                     </div>
@@ -366,7 +386,7 @@ export default function ContasBancariasPage() {
                     <p
                       className={cn(
                         "text-2xl mono-data font-bold",
-                        isNegative ? "text-rose-500" : "text-[#0F172A]"
+                        isNegative ? "text-rose-500" : "text-slate-900 dark:text-white"
                       )}
                     >
                       {formatCurrency(c.saldo)}
@@ -377,13 +397,15 @@ export default function ContasBancariasPage() {
                   <div className="flex gap-3 mt-2">
                     <button
                       onClick={() => openEdit(c)}
-                      className="flex-1 py-3 px-4 rounded-2xl border border-slate-100 text-[9px] font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:text-emerald-600 transition-all cursor-pointer"
+                      aria-label={`Ver detalhes da conta ${c.nome}`}
+                      className="flex-1 py-3 px-4 rounded-2xl border border-slate-100 dark:border-slate-700 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-300 transition-all cursor-pointer"
                     >
                       Ver Detalhes
                     </button>
                     <button
                       onClick={() => setDeleteId(c.id)}
-                      className="w-12 h-11 rounded-2xl border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all cursor-pointer"
+                      aria-label={`Remover conta ${c.nome}`}
+                      className="w-12 h-11 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-rose-500 dark:hover:text-rose-200 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -400,7 +422,7 @@ export default function ContasBancariasPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 pb-12">
           {/* Distribuição de Saldo */}
           <div className="exec-card p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem]">
-            <h4 className="text-[9px] font-bold text-[#0F172A] uppercase tracking-[0.3em] mb-8">
+            <h4 className="mb-8 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-900 dark:text-white">
               Distribuição de Saldo
             </h4>
             <div className="space-y-6">
@@ -408,12 +430,14 @@ export default function ContasBancariasPage() {
                 <div key={item.id}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                      <span className={cn("w-2 h-2 rounded-full", item.color.replace("bg-", "bg-"))} />
+                      <span
+                        className={cn("w-2 h-2 rounded-full", item.color.replace("bg-", "bg-"))}
+                      />
                       {item.nome}
                     </span>
                     <span className="text-[11px] mono-data font-bold">{item.pct}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800/80">
                     <div
                       className={cn("h-full rounded-full transition-all", item.color)}
                       style={{ width: `${item.pct}%` }}
@@ -461,8 +485,6 @@ export default function ContasBancariasPage() {
       {/* Dialog: criar / editar */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-
-
           <DialogHeader>
             <div className="flex items-center gap-3 sm:gap-4 rounded-2xl border border-emerald-600/8 bg-emerald-600/3 p-3.5 sm:p-4">
               <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600/15 text-emerald-600 shadow-sm shadow-emerald-500/10">
@@ -540,7 +562,9 @@ export default function ContasBancariasPage() {
                   </Label>
                   <Select
                     value={form.instituicao || "none"}
-                    onValueChange={(v) => setForm((f) => ({ ...f, instituicao: v === "none" ? "" : v }))}
+                    onValueChange={(v) =>
+                      setForm((f) => ({ ...f, instituicao: v === "none" ? "" : v }))
+                    }
                   >
                     <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-all">
                       <SelectValue placeholder="Selecione um banco..." />
@@ -622,9 +646,7 @@ export default function ContasBancariasPage() {
             />
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">
-              Cancelar
-            </AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDesativar}
               loading={desativarConta.isPending}

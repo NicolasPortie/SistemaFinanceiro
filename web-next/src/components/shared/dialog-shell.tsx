@@ -20,23 +20,19 @@ const TONE_STYLES: Record<
   },
   amber: {
     icon: "bg-amber-50 text-amber-600 dark:bg-amber-500/12 dark:text-amber-300",
-    subtle:
-      "border-amber-200/70 bg-amber-50/70 dark:border-amber-500/15 dark:bg-amber-500/8",
+    subtle: "border-amber-200/70 bg-amber-50/70 dark:border-amber-500/15 dark:bg-amber-500/8",
   },
   blue: {
     icon: "bg-blue-50 text-blue-600 dark:bg-blue-500/12 dark:text-blue-300",
-    subtle:
-      "border-blue-200/70 bg-blue-50/70 dark:border-blue-500/15 dark:bg-blue-500/8",
+    subtle: "border-blue-200/70 bg-blue-50/70 dark:border-blue-500/15 dark:bg-blue-500/8",
   },
   rose: {
     icon: "bg-rose-50 text-rose-600 dark:bg-rose-500/12 dark:text-rose-300",
-    subtle:
-      "border-rose-200/70 bg-rose-50/70 dark:border-rose-500/15 dark:bg-rose-500/8",
+    subtle: "border-rose-200/70 bg-rose-50/70 dark:border-rose-500/15 dark:bg-rose-500/8",
   },
   slate: {
     icon: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
-    subtle:
-      "border-slate-200/70 bg-slate-50/70 dark:border-slate-500/15 dark:bg-slate-500/8",
+    subtle: "border-slate-200/70 bg-slate-50/70 dark:border-slate-500/15 dark:bg-slate-500/8",
   },
 };
 
@@ -56,7 +52,13 @@ export function DialogShellHeader({
   const styles = TONE_STYLES[tone];
 
   return (
-    <div className={cn("flex items-center gap-3 rounded-[1.5rem] border p-3.5 sm:p-4", styles.subtle, className)}>
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-[1.5rem] border p-3.5 sm:p-4",
+        styles.subtle,
+        className
+      )}
+    >
       <div
         className={cn(
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm sm:h-12 sm:w-12 sm:rounded-2xl",

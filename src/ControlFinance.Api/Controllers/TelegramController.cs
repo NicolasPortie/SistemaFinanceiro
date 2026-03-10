@@ -165,6 +165,10 @@ public class TelegramController : ControllerBase
                     resposta = await ProcessarFoto(message, botService);
                     break;
 
+                case MessageType.Document:
+                    resposta = await ProcessarDocumento(message, botService);
+                    break;
+
                 case MessageType.Contact when message.Contact != null:
                     var phoneNumber = message.Contact.PhoneNumber;
                     if (!string.IsNullOrEmpty(phoneNumber))
@@ -179,7 +183,7 @@ public class TelegramController : ControllerBase
                     break;
 
                 default:
-                    resposta = "❓ Tipo de mensagem não suportado. Envie texto, áudio, foto ou vídeo circular.";
+                    resposta = "❓ Tipo de mensagem não suportado. Envie texto, áudio, foto, documento ou vídeo circular.";
                     break;
             }
         }
@@ -537,6 +541,75 @@ public class TelegramController : ControllerBase
     /// <summary>
     /// Remove update_ids mais antigos que 2 minutos para não crescer indefinidamente.
     /// </summary>
+    private async Task<string> ProcessarDocumento(Message message, ITelegramBotService botService)
+    {
+        if (_botClient == null)
+            return "❌ Bot do Telegram está desativado no servidor.";
+
+        if (message.Document == null)
+            return "❌ Documento inválido.";
+
+        var chatId = message.Chat.Id;
+        var nomeUsuario = message.From?.FirstName ?? "Usuário";
+
+        try
+        {
+            await EnviarTypingAsync(chatId);
+
+            var file = await _botClient.GetFile(message.Document.FileId);
+            if (file.FilePath == null)
+                return "❌ Não consegui acessar o documento.";
+
+            using var ms = new MemoryStream();
+            await _botClient.DownloadFile(file.FilePath, ms);
+
+            if (ms.Length > 25_000_000)
+                return "❌ Documento muito grande (máx 25MB).";
+            if (ms.Length == 0)
+                return "❌ Documento vazio.";
+
+            var documentData = ms.ToArray();
+            var fileName = message.Document.FileName
+                ?? Path.GetFileName(file.FilePath)
+                ?? "documento";
+            var mimeType = message.Document.MimeType ?? InferirMimeDocumento(fileName);
+
+            using var typingCts = new CancellationTokenSource();
+            var typingTask = ManterTypingAtivoAsync(chatId, typingCts.Token);
+            try
+            {
+                return await botService.ProcessarDocumentoAsync(chatId, documentData, mimeType, fileName, nomeUsuario, message.Caption);
+            }
+            finally
+            {
+                typingCts.Cancel();
+                try { await typingTask; } catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao baixar documento do Telegram");
+            return "❌ Erro ao processar o documento.";
+        }
+    }
+
+    private static string InferirMimeDocumento(string fileName)
+    {
+        return Path.GetExtension(fileName ?? string.Empty).ToLowerInvariant() switch
+        {
+            ".pdf" => "application/pdf",
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".webp" => "image/webp",
+            ".txt" => "text/plain",
+            ".csv" => "text/csv",
+            ".json" => "application/json",
+            ".xml" => "application/xml",
+            ".md" => "text/markdown",
+            _ => "application/octet-stream"
+        };
+    }
+
     private static void LimparUpdatesAntigos()
     {
         var limite = DateTime.UtcNow.AddMinutes(-2);

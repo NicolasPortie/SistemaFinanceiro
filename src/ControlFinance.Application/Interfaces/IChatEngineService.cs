@@ -21,6 +21,9 @@ public interface IChatEngineService
     /// <summary>Processa imagem: OCR e processa o texto extraído.</summary>
     Task<string> ProcessarImagemAsync(Usuario usuario, byte[] imageData, string mimeType, string? caption);
 
+    /// <summary>Processa documento (PDF ou imagem enviada como arquivo).</summary>
+    Task<string> ProcessarDocumentoAsync(Usuario usuario, byte[] documentData, string mimeType, string fileName, string? caption);
+
     // ── Processamento (multi-canal — chatId explícito para Telegram/WhatsApp) ──
 
     /// <summary>Processa mensagem usando chatId explícito (Telegram usa chatId real, InApp usa pseudoId).</summary>
@@ -31,6 +34,9 @@ public interface IChatEngineService
 
     /// <summary>Processa imagem usando chatId explícito.</summary>
     Task<string> ProcessarImagemAsync(long chatId, Usuario usuario, byte[] imageData, string mimeType, string? caption);
+
+    /// <summary>Processa documento usando chatId explÃ­cito.</summary>
+    Task<string> ProcessarDocumentoAsync(long chatId, Usuario usuario, byte[] documentData, string mimeType, string fileName, string? caption);
 
     // ── Gerenciamento de estado (para hidratação Telegram após restart) ──
 

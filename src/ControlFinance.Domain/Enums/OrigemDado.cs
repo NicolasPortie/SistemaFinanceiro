@@ -5,5 +5,6 @@ public enum OrigemDado
     Texto = 1,
     Audio = 2,
     Imagem = 3,
-    Importacao = 4
+    Importacao = 4,
+    Documento = 5
 }

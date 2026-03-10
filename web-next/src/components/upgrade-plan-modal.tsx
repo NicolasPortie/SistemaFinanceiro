@@ -77,11 +77,18 @@ export function UpgradePlanProvider({ children }: { children: React.ReactNode })
    Visual maps
    ═══════════════════════════════════════════════ */
 
-const PLANO_COLORS: Record<TipoPlano, {
-  card: string; cardActive: string;
-  badge: string; button: string; glow: string;
-  ring: string; gradient: string;
-}> = {
+const PLANO_COLORS: Record<
+  TipoPlano,
+  {
+    card: string;
+    cardActive: string;
+    badge: string;
+    button: string;
+    glow: string;
+    ring: string;
+    gradient: string;
+  }
+> = {
   Gratuito: {
     card: "border-slate-200 dark:border-slate-700",
     cardActive: "border-slate-300 dark:border-slate-600",
@@ -181,20 +188,14 @@ function UpgradePlanModal({
   const [savingCpf, setSavingCpf] = useState(false);
   const pendingPlanoRef = useRef<PlanoInfo | null>(null);
 
-  const {
-    data: planos,
-    isLoading: loadingPlanos,
-  } = useQuery({
+  const { data: planos, isLoading: loadingPlanos } = useQuery({
     queryKey: ["planos"],
     queryFn: () => api.assinaturas.planos(),
     staleTime: 5 * 60 * 1000,
     enabled: open,
   });
 
-  const {
-    data: minha,
-    isLoading: loadingMinha,
-  } = useQuery({
+  const { data: minha, isLoading: loadingMinha } = useQuery({
     queryKey: ["assinatura-minha"],
     queryFn: () => api.assinaturas.minha(),
     staleTime: 2 * 60 * 1000,
@@ -212,19 +213,22 @@ function UpgradePlanModal({
     }
   }, []);
 
-  const handleCheckout = useCallback(async (plano: PlanoInfo) => {
-    if (!plano.podeFazerCheckout) return;
+  const handleCheckout = useCallback(
+    async (plano: PlanoInfo) => {
+      if (!plano.podeFazerCheckout) return;
 
-    if (plano.trialDisponivel && plano.diasGratis > 0 && !usuario?.temCpf) {
-      pendingPlanoRef.current = plano;
-      setCpfValue("");
-      setCpfError("");
-      setCpfDialogOpen(true);
-      return;
-    }
+      if (plano.trialDisponivel && plano.diasGratis > 0 && !usuario?.temCpf) {
+        pendingPlanoRef.current = plano;
+        setCpfValue("");
+        setCpfError("");
+        setCpfDialogOpen(true);
+        return;
+      }
 
-    await proceedToCheckout(plano);
-  }, [usuario?.temCpf, proceedToCheckout]);
+      await proceedToCheckout(plano);
+    },
+    [usuario?.temCpf, proceedToCheckout]
+  );
 
   const handleSaveCpf = useCallback(async () => {
     const digits = cpfValue.replace(/\D/g, "");
@@ -284,8 +288,7 @@ function UpgradePlanModal({
               <header className="text-center mb-10">
                 <DialogHeader className="gap-0">
                   <DialogTitle className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mb-3 text-slate-900 dark:text-white leading-tight">
-                    Escolha o plano ideal para sua{" "}
-                    <br className="hidden md:block" />
+                    Escolha o plano ideal para sua <br className="hidden md:block" />
                     <span className="text-emerald-500">liberdade financeira</span>
                   </DialogTitle>
                   <DialogDescription className="text-slate-500 dark:text-slate-400 font-medium text-sm sm:text-base">
@@ -306,159 +309,169 @@ function UpgradePlanModal({
                     {planos
                       ?.filter((p) => p.tipo !== "Gratuito")
                       .map((plano, i) => {
-                      const colors = PLANO_COLORS[plano.tipo] ?? PLANO_COLORS.Gratuito;
-                      const isCurrentPlan = plano.tipo === assinatura?.plano;
-                      const isSuggested = plano.tipo === suggestedPlan;
-                      const isCheckingOut = checkingOut === plano.id;
-                      const isPopular = plano.destaque || isSuggested || plano.tipo === "Individual";
+                        const colors = PLANO_COLORS[plano.tipo] ?? PLANO_COLORS.Gratuito;
+                        const isCurrentPlan = plano.tipo === assinatura?.plano;
+                        const isSuggested = plano.tipo === suggestedPlan;
+                        const isCheckingOut = checkingOut === plano.id;
+                        const isPopular =
+                          plano.destaque || isSuggested || plano.tipo === "Individual";
 
-                      return (
-                        <motion.div
-                          key={plano.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.08 * (i + 1), ease: [0.22, 1, 0.36, 1] }}
-                          className={cn(
-                            "relative bg-white dark:bg-slate-900/80 p-6 sm:p-8 rounded-2xl flex flex-col w-full transition-all duration-200",
-                            isPopular && !isCurrentPlan
-                              ? cn(
-                                  "border-2 border-emerald-500 shadow-xl shadow-emerald-500/5 md:scale-[1.03] z-10",
-                                  colors.glow,
-                                )
-                              : cn("border", isCurrentPlan ? colors.cardActive : colors.card),
-                            !isCurrentPlan && !isPopular && "hover:shadow-lg hover:-translate-y-0.5",
-                          )}
-                        >
-                          {/* Top badge */}
-                          {isPopular && !isCurrentPlan && (
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                              <span className="bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-full shadow-lg inline-block">
-                                {isSuggested ? "Recomendado" : "Mais Popular"}
-                              </span>
-                            </div>
-                          )}
-                          {isCurrentPlan && (
-                            <div className="absolute -top-3 right-4 z-10">
-                              <span className="bg-sky-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm inline-block">
-                                Atual
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Plan name + type label */}
-                          <div className="mb-6">
-                            <span
-                              className={cn(
-                                "text-[10px] font-black uppercase tracking-widest",
-                                plano.tipo === "Familia"
-                                  ? "text-violet-500"
-                                  : "text-emerald-600",
-                              )}
-                            >
-                              {plano.tipo === "Individual" ? "Performance" : "2 pessoas"}
-                            </span>
-                            <h3 className="text-xl sm:text-2xl font-bold mt-1 text-slate-900 dark:text-white">
-                              {plano.tipo === "Individual" ? "Pro" : plano.tipo === "Familia" ? "2 Pessoas" : plano.nome}
-                            </h3>
-
-                            {/* Price */}
-                            <div className="mt-4 flex items-baseline">
-                              <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                                {formatCurrency(plano.preco)}
-                              </span>
-                              <span className="text-slate-500 text-sm ml-1">/mês</span>
-                            </div>
-
-                            {plano.trialDisponivel && plano.diasGratis > 0 && (
-                              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 font-medium flex items-center gap-1">
-                                <Sparkles className="size-3" />
-                                {plano.diasGratis} dias grátis para testar
-                              </p>
+                        return (
+                          <motion.div
+                            key={plano.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.08 * (i + 1), ease: [0.22, 1, 0.36, 1] }}
+                            className={cn(
+                              "relative bg-white dark:bg-slate-900/80 p-6 sm:p-8 rounded-2xl flex flex-col w-full transition-all duration-200",
+                              isPopular && !isCurrentPlan
+                                ? cn(
+                                    "border-2 border-emerald-500 shadow-xl shadow-emerald-500/5 md:scale-[1.03] z-10",
+                                    colors.glow
+                                  )
+                                : cn("border", isCurrentPlan ? colors.cardActive : colors.card),
+                              !isCurrentPlan &&
+                                !isPopular &&
+                                "hover:shadow-lg hover:-translate-y-0.5"
                             )}
-                          </div>
-
-                          {/* Resources */}
-                          <div className="mb-8 grow">
-                            {/* Highlight card for Familia */}
-                            {plano.tipo === "Familia" && plano.maxMembros > 1 && (
-                              <div className="flex items-center gap-2.5 p-3 mb-4 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30">
-                                <Users className="size-4 text-violet-500 shrink-0" />
-                                <span className="text-sm font-semibold text-violet-700 dark:text-violet-300">
-                                  {plano.maxMembros === 2 ? "Titular + 1 membro inclusos" : `Até ${plano.maxMembros} membros inclusos`}
+                          >
+                            {/* Top badge */}
+                            {isPopular && !isCurrentPlan && (
+                              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                                <span className="bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-full shadow-lg inline-block">
+                                  {isSuggested ? "Recomendado" : "Mais Popular"}
+                                </span>
+                              </div>
+                            )}
+                            {isCurrentPlan && (
+                              <div className="absolute -top-3 right-4 z-10">
+                                <span className="bg-sky-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm inline-block">
+                                  Atual
                                 </span>
                               </div>
                             )}
 
-                            <ul className="space-y-2.5">
-                              {(PLANO_FEATURES[plano.tipo as "Individual" | "Familia"] ?? plano.recursos).map((feat, j) => {
-                                const isLabel = feat.endsWith(":");
-                                return (
-                                  <li key={j} className="flex items-start gap-2.5">
-                                    {isLabel ? (
-                                      <span className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">
-                                        {feat}
-                                      </span>
-                                    ) : (
-                                      <>
-                                        <Check className="size-4 mt-0.5 shrink-0 text-emerald-500" />
-                                        <span className="text-sm text-slate-600 dark:text-slate-300 leading-snug">
+                            {/* Plan name + type label */}
+                            <div className="mb-6">
+                              <span
+                                className={cn(
+                                  "text-[10px] font-black uppercase tracking-widest",
+                                  plano.tipo === "Familia" ? "text-violet-500" : "text-emerald-600"
+                                )}
+                              >
+                                {plano.tipo === "Individual" ? "Performance" : "2 pessoas"}
+                              </span>
+                              <h3 className="text-xl sm:text-2xl font-bold mt-1 text-slate-900 dark:text-white">
+                                {plano.tipo === "Individual"
+                                  ? "Pro"
+                                  : plano.tipo === "Familia"
+                                    ? "2 Pessoas"
+                                    : plano.nome}
+                              </h3>
+
+                              {/* Price */}
+                              <div className="mt-4 flex items-baseline">
+                                <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                                  {formatCurrency(plano.preco)}
+                                </span>
+                                <span className="text-slate-500 text-sm ml-1">/mês</span>
+                              </div>
+
+                              {plano.trialDisponivel && plano.diasGratis > 0 && (
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 font-medium flex items-center gap-1">
+                                  <Sparkles className="size-3" />
+                                  {plano.diasGratis} dias grátis para testar
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Resources */}
+                            <div className="mb-8 grow">
+                              {/* Highlight card for Familia */}
+                              {plano.tipo === "Familia" && plano.maxMembros > 1 && (
+                                <div className="flex items-center gap-2.5 p-3 mb-4 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30">
+                                  <Users className="size-4 text-violet-500 shrink-0" />
+                                  <span className="text-sm font-semibold text-violet-700 dark:text-violet-300">
+                                    {plano.maxMembros === 2
+                                      ? "Titular + 1 membro inclusos"
+                                      : `Até ${plano.maxMembros} membros inclusos`}
+                                  </span>
+                                </div>
+                              )}
+
+                              <ul className="space-y-2.5">
+                                {(
+                                  PLANO_FEATURES[plano.tipo as "Individual" | "Familia"] ??
+                                  plano.recursos
+                                ).map((feat, j) => {
+                                  const isLabel = feat.endsWith(":");
+                                  return (
+                                    <li key={j} className="flex items-start gap-2.5">
+                                      {isLabel ? (
+                                        <span className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">
                                           {feat}
                                         </span>
-                                      </>
-                                    )}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
+                                      ) : (
+                                        <>
+                                          <Check className="size-4 mt-0.5 shrink-0 text-emerald-500" />
+                                          <span className="text-sm text-slate-600 dark:text-slate-300 leading-snug">
+                                            {feat}
+                                          </span>
+                                        </>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
 
-                          {/* CTA button */}
-                          {isCurrentPlan ? (
-                            <Button
-                              variant="outline"
-                              disabled
-                              className="w-full rounded-xl h-12 text-sm font-bold"
-                            >
-                              Plano atual
-                            </Button>
-                          ) : (
-                            <Button
-                              className={cn(
-                                "w-full rounded-xl h-12 text-sm gap-2 font-bold transition-all",
-                                colors.button,
-                                isPopular && "animate-[pulse-green_2s_infinite]",
-                              )}
-                              disabled={checkingOut !== null}
-                              onClick={() => handleCheckout(plano)}
-                            >
-                              {isCheckingOut ? (
-                                <>
-                                  <Loader2 className="size-4 animate-spin" />
-                                  Redirecionando...
-                                </>
-                              ) : plano.trialDisponivel ? (
-                                <>
-                                  <Sparkles className="size-4" />
-                                  Começar trial grátis
-                                </>
-                              ) : (
-                                <>
-                                  <ArrowRight className="size-4" />
-                                  Assinar {formatCurrency(plano.preco)}/mês
-                                </>
-                              )}
-                            </Button>
-                          )}
+                            {/* CTA button */}
+                            {isCurrentPlan ? (
+                              <Button
+                                variant="outline"
+                                disabled
+                                className="w-full rounded-xl h-12 text-sm font-bold"
+                              >
+                                Plano atual
+                              </Button>
+                            ) : (
+                              <Button
+                                className={cn(
+                                  "w-full rounded-xl h-12 text-sm gap-2 font-bold transition-all",
+                                  colors.button,
+                                  isPopular && "animate-[pulse-green_2s_infinite]"
+                                )}
+                                disabled={checkingOut !== null}
+                                onClick={() => handleCheckout(plano)}
+                              >
+                                {isCheckingOut ? (
+                                  <>
+                                    <Loader2 className="size-4 animate-spin" />
+                                    Redirecionando...
+                                  </>
+                                ) : plano.trialDisponivel ? (
+                                  <>
+                                    <Sparkles className="size-4" />
+                                    Começar trial grátis
+                                  </>
+                                ) : (
+                                  <>
+                                    <ArrowRight className="size-4" />
+                                    Assinar {formatCurrency(plano.preco)}/mês
+                                  </>
+                                )}
+                              </Button>
+                            )}
 
-                          {/* Sub-CTA text */}
-                          {plano.trialDisponivel && plano.diasGratis > 0 && !isCurrentPlan && (
-                            <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-3">
-                              {plano.diasGratis} dias grátis — cancele quando quiser
-                            </p>
-                          )}
-                        </motion.div>
-                      );
-                    })}
+                            {/* Sub-CTA text */}
+                            {plano.trialDisponivel && plano.diasGratis > 0 && !isCurrentPlan && (
+                              <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-3">
+                                {plano.diasGratis} dias grátis — cancele quando quiser
+                              </p>
+                            )}
+                          </motion.div>
+                        );
+                      })}
                   </div>
 
                   {/* Manage subscription */}
@@ -535,13 +548,18 @@ function UpgradePlanModal({
       </Dialog>
 
       {/* ── CPF Dialog (nested) ── */}
-      <Dialog open={cpfDialogOpen} onOpenChange={(o) => { if (!savingCpf) setCpfDialogOpen(o); }}>
+      <Dialog
+        open={cpfDialogOpen}
+        onOpenChange={(o) => {
+          if (!savingCpf) setCpfDialogOpen(o);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="sr-only">Informe seu CPF</DialogTitle>
             <DialogDescription className="sr-only">
-              Para ativar o período de teste gratuito, precisamos do seu CPF.
-              Ele será armazenado de forma segura e criptografada.
+              Para ativar o período de teste gratuito, precisamos do seu CPF. Ele será armazenado de
+              forma segura e criptografada.
             </DialogDescription>
             <DialogShellHeader
               icon={<Lock className="h-5 w-5 sm:h-6 sm:w-6" />}
@@ -558,19 +576,22 @@ function UpgradePlanModal({
                 setCpfValue(formatCpf(e.target.value));
                 setCpfError("");
               }}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSaveCpf(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveCpf();
+              }}
               maxLength={14}
               autoFocus
             />
-            {cpfError && (
-              <p className="text-sm text-red-600 dark:text-red-400">{cpfError}</p>
-            )}
+            {cpfError && <p className="text-sm text-red-600 dark:text-red-400">{cpfError}</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCpfDialogOpen(false)} disabled={savingCpf}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveCpf} disabled={savingCpf || cpfValue.replace(/\D/g, "").length !== 11}>
+            <Button
+              onClick={handleSaveCpf}
+              disabled={savingCpf || cpfValue.replace(/\D/g, "").length !== 11}
+            >
               {savingCpf ? "Salvando..." : "Confirmar e continuar"}
             </Button>
           </DialogFooter>

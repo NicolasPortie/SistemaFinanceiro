@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
               "form-action 'self'",
               "img-src 'self' data: blob: https://images.unsplash.com",
               `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://static.cloudflareinsights.com https://accounts.google.com https://appleid.cdn-apple.com`,
-              "style-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline' https://accounts.google.com",
               `connect-src 'self'${isDev ? " ws://localhost:* http://localhost:*" : ""} https://cloudflareinsights.com https://appleid.cdn-apple.com`,
               "frame-src 'self' https://accounts.google.com https://appleid.apple.com",
             ].join("; ") + ";",
