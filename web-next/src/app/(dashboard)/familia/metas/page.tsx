@@ -314,12 +314,12 @@ export default function FamiliaMetasPage() {
               variant="outline"
               size="sm"
               onClick={() => refetch()}
-              className="gap-2 rounded-xl"
+              className="w-full justify-center gap-2 rounded-xl sm:w-auto"
             >
               <RefreshCw className="h-4 w-4" />
               Atualizar
             </Button>
-            <FamilyPrimaryAction size="sm" onClick={openCreateDialog}>
+            <FamilyPrimaryAction size="sm" onClick={openCreateDialog} className="w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               Nova meta
             </FamilyPrimaryAction>
@@ -412,7 +412,12 @@ export default function FamiliaMetasPage() {
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-sm" className="rounded-xl">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="rounded-xl"
+                              aria-label={`Abrir acoes da meta ${meta.nome}`}
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -550,7 +555,7 @@ export default function FamiliaMetasPage() {
             title="Nenhuma meta conjunta"
             description="Crie objetivos compartilhados para acompanhar poupanca, reducao de gastos e reservas mensais em familia."
             action={
-              <FamilyPrimaryAction onClick={openCreateDialog}>
+              <FamilyPrimaryAction onClick={openCreateDialog} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
                 Criar meta
               </FamilyPrimaryAction>
@@ -576,12 +581,17 @@ export default function FamiliaMetasPage() {
 
           <form onSubmit={form.handleSubmit(handleCriar)} className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <Label
+                htmlFor="familia-meta-nome"
+                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              >
                 Nome da meta
               </Label>
               <Input
+                id="familia-meta-nome"
                 placeholder="Ex: Reserva para viagem"
                 {...form.register("nome")}
+                aria-invalid={Boolean(form.formState.errors.nome)}
                 className={cn("h-11 rounded-xl", form.formState.errors.nome && "border-rose-500")}
               />
               {form.formState.errors.nome && (
@@ -605,6 +615,7 @@ export default function FamiliaMetasPage() {
                     <button
                       key={key}
                       type="button"
+                      aria-pressed={tipo === key}
                       onClick={() => {
                         form.setValue("tipo", key, { shouldValidate: true });
                         if (key !== "reduzir_gasto") {
@@ -657,6 +668,7 @@ export default function FamiliaMetasPage() {
                     <button
                       key={key}
                       type="button"
+                      aria-pressed={prioridade === key}
                       onClick={() => form.setValue("prioridade", key, { shouldValidate: true })}
                       className={cn(
                         "flex items-center justify-between rounded-[1.25rem] border p-3 text-left transition-colors",
@@ -675,7 +687,10 @@ export default function FamiliaMetasPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Label
+                  htmlFor="familia-meta-valor-alvo"
+                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                >
                   Valor alvo
                 </Label>
                 <div className="relative">
@@ -683,12 +698,14 @@ export default function FamiliaMetasPage() {
                     R$
                   </div>
                   <CurrencyInput
+                    id="familia-meta-valor-alvo"
                     value={form.watch("valorAlvo")}
                     onValueChange={(value) =>
                       form.setValue("valorAlvo", value, {
                         shouldValidate: form.formState.isSubmitted,
                       })
                     }
+                    aria-invalid={Boolean(form.formState.errors.valorAlvo)}
                     className={cn(
                       "h-11 rounded-xl pl-12 font-semibold tabular-nums",
                       form.formState.errors.valorAlvo && "border-rose-500"
@@ -703,7 +720,10 @@ export default function FamiliaMetasPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Label
+                  htmlFor="familia-meta-valor-atual"
+                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                >
                   Valor atual
                 </Label>
                 <div className="relative">
@@ -711,6 +731,7 @@ export default function FamiliaMetasPage() {
                     R$
                   </div>
                   <CurrencyInput
+                    id="familia-meta-valor-atual"
                     value={form.watch("valorAtual") ?? ""}
                     onValueChange={(value) =>
                       form.setValue("valorAtual", value, {
@@ -725,14 +746,19 @@ export default function FamiliaMetasPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Label
+                  htmlFor="familia-meta-prazo"
+                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                >
                   Prazo
                 </Label>
                 <div className="relative">
                   <Calendar className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
                   <Input
+                    id="familia-meta-prazo"
                     type="date"
                     {...form.register("prazo")}
+                    aria-invalid={Boolean(form.formState.errors.prazo)}
                     className={cn(
                       "h-11 rounded-xl pl-10",
                       form.formState.errors.prazo && "border-rose-500"
@@ -747,7 +773,10 @@ export default function FamiliaMetasPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Label
+                  htmlFor="familia-meta-categoria"
+                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                >
                   Categoria
                 </Label>
                 <Select
@@ -758,7 +787,11 @@ export default function FamiliaMetasPage() {
                   }}
                   disabled={tipo !== "reduzir_gasto"}
                 >
-                  <SelectTrigger className="h-11 rounded-xl">
+                  <SelectTrigger
+                    id="familia-meta-categoria"
+                    aria-invalid={Boolean(form.formState.errors.categoria)}
+                    className="h-11 rounded-xl"
+                  >
                     <SelectValue
                       placeholder={
                         tipo === "reduzir_gasto"
@@ -817,7 +850,10 @@ export default function FamiliaMetasPage() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <Label
+                htmlFor="familia-meta-valor-atual-edit"
+                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              >
                 Valor atual
               </Label>
               <div className="relative">
@@ -825,6 +861,7 @@ export default function FamiliaMetasPage() {
                   R$
                 </div>
                 <CurrencyInput
+                  id="familia-meta-valor-atual-edit"
                   value={editValor}
                   onValueChange={setEditValor}
                   className="h-11 rounded-xl pl-12 font-semibold tabular-nums"

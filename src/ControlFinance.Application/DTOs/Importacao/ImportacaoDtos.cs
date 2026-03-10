@@ -12,6 +12,11 @@ public class ImportacaoUploadRequest
     public int? CartaoCreditoId { get; set; }
     public string? Banco { get; set; }
     public bool ForcarReimportacao { get; set; }
+    /// <summary>
+    /// Mês de referência da fatura informado pelo usuário (formato "yyyy-MM").
+    /// Quando presente, o sistema usa este valor como MesFaturaPadrao ao invés de auto-detectar.
+    /// </summary>
+    public string? MesFaturaReferencia { get; set; }
 }
 
 public class ImportacaoPreviewDto

@@ -958,7 +958,8 @@ export const api = {
       contaBancariaId?: number,
       cartaoCreditoId?: number,
       banco?: string,
-      forcarReimportacao?: boolean
+      forcarReimportacao?: boolean,
+      mesFaturaReferencia?: string
     ): Promise<ImportacaoPreview> => {
       const formData = new FormData();
       formData.append("arquivo", arquivo);
@@ -967,6 +968,7 @@ export const api = {
       if (cartaoCreditoId) formData.append("CartaoCreditoId", String(cartaoCreditoId));
       if (banco) formData.append("Banco", banco);
       if (forcarReimportacao) formData.append("ForcarReimportacao", "true");
+      if (mesFaturaReferencia) formData.append("MesFaturaReferencia", mesFaturaReferencia);
 
       // File upload needs FormData — bypass the JSON request() helper
       const csrfToken = await obterCsrfToken();

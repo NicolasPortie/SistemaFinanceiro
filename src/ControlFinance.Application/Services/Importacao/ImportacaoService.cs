@@ -183,16 +183,25 @@ public class ImportacaoService : IImportacaoService
                 .OrderBy(m => m)
                 .ToList();
 
-            preview.MesFaturaPadrao = mesesFaturaDetectados
-                .GroupBy(m => m)
-                .OrderByDescending(g => g.Count())
-                .ThenBy(g => g.Key)
-                .Select(g => g.Key)
-                .FirstOrDefault();
-
-            if (!string.IsNullOrWhiteSpace(preview.MesFaturaPadrao))
+            // Se o usuário informou o mês da fatura, usar como padrão; senão, auto-detectar pelo mais frequente
+            if (!string.IsNullOrWhiteSpace(request.MesFaturaReferencia))
             {
-                preview.Avisos.Add($"Fatura destino sugerida: {preview.MesFaturaPadrao}. Use a edição de cada linha se precisar mandar um lançamento para outro mês de fatura.");
+                preview.MesFaturaPadrao = request.MesFaturaReferencia;
+                preview.Avisos.Add($"Fatura destino definida pelo usuário: {request.MesFaturaReferencia}.");
+            }
+            else
+            {
+                preview.MesFaturaPadrao = mesesFaturaDetectados
+                    .GroupBy(m => m)
+                    .OrderByDescending(g => g.Count())
+                    .ThenBy(g => g.Key)
+                    .Select(g => g.Key)
+                    .FirstOrDefault();
+
+                if (!string.IsNullOrWhiteSpace(preview.MesFaturaPadrao))
+                {
+                    preview.Avisos.Add($"Fatura destino sugerida: {preview.MesFaturaPadrao}. Use a edição de cada linha se precisar mandar um lançamento para outro mês de fatura.");
+                }
             }
         }
         else

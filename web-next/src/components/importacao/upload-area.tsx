@@ -35,6 +35,7 @@ interface UploadAreaProps {
     cartaoCreditoId?: number;
     banco?: string;
     forcarReimportacao?: boolean;
+    mesFaturaReferencia?: string;
   }) => void;
   isLoading: boolean;
 }
@@ -45,6 +46,7 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
   const [tipoImportacao, setTipoImportacao] = useState<TipoImportacao | "">("");
   const [contaBancariaId, setContaBancariaId] = useState<string>("");
   const [cartaoCreditoId, setCartaoCreditoId] = useState<string>("");
+  const [mesFaturaReferencia, setMesFaturaReferencia] = useState<string>("");
   const [dragOver, setDragOver] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -134,6 +136,7 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
         contaBancariaId && contaBancariaId !== "0" ? parseInt(contaBancariaId) : undefined,
       cartaoCreditoId: cartaoCreditoId ? parseInt(cartaoCreditoId) : undefined,
       forcarReimportacao,
+      mesFaturaReferencia: mesFaturaReferencia || undefined,
     });
   };
 
@@ -283,7 +286,10 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
             onValueChange={(value) => {
               setTipoImportacao(value as TipoImportacao);
               setSubmitError(null);
-              if (value !== "Fatura") setCartaoCreditoId("");
+              if (value !== "Fatura") {
+                setCartaoCreditoId("");
+                setMesFaturaReferencia("");
+              }
             }}
           >
             <SelectTrigger id="importacao-tipo">
@@ -332,6 +338,23 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        )}
+
+        {/* Mês da fatura (for fatura) */}
+        {tipoImportacao === "Fatura" && (
+          <div className="space-y-2">
+            <Label htmlFor="importacao-mes-fatura">Mês da fatura</Label>
+            <input
+              id="importacao-mes-fatura"
+              type="month"
+              value={mesFaturaReferencia}
+              onChange={(e) => setMesFaturaReferencia(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Informe o mês da fatura (ex: janeiro/2025). Se não informar, o sistema detecta automaticamente.
+            </p>
           </div>
         )}
       </div>

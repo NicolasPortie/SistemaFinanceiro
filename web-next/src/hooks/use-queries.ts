@@ -638,6 +638,7 @@ export function useUploadImportacao() {
       cartaoCreditoId?: number;
       banco?: string;
       forcarReimportacao?: boolean;
+      mesFaturaReferencia?: string;
     }) =>
       api.importacao.upload(
         params.arquivo,
@@ -645,7 +646,8 @@ export function useUploadImportacao() {
         params.contaBancariaId,
         params.cartaoCreditoId,
         params.banco,
-        params.forcarReimportacao
+        params.forcarReimportacao,
+        params.mesFaturaReferencia
       ),
     onError: (err: Error) => {
       toast.error(err.message || "Erro ao processar arquivo");

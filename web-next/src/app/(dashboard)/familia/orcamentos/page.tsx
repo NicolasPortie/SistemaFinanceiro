@@ -241,7 +241,7 @@ export default function FamiliaOrcamentosPage() {
               variant="outline"
               size="sm"
               onClick={() => refetch()}
-              className="gap-2 rounded-xl"
+              className="w-full justify-center gap-2 rounded-xl sm:w-auto"
             >
               <RefreshCw className="h-4 w-4" />
               Atualizar
@@ -250,6 +250,7 @@ export default function FamiliaOrcamentosPage() {
               size="sm"
               onClick={openCreateDialog}
               disabled={categoriasDisponiveis.length === 0}
+              className="w-full sm:w-auto"
             >
               <Plus className="h-4 w-4" />
               Novo orcamento
@@ -457,12 +458,12 @@ export default function FamiliaOrcamentosPage() {
             description="Defina limites por categoria para acompanhar os gastos da familia em um mesmo painel."
             action={
               categorias.length > 0 ? (
-                <FamilyPrimaryAction onClick={openCreateDialog}>
+                <FamilyPrimaryAction onClick={openCreateDialog} className="w-full sm:w-auto">
                   <Plus className="h-4 w-4" />
                   Criar orcamento
                 </FamilyPrimaryAction>
               ) : (
-                <Button variant="outline" asChild>
+                <Button variant="outline" asChild className="w-full sm:w-auto">
                   <Link href="/familia/categorias">Configurar categorias</Link>
                 </Button>
               )
@@ -488,11 +489,14 @@ export default function FamiliaOrcamentosPage() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <Label
+                htmlFor="familia-orcamento-categoria"
+                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              >
                 Categoria
               </Label>
               <Select value={categoriaId} onValueChange={setCategoriaId}>
-                <SelectTrigger className="h-11 rounded-xl">
+                <SelectTrigger id="familia-orcamento-categoria" className="h-11 rounded-xl">
                   <SelectValue placeholder="Selecione a categoria" />
                 </SelectTrigger>
                 <SelectContent>
@@ -511,7 +515,10 @@ export default function FamiliaOrcamentosPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <Label
+                htmlFor="familia-orcamento-valor-limite"
+                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              >
                 Valor limite
               </Label>
               <div className="relative">
@@ -519,6 +526,7 @@ export default function FamiliaOrcamentosPage() {
                   R$
                 </div>
                 <CurrencyInput
+                  id="familia-orcamento-valor-limite"
                   value={valorLimite}
                   onValueChange={setValorLimite}
                   className="h-11 rounded-xl pl-12 font-semibold tabular-nums"
@@ -559,7 +567,10 @@ export default function FamiliaOrcamentosPage() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <Label
+                htmlFor="familia-orcamento-valor-limite-edit"
+                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              >
                 Valor limite
               </Label>
               <div className="relative">
@@ -567,6 +578,7 @@ export default function FamiliaOrcamentosPage() {
                   R$
                 </div>
                 <CurrencyInput
+                  id="familia-orcamento-valor-limite-edit"
                   value={editValor}
                   onValueChange={setEditValor}
                   className="h-11 rounded-xl pl-12 font-semibold tabular-nums"
@@ -576,14 +588,21 @@ export default function FamiliaOrcamentosPage() {
 
             <div className="flex items-center justify-between rounded-[1.25rem] border border-slate-200/70 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5">
               <div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <Label
+                  htmlFor="familia-orcamento-ativo"
+                  className="text-sm font-semibold text-slate-900 dark:text-white"
+                >
                   Orcamento ativo
-                </p>
+                </Label>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Quando pausado, o card continua visivel mas sai do consolidado principal.
                 </p>
               </div>
-              <Switch checked={editAtivo} onCheckedChange={setEditAtivo} />
+              <Switch
+                id="familia-orcamento-ativo"
+                checked={editAtivo}
+                onCheckedChange={setEditAtivo}
+              />
             </div>
 
             <div className="flex gap-2">
