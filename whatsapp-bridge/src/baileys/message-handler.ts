@@ -43,9 +43,29 @@ function toTimestamp(ts: any): number {
  * Extrai conteúdo (texto, áudio, imagem) e envia para a API C#.
  */
 export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Promise<void> {
-  const phoneNumber = extractPhoneNumber(msg.key.remoteJid)
+  const remoteJid = msg.key.remoteJid || ''
+
+  // Resolve LID → phone number via Baileys signal repository
+  let phoneNumber: string
+  if (remoteJid.endsWith('@lid')) {
+    try {
+      const pnJid = await (sock as any).signalRepository?.lidMapping?.getPNForLID(remoteJid)
+      phoneNumber = pnJid ? extractPhoneNumber(pnJid) : ''
+      if (phoneNumber) {
+        logger.info({ lid: remoteJid, resolved: phoneNumber }, '🔄 LID resolvido para número')
+      } else {
+        logger.warn({ lid: remoteJid }, '⚠️ Não foi possível resolver LID para número')
+      }
+    } catch (err: any) {
+      logger.warn({ lid: remoteJid, err: err.message }, '⚠️ Erro ao resolver LID')
+      phoneNumber = ''
+    }
+  } else {
+    phoneNumber = extractPhoneNumber(remoteJid)
+  }
+
   if (!phoneNumber) {
-    logger.warn({ key: msg.key }, 'Mensagem sem remoteJid — ignorando')
+    logger.warn({ key: msg.key }, 'Mensagem sem número válido — ignorando')
     return
   }
 
