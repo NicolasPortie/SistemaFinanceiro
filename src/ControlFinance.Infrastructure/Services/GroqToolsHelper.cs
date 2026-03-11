@@ -234,7 +234,26 @@ public static class GroqToolsHelper
                 }
             }
         },
-        // 12. Criar Conta Fixa
+        // 12. Criar Categoria
+        new
+        {
+            type = "function",
+            function = new
+            {
+                name = "criar_categoria",
+                description = "Cria uma nova categoria de gastos/receitas para o usuário. Use quando ele disser 'criar categoria X', 'nova categoria X', 'adicionar categoria X', 'cadastrar categoria X'.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        nome = new { type = "string", description = "O nome da categoria. Capitalize: 'roupas' → 'Roupas', 'pet shop' → 'Pet Shop'. Envie SOMENTE o nome, nunca uma frase." }
+                    },
+                    required = new[] { "nome" }
+                }
+            }
+        },
+        // 13. Criar Conta Fixa
         new
         {
             type = "function",

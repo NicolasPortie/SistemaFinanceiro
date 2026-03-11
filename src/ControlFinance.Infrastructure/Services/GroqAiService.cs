@@ -222,6 +222,7 @@ public class GroqAiService : IAiService
             Se ele perguntar sobre assinaturas, contas fixas, lembretes, "quais são minhas contas", "meus lembretes" ou contas que vão vencer = 'responder_generico' indicando comandoInterno 'ver_lembretes'.
             Se o usuário pedir para comparar meses (ex: "compare com mês passado", "comparar com outro mes", "comparativo mensal") = use 'responder_generico' com comandoInterno 'comparar_meses' e preencha `parametro` com um marcador de período quando possível.
             Formatos de `parametro` aceitos para comparação: "mes_atual_vs_mes_passado", "mes_atual_vs_mes_retrasado" ou "MM/AAAA_vs_MM/AAAA".
+            IMPORTANTE: Se o usuário quiser CRIAR/CADASTRAR/ADICIONAR uma CATEGORIA nova (ex: "criar categoria Adega", "nova categoria Pet", "adicionar categoria Roupas") = use a ferramenta 'criar_categoria' com o nome da categoria. NUNCA responda dizendo que criou — use a ferramenta para criar de verdade.
             IMPORTANTE: Se o usuário quiser CRIAR/CADASTRAR/ADICIONAR uma conta fixa nova (ex: "conta fixa de internet 99,90 dia 15", "adicionar aluguel 1500 dia 10", "netflix 55,90 todo dia 5") = use 'criar_conta_fixa' (NÃO 'ver_lembretes'). Só use 'ver_lembretes' quando ele quiser VER/LISTAR as contas existentes.
             Se o usuário usar verbos no passado (\"comprei\", \"adquiri\", \"fiz a compra\") referindo-se a uma transação JÁ concluída = use 'registrar_lancamento' (não 'prever_compra').
             """;
@@ -488,6 +489,11 @@ public class GroqAiService : IAiService
                         FormaPagamento = GetStr("formaPagamento") ?? "nao_informado",
                         Data = DateTime.UtcNow.AddHours(-3)
                     };
+                    break;
+
+                case "criar_categoria":
+                    result.Intencao = "criar_categoria";
+                    result.Resposta = GetStr("nome") ?? "";
                     break;
 
                 case "criar_conta_fixa":

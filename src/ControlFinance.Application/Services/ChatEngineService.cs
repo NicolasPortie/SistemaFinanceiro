@@ -684,7 +684,16 @@ public class ChatEngineService : IChatEngineService
                 return await _chatExclusaoLancamentoService.IniciarAsync(pseudoId, usuario, resposta.Resposta);
 
             case "criar_categoria" when !string.IsNullOrWhiteSpace(resposta.Resposta):
-                return await _chatCategoriaService.CriarAsync(usuario, resposta.Resposta);
+                // Safeguard: if AI sent a full sentence instead of just the name, try to extract it
+                var nomeCategoria = resposta.Resposta.Trim();
+                if (nomeCategoria.Length > 50 || nomeCategoria.Contains("criada") || nomeCategoria.Contains("sucesso") || nomeCategoria.Contains("cadastr"))
+                {
+                    // Try to extract quoted name: 'X' or "X" or **X**
+                    var match = Regex.Match(nomeCategoria, @"['""\*]{1,2}([^'""*]+)['""\*]{1,2}");
+                    if (match.Success)
+                        nomeCategoria = match.Groups[1].Value.Trim();
+                }
+                return await _chatCategoriaService.CriarAsync(usuario, nomeCategoria);
 
             case "categorizar_ultimo" when !string.IsNullOrWhiteSpace(resposta.Resposta):
                 return await _chatCategoriaService.CategorizarUltimoAsync(usuario, resposta.Resposta);
