@@ -154,8 +154,8 @@ public static class WebApplicationExtensions
         var categoriaRepository = services.GetRequiredService<ICategoriaRepository>();
         var developmentUsers = new[]
         {
-            new { Email = "dev@controlfinance.com.br", Nome = "Usuario Dev", Senha = "Dev@1234" },
-            new { Email = "dev@controlfinance.com", Nome = "Usuario Dev", Senha = "Dev@1234" },
+            new { Email = "dev@ravier.com.br", Nome = "Usuario Dev", Senha = "Dev@1234" },
+            new { Email = "dev@ravier.app", Nome = "Usuario Dev", Senha = "Dev@1234" },
             new { Email = "test@test.com", Nome = "Usuario de Teste", Senha = "123456" }
         };
 

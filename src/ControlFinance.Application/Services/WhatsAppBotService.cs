@@ -209,7 +209,7 @@ public class WhatsAppBotService : IWhatsAppBotService
         {
             var comando = textoLimpo.Split(' ', 2)[0].ToLower().Split('@')[0];
             if (comando == "/start")
-                return $"👋 Olá, *{usuario.Nome}*! Sou o *ControlFinance*, seu assistente financeiro.\n\n" +
+                return $"👋 Olá, *{usuario.Nome}*! Sou o *Ravier*, seu copiloto financeiro com IA.\n\n" +
                        "💬 Fale naturalmente:\n\n" +
                        "📌 \"paguei 45 no mercado\"\n" +
                        "📌 \"recebi 5000 de salário\"\n" +
@@ -443,6 +443,8 @@ public class WhatsAppBotService : IWhatsAppBotService
     {
         if (string.IsNullOrEmpty(texto)) return texto;
 
+        texto = CorrigirEncodingQuebrado(texto);
+
         // **bold** → *bold*
         texto = System.Text.RegularExpressions.Regex.Replace(texto, @"\*\*(.+?)\*\*", "*$1*");
 
@@ -451,5 +453,77 @@ public class WhatsAppBotService : IWhatsAppBotService
             System.Text.RegularExpressions.RegexOptions.Multiline);
 
         return texto;
+    }
+
+    private static string CorrigirEncodingQuebrado(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return texto;
+
+        // Heurística para strings UTF-8 lidas como Latin-1/Windows-1252.
+        if (!texto.Contains('Ã') && !texto.Contains('Â') && !texto.Contains('â') && !texto.Contains("ðŸ", StringComparison.Ordinal))
+            return texto;
+
+        foreach (var bytes in new[]
+        {
+            ObterBytesCompativeisComWindows1252(texto),
+            System.Text.Encoding.Latin1.GetBytes(texto)
+        })
+        {
+            try
+            {
+                var corrigido = System.Text.Encoding.UTF8.GetString(bytes);
+
+                if (!corrigido.Contains('�'))
+                    return corrigido;
+            }
+            catch
+            {
+            }
+        }
+
+        return texto;
+    }
+
+    private static byte[] ObterBytesCompativeisComWindows1252(string texto)
+    {
+        var bytes = new byte[texto.Length];
+
+        for (var i = 0; i < texto.Length; i++)
+        {
+            bytes[i] = texto[i] switch
+            {
+                <= (char)0x00FF => (byte)texto[i],
+                '\u20AC' => 0x80,
+                '\u201A' => 0x82,
+                '\u0192' => 0x83,
+                '\u201E' => 0x84,
+                '\u2026' => 0x85,
+                '\u2020' => 0x86,
+                '\u2021' => 0x87,
+                '\u02C6' => 0x88,
+                '\u2030' => 0x89,
+                '\u0160' => 0x8A,
+                '\u2039' => 0x8B,
+                '\u0152' => 0x8C,
+                '\u017D' => 0x8E,
+                '\u2018' => 0x91,
+                '\u2019' => 0x92,
+                '\u201C' => 0x93,
+                '\u201D' => 0x94,
+                '\u2022' => 0x95,
+                '\u2013' => 0x96,
+                '\u2014' => 0x97,
+                '\u02DC' => 0x98,
+                '\u2122' => 0x99,
+                '\u0161' => 0x9A,
+                '\u203A' => 0x9B,
+                '\u0153' => 0x9C,
+                '\u017E' => 0x9E,
+                '\u0178' => 0x9F,
+                _ => (byte)'?'
+            };
+        }
+
+        return bytes;
     }
 }

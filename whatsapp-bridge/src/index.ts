@@ -18,7 +18,7 @@ async function main() {
     port: config.PORT,
     api: config.API_BASE_URL,
     authDir: config.AUTH_DIR,
-  }, '🚀 Iniciando ControlFinance WhatsApp Bridge...')
+  }, '🚀 Iniciando Ravier WhatsApp Bridge...')
 
   // Validar configuração mínima
   if (!config.BRIDGE_SECRET) {

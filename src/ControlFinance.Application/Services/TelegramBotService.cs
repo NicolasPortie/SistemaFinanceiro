@@ -901,7 +901,7 @@ public class TelegramBotService : ITelegramBotService
 
         return comando switch
         {
-            "/start" => $"👋 Olá, *{usuario.Nome}*! Sou o *ControlFinance*, seu assistente financeiro.\n\n💬 Fale naturalmente:\n\n📌 \"paguei 45 no mercado\"\n📌 \"recebi 5000 de salário\"\n📌 \"posso gastar 50 num lanche?\"\n📌 \"se eu comprar uma TV de 3000 em 10x?\"\n📌 \"limitar alimentação em 800\"\n📌 \"quero juntar 10 mil até dezembro\"\n\n🎙️ Aceito *texto*, *áudio*, *foto de cupom* e *PDF/documento*.",
+            "/start" => $"👋 Olá, *{usuario.Nome}*! Sou o *Ravier*, seu copiloto financeiro com IA.\n\n💬 Fale naturalmente:\n\n📌 \"paguei 45 no mercado\"\n📌 \"recebi 5000 de salário\"\n📌 \"posso gastar 50 num lanche?\"\n📌 \"se eu comprar uma TV de 3000 em 10x?\"\n📌 \"limitar alimentação em 800\"\n📌 \"quero juntar 10 mil até dezembro\"\n\n🎙️ Aceito *texto*, *áudio*, *foto de cupom* e *PDF/documento*.",
             "/ajuda" or "/help" => "📋 *Guia Completo*\n\n" +
                 "💵 *Lançamentos*\n" +
                 "   \"gastei 50 no mercado\"\n" +
@@ -987,7 +987,7 @@ public class TelegramBotService : ITelegramBotService
         var idx = versao.IndexOf('+');
         if (idx > 0) versao = versao[..idx];
 
-        return $"📦 *ControlFinance*\n\n🏷️ Versão: `v{versao}`";
+        return $"📦 *Ravier*\n\n🏷️ Versão: `v{versao}`";
     }
 
     /// <summary>

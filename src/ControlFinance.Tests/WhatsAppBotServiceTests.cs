@@ -280,6 +280,23 @@ public class WhatsAppBotServiceTests
         Assert.Equal(esperado, resultado);
     }
 
+    [Fact]
+    public void ConverterMarkdownParaWhatsApp_DeveCorrigirTextoComEncodingQuebrado()
+    {
+        var method = typeof(WhatsAppBotService).GetMethod(
+            "ConverterMarkdownParaWhatsApp",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        Assert.NotNull(method);
+
+        var input = "ðŸ“‹ **O que posso fazer por vocÃª:**\nðŸ’µ **LanÃ§amentos**";
+        var esperado = "📋 *O que posso fazer por você:*\n💵 *Lançamentos*";
+
+        var resultado = method!.Invoke(null, new object[] { input }) as string;
+
+        Assert.Equal(esperado, resultado);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

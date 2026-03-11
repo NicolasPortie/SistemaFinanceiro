@@ -259,9 +259,9 @@ export default function ImportacaoPage() {
   );
 
   return (
-    <div className="flex flex-col gap-5 sm:gap-8">
+    <div className="flex flex-col gap-4 sm:gap-8">
       {/* Header */}
-      <div className="pl-4">
+      <div className="pl-1 sm:pl-4 pr-1">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl text-slate-900 dark:text-white serif-italic mb-2">
           Importação
         </h1>
@@ -272,14 +272,14 @@ export default function ImportacaoPage() {
 
       <div
         className={cn(
-          "grid gap-5 sm:gap-8",
+          "grid gap-4 sm:gap-8",
           isPreviewExpanded ? "grid-cols-1" : "grid-cols-12 lg:gap-6 xl:gap-8"
         )}
       >
         {/* Left panel — wider main area */}
         <div
           className={cn(
-            "flex flex-col gap-5 sm:gap-8",
+            "flex flex-col gap-4 sm:gap-8",
             isPreviewExpanded ? "col-span-1" : "col-span-12 lg:col-span-9"
           )}
         >
@@ -291,14 +291,14 @@ export default function ImportacaoPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.2 }}
-                className="glass-card bg-white dark:bg-[#161B22] rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10"
+                className="glass-card bg-white dark:bg-[#161B22] rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-4 sm:p-8 lg:p-10"
               >
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <h3 className="text-lg text-slate-900 dark:text-white font-semibold">
+                    <h3 className="text-base sm:text-lg text-slate-900 dark:text-white font-semibold leading-tight">
                       Importe extratos e faturas com revisão antes de confirmar
                     </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
                       Escolha o tipo do arquivo antes de processar. Em faturas de cartão, a leitura
                       respeita o dia de fechamento configurado para decidir se cada compra entra na
                       fatura atual ou na próxima.

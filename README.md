@@ -1,6 +1,6 @@
-# ControlFinance
+# Ravier
 
-Plataforma de controle financeiro com backend ASP.NET, frontend Next.js e integracoes por Telegram e WhatsApp.
+Plataforma de inteligência financeira com backend ASP.NET, frontend Next.js e integrações por Telegram e WhatsApp.
 
 ## Estrutura do projeto
 

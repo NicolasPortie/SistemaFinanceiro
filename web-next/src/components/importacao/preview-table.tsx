@@ -690,10 +690,10 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-white/90 dark:bg-[#161B22]/90 backdrop-blur-md shadow-lg shadow-black/5 dark:shadow-black/20 px-5 py-3"
+            className="flex flex-col items-stretch gap-3 rounded-2xl border border-border/60 bg-white/90 dark:bg-[#161B22]/90 backdrop-blur-md shadow-lg shadow-black/5 dark:shadow-black/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
           >
             {/* Left: totals */}
-            <div className="flex items-center gap-5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="flex items-center gap-2">
                 <div
                   className={cn(
@@ -706,14 +706,14 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
                 </span>
                 <span className="text-[10px] text-muted-foreground">de {selectableCount}</span>
               </div>
-              <div className="h-4 w-px bg-border/50" />
+              <div className="hidden h-4 w-px bg-border/50 sm:block" />
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-muted-foreground font-medium">Total:</span>
                 <span className="text-[11px] font-bold text-foreground tabular-nums">
                   {formatCurrency(valorTotalGeral)}
                 </span>
               </div>
-              <div className="h-4 w-px bg-border/50" />
+              <div className="hidden h-4 w-px bg-border/50 sm:block" />
               <div className="flex items-center gap-1.5">
                 <span
                   className={cn(
@@ -739,13 +739,13 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
             </div>
 
             {/* Right: actions */}
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onCancel}
                 disabled={isConfirming}
-                className="rounded-full text-[10px] uppercase tracking-wider h-8 px-4"
+                className="rounded-full text-[10px] uppercase tracking-wider h-9 px-4 w-full sm:w-auto"
               >
                 Cancelar
               </Button>
@@ -753,7 +753,7 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
                 onClick={handleConfirm}
                 disabled={selected.size === 0 || isConfirming}
                 size="sm"
-                className="rounded-full text-[10px] uppercase tracking-wider h-8 px-5"
+                className="rounded-full text-[10px] uppercase tracking-wider h-9 px-5 w-full sm:w-auto"
               >
                 {isConfirming ? (
                   <>

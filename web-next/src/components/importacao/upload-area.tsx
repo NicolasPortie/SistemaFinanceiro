@@ -146,7 +146,7 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
     !!file && !!tipoImportacao && (tipoImportacao !== "Fatura" || !!cartaoCreditoId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Drop Zone */}
       <div
         onDragOver={(e) => {
@@ -156,7 +156,7 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         className={cn(
-          "relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-all duration-200 cursor-pointer",
+          "relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-5 sm:p-8 transition-all duration-200 cursor-pointer",
           dragOver
             ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
             : file
@@ -197,13 +197,15 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="flex flex-col items-center gap-3"
+              className="flex flex-col items-center gap-3 w-full"
             >
-              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                <FileText className="h-8 w-8" />
-                <span className="text-lg font-medium">{file.name}</span>
+              <div className="flex max-w-full items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                <FileText className="h-8 w-8 shrink-0" />
+                <span className="max-w-full break-all text-sm sm:text-lg font-medium text-center sm:text-left">
+                  {file.name}
+                </span>
               </div>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
                 <span>
                   {formatInfo?.icon} {formatInfo?.label}
                 </span>
@@ -236,14 +238,14 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
             >
               <Upload className="h-10 w-10 text-muted-foreground/50" />
               <div className="text-center">
-                <p id="importacao-upload-hint" className="text-sm font-medium">
+                <p id="importacao-upload-hint" className="text-sm font-medium leading-snug">
                   Arraste o arquivo aqui ou clique para selecionar
                 </p>
-                <p id="importacao-upload-formats" className="text-xs text-muted-foreground mt-1">
+                <p id="importacao-upload-formats" className="text-xs text-muted-foreground mt-1 leading-relaxed">
                   CSV, OFX, XLSX ou PDF • Máximo 5MB
                 </p>
               </div>
-              <div className="flex gap-2 mt-2">
+              <div className="mt-2 flex flex-wrap justify-center gap-2">
                 {Object.entries(FORMAT_LABELS)
                   .filter(([ext]) => ext !== ".xls")
                   .map(([ext, info]) => (
@@ -394,26 +396,33 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
         )}
       </AnimatePresence>
 
-      {/* Forçar reimportação */}
-      {file && (
-        <label
-          htmlFor="importacao-forcar-reimportacao"
-          className="flex items-center gap-2 text-sm cursor-pointer"
-        >
-          <input
-            id="importacao-forcar-reimportacao"
-            type="checkbox"
-            checked={forcarReimportacao}
-            onChange={(e) => setForcarReimportacao(e.target.checked)}
-            className="rounded border-muted-foreground"
-          />
-          Forçar reimportação (ignorar arquivo já importado)
-        </label>
-      )}
+      <div className="sticky bottom-0 z-10 -mx-4 border-t border-slate-200/70 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-0 dark:border-slate-800/70 dark:bg-[#161B22]/95 sm:dark:bg-transparent">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {file ? (
+            <label
+              htmlFor="importacao-forcar-reimportacao"
+              className="flex items-start gap-2 text-xs sm:text-sm cursor-pointer text-muted-foreground sm:max-w-md"
+            >
+              <input
+                id="importacao-forcar-reimportacao"
+                type="checkbox"
+                checked={forcarReimportacao}
+                onChange={(e) => setForcarReimportacao(e.target.checked)}
+                className="mt-0.5 rounded border-muted-foreground"
+              />
+              <span>Forçar reimportação (ignorar arquivo já importado)</span>
+            </label>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Selecione um arquivo e o tipo de importação para liberar o processamento.
+            </p>
+          )}
 
-      {/* Submit */}
-      <div className="flex justify-end">
-        <Button onClick={handleSubmit} disabled={!canSubmit || isLoading} className="min-w-45">
+          <Button
+            onClick={handleSubmit}
+            disabled={!canSubmit || isLoading}
+            className="w-full sm:w-auto sm:min-w-45 h-11 rounded-xl sm:rounded-md"
+          >
           {isLoading ? (
             <>
               <FileSpreadsheet className="mr-2 h-4 w-4 animate-spin" />
@@ -425,7 +434,8 @@ export function UploadArea({ onUpload, isLoading }: UploadAreaProps) {
               Processar Arquivo
             </>
           )}
-        </Button>
+          </Button>
+        </div>
       </div>
     </div>
   );

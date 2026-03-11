@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = "controlfinance-v1";
+const CACHE_NAME = "ravier-v2";
 
 const STATIC_ASSETS = [
   "/",

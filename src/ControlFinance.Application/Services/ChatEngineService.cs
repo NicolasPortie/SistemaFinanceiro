@@ -144,7 +144,8 @@ public class ChatEngineService : IChatEngineService
         await chatLock.WaitAsync();
         try
         {
-            return await ProcessarMensagemInternoAsync(chatId, usuario, mensagem, origem);
+            var resposta = await ProcessarMensagemInternoAsync(chatId, usuario, mensagem, origem);
+            return CorrigirEncodingQuebrado(resposta);
         }
         finally
         {
@@ -163,21 +164,21 @@ public class ChatEngineService : IChatEngineService
             var texto = NormalizarValoresMonetariosFala(transcricao.Texto);
             var resultado = await ProcessarMensagemAsync(chatId, usuario, texto, OrigemDado.Audio);
 
-            var resposta = $"ðŸŽ¤ TranscriÃ§Ã£o: \"{texto}\"\n\n{resultado}";
+            var resposta = $"🎤 Transcrição: \"{texto}\"\n\n{resultado}";
             if (transcricao.BaixaConfianca)
             {
-                resposta = $"ðŸŽ¤ Ouvi algo como: \"{texto}\"\n\n{resultado}";
+                resposta = $"🎤 Ouvi algo como: \"{texto}\"\n\n{resultado}";
                 resposta += PareceRespostaNaoConclusiva(resultado)
                     ? "\n\nA transcricao ficou incerta. Se quiser, me responda corrigindo so o essencial, por exemplo: \"mercado 45,90\", \"foi no credito\" ou \"nao era isso\"."
-                    : "\n\nâš ï¸ _A transcricao pode conter erros. Se algo ficou errado, me corrija com o valor, descricao ou forma de pagamento._";
+                    : "\n\n⚠️ _A transcricao pode conter erros. Se algo ficou errado, me corrija com o valor, descricao ou forma de pagamento._";
             }
 
-            return resposta;
+            return CorrigirEncodingQuebrado(resposta);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao processar Ã¡udio no ChatEngine");
-            return "Erro ao processar o Ã¡udio. Tente novamente.";
+            _logger.LogError(ex, "Erro ao processar áudio no ChatEngine");
+            return "Erro ao processar o áudio. Tente novamente.";
         }
     }
 
@@ -330,7 +331,7 @@ public class ChatEngineService : IChatEngineService
     // HumanizaÃ§Ã£o para InApp (converte relatÃ³rios em conversa natural)
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    private static readonly string[] MarcadoresRelatorio = ["ðŸ“Š", "ðŸ“‹", "ðŸ’³", "ðŸŽ¯", "ðŸ“", "ðŸŸ¢", "ðŸ”´", "ðŸ’°", "ðŸ’µ", "ðŸ’¸", "ðŸ“Œ", "ðŸ”®", "ðŸ””"];
+    private static readonly string[] MarcadoresRelatorio = ["📊", "📋", "💳", "🎯", "📏", "🟢", "🔴", "💰", "💵", "💸", "📌", "🔮", "🔔"];
 
     /// <summary>
     /// Detecta se a resposta parece um relatÃ³rio formatado (estilo Telegram)
@@ -359,6 +360,78 @@ public class ChatEngineService : IChatEngineService
         return count >= 3;
     }
 
+    private static string CorrigirEncodingQuebrado(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+            return texto;
+
+        if (!texto.Contains('Ã') && !texto.Contains('Â') && !texto.Contains('â') && !texto.Contains("ðŸ", StringComparison.Ordinal))
+            return texto;
+
+        foreach (var bytes in new[]
+        {
+            ObterBytesCompativeisComWindows1252(texto),
+            Encoding.Latin1.GetBytes(texto)
+        })
+        {
+            try
+            {
+                var corrigido = Encoding.UTF8.GetString(bytes);
+
+                if (!corrigido.Contains('�'))
+                    return corrigido;
+            }
+            catch
+            {
+            }
+        }
+
+        return texto;
+    }
+
+    private static byte[] ObterBytesCompativeisComWindows1252(string texto)
+    {
+        var bytes = new byte[texto.Length];
+
+        for (var i = 0; i < texto.Length; i++)
+        {
+            bytes[i] = texto[i] switch
+            {
+                <= (char)0x00FF => (byte)texto[i],
+                '\u20AC' => 0x80,
+                '\u201A' => 0x82,
+                '\u0192' => 0x83,
+                '\u201E' => 0x84,
+                '\u2026' => 0x85,
+                '\u2020' => 0x86,
+                '\u2021' => 0x87,
+                '\u02C6' => 0x88,
+                '\u2030' => 0x89,
+                '\u0160' => 0x8A,
+                '\u2039' => 0x8B,
+                '\u0152' => 0x8C,
+                '\u017D' => 0x8E,
+                '\u2018' => 0x91,
+                '\u2019' => 0x92,
+                '\u201C' => 0x93,
+                '\u201D' => 0x94,
+                '\u2022' => 0x95,
+                '\u2013' => 0x96,
+                '\u2014' => 0x97,
+                '\u02DC' => 0x98,
+                '\u2122' => 0x99,
+                '\u0161' => 0x9A,
+                '\u203A' => 0x9B,
+                '\u0153' => 0x9C,
+                '\u017E' => 0x9E,
+                '\u0178' => 0x9F,
+                _ => (byte)'?'
+            };
+        }
+
+        return bytes;
+    }
+
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // Respostas diretas (sem IA)
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -366,7 +439,7 @@ public class ChatEngineService : IChatEngineService
     private async Task<string?> TentarRespostaDirectaAsync(Usuario usuario, string msgLower, string msgNormalizado)
     {
         // SaudaÃ§Ãµes simples
-        if (msgLower is "oi" or "olÃ¡" or "ola" or "hey" or "eae" or "e aÃ­" or "e ai" or "fala" or "salve"
+        if (msgLower is "oi" or "olá" or "ola" or "hey" or "eae" or "e aí" or "e ai" or "fala" or "salve"
             or "bom dia" or "boa tarde" or "boa noite" or "hello" or "hi" or "opa")
         {
             var saudacao = DateTime.UtcNow.AddHours(-3).Hour switch
@@ -375,27 +448,27 @@ public class ChatEngineService : IChatEngineService
                 >= 12 and < 18 => "Boa tarde",
                 _ => "Boa noite"
             };
-            return $"{saudacao}, **{usuario.Nome}**! ðŸ‘‹\n\nComo posso te ajudar?\n\n" +
-                   "ðŸ“Œ \"Gastei 50 no mercado\"\n" +
-                   "ðŸ“Œ \"Resumo financeiro\"\n" +
-                   "ðŸ“Œ \"Fatura do cartÃ£o\"\n" +
-                   "ðŸ“Œ \"Posso gastar 200 em roupas?\"";
+                 return $"{saudacao}, **{usuario.Nome}**! 👋\n\nComo posso te ajudar?\n\n" +
+                     "📌 \"Gastei 50 no mercado\"\n" +
+                     "📌 \"Resumo financeiro\"\n" +
+                     "📌 \"Fatura do cartão\"\n" +
+                     "📌 \"Posso gastar 200 em roupas?\"";
         }
 
         // Ajuda
-        if (msgLower is "ajuda" or "help" or "comandos" or "menu" or "o que voce faz" or "o que vocÃª faz")
+        if (msgLower is "ajuda" or "help" or "comandos" or "menu" or "o que voce faz" or "o que você faz")
         {
-            return "ðŸ“‹ **O que posso fazer por vocÃª:**\n\n" +
-                   "ðŸ’µ **LanÃ§amentos** â€” \"Gastei 30 no almoÃ§o\"\n" +
-                   "ðŸ“Š **Resumo** â€” \"como estou esse mÃªs?\"\n" +
-                   "ðŸ’³ **Fatura** â€” \"minha fatura\"\n" +
-                   "ðŸŽ¯ **Metas** â€” \"minhas metas\"\n" +
-                   "ðŸ“ **Limites** â€” \"meus limites\"\n" +
-                   "ðŸ¤” **DecisÃ£o** â€” \"posso gastar X?\"\n" +
-                   "ðŸ”® **SimulaÃ§Ã£o** â€” \"se eu comprar X de R$ Y em Zx?\"\n" +
-                   "ðŸ”” **Lembretes** â€” \"meus lembretes\"\n" +
-                   "ðŸŽ™ï¸ **Ãudio** â€” Envie Ã¡udio\n" +
-                   "ðŸ“¸ **Imagem** â€” Envie foto de nota fiscal";
+            return "📋 **O que posso fazer por você:**\n\n" +
+                   "💵 **Lançamentos** — \"Gastei 30 no almoço\"\n" +
+                   "📊 **Resumo** — \"como estou esse mês?\"\n" +
+                   "💳 **Fatura** — \"minha fatura\"\n" +
+                   "🎯 **Metas** — \"minhas metas\"\n" +
+                   "📏 **Limites** — \"meus limites\"\n" +
+                   "🤔 **Decisão** — \"posso gastar X?\"\n" +
+                   "🔮 **Simulação** — \"se eu comprar X de R$ Y em Zx?\"\n" +
+                   "🔔 **Lembretes** — \"meus lembretes\"\n" +
+                   "🎙️ **Áudio** — Envie áudio\n" +
+                   "📸 **Imagem** — Envie foto de nota fiscal";
         }
 
         var respostaCapacidades = ChatMediaHelper.TryGetCapabilitiesResponse(msgNormalizado);
@@ -410,7 +483,7 @@ public class ChatEngineService : IChatEngineService
         if (msgLower is "resumo" or "resumo financeiro" or "meu resumo" or "como estou" or "como to")
             return await _consultaHandler.GerarResumoFormatadoAsync(usuario);
 
-        if (msgLower is "fatura" or "fatura do cartÃ£o" or "fatura do cartao" or "ver fatura" or "fatura atual" or "minha fatura")
+        if (msgLower is "fatura" or "fatura do cartão" or "fatura do cartao" or "ver fatura" or "fatura atual" or "minha fatura")
             return await _consultaHandler.GerarFaturaFormatadaAsync(usuario, detalhada: false);
 
         if (msgLower is "minhas faturas" or "listar faturas" or "todas faturas" or "todas as faturas")
@@ -432,7 +505,7 @@ public class ChatEngineService : IChatEngineService
         if (respostaConsultaDeterministica != null)
             return respostaConsultaDeterministica;
 
-        if (msgLower.Contains("salario mensal") || msgLower.Contains("salÃ¡rio mensal"))
+        if (msgLower.Contains("salario mensal") || msgLower.Contains("salário mensal"))
             return await _consultaHandler.ConsultarSalarioMensalAsync(usuario);
 
         // "paguei lembrete N"
@@ -740,13 +813,13 @@ public class ChatEngineService : IChatEngineService
     private static bool EhPedidoExclusaoLancamento(string msgLower)
     {
         var acoes = new[] { "excluir", "apagar", "remover", "deletar" };
-        var entidades = new[] { "lancamento", "lanÃ§amento", "gasto", "despesa", "receita", "ultimo", "Ãºltimo" };
+        var entidades = new[] { "lancamento", "lançamento", "gasto", "despesa", "receita", "ultimo", "último" };
         return acoes.Any(msgLower.Contains) && entidades.Any(msgLower.Contains);
     }
 
     private static string? ExtrairDescricaoExclusao(string msgLower)
     {
-        if (msgLower.Contains("ultimo") || msgLower.Contains("Ãºltimo"))
+        if (msgLower.Contains("ultimo") || msgLower.Contains("último"))
             return "__ultimo__";
 
         var verbos = new[] { "excluir ", "apagar ", "remover ", "deletar " };
@@ -755,7 +828,7 @@ public class ChatEngineService : IChatEngineService
             var idx = msgLower.IndexOf(verbo, StringComparison.Ordinal);
             if (idx < 0) continue;
             var resto = msgLower[(idx + verbo.Length)..].Trim();
-            var ignorar = new[] { "lancamento", "lanÃ§amento", "gasto", "despesa", "receita", "o", "a", "um", "uma" };
+            var ignorar = new[] { "lancamento", "lançamento", "gasto", "despesa", "receita", "o", "a", "um", "uma" };
             var palavras = resto.Split(' ', StringSplitOptions.RemoveEmptyEntries)
                 .Where(p => !ignorar.Contains(p)).ToArray();
             var desc = string.Join(' ', palavras).Trim();
@@ -843,7 +916,7 @@ public class ChatEngineService : IChatEngineService
 
         var comandosCurtos = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "oi", "ola", "olÃ¡", "help", "ajuda", "menu", "obrigado", "obrigada",
+            "oi", "ola", "olá", "help", "ajuda", "menu", "obrigado", "obrigada",
             "resumo", "resumo financeiro", "meu resumo",
             "fatura", "minha fatura", "fatura detalhada", "fatura completa",
             "categorias", "limites", "metas", "extrato",
@@ -924,7 +997,7 @@ public class ChatEngineService : IChatEngineService
             { "setecentos reais", "R$ 700" }, { "oitocentos reais", "R$ 800" },
             { "novecentos reais", "R$ 900" }, { "mil reais", "R$ 1000" },
             { "mil e quinhentos reais", "R$ 1500" }, { "dois mil reais", "R$ 2000" },
-            { "trÃªs mil reais", "R$ 3000" }, { "cinco mil reais", "R$ 5000" },
+            { "três mil reais", "R$ 3000" }, { "cinco mil reais", "R$ 5000" },
             { "dez mil reais", "R$ 10000" }, { "dez reais", "R$ 10" },
             { "vinte reais", "R$ 20" }, { "trinta reais", "R$ 30" },
             { "quarenta reais", "R$ 40" }, { "cinquenta reais", "R$ 50" },
