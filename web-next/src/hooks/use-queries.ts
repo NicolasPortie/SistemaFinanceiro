@@ -169,8 +169,11 @@ export function useCategorias() {
   return useQuery({
     queryKey: queryKeys.categorias,
     queryFn: () => api.categorias.listar(),
-    staleTime: STALE_10_MIN,
+    staleTime: 0,
     gcTime: GC_30_MIN,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
   });
 }
 
