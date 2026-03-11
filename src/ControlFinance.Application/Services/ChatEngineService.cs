@@ -663,6 +663,9 @@ public class ChatEngineService : IChatEngineService
             case "criar_conta_fixa" when resposta.ContaFixa != null:
                 return await _lembreteHandler.ProcessarCriarContaFixaIAAsync(usuario, resposta.ContaFixa);
 
+            case "pagar_conta_fixa" when !string.IsNullOrWhiteSpace(resposta.Resposta):
+                return await _lembreteHandler.MarcarPagoPorDescricaoAsync(usuario, resposta.Resposta);
+
             case "criar_meta" when resposta.Meta != null:
                 return await _metaLimiteHandler.ProcessarCriarMetaAsync(usuario, resposta.Meta);
 

@@ -51,7 +51,7 @@ public class LembreteHandler : ILembreteHandler
             return "❓ *Como usar lembretes:*\n\n" +
                    "📝 Criar: \"lembrete internet dia 15 de 99,90\"\n" +
                    "❌ Remover: \"remover lembrete 12\"\n" +
-                   "✅ Pago: \"paguei lembrete 12\"";
+                   "✅ Pago: \"paguei internet\" ou \"paguei lembrete 12\"";
 
         if (acao is "remover" or "excluir" or "desativar")
         {
@@ -232,7 +232,7 @@ public class LembreteHandler : ILembreteHandler
         }
 
         texto += "\n";
-        texto += "Para marcar como pago, diga \"paguei lembrete [ID]\"";
+        texto += "Para marcar como pago, diga \"paguei [nome da conta]\"";
         return texto;
     }
 
@@ -247,17 +247,64 @@ public class LembreteHandler : ILembreteHandler
         if (lembrete == null)
             return $"❌ Lembrete {lembreteId} não encontrado.";
 
+        return await MarcarPagoInternoAsync(lembrete);
+    }
+
+    public async Task<string> MarcarPagoPorDescricaoAsync(Usuario usuario, string descricao)
+    {
+        var lembretes = await _lembreteRepo.ObterPorUsuarioAsync(usuario.Id, apenasAtivos: true);
+        if (!lembretes.Any())
+            return "❌ Nenhuma conta fixa ativa encontrada.";
+
+        var descNorm = descricao.Trim().ToLowerInvariant();
+
+        // 1. Exact match (case-insensitive)
+        var lembrete = lembretes.FirstOrDefault(l =>
+            l.Descricao.Equals(descricao.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        // 2. Contains match (either direction)
+        lembrete ??= lembretes.FirstOrDefault(l =>
+            l.Descricao.Contains(descricao.Trim(), StringComparison.OrdinalIgnoreCase)
+            || descricao.Trim().Contains(l.Descricao, StringComparison.OrdinalIgnoreCase));
+
+        // 3. Word overlap match
+        if (lembrete == null)
+        {
+            var palavrasInput = descNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            lembrete = lembretes
+                .Select(l => new
+                {
+                    Lembrete = l,
+                    Score = palavrasInput.Count(p => l.Descricao.Contains(p, StringComparison.OrdinalIgnoreCase))
+                })
+                .Where(x => x.Score > 0)
+                .OrderByDescending(x => x.Score)
+                .FirstOrDefault()?.Lembrete;
+        }
+
+        if (lembrete == null)
+        {
+            var nomes = string.Join(", ", lembretes.Select(l => l.Descricao));
+            return $"❌ Não encontrei uma conta fixa com nome parecido com \"{descricao}\".\n\n" +
+                   $"Contas ativas: {nomes}";
+        }
+
+        return await MarcarPagoInternoAsync(lembrete);
+    }
+
+    private async Task<string> MarcarPagoInternoAsync(LembretePagamento lembrete)
+    {
         var agoraBrasilia = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BrasiliaTimeZone);
         var periodKey = lembrete.PeriodKeyAtual ?? $"{agoraBrasilia:yyyy-MM}";
 
         // Verificar idempotência
-        var jaPagou = await _cicloRepo.JaPagouCicloAsync(lembreteId, periodKey);
+        var jaPagou = await _cicloRepo.JaPagouCicloAsync(lembrete.Id, periodKey);
         if (jaPagou)
             return $"✅ *Ciclo {periodKey}* do lembrete \"{lembrete.Descricao}\" já está marcado como pago.";
 
         var ciclo = new PagamentoCiclo
         {
-            LembretePagamentoId = lembreteId,
+            LembretePagamentoId = lembrete.Id,
             PeriodKey = periodKey,
             Pago = true,
             DataPagamento = DateTime.UtcNow,
@@ -266,7 +313,7 @@ public class LembreteHandler : ILembreteHandler
 
         await _cicloRepo.CriarAsync(ciclo);
 
-        _logger.LogInformation("Pagamento ciclo {PeriodKey} marcado para lembrete {Id}", periodKey, lembreteId);
+        _logger.LogInformation("Pagamento ciclo {PeriodKey} marcado para lembrete {Id}", periodKey, lembrete.Id);
 
         return $"✅ *Conta \"{lembrete.Descricao}\" paga!*\n\n" +
                $"📆 Ciclo: {periodKey}\n" +

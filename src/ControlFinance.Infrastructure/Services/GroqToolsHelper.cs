@@ -253,7 +253,26 @@ public static class GroqToolsHelper
                 }
             }
         },
-        // 13. Criar Conta Fixa
+        // 13. Pagar Conta Fixa
+        new
+        {
+            type = "function",
+            function = new
+            {
+                name = "pagar_conta_fixa",
+                description = "Marca uma conta fixa/lembrete como PAGA neste ciclo. Use quando o usu\u00e1rio disser 'paguei o/a [nome da conta]', 'j\u00e1 paguei [nome]', 'paguei [nome]'. IMPORTANT\u00cdSSIMO: se o usu\u00e1rio falar 'paguei' + o NOME de uma conta que aparece nas CONTAS FIXAS/LEMBRETES do contexto, use ESTA ferramenta (n\u00e3o registrar_lancamento). S\u00f3 use registrar_lancamento se for uma despesa NOVA que n\u00e3o corresponde a nenhuma conta fixa.",
+                parameters = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        descricao = new { type = "string", description = "O nome/descri\u00e7\u00e3o da conta fixa, como aparece nos LEMBRETES do contexto. Ex: 'Oculos', 'Netflix', 'Aluguel'. Envie o nome mais pr\u00f3ximo ao que o usu\u00e1rio falou." }
+                    },
+                    required = new[] { "descricao" }
+                }
+            }
+        },
+        // 14. Criar Conta Fixa
         new
         {
             type = "function",

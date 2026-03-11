@@ -13,19 +13,25 @@ public class ChatContextoFinanceiroService : IChatContextoFinanceiroService
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ILancamentoRepository _lancamentoRepo;
     private readonly IMetaFinanceiraService _metaService;
+    private readonly ILembretePagamentoRepository _lembreteRepo;
+    private readonly IPagamentoCicloRepository _cicloRepo;
 
     public ChatContextoFinanceiroService(
         IResumoService resumoService,
         ICartaoCreditoRepository cartaoRepo,
         ICategoriaRepository categoriaRepo,
         ILancamentoRepository lancamentoRepo,
-        IMetaFinanceiraService metaService)
+        IMetaFinanceiraService metaService,
+        ILembretePagamentoRepository lembreteRepo,
+        IPagamentoCicloRepository cicloRepo)
     {
         _resumoService = resumoService;
         _cartaoRepo = cartaoRepo;
         _categoriaRepo = categoriaRepo;
         _lancamentoRepo = lancamentoRepo;
         _metaService = metaService;
+        _lembreteRepo = lembreteRepo;
+        _cicloRepo = cicloRepo;
     }
 
     public async Task<string> MontarAsync(Usuario usuario)
@@ -52,6 +58,7 @@ public class ChatContextoFinanceiroService : IChatContextoFinanceiroService
             contexto += await MontarMapeamentosAsync(usuario.Id);
             contexto += await MontarUltimosLancamentosAsync(usuario.Id);
             contexto += await MontarMetasAsync(usuario.Id);
+            contexto += await MontarLembretesAsync(usuario.Id);
 
             return contexto;
         }
@@ -191,6 +198,41 @@ public class ChatContextoFinanceiroService : IChatContextoFinanceiroService
                 + string.Join(", ", ativas.Select(m =>
                     $"{m.Nome} (alvo R$ {m.ValorAlvo:N2}, guardado R$ {m.ValorAtual:N2}, prazo {m.Prazo:MM/yyyy})"))
                 + ". ";
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static readonly TimeZoneInfo BrasiliaTimeZone =
+        TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows()
+            ? "E. South America Standard Time"
+            : "America/Sao_Paulo");
+
+    private async Task<string> MontarLembretesAsync(int usuarioId)
+    {
+        try
+        {
+            var lembretes = await _lembreteRepo.ObterPorUsuarioAsync(usuarioId, apenasAtivos: true);
+            if (lembretes.Count == 0) return string.Empty;
+
+            var agoraBrasilia = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BrasiliaTimeZone);
+            var partes = new List<string>();
+
+            foreach (var l in lembretes)
+            {
+                var vencimento = TimeZoneInfo.ConvertTimeFromUtc(l.DataVencimento, BrasiliaTimeZone).Date;
+                var dias = (vencimento - agoraBrasilia.Date).Days;
+                var periodKey = l.PeriodKeyAtual ?? $"{vencimento:yyyy-MM}";
+                var jaPagou = await _cicloRepo.JaPagouCicloAsync(l.Id, periodKey);
+                var status = jaPagou ? "PAGO" : dias < 0 ? $"VENCIDO há {Math.Abs(dias)}d" : dias == 0 ? "VENCE HOJE" : $"vence em {dias}d";
+                var valor = l.Valor.HasValue ? $" R$ {l.Valor.Value:N2}" : "";
+
+                partes.Add($"[#{l.Id} \"{l.Descricao}\"{valor} {vencimento:dd/MM} {status}]");
+            }
+
+            return "CONTAS FIXAS/LEMBRETES ATIVOS: " + string.Join(" ", partes) + ". ";
         }
         catch
         {

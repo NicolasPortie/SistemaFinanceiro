@@ -15,6 +15,8 @@ public class ChatContextoFinanceiroServiceTests
     private readonly Mock<ICategoriaRepository> _categoriaRepoMock = new();
     private readonly Mock<ILancamentoRepository> _lancamentoRepoMock = new();
     private readonly Mock<IMetaFinanceiraService> _metaServiceMock = new();
+    private readonly Mock<ILembretePagamentoRepository> _lembreteRepoMock = new();
+    private readonly Mock<IPagamentoCicloRepository> _cicloRepoMock = new();
 
     [Fact]
     public async Task MontarAsync_ComDadosDisponiveis_MontaContextoEnriquecido()
@@ -106,5 +108,7 @@ public class ChatContextoFinanceiroServiceTests
         _cartaoRepoMock.Object,
         _categoriaRepoMock.Object,
         _lancamentoRepoMock.Object,
-        _metaServiceMock.Object);
+        _metaServiceMock.Object,
+        _lembreteRepoMock.Object,
+        _cicloRepoMock.Object);
 }

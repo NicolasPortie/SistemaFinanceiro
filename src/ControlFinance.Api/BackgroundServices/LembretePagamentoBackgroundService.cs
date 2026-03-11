@@ -292,7 +292,7 @@ public class LembretePagamentoBackgroundService : BackgroundService
         return $"🔔 *Lembrete: {l.Descricao}*\n\n" +
                $"📅 Vence em *{dias} dia(s)* ({l.DataVencimento:dd/MM/yyyy})" +
                valor + cat +
-               $"\n\nJá pagou? Diga \"paguei lembrete {l.Id}\"";
+               $"\n\nJá pagou? Diga \"paguei {l.Descricao.ToLowerInvariant()}\"";
     }
 
     private static string FormatarMensagemDMenos1(LembretePagamento l)
@@ -301,7 +301,7 @@ public class LembretePagamentoBackgroundService : BackgroundService
         return $"⚠️ *Amanhã vence: {l.Descricao}!*\n\n" +
                $"📅 Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\nJá pagou? Diga \"paguei lembrete {l.Id}\"";
+               $"\n\nJá pagou? Diga \"paguei {l.Descricao.ToLowerInvariant()}\"";
     }
 
     private static string FormatarMensagemD0(LembretePagamento l)
@@ -310,7 +310,7 @@ public class LembretePagamentoBackgroundService : BackgroundService
         return $"🚨 *HOJE vence: {l.Descricao}!*\n\n" +
                $"📅 {l.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\nDiga \"paguei lembrete {l.Id}\" para marcar como pago.";
+               $"\n\nDiga \"paguei {l.Descricao.ToLowerInvariant()}\" para marcar como pago.";
     }
 
     private static string FormatarMensagemAtraso(LembretePagamento l, int diasAtraso)
@@ -320,7 +320,7 @@ public class LembretePagamentoBackgroundService : BackgroundService
         return $"❗ *Conta vencida {sufixo}: {l.Descricao}!*\n\n" +
                $"📅 Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\nSe já pagou, diga \"paguei lembrete {l.Id}\"" +
+               $"\n\nSe já pagou, diga \"paguei {l.Descricao.ToLowerInvariant()}\"" +
                "\n⚠️ Fique atento a multas e juros!";
     }
 

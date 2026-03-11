@@ -12,4 +12,5 @@ public interface ILembreteHandler
     Task<string> ProcessarComandoContaFixaAsync(Usuario usuario, string? parametros);
     Task<string> ListarLembretesFormatadoAsync(Usuario usuario);
     Task<string> ProcessarCriarContaFixaIAAsync(Usuario usuario, DadosContaFixaIA dadosIA);
+    Task<string> MarcarPagoPorDescricaoAsync(Usuario usuario, string descricao);
 }
