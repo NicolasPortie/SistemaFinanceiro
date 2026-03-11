@@ -164,6 +164,10 @@ function getRoleBadge(role: string) {
   );
 }
 
+function hasTemporaryAccess(u: AdminUsuario) {
+  return !!u.acessoExpiraEm;
+}
+
 // ── Page ───────────────────────────────────────────────────
 
 export default function AdminUsuariosPage() {
@@ -719,22 +723,28 @@ export default function AdminUsuariosPage() {
                                   <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-2 pb-0.5 pt-1">
                                     Acesso
                                   </DropdownMenuLabel>
-                                  <DropdownMenuItem
-                                    className="gap-2.5 rounded-lg text-emerald-600 dark:text-emerald-500 focus:text-emerald-600 dark:focus:text-emerald-500 cursor-pointer"
-                                    onClick={() => {
-                                      setExtendTarget(u);
-                                      setExtendDias(30);
-                                    }}
-                                  >
-                                    <ShieldCheck className="h-4 w-4" />
-                                    Estender Acesso
-                                    {u.acessoExpiraEm &&
-                                      new Date(u.acessoExpiraEm) < new Date() && (
-                                        <span className="ml-auto text-[10px] text-red-500 font-semibold">
-                                          expirado
-                                        </span>
-                                      )}
-                                  </DropdownMenuItem>
+                                  {hasTemporaryAccess(u) ? (
+                                    <DropdownMenuItem
+                                      className="gap-2.5 rounded-lg text-emerald-600 dark:text-emerald-500 focus:text-emerald-600 dark:focus:text-emerald-500 cursor-pointer"
+                                      onClick={() => {
+                                        setExtendTarget(u);
+                                        setExtendDias(30);
+                                      }}
+                                    >
+                                      <ShieldCheck className="h-4 w-4" />
+                                      Adicionar dias ao prazo
+                                      {u.acessoExpiraEm &&
+                                        new Date(u.acessoExpiraEm) < new Date() && (
+                                          <span className="ml-auto text-[10px] text-red-500 font-semibold">
+                                            expirado
+                                          </span>
+                                        )}
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <div className="px-2 py-2 text-[11px] text-slate-400">
+                                      Acesso permanente ou controlado pelo plano atual.
+                                    </div>
+                                  )}
 
                                   <DropdownMenuSeparator className="my-1" />
 
@@ -1191,7 +1201,7 @@ function ExtenderAcessoDialog({
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <ShieldCheck className="h-4 w-4" />
             </div>
-            Estender Acesso
+            Ajustar prazo de acesso
           </DialogTitle>
         </DialogHeader>
 
@@ -1208,20 +1218,18 @@ function ExtenderAcessoDialog({
                       estaExpirado ? "text-red-500 font-semibold" : "text-muted-foreground/70"
                     )}
                   >
-                    Acesso atual: {estaExpirado ? "expirou em" : "expira em"}{" "}
+                    Prazo atual: {estaExpirado ? "expirou em" : "expira em"}{" "}
                     {formatDate(usuario!.acessoExpiraEm!)}
                   </span>
                 ) : (
-                  <span className="text-emerald-600 font-semibold">
-                    Acesso permanente (sem prazo definido)
-                  </span>
+                  <span className="text-muted-foreground/70">Sem prazo temporário configurado</span>
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
               <p className="text-xs font-bold text-muted-foreground/70 uppercase tracking-wider">
-                Dias a adicionar
+                Dias a acrescentar
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {PRESETS_EXTEND.map((p) => (
@@ -1266,12 +1274,7 @@ function ExtenderAcessoDialog({
               </p>
               {estaExpirado && (
                 <p className="text-[11px] text-amber-600 mt-1">
-                  Como o acesso já expirou, os dias serão contados a partir de hoje.
-                </p>
-              )}
-              {expiraAtual === null && (
-                <p className="text-[11px] text-amber-600 mt-1">
-                  O usuário tem acesso permanente. Após estender, passará a ter prazo definido.
+                  Como o prazo já expirou, os dias serão contados a partir de hoje.
                 </p>
               )}
             </div>
@@ -1289,7 +1292,7 @@ function ExtenderAcessoDialog({
             className="gap-2 rounded-xl font-bold"
           >
             <ShieldCheck className="h-4 w-4" />
-            Estender Acesso
+            Salvar novo prazo
           </Button>
         </DialogFooter>
       </DialogContent>

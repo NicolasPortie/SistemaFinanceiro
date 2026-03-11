@@ -36,10 +36,10 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5000
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-controlfinance};Username=${POSTGRES_USER:-cf_user};Password=${POSTGRES_PASSWORD}
-      Jwt__Secret: ${JWT_SECRET:?Defina JWT_SECRET no .env}
-      Jwt__Issuer: ${JWT_ISSUER:-ControlFinance}
-      Jwt__Audience: ${JWT_AUDIENCE:-ControlFinanceApp}
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-controlfinance};Username=${POSTGRES_USER:-cf_user};Password=${POSTGRES_PASSWORD}"
+      Jwt__Secret: "${JWT_SECRET:?Defina JWT_SECRET no .env}"
+      Jwt__Issuer: "${JWT_ISSUER:-Ravier}"
+      Jwt__Audience: "${JWT_AUDIENCE:-RavierApp}"
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN}
       Telegram__WebhookUrl: ${TELEGRAM_WEBHOOK_URL}
       Telegram__WebhookSecretToken: ${TELEGRAM_WEBHOOK_SECRET}
@@ -54,9 +54,9 @@ services:
       Groq__ApiKeys__1: ${GROQ_API_KEY_3:-}
       Groq__Model: ${GROQ_MODEL:-llama-3.3-70b-versatile}
       Groq__FallbackModels: ${GROQ_FALLBACK_MODELS:-llama-3.1-8b-instant}
-      Email__Enabled: ${EMAIL_ENABLED:-false}
-      Email__FromEmail: ${EMAIL_FROM_EMAIL}
-      Email__FromName: ${EMAIL_FROM_NAME:-ControlFinance}
+      Email__Enabled: "${EMAIL_ENABLED:-false}"
+      Email__FromEmail: "${EMAIL_FROM_EMAIL}"
+      Email__FromName: "${EMAIL_FROM_NAME:-Ravier}"
       Email__TimeoutSeconds: ${EMAIL_TIMEOUT_SECONDS:-20}
       Email__Smtp__Host: ${EMAIL_SMTP_HOST}
       Email__Smtp__Port: ${EMAIL_SMTP_PORT:-465}

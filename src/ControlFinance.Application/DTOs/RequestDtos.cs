@@ -186,6 +186,8 @@ public class GoogleLoginDto
     public string IdToken { get; set; } = string.Empty;
 
     public string? Celular { get; set; }
+
+    public string? CodigoConvite { get; set; }
 }
 
 public class AppleLoginDto
@@ -194,6 +196,8 @@ public class AppleLoginDto
     public string IdToken { get; set; } = string.Empty;
 
     public string? Celular { get; set; }
+
+    public string? CodigoConvite { get; set; }
 
     /// <summary>
     /// Nome do usuário (Apple só envia na primeira autorização).

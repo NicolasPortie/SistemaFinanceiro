@@ -65,6 +65,10 @@ function formatDuration(dias: number | null): string {
   return `${dias} dia(s)`;
 }
 
+function getPlanoVinculado(dias: number | null): string {
+  return dias === null || dias >= 7 ? "Individual" : "Acesso temporário";
+}
+
 function getStatus(c: AdminCodigoConvite) {
   if (c.usado && !c.ilimitado)
     return {
@@ -161,7 +165,6 @@ export default function AdminConvitesPage() {
     queryKey: ["admin", "convites"],
     queryFn: () => api.admin.convites.listar(),
   });
-
   const criar = useMutation({
     mutationFn: () =>
       api.admin.convites.criar({
@@ -476,6 +479,20 @@ export default function AdminConvitesPage() {
                         </span>
                       </div>
                     </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                        Vínculo do usuário
+                      </span>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        {getPlanoVinculado(selectedConvite.duracaoAcessoDias)}
+                      </p>
+                      <p className="mt-1 text-[10px] text-slate-400">
+                        {selectedConvite.duracaoAcessoDias === null ||
+                        selectedConvite.duracaoAcessoDias >= 7
+                          ? "Ao aceitar este convite, o usuário entra com plano Individual liberado."
+                          : "Convites com menos de 7 dias criam apenas acesso temporário, sem vínculo ao plano Individual."}
+                      </p>
+                    </div>
                     {selectedConvite.descricao && (
                       <div className="sm:col-span-2">
                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
@@ -597,8 +614,7 @@ export default function AdminConvitesPage() {
                         )}
                       </div>
                       <p className="text-[11px] text-slate-500">
-                        Acesso concedido com duração de{" "}
-                        {formatDuration(selectedConvite.duracaoAcessoDias)}.
+                        Acesso concedido com duração de {formatDuration(selectedConvite.duracaoAcessoDias)} e vínculo {getPlanoVinculado(selectedConvite.duracaoAcessoDias).toLowerCase()}.
                       </p>
                     </div>
                   </div>
@@ -689,6 +705,9 @@ export default function AdminConvitesPage() {
               <Label className="block text-sm font-semibold text-foreground mb-2">
                 Duração do Acesso
               </Label>
+              <div className="mb-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-[11px] leading-5 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                Convites com acesso permanente ou duração de 7 dias ou mais liberam o usuário no plano Individual. Durações menores criam acesso temporário sem esse vínculo.
+              </div>
               <div className="grid grid-cols-3 gap-2 mb-2">
                 {PRESETS_ACESSO.map((p) => (
                   <button
@@ -730,7 +749,7 @@ export default function AdminConvitesPage() {
                 <div>
                   <p className="text-sm font-semibold">Acesso permanente</p>
                   <p className="text-[11px] text-muted-foreground/60">
-                    Sem prazo de expiração de acesso
+                    Sem prazo de expiração e com vínculo ao plano Individual
                   </p>
                 </div>
                 <Switch

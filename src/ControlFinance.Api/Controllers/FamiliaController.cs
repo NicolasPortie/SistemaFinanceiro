@@ -57,6 +57,7 @@ public class FamiliaController : BaseAuthController
     }
 
     /// <summary>Consulta convite por token (público para membro).</summary>
+    [AllowAnonymous]
     [HttpGet("convite/{token}")]
     public async Task<IActionResult> ObterConvitePorToken(string token)
     {

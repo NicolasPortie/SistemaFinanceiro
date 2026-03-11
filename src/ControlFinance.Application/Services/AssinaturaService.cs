@@ -242,6 +242,62 @@ public class AssinaturaService : IAssinaturaService
             isGratuito ? "Plano gratuito" : $"Trial de {diasTrial} dias", usuarioId, plano);
     }
 
+    public async Task ConcederAcessoPorConviteAsync(int usuarioId, TipoPlano plano, DateTime? expiraEm)
+    {
+        var assinatura = await _assinaturaRepo.ObterPorUsuarioIdAsync(usuarioId);
+        var planoConfig = await _planoConfigRepo.ObterPorTipoAsync(plano)
+            ?? throw new InvalidOperationException($"Configuração do plano {plano} não encontrada no banco de dados.");
+
+        var agora = DateTime.UtcNow;
+        var status = expiraEm.HasValue ? StatusAssinatura.Trial : StatusAssinatura.Ativa;
+        var fimTrial = expiraEm ?? DateTime.MaxValue;
+
+        if (assinatura == null)
+        {
+            assinatura = new Assinatura
+            {
+                UsuarioId = usuarioId,
+                Plano = plano,
+                Status = status,
+                ValorMensal = planoConfig.PrecoMensal,
+                InicioTrial = agora,
+                FimTrial = fimTrial,
+                MaxMembros = plano == TipoPlano.Familia ? 2 : 1,
+                StripePriceId = planoConfig.StripePriceId,
+                CriadoEm = agora
+            };
+
+            await _assinaturaRepo.AdicionarAsync(assinatura);
+        }
+        else
+        {
+            assinatura.Plano = plano;
+            assinatura.Status = status;
+            assinatura.ValorMensal = planoConfig.PrecoMensal;
+            assinatura.InicioTrial = agora;
+            assinatura.FimTrial = fimTrial;
+            assinatura.MaxMembros = plano == TipoPlano.Familia ? 2 : 1;
+            assinatura.StripePriceId = planoConfig.StripePriceId;
+            assinatura.CanceladoEm = null;
+            assinatura.ProximaCobranca = null;
+
+            await _assinaturaRepo.AtualizarAsync(assinatura);
+        }
+
+        var usuario = await _usuarioRepo.ObterPorIdAsync(usuarioId);
+        if (usuario != null)
+        {
+            usuario.AcessoExpiraEm = expiraEm;
+            await _usuarioRepo.AtualizarAsync(usuario);
+        }
+
+        _logger.LogInformation(
+            "Acesso por convite concedido para usuário {UserId} no plano {Plano} até {Expiracao}",
+            usuarioId,
+            plano,
+            expiraEm);
+    }
+
     // ── Checkout Stripe ──
 
     public async Task<CheckoutSessionResponse> CriarCheckoutAsync(int usuarioId, TipoPlano plano)

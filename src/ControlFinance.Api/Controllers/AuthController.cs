@@ -95,7 +95,7 @@ public class AuthController : BaseAuthController
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var (response, erro) = await _authService.LoginGoogleAsync(dto.IdToken, ClientIp, dto.Celular);
+        var (response, erro) = await _authService.LoginGoogleAsync(dto.IdToken, ClientIp, dto.Celular, dto.CodigoConvite);
         if (erro != null)
             return Unauthorized(new { erro });
 
@@ -110,7 +110,7 @@ public class AuthController : BaseAuthController
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var (response, erro) = await _authService.LoginAppleAsync(dto.IdToken, ClientIp, dto.Celular, dto.Nome);
+        var (response, erro) = await _authService.LoginAppleAsync(dto.IdToken, ClientIp, dto.Celular, dto.Nome, dto.CodigoConvite);
         if (erro != null)
             return Unauthorized(new { erro });
 

@@ -394,6 +394,8 @@ public class FamiliaServiceTests
         _familiaRepoMock.Setup(r => r.ObterPorUsuarioIdAsync(MembroId)).ReturnsAsync((Familia?)null);
         _familiaRepoMock.Setup(r => r.AtualizarAsync(It.IsAny<Familia>())).ReturnsAsync((Familia f) => f);
         _familiaRepoMock.Setup(r => r.ObterPorIdAsync(FamiliaId)).ReturnsAsync(familia);
+        _usuarioRepoMock.Setup(r => r.ObterPorIdAsync(MembroId))
+            .ReturnsAsync(new Usuario { Id = MembroId, Email = "convidado@email.com", Nome = "Membro" });
 
         var resultado = await _service.AceitarConviteAsync(MembroId, "abc123token");
 
@@ -447,6 +449,21 @@ public class FamiliaServiceTests
             _service.AceitarConviteAsync(MembroId, "abc123token"));
 
         Assert.Contains("já pertence a uma família", ex.Message);
+    }
+
+    [Fact]
+    public async Task AceitarConvite_EmailDiferenteDoConvite_LancaExcecao()
+    {
+        var convite = CriarConvitePendente();
+        _conviteRepoMock.Setup(r => r.ObterPorTokenAsync("abc123token")).ReturnsAsync(convite);
+        _familiaRepoMock.Setup(r => r.ObterPorUsuarioIdAsync(MembroId)).ReturnsAsync((Familia?)null);
+        _usuarioRepoMock.Setup(r => r.ObterPorIdAsync(MembroId))
+            .ReturnsAsync(new Usuario { Id = MembroId, Email = "outra-conta@email.com", Nome = "Membro" });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.AceitarConviteAsync(MembroId, "abc123token"));
+
+        Assert.Contains("foi enviado para outro e-mail", ex.Message);
     }
 
     // ── RecusarConviteAsync ──

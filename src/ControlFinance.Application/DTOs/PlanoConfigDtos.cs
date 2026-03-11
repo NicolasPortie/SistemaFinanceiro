@@ -35,10 +35,25 @@ public class RecursoPlanoDto
 
 public class AtualizarPlanoRequest
 {
+    public TipoPlano? Tipo { get; set; }
     public string Nome { get; set; } = string.Empty;
     public string Descricao { get; set; } = string.Empty;
     public decimal PrecoMensal { get; set; }
     public bool Ativo { get; set; }
+    public bool TrialDisponivel { get; set; }
+    public int DiasGratis { get; set; }
+    public int Ordem { get; set; }
+    public bool Destaque { get; set; }
+    public string? StripePriceId { get; set; }
+}
+
+public class CriarPlanoRequest
+{
+    public TipoPlano Tipo { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public string Descricao { get; set; } = string.Empty;
+    public decimal PrecoMensal { get; set; }
+    public bool Ativo { get; set; } = true;
     public bool TrialDisponivel { get; set; }
     public int DiasGratis { get; set; }
     public int Ordem { get; set; }

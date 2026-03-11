@@ -118,28 +118,6 @@ const PLANO_COLORS: Record<
   },
 };
 
-/** Curated feature descriptions for each paid plan */
-const PLANO_FEATURES: Record<"Individual" | "Familia", string[]> = {
-  Individual: [
-    "Lançamentos e categorias ilimitadas",
-    "Cartões de crédito e contas sem limite",
-    "Importação de extratos bancários",
-    "Consultor de IA e simulação de compras",
-    "Metas financeiras ilimitadas",
-    "Limites por categoria e alertas",
-    "Contas fixas ilimitadas",
-    "Notificações proativas",
-    "Telegram ilimitado",
-  ],
-  Familia: [
-    "Tudo do plano Pro, mais:",
-    "Dashboard familiar compartilhado",
-    "Metas conjuntas entre membros",
-    "Categorias e orçamento compartilhados",
-    "Contas fixas compartilhadas",
-  ],
-};
-
 /* ═══════════════════════════════════════════════
    CPF utilities
    ═══════════════════════════════════════════════ */
@@ -359,14 +337,10 @@ function UpgradePlanModal({
                                   plano.tipo === "Familia" ? "text-violet-500" : "text-emerald-600"
                                 )}
                               >
-                                {plano.tipo === "Individual" ? "Performance" : "2 pessoas"}
+                                {plano.tipo}
                               </span>
                               <h3 className="text-xl sm:text-2xl font-bold mt-1 text-slate-900 dark:text-white">
-                                {plano.tipo === "Individual"
-                                  ? "Pro"
-                                  : plano.tipo === "Familia"
-                                    ? "2 Pessoas"
-                                    : plano.nome}
+                                {plano.nome}
                               </h3>
 
                               {/* Price */}
@@ -400,25 +374,15 @@ function UpgradePlanModal({
                               )}
 
                               <ul className="space-y-2.5">
-                                {(
-                                  PLANO_FEATURES[plano.tipo as "Individual" | "Familia"] ??
-                                  plano.recursos
-                                ).map((feat, j) => {
-                                  const isLabel = feat.endsWith(":");
+                                {plano.recursos.map((feat, j) => {
                                   return (
                                     <li key={j} className="flex items-start gap-2.5">
-                                      {isLabel ? (
-                                        <span className="text-sm font-semibold text-slate-900 dark:text-white leading-snug">
+                                      <>
+                                        <Check className="size-4 mt-0.5 shrink-0 text-emerald-500" />
+                                        <span className="text-sm text-slate-600 dark:text-slate-300 leading-snug">
                                           {feat}
                                         </span>
-                                      ) : (
-                                        <>
-                                          <Check className="size-4 mt-0.5 shrink-0 text-emerald-500" />
-                                          <span className="text-sm text-slate-600 dark:text-slate-300 leading-snug">
-                                            {feat}
-                                          </span>
-                                        </>
-                                      )}
+                                      </>
                                     </li>
                                   );
                                 })}

@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import Image from "next/image";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import type { MensagemDto } from "@/lib/api";
@@ -659,10 +660,15 @@ export default function ChatPage() {
               animate={{ opacity: 1, y: 0 }}
               className="text-center max-w-md"
             >
-              <div className="w-16 h-16 rounded-[1.5rem] bg-emerald-500 flex items-center justify-center mx-auto mb-6 shadow-[0_8px_24px_rgba(16,185,129,0.25)]">
-                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14v-4H7l5-8v4h4l-5 8z" />
-                </svg>
+              <div className="w-16 h-16 rounded-[1.5rem] bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700/70 flex items-center justify-center mx-auto mb-6 shadow-[0_12px_32px_rgba(15,23,42,0.10)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
+                <Image
+                  src="/logoSemTexto.png"
+                  alt="Ravier"
+                  width={34}
+                  height={34}
+                  className="object-contain"
+                  priority
+                />
               </div>
               <h2 className="text-2xl font-bold text-slate-800 dark:text-white tracking-tight mb-1 serif-italic">
                 Ravier

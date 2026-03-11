@@ -32,6 +32,11 @@ public interface IAssinaturaService
     Task IniciarTrialAsync(int usuarioId, TipoPlano plano);
 
     /// <summary>
+    /// Concede acesso de convite, vinculando o usuário ao plano informado.
+    /// </summary>
+    Task ConcederAcessoPorConviteAsync(int usuarioId, TipoPlano plano, DateTime? expiraEm);
+
+    /// <summary>
     /// Processa webhook do Stripe (checkout.session.completed, invoice.paid, etc).
     /// </summary>
     Task ProcessarWebhookAsync(string json, string stripeSignature);

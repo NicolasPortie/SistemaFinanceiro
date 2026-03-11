@@ -183,6 +183,12 @@ public class FamiliaService : IFamiliaService
         if (familiaExistente != null)
             throw new InvalidOperationException("Você já pertence a uma família. Saia primeiro para aceitar este convite.");
 
+        var membro = await _usuarioRepo.ObterPorIdAsync(membroId)
+            ?? throw new InvalidOperationException("Usuário autenticado não encontrado.");
+
+        if (!membro.Email.Equals(convite.Email, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Este convite foi enviado para outro e-mail. Entre com a conta convidada para continuar.");
+
         // Aceitar convite
         convite.Status = StatusConviteFamilia.Aceito;
         await _conviteRepo.AtualizarAsync(convite);

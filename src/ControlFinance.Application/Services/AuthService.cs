@@ -65,6 +65,11 @@ public class AuthService : IAuthService
         if (await _usuarioRepo.EmailExisteAsync(emailNormalizado))
             return (null, "Este e-mail já está cadastrado.");
 
+        var codigoConviteNormalizado = dto.CodigoConvite?.Trim();
+        var (codigoConvite, erroConvite) = await ValidarCodigoConviteAsync(codigoConviteNormalizado);
+        if (erroConvite != null)
+            return (null, erroConvite);
+
         // Gerar código de verificação
         var codigoVerificacao = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
         var expiraEm = DateTime.UtcNow.AddMinutes(15);
@@ -77,6 +82,7 @@ public class AuthService : IAuthService
             pendente.Nome = SanitizarTexto(dto.Nome);
             pendente.SenhaHash = HashSenha(dto.Senha);
             pendente.Celular = dto.Celular;
+            pendente.CodigoConvite = codigoConvite?.Codigo ?? string.Empty;
             pendente.CodigoVerificacao = codigoVerificacao;
             pendente.ExpiraEm = expiraEm;
             pendente.TentativasVerificacao = 0;
@@ -90,6 +96,7 @@ public class AuthService : IAuthService
                 Email = emailNormalizado,
                 Nome = SanitizarTexto(dto.Nome),
                 SenhaHash = HashSenha(dto.Senha),
+                CodigoConvite = codigoConvite?.Codigo ?? string.Empty,
                 Celular = dto.Celular,
                 CodigoVerificacao = codigoVerificacao,
                 ExpiraEm = expiraEm,
@@ -153,6 +160,10 @@ public class AuthService : IAuthService
             return (null, "Este e-mail já está cadastrado.");
         }
 
+        var (codigoConvite, erroConvite) = await ValidarCodigoConviteAsync(pendente.CodigoConvite);
+        if (erroConvite != null)
+            return (null, erroConvite);
+
         // Criar usuário
         var celularNormalizado = Domain.Helpers.CelularHelper.Normalizar(pendente.Celular);
         var usuario = new Usuario
@@ -167,6 +178,9 @@ public class AuthService : IAuthService
 
         await _usuarioRepo.CriarAsync(usuario);
         await _categoriaRepo.CriarCategoriasIniciais(usuario.Id);
+
+        if (codigoConvite is not null)
+            await AplicarCodigoConviteAsync(usuario, codigoConvite);
 
         // Limpar registro pendente
         await _registroPendenteRepo.RemoverAsync(pendente.Id);
@@ -289,7 +303,7 @@ public class AuthService : IAuthService
         return (response, null);
     }
 
-    public async Task<(AuthResponseDto? Response, string? Erro)> LoginGoogleAsync(string idToken, string? ipAddress = null, string? celular = null)
+    public async Task<(AuthResponseDto? Response, string? Erro)> LoginGoogleAsync(string idToken, string? ipAddress = null, string? celular = null, string? codigoConvite = null)
     {
         GoogleJsonWebSignature.Payload payload;
         try
@@ -332,6 +346,10 @@ public class AuthService : IAuthService
                 return (null, "Cadastro incompleto. O número de celular é obrigatório para prosseguir.");
             }
 
+            var (convite, erroConvite) = await ValidarCodigoConviteAsync(codigoConvite);
+            if (erroConvite != null)
+                return (null, erroConvite);
+
             usuario = new Usuario
             {
                 Nome = payload.Name ?? "Usuário Google",
@@ -349,7 +367,10 @@ public class AuthService : IAuthService
 
             try
             {
-                await _assinaturaService.IniciarTrialAsync(usuario.Id, TipoPlano.Gratuito);
+                if (convite is not null)
+                    await AplicarCodigoConviteAsync(usuario, convite);
+                else
+                    await _assinaturaService.IniciarTrialAsync(usuario.Id, TipoPlano.Gratuito);
             }
             catch (Exception ex)
             {
@@ -380,7 +401,7 @@ public class AuthService : IAuthService
     }
 
     public async Task<(AuthResponseDto? Response, string? Erro)> LoginAppleAsync(
-        string idToken, string? ipAddress = null, string? celular = null, string? nome = null)
+        string idToken, string? ipAddress = null, string? celular = null, string? nome = null, string? codigoConvite = null)
     {
         // Validar o ID Token da Apple via JWKS
         System.Security.Claims.ClaimsPrincipal principal;
@@ -453,6 +474,10 @@ public class AuthService : IAuthService
                 return (null, "Cadastro incompleto. O número de celular é obrigatório para prosseguir.");
             }
 
+            var (convite, erroConvite) = await ValidarCodigoConviteAsync(codigoConvite);
+            if (erroConvite != null)
+                return (null, erroConvite);
+
             var emailNormalizado = !string.IsNullOrEmpty(emailClaim)
                 ? emailClaim.ToLower().Trim()
                 : $"apple_{appleSubject}@privaterelay.appleid.com";
@@ -474,7 +499,10 @@ public class AuthService : IAuthService
 
             try
             {
-                await _assinaturaService.IniciarTrialAsync(usuario.Id, TipoPlano.Gratuito);
+                if (convite is not null)
+                    await AplicarCodigoConviteAsync(usuario, convite);
+                else
+                    await _assinaturaService.IniciarTrialAsync(usuario.Id, TipoPlano.Gratuito);
             }
             catch (Exception ex)
             {
@@ -706,6 +734,40 @@ public class AuthService : IAuthService
             Usuario = MapearParaDto(usuario)
         };
     }
+
+    private async Task<(CodigoConvite? Convite, string? Erro)> ValidarCodigoConviteAsync(string? codigo)
+    {
+        if (string.IsNullOrWhiteSpace(codigo))
+            return (null, null);
+
+        var convite = await _codigoConviteRepo.ObterPorCodigoAsync(codigo.Trim());
+        if (convite == null || !convite.PodeSerUsado())
+            return (null, "O link de convite informado é inválido ou expirou.");
+
+        return (convite, null);
+    }
+
+    private async Task AplicarCodigoConviteAsync(Usuario usuario, CodigoConvite convite)
+    {
+        var expiracao = convite.DuracaoAcessoDias.HasValue && convite.DuracaoAcessoDias.Value > 0
+            ? DateTime.UtcNow.AddDays(convite.DuracaoAcessoDias.Value)
+            : (DateTime?)null;
+
+        convite.RegistrarUso(usuario.Id);
+        await _codigoConviteRepo.AtualizarAsync(convite);
+
+        if (DeveVincularAoPlanoIndividual(convite))
+        {
+            await _assinaturaService.ConcederAcessoPorConviteAsync(usuario.Id, TipoPlano.Individual, expiracao);
+            return;
+        }
+
+        usuario.AcessoExpiraEm = expiracao;
+        await _usuarioRepo.AtualizarAsync(usuario);
+    }
+
+    private static bool DeveVincularAoPlanoIndividual(CodigoConvite convite)
+        => !convite.DuracaoAcessoDias.HasValue || convite.DuracaoAcessoDias.Value >= 7;
 
     private string GerarJwtToken(Usuario usuario, DateTime expiraEm, string jwtId)
     {

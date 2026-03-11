@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import {
@@ -119,6 +119,9 @@ export default function CartoesPage() {
   const [selectedCartaoId, setSelectedCartaoId] = useState<number | null>(null);
   const [garantiaTab, setGarantiaTab] = useState<string>("adicionar");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [canScrollCardsLeft, setCanScrollCardsLeft] = useState(false);
+  const [canScrollCardsRight, setCanScrollCardsRight] = useState(false);
+  const cardsStripRef = useRef<HTMLDivElement | null>(null);
   const queryClient = useQueryClient();
 
   const { mesParam, label: mesLabel, prev, next } = useMonthSelector();
@@ -263,6 +266,43 @@ export default function CartoesPage() {
   };
 
   const totalDisponivel = cartoes.reduce((s, c) => s + (c.limiteDisponivel ?? c.limite), 0);
+
+  useEffect(() => {
+    const element = cardsStripRef.current;
+
+    if (!element) {
+      setCanScrollCardsLeft(false);
+      setCanScrollCardsRight(false);
+      return;
+    }
+
+    const updateScrollState = () => {
+      const maxScrollLeft = element.scrollWidth - element.clientWidth;
+      setCanScrollCardsLeft(element.scrollLeft > 8);
+      setCanScrollCardsRight(maxScrollLeft - element.scrollLeft > 8);
+    };
+
+    updateScrollState();
+    element.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+
+    return () => {
+      element.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [cartoes.length]);
+
+  const scrollCards = (direction: "left" | "right") => {
+    const element = cardsStripRef.current;
+
+    if (!element) return;
+
+    const amount = Math.max(element.clientWidth * 0.82, 280);
+    element.scrollBy({
+      left: direction === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  };
 
   // Fetch faturas for all cards to show monthly total in stat card
   const faturaQueries = useQueries({
@@ -440,7 +480,31 @@ export default function CartoesPage() {
             </motion.div>
           ) : (
             <div className="space-y-3">
-              <div className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar snap-x snap-mandatory sm:gap-6">
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-16 bg-linear-to-r from-[rgba(248,250,252,0.96)] to-transparent dark:from-[rgba(2,6,23,0.92)] md:block" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-16 bg-linear-to-l from-[rgba(248,250,252,0.96)] to-transparent dark:from-[rgba(2,6,23,0.92)] md:block" />
+                <button
+                  type="button"
+                  onClick={() => scrollCards("left")}
+                  aria-label="Ver cartões anteriores"
+                  disabled={!canScrollCardsLeft}
+                  className="absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 rounded-full border border-slate-200 bg-white/95 p-2 text-slate-500 shadow-lg shadow-slate-200/70 transition disabled:pointer-events-none disabled:opacity-0 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300 dark:shadow-black/30 md:flex"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollCards("right")}
+                  aria-label="Ver próximos cartões"
+                  disabled={!canScrollCardsRight}
+                  className="absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 rounded-full border border-slate-200 bg-white/95 p-2 text-slate-500 shadow-lg shadow-slate-200/70 transition disabled:pointer-events-none disabled:opacity-0 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300 dark:shadow-black/30 md:flex"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <div
+                  ref={cardsStripRef}
+                  className="flex gap-4 overflow-x-auto pb-2 hide-scrollbar snap-x snap-mandatory touch-pan-x md:px-8 sm:gap-6"
+                >
                 {cartoes.map((cartao, i) => {
                   const bgClass = cardBgStyles[i % cardBgStyles.length];
                   const isSelected = selectedCartaoId === cartao.id;
@@ -524,9 +588,10 @@ export default function CartoesPage() {
                     </div>
                   );
                 })}
+                </div>
               </div>
               <p className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">
-                Toque em um cartão para focar a fatura e liberar ações.
+                Deslize para os lados ou use as setas para ver outros cartões. Toque em um cartão para focar a fatura e liberar ações.
               </p>
             </div>
           )}

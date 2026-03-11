@@ -19,6 +19,8 @@ public class SmtpEmailService : IEmailService
     private readonly string _smtpPassword;
     private readonly bool _smtpUseSsl;
     private readonly int _timeoutSeconds;
+    private readonly string _frontendUrl;
+    private readonly string _logoUrl;
 
     public SmtpEmailService(IConfiguration configuration, ILogger<SmtpEmailService> logger)
     {
@@ -33,6 +35,12 @@ public class SmtpEmailService : IEmailService
         _smtpPassword = configuration["Email:Smtp:Password"] ?? "";
         _smtpUseSsl = configuration.GetValue("Email:Smtp:UseSsl", true);
         _timeoutSeconds = configuration.GetValue("Email:TimeoutSeconds", 20);
+        _frontendUrl =
+          configuration["Email:FrontendUrl"] ??
+          configuration["Stripe:FrontendUrl"] ??
+          configuration["FrontendUrl"] ??
+          "http://localhost:3000";
+        _logoUrl = BuildAbsoluteUrl(_frontendUrl, "/LogoRavier.png");
     }
 
     public async Task<bool> EnviarCodigoRecuperacaoSenhaAsync(
@@ -49,7 +57,7 @@ public class SmtpEmailService : IEmailService
             emailDestino,
             nomeDestino,
             "Recuperação de senha — Ravier",
-            GerarHtmlRecuperacao(nome, codigo, expiraTexto),
+          GerarHtmlRecuperacao(nome, codigo, expiraTexto),
             GerarTextoRecuperacao(nome, codigo, expiraTexto),
             cancellationToken);
     }
@@ -68,7 +76,7 @@ public class SmtpEmailService : IEmailService
             emailDestino,
             nomeDestino,
             "Confirme seu e-mail — Ravier",
-            GerarHtmlVerificacao(nome, codigo, expiraTexto),
+          GerarHtmlVerificacao(nome, codigo, expiraTexto),
             GerarTextoVerificacao(nome, codigo, expiraTexto),
             cancellationToken);
     }
@@ -143,11 +151,27 @@ public class SmtpEmailService : IEmailService
         string conteudoTexto,
         CancellationToken cancellationToken = default)
     {
-        var htmlBody = $"<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;\">"
-            + $"<h2 style=\"color:#0f172a;\">{System.Net.WebUtility.HtmlEncode(assunto)}</h2>"
-            + $"<div style=\"white-space:pre-wrap;color:#334155;line-height:1.6;\">{System.Net.WebUtility.HtmlEncode(conteudoTexto)}</div>"
-            + $"<hr style=\"border:none;border-top:1px solid #e2e8f0;margin:24px 0;\">"
-            + $"<p style=\"color:#94a3b8;font-size:12px;\">Enviado via Ravier — Suporte</p></div>";
+        var assuntoSeguro = System.Net.WebUtility.HtmlEncode(assunto);
+        var conteudoSeguro = System.Net.WebUtility.HtmlEncode(conteudoTexto).Replace("\n", "<br/>");
+        var htmlBody = Wrapper($"""
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td class="bg-brand" style="padding: 34px 36px 24px; background: linear-gradient(180deg, #0b1220 0%, #101826 100%); border-bottom: 1px solid #1f2937;">
+                    <p style="margin: 0 0 10px 0; font-size: 11px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: #7dd3c7;">Suporte Ravier</p>
+                    <h1 class="text-primary" style="margin: 0; font-size: 28px; line-height: 1.2; font-weight: 800; color: #f8fafc; letter-spacing: -0.7px;">
+                      {assuntoSeguro}
+                    </h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 30px 36px 36px;">
+                    <p class="text-secondary" style="margin: 0; font-size: 15px; color: #94a3b8; line-height: 1.75; white-space: normal;">
+                      {conteudoSeguro}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+""");
 
         return await EnviarEmailAsync(
             emailDestino,
@@ -160,7 +184,14 @@ public class SmtpEmailService : IEmailService
 
     // ── Email templates ─────────────────────────────────────────────
 
-    private static string Wrapper(string conteudo)
+    private static string BuildAbsoluteUrl(string baseUrl, string path)
+    {
+        var normalizedBase = (baseUrl ?? string.Empty).Trim().TrimEnd('/');
+        var normalizedPath = string.IsNullOrWhiteSpace(path) ? string.Empty : "/" + path.Trim().TrimStart('/');
+        return $"{normalizedBase}{normalizedPath}";
+    }
+
+    private string Wrapper(string conteudo)
     {
         return $$"""
 <!doctype html>
@@ -168,65 +199,50 @@ public class SmtpEmailService : IEmailService
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <meta name="supported-color-schemes" content="light dark" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="supported-color-schemes" content="dark" />
   <title>Ravier</title>
   <!--[if mso]>
   <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
   <![endif]-->
   <style>
-    :root { color-scheme: light dark; supported-color-schemes: light dark; }
+    :root { color-scheme: dark; supported-color-schemes: dark; }
     body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table { border-collapse: collapse; mso-table-lspace: 0; mso-table-rspace: 0; }
     img { border: 0; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
-    @media (prefers-color-scheme: dark) {
-      .bg-body { background-color: #0f1117 !important; }
-      .bg-card { background-color: #1a1d27 !important; }
-      .bg-brand { background: linear-gradient(180deg, #151922 0%, #111827 100%) !important; }
-      .bg-code { background-color: #111827 !important; border-color: #374151 !important; }
-      .bg-soft { background-color: #18212f !important; border-color: #233044 !important; }
-      .text-primary { color: #f3f4f6 !important; }
-      .text-secondary { color: #9ca3af !important; }
-      .text-muted { color: #6b7280 !important; }
-      .text-brand-soft { color: #c7d2fe !important; }
-      .border-subtle { border-color: #1f2937 !important; }
-      .bg-footer { background-color: #111318 !important; }
-    }
     @media only screen and (max-width: 600px) {
       .container { width: 100% !important; padding: 16px !important; }
       .code-digits { font-size: 28px !important; letter-spacing: 8px !important; }
       .stack-mobile { display: block !important; width: 100% !important; }
+      .logo-image { max-width: 140px !important; }
     }
   </style>
 </head>
-<body class="bg-body" style="margin: 0; padding: 0; background: radial-gradient(circle at top, #f8fafc 0%, #eef2f7 42%, #e5ecf6 100%); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: radial-gradient(circle at top, #f8fafc 0%, #eef2f7 42%, #e5ecf6 100%);" class="bg-body">
+<body class="bg-body" style="margin: 0; padding: 0; background: radial-gradient(circle at top, #101826 0%, #0b1220 42%, #060b13 100%); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: radial-gradient(circle at top, #101826 0%, #0b1220 42%, #060b13 100%);" class="bg-body">
     <tr>
       <td align="center" style="padding: 40px 16px;">
         <table role="presentation" class="container" width="520" cellspacing="0" cellpadding="0" style="max-width: 520px; width: 100%;">
 
           <!-- Brand -->
           <tr>
-            <td align="center" style="padding-bottom: 22px;">
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto 12px auto;">
+            <td align="center" style="padding-bottom: 24px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto 14px auto;">
                 <tr>
-                  <td style="background: linear-gradient(135deg, #0f172a, #1e293b 56%, #0f766e); border-radius: 16px; padding: 11px 13px; vertical-align: middle; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);">
-                    <span style="font-size: 18px; font-weight: 800; color: #ffffff; letter-spacing: -0.6px;">R</span>
-                  </td>
-                  <td style="padding-left: 12px; vertical-align: middle;">
-                    <span class="text-primary" style="font-size: 21px; font-weight: 800; color: #0f172a; letter-spacing: -0.6px;">Ravier</span>
+                  <td align="center" style="background: linear-gradient(180deg, rgba(17,24,39,0.92) 0%, rgba(8,15,26,0.98) 100%); border: 1px solid rgba(148,163,184,0.14); border-radius: 22px; padding: 18px 24px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);">
+                    <img class="logo-image" src="{{_logoUrl}}" alt="Ravier" width="152" style="display: block; width: 152px; max-width: 152px; height: auto; margin: 0 auto;" />
                   </td>
                 </tr>
               </table>
-              <p class="text-secondary" style="margin: 0; font-size: 13px; letter-spacing: 0.2px; color: #64748b;">
-                Seu copiloto financeiro com IA, clareza e controle em tempo real.
+              <p class="text-secondary" style="margin: 0; font-size: 13px; letter-spacing: 0.2px; color: #94a3b8; line-height: 1.6;">
+                Comunicação oficial da Ravier para acesso, segurança e continuidade da sua conta.
               </p>
             </td>
           </tr>
 
           <!-- Card body -->
           <tr>
-            <td class="bg-card" style="background-color: #ffffff; border-radius: 24px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.10), 0 10px 22px rgba(15, 23, 42, 0.08); overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.9);">
+            <td class="bg-card" style="background: linear-gradient(180deg, #111827 0%, #0f172a 100%); border-radius: 24px; box-shadow: 0 28px 80px rgba(0, 0, 0, 0.36); overflow: hidden; border: 1px solid rgba(51, 65, 85, 0.8);">
               {{conteudo}}
             </td>
           </tr>
@@ -234,10 +250,10 @@ public class SmtpEmailService : IEmailService
           <!-- Footer -->
           <tr>
             <td align="center" style="padding-top: 28px;">
-              <p class="text-muted" style="margin: 0 0 6px 0; font-size: 12px; color: #9ca3af;">
+              <p class="text-muted" style="margin: 0 0 6px 0; font-size: 12px; color: #64748b;">
                 Este é um e-mail automático da Ravier.
               </p>
-              <p class="text-muted" style="margin: 0; font-size: 12px; color: #9ca3af;">
+              <p class="text-muted" style="margin: 0; font-size: 12px; color: #64748b;">
                 &copy; {{DateTime.UtcNow.Year}} Ravier — Inteligência financeira para o dia a dia
               </p>
             </td>
@@ -254,23 +270,23 @@ public class SmtpEmailService : IEmailService
 
     // ── Verificação de registro ─────────────────────────────────────
 
-    private static string GerarHtmlVerificacao(string nome, string codigo, string expiraTexto)
+    private string GerarHtmlVerificacao(string nome, string codigo, string expiraTexto)
     {
         var conteudo = $"""
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td class="bg-brand" style="padding: 32px 36px 20px; background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%); border-bottom: 1px solid #e2e8f0;">
+                  <td class="bg-brand" style="padding: 34px 36px 22px; background: linear-gradient(180deg, #131d2d 0%, #101826 100%); border-bottom: 1px solid #1f2937;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
                         <td class="stack-mobile" style="vertical-align: top;">
-                          <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: #0f766e;">Verificação de conta</p>
-                          <h1 class="text-primary" style="margin: 0; font-size: 28px; font-weight: 800; color: #111827; letter-spacing: -0.7px;">
+                          <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: #5eead4;">Verificação de conta</p>
+                          <h1 class="text-primary" style="margin: 0; font-size: 28px; font-weight: 800; color: #f8fafc; letter-spacing: -0.7px;">
                             Confirme seu e-mail
                           </h1>
                         </td>
                         <td class="stack-mobile" align="right" style="vertical-align: top;">
-                          <span style="display: inline-block; background: #ecfeff; color: #0f766e; border: 1px solid #99f6e4; border-radius: 999px; padding: 8px 12px; font-size: 12px; font-weight: 700;">
-                            Etapa rápida
+                          <span style="display: inline-block; background: rgba(45, 212, 191, 0.12); color: #99f6e4; border: 1px solid rgba(45, 212, 191, 0.24); border-radius: 999px; padding: 8px 12px; font-size: 12px; font-weight: 700;">
+                            Liberação segura
                           </span>
                         </td>
                       </tr>
@@ -282,14 +298,14 @@ public class SmtpEmailService : IEmailService
 
                     <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom: 18px;">
                       <tr>
-                        <td style="background: linear-gradient(135deg, #ecfeff, #dbeafe); border-radius: 14px; padding: 12px;">
+                        <td style="background: linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(59, 130, 246, 0.10)); border: 1px solid rgba(45, 212, 191, 0.14); border-radius: 14px; padding: 12px;">
                           <span style="font-size: 24px;">✉️</span>
                         </td>
                       </tr>
                     </table>
 
-                    <p class="text-secondary" style="margin: 0 0 28px 0; font-size: 15px; color: #6b7280; line-height: 1.6;">
-                      Olá, <strong class="text-primary" style="color: #111827;">{nome}</strong>. Para ativar sua conta na <strong class="text-primary" style="color: #111827;">Ravier</strong>, digite o código abaixo na tela de verificação.
+                    <p class="text-secondary" style="margin: 0 0 28px 0; font-size: 15px; color: #94a3b8; line-height: 1.7;">
+                      Olá, <strong class="text-primary" style="color: #f8fafc;">{nome}</strong>. Seu cadastro está quase concluído. Para liberar o acesso à sua conta na <strong class="text-primary" style="color: #f8fafc;">Ravier</strong>, informe o código abaixo na tela de verificação.
                     </p>
 
                     <!-- Code box -->
@@ -298,8 +314,8 @@ public class SmtpEmailService : IEmailService
                         <td align="center">
                           <table role="presentation" cellspacing="0" cellpadding="0">
                             <tr>
-                              <td class="bg-code" style="background: linear-gradient(135deg, #f8fafc, #eef2ff); border: 1px solid #c7d2fe; border-radius: 18px; padding: 22px 36px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);">
-                                <span class="code-digits text-primary" style="font-size: 36px; font-weight: 800; letter-spacing: 12px; color: #0f766e; font-family: 'SF Mono', Monaco, Consolas, 'Courier New', monospace;">
+                              <td class="bg-code" style="background: linear-gradient(135deg, #08111f, #0f1b30); border: 1px solid rgba(45, 212, 191, 0.18); border-radius: 20px; padding: 22px 36px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);">
+                                <span class="code-digits text-primary" style="font-size: 36px; font-weight: 800; letter-spacing: 12px; color: #ffffff; font-family: 'SF Mono', Monaco, Consolas, 'Courier New', monospace;">
                                   {codigo}
                                 </span>
                               </td>
@@ -312,16 +328,16 @@ public class SmtpEmailService : IEmailService
                     <!-- Expiry info -->
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
                       <tr>
-                        <td class="bg-soft" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px;">
+                        <td class="bg-soft" style="background-color: rgba(15, 23, 42, 0.62); border: 1px solid rgba(51, 65, 85, 0.8); border-radius: 14px; padding: 16px 18px;">
                           <table role="presentation" cellspacing="0" cellpadding="0">
                             <tr>
                               <td style="vertical-align: top; padding-right: 10px;">
                                 <span style="font-size: 14px;">⏱️</span>
                               </td>
                               <td>
-                                <p style="margin: 0; font-size: 13px; color: #475569; line-height: 1.6;">
+                                <p style="margin: 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
                                   Este código é válido até <strong>{expiraTexto}</strong>.<br/>
-                                  Se expirar, você pode gerar um novo código em poucos segundos.
+                                  Se esse prazo expirar, você pode solicitar um novo envio na mesma tela.
                                 </p>
                               </td>
                             </tr>
@@ -333,11 +349,11 @@ public class SmtpEmailService : IEmailService
                     <!-- Divider -->
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
                       <tr>
-                        <td class="border-subtle" style="border-top: 1px solid #e5e7eb;"></td>
+                        <td class="border-subtle" style="border-top: 1px solid #1f2937;"></td>
                       </tr>
                     </table>
 
-                    <p class="text-muted" style="margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.5;">
+                    <p class="text-muted" style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
                       Se você não iniciou esse cadastro na Ravier, ignore este e-mail com segurança.
                     </p>
 
@@ -370,22 +386,22 @@ Se você não criou uma conta na Ravier, ignore este e-mail.
 
     // ── Recuperação de senha ────────────────────────────────────────
 
-    private static string GerarHtmlRecuperacao(string nome, string codigo, string expiraTexto)
+    private string GerarHtmlRecuperacao(string nome, string codigo, string expiraTexto)
     {
         var conteudo = $"""
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td class="bg-brand" style="padding: 32px 36px 20px; background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%); border-bottom: 1px solid #e2e8f0;">
+                  <td class="bg-brand" style="padding: 34px 36px 22px; background: linear-gradient(180deg, #131d2d 0%, #101826 100%); border-bottom: 1px solid #1f2937;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
                         <td class="stack-mobile" style="vertical-align: top;">
-                          <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: #c2410c;">Segurança da conta</p>
-                          <h1 class="text-primary" style="margin: 0; font-size: 28px; font-weight: 800; color: #111827; letter-spacing: -0.7px;">
+                          <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: #fbbf24;">Segurança da conta</p>
+                          <h1 class="text-primary" style="margin: 0; font-size: 28px; font-weight: 800; color: #f8fafc; letter-spacing: -0.7px;">
                             Recuperação de senha
                           </h1>
                         </td>
                         <td class="stack-mobile" align="right" style="vertical-align: top;">
-                          <span style="display: inline-block; background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; border-radius: 999px; padding: 8px 12px; font-size: 12px; font-weight: 700;">
+                          <span style="display: inline-block; background: rgba(251, 191, 36, 0.10); color: #fde68a; border: 1px solid rgba(251, 191, 36, 0.22); border-radius: 999px; padding: 8px 12px; font-size: 12px; font-weight: 700;">
                             Código temporário
                           </span>
                         </td>
@@ -398,14 +414,14 @@ Se você não criou uma conta na Ravier, ignore este e-mail.
 
                     <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom: 18px;">
                       <tr>
-                        <td style="background: linear-gradient(135deg, #fff1f2, #ffedd5); border-radius: 14px; padding: 12px;">
+                        <td style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(249, 115, 22, 0.10)); border: 1px solid rgba(251, 191, 36, 0.14); border-radius: 14px; padding: 12px;">
                           <span style="font-size: 24px;">🔐</span>
                         </td>
                       </tr>
                     </table>
 
-                    <p class="text-secondary" style="margin: 0 0 28px 0; font-size: 15px; color: #6b7280; line-height: 1.6;">
-                      Olá, <strong class="text-primary" style="color: #111827;">{nome}</strong>. Recebemos um pedido para redefinir a senha da sua conta na <strong class="text-primary" style="color: #111827;">Ravier</strong>. Use o código abaixo para continuar.
+                    <p class="text-secondary" style="margin: 0 0 28px 0; font-size: 15px; color: #94a3b8; line-height: 1.7;">
+                      Olá, <strong class="text-primary" style="color: #f8fafc;">{nome}</strong>. Recebemos uma solicitação para redefinir a senha da sua conta na <strong class="text-primary" style="color: #f8fafc;">Ravier</strong>. Use o código abaixo para continuar com segurança.
                     </p>
 
                     <!-- Code box -->
@@ -414,8 +430,8 @@ Se você não criou uma conta na Ravier, ignore este e-mail.
                         <td align="center">
                           <table role="presentation" cellspacing="0" cellpadding="0">
                             <tr>
-                              <td class="bg-code" style="background: linear-gradient(135deg, #fffaf5, #fff1f2); border: 1px solid #fdba74; border-radius: 18px; padding: 22px 36px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);">
-                                <span class="code-digits text-primary" style="font-size: 36px; font-weight: 800; letter-spacing: 12px; color: #dc2626; font-family: 'SF Mono', Monaco, Consolas, 'Courier New', monospace;">
+                              <td class="bg-code" style="background: linear-gradient(135deg, #1a1208, #27190d); border: 1px solid rgba(251, 191, 36, 0.18); border-radius: 20px; padding: 22px 36px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);">
+                                <span class="code-digits text-primary" style="font-size: 36px; font-weight: 800; letter-spacing: 12px; color: #ffffff; font-family: 'SF Mono', Monaco, Consolas, 'Courier New', monospace;">
                                   {codigo}
                                 </span>
                               </td>
@@ -428,14 +444,14 @@ Se você não criou uma conta na Ravier, ignore este e-mail.
                     <!-- Expiry info -->
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
                       <tr>
-                        <td class="bg-soft" style="background-color: #fffaf0; border: 1px solid #fed7aa; border-radius: 14px; padding: 16px 18px;">
+                        <td class="bg-soft" style="background-color: rgba(15, 23, 42, 0.62); border: 1px solid rgba(71, 85, 105, 0.75); border-radius: 14px; padding: 16px 18px;">
                           <table role="presentation" cellspacing="0" cellpadding="0">
                             <tr>
                               <td style="vertical-align: top; padding-right: 10px;">
                                 <span style="font-size: 14px;">⏱️</span>
                               </td>
                               <td>
-                                <p style="margin: 0; font-size: 13px; color: #7c2d12; line-height: 1.6;">
+                                <p style="margin: 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
                                   Este código é válido até <strong>{expiraTexto}</strong>.<br/>
                                   Após esse prazo, solicite uma nova recuperação pela tela de acesso.
                                 </p>
@@ -449,14 +465,14 @@ Se você não criou uma conta na Ravier, ignore este e-mail.
                     <!-- Security tip -->
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
                       <tr>
-                        <td class="bg-soft" style="background-color: #f8fafc; border: 1px solid #dbeafe; border-radius: 14px; padding: 16px 18px;">
+                        <td class="bg-soft" style="background-color: rgba(15, 23, 42, 0.62); border: 1px solid rgba(96, 165, 250, 0.18); border-radius: 14px; padding: 16px 18px;">
                           <table role="presentation" cellspacing="0" cellpadding="0">
                             <tr>
                               <td style="vertical-align: top; padding-right: 10px;">
                                 <span style="font-size: 14px;">🛡️</span>
                               </td>
                               <td>
-                                <p style="margin: 0; font-size: 13px; color: #1d4ed8; line-height: 1.6;">
+                                <p style="margin: 0; font-size: 13px; color: #bfdbfe; line-height: 1.6;">
                                   <strong>Dica de segurança:</strong> nunca compartilhe este código com ninguém. Nossa equipe jamais solicitará seu código.
                                 </p>
                               </td>
@@ -469,11 +485,11 @@ Se você não criou uma conta na Ravier, ignore este e-mail.
                     <!-- Divider -->
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
                       <tr>
-                        <td class="border-subtle" style="border-top: 1px solid #e5e7eb;"></td>
+                        <td class="border-subtle" style="border-top: 1px solid #1f2937;"></td>
                       </tr>
                     </table>
 
-                    <p class="text-muted" style="margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.5;">
+                    <p class="text-muted" style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.6;">
                       Se você não solicitou a recuperação de senha, ignore este e-mail com segurança. Sua conta continua protegida.
                     </p>
 

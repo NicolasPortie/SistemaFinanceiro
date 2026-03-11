@@ -9,8 +9,8 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   login: (email: string, senha: string) => Promise<void>;
-  loginComGoogle: (idToken: string, celular?: string) => Promise<void>;
-  loginComApple: (idToken: string, celular?: string, nome?: string) => Promise<void>;
+  loginComGoogle: (idToken: string, celular?: string, codigoConvite?: string) => Promise<void>;
+  loginComApple: (idToken: string, celular?: string, nome?: string, codigoConvite?: string) => Promise<void>;
   registrar: (
     nome: string,
     email: string,
@@ -18,7 +18,7 @@ interface AuthContextType {
     celular: string,
     codigoConvite?: string
   ) => Promise<RegistroPendenteResponse>;
-  verificarRegistro: (email: string, codigo: string) => Promise<void>;
+  verificarRegistro: (email: string, codigo: string, codigoConvite?: string) => Promise<void>;
   logout: () => void;
   atualizarPerfil: () => Promise<void>;
 }
@@ -64,16 +64,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(res.usuario);
   }, []);
 
-  const loginComGoogle = useCallback(async (idToken: string, celular?: string) => {
-    const res = await api.auth.loginGoogle({ idToken, celular });
+  const loginComGoogle = useCallback(async (idToken: string, celular?: string, codigoConvite?: string) => {
+    const res = await api.auth.loginGoogle({ idToken, celular, codigoConvite });
     if (res.usuario) {
       localStorage.setItem("cf_user", JSON.stringify(res.usuario));
       setUsuario(res.usuario);
     }
   }, []);
 
-  const loginComApple = useCallback(async (idToken: string, celular?: string, nome?: string) => {
-    const res = await api.auth.loginApple({ idToken, celular, nome });
+  const loginComApple = useCallback(async (idToken: string, celular?: string, nome?: string, codigoConvite?: string) => {
+    const res = await api.auth.loginApple({ idToken, celular, nome, codigoConvite });
     if (res.usuario) {
       localStorage.setItem("cf_user", JSON.stringify(res.usuario));
       setUsuario(res.usuario);
@@ -87,8 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const verificarRegistro = useCallback(async (email: string, codigo: string) => {
-    const res = await api.auth.verificarRegistro({ email, codigo });
+  const verificarRegistro = useCallback(async (email: string, codigo: string, codigoConvite?: string) => {
+    const res = await api.auth.verificarRegistro({ email, codigo, codigoConvite });
     localStorage.setItem("cf_user", JSON.stringify(res.usuario));
     setUsuario(res.usuario);
   }, []);

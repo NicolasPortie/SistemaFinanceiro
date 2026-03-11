@@ -31,6 +31,7 @@ docs/
 - `docs/product/CHATBOT_INAPP.md`: especificacao do chat in-app
 - `docs/product/WHATSAPP_BAILEYS.md`: planejamento da integracao WhatsApp
 - `docs/product/SUPORTE_CHATBOT.md`: operacao e suporte do chatbot
+- `docs/product/APP_MOBILE_CONTEXTO.md`: contexto tecnico do projeto e direcao para o app mobile
 
 Artefatos temporarios, capturas locais, backups e clones de referencia nao devem ficar na raiz do repositorio.
 

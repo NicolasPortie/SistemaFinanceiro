@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useAtualizarPerfil } from "@/hooks/use-queries";
 import { getInitials } from "@/lib/format";
+import { useUpgradePlan } from "@/components/upgrade-plan-modal";
 import {
   atualizarPerfilSchema,
   alterarSenhaSchema,
@@ -38,6 +39,7 @@ import { Label } from "@/components/ui/label";
 
 export default function PerfilPage() {
   const { usuario, atualizarPerfil: atualizarContexto, logout } = useAuth();
+  const { openUpgrade } = useUpgradePlan();
   const [showSenha, setShowSenha] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [encerrandoSessoes, setEncerrandoSessoes] = useState(false);
@@ -48,6 +50,11 @@ export default function PerfilPage() {
   const { data: minha } = useQuery({
     queryKey: ["assinatura-minha"],
     queryFn: () => api.assinaturas.minha(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: planos = [] } = useQuery({
+    queryKey: ["planos"],
+    queryFn: () => api.assinaturas.planos(),
     staleTime: 5 * 60 * 1000,
   });
   const assinatura = minha?.assinatura;
@@ -131,28 +138,32 @@ export default function PerfilPage() {
     toast.info("Use o botão flutuante para falar com o suporte.");
   };
 
+  const onAbrirPortalAssinatura = async () => {
+    try {
+      const res = await api.assinaturas.portal();
+      window.location.href = res.url;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao abrir portal");
+    }
+  };
+
   /* ─── plan data ─── */
   const planNome = assinatura?.planoNome ?? "Gratuito";
   const planStatus = assinatura?.statusNome ?? "Inativo";
   const planValor = assinatura?.valorMensal ?? 0;
   const planAtivo = assinatura?.status === "Ativa" || assinatura?.emTrial;
-
-  const planBeneficios: Record<string, string[]> = {
-    Individual: [
-      "Lançamentos ilimitados",
-      "Importação de extratos",
-      "Telegram ilimitado",
-      "Suporte prioritário",
-    ],
-    Familia: [
-      "Tudo do Individual",
-      "Titular + 1 membro",
-      "Recursos compartilhados opcionais",
-      "Suporte VIP",
-    ],
-    Gratuito: ["50 lançamentos/mês", "Categorias básicas", "Dashboard básico", "Sem importação"],
-  };
-  const beneficios = planBeneficios[assinatura?.plano ?? "Gratuito"] ?? planBeneficios["Gratuito"];
+  const planoAtualInfo =
+    planos.find((plano) => plano.tipo === (assinatura?.plano ?? "Gratuito")) ?? null;
+  const beneficios =
+    planoAtualInfo?.recursos?.length
+      ? planoAtualInfo.recursos
+      : ["Sem benefícios carregados para este plano no momento"];
+  const subtituloConta =
+    assinatura?.plano === "Familia"
+      ? "CONTA FAMÍLIA"
+      : assinatura?.plano === "Individual"
+        ? "CONTA INDIVIDUAL"
+        : "CONTA GRATUITA";
 
   /* ─── input class ─── */
   const inputCls =
@@ -199,7 +210,7 @@ export default function PerfilPage() {
                     {usuario.nome}
                   </h2>
                   <p className="mono-data text-xs text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-widest">
-                    {assinatura?.plano === "Familia" ? "CONTA FAMÍLIA" : "CONTA INDIVIDUAL"}
+                    {subtituloConta}
                   </p>
                 </div>
               </div>
@@ -530,16 +541,22 @@ export default function PerfilPage() {
                 <button
                   type="button"
                   className="w-full py-4 rounded-2xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors"
-                  onClick={() => toast.info("Upgrade disponível em breve")}
+                  onClick={() => openUpgrade()}
                 >
-                  Upgrade de Plano
+                  {assinatura?.plano === "Gratuito" ? "Conhecer Planos" : "Upgrade de Plano"}
                 </button>
                 <button
                   type="button"
                   className="w-full text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-slate-600 dark:hover:text-slate-300 transition-colors py-1"
-                  onClick={() => toast.info("Histórico disponível em breve")}
+                  onClick={() =>
+                    assinatura?.podeGerenciarAssinatura
+                      ? onAbrirPortalAssinatura()
+                      : openUpgrade()
+                  }
                 >
-                  Ver Histórico de Faturas
+                  {assinatura?.podeGerenciarAssinatura
+                    ? "Gerenciar Cobrança"
+                    : "Ver Todos os Planos"}
                 </button>
               </div>
             </div>

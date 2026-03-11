@@ -122,6 +122,8 @@ public class VerificarRegistroDto
     [MinLength(6, ErrorMessage = "Codigo deve ter 6 digitos")]
     [MaxLength(6, ErrorMessage = "Codigo deve ter 6 digitos")]
     public string Codigo { get; set; } = string.Empty;
+
+    public string? CodigoConvite { get; set; }
 }
 
 public class ReenviarCodigoRegistroDto

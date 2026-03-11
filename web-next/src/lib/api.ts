@@ -780,7 +780,7 @@ export const api = {
       codigoConvite?: string;
     }) => request<RegistroPendenteResponse>("/auth/registrar", { method: "POST", body: data }),
 
-    verificarRegistro: (data: { email: string; codigo: string }) =>
+    verificarRegistro: (data: { email: string; codigo: string; codigoConvite?: string }) =>
       request<AuthResponse>("/auth/verificar-registro", { method: "POST", body: data }),
 
     reenviarCodigoRegistro: (data: { email: string }) =>
@@ -792,10 +792,10 @@ export const api = {
     login: (data: { email: string; senha: string }) =>
       request<AuthResponse>("/auth/login", { method: "POST", body: data }),
 
-    loginGoogle: (data: { idToken: string; celular?: string }) =>
+    loginGoogle: (data: { idToken: string; celular?: string; codigoConvite?: string }) =>
       request<AuthResponse>("/auth/google", { method: "POST", body: data }),
 
-    loginApple: (data: { idToken: string; celular?: string; nome?: string }) =>
+    loginApple: (data: { idToken: string; celular?: string; nome?: string; codigoConvite?: string }) =>
       request<AuthResponse>("/auth/apple", { method: "POST", body: data }),
 
     logout: () => request("/auth/logout", { method: "POST" }),
@@ -1069,6 +1069,8 @@ export const api = {
     planos: {
       listar: () => request<PlanoConfigDto[]>("/admin/planos"),
       detalhe: (id: number) => request<PlanoConfigDto>(`/admin/planos/${id}`),
+      criar: (data: CriarPlanoRequest) =>
+        request<PlanoConfigDto>("/admin/planos", { method: "POST", body: data }),
       atualizar: (id: number, data: AtualizarPlanoRequest) =>
         request<PlanoConfigDto>(`/admin/planos/${id}`, { method: "PUT", body: data }),
       atualizarRecursos: (id: number, recursos: AtualizarRecursoRequest[]) =>
@@ -1444,6 +1446,20 @@ export interface PlanoConfigDto {
 }
 
 export interface AtualizarPlanoRequest {
+  tipo?: TipoPlano | null;
+  nome: string;
+  descricao: string;
+  precoMensal: number;
+  ativo: boolean;
+  trialDisponivel: boolean;
+  diasGratis: number;
+  ordem: number;
+  destaque: boolean;
+  stripePriceId: string | null;
+}
+
+export interface CriarPlanoRequest {
+  tipo: TipoPlano;
   nome: string;
   descricao: string;
   precoMensal: number;

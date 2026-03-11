@@ -40,6 +40,19 @@ public class AdminPlanosController : BaseAuthController
     }
 
     /// <summary>
+    /// Cria um novo plano (admin).
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> CriarPlano([FromBody] CriarPlanoRequest request)
+    {
+        var (plano, erro) = await _service.CriarPlanoAsync(request);
+        if (erro is not null)
+            return BadRequest(new { erro });
+
+        return Created($"/api/admin/planos/{plano!.Id}", plano);
+    }
+
+    /// <summary>
     /// Atualiza configurações gerais de um plano (nome, preço, etc).
     /// </summary>
     [HttpPut("{id:int}")]

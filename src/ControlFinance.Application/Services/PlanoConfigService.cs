@@ -72,6 +72,33 @@ public class PlanoConfigService : IPlanoConfigService
         return config is not null ? MapearDto(config) : null;
     }
 
+    public async Task<(PlanoConfigDto? Plano, string? Erro)> CriarPlanoAsync(CriarPlanoRequest request)
+    {
+        if (await _repo.ObterPorTipoAsync(request.Tipo) is not null)
+            return (null, "Já existe um plano cadastrado para esse tipo.");
+
+        var plano = new PlanoConfig
+        {
+            Tipo = request.Tipo,
+            Nome = request.Nome,
+            Descricao = request.Descricao,
+            PrecoMensal = request.PrecoMensal,
+            Ativo = request.Ativo,
+            TrialDisponivel = request.TrialDisponivel,
+            DiasGratis = request.DiasGratis,
+            Ordem = request.Ordem,
+            Destaque = request.Destaque,
+            StripePriceId = request.StripePriceId,
+            Recursos = CriarRecursosIniciais(request.Tipo)
+        };
+
+        await _repo.AdicionarAsync(plano);
+        InvalidarCache();
+
+        _logger.LogInformation("Plano {Nome} ({Tipo}) criado pelo admin", plano.Nome, plano.Tipo);
+        return (MapearDto(plano), null);
+    }
+
     public async Task<string?> AtualizarPlanoAsync(int id, AtualizarPlanoRequest request)
     {
         var plano = await _repo.ObterPorIdAsync(id);
@@ -205,4 +232,61 @@ public class PlanoConfigService : IPlanoConfigService
         Recurso.MetasConjuntas => "Metas conjuntas",
         _ => recurso.ToString()
     };
+
+    private static List<RecursoPlano> CriarRecursosIniciais(TipoPlano tipo)
+        => Enum.GetValues<Recurso>()
+            .Select(recurso => new RecursoPlano
+            {
+                Recurso = recurso,
+                Limite = ObterLimiteInicial(tipo, recurso),
+                DescricaoLimite = ObterDescricaoLimiteInicial(tipo, recurso)
+            })
+            .ToList();
+
+    private static int ObterLimiteInicial(TipoPlano tipo, Recurso recurso)
+    {
+        var familiar = recurso is Recurso.MembrosFamilia
+            or Recurso.DashboardFamiliar
+            or Recurso.MetasConjuntas
+            or Recurso.CategoriasCompartilhadas
+            or Recurso.OrcamentoFamiliar
+            or Recurso.ContasFixasCompartilhadas;
+
+        return tipo switch
+        {
+            TipoPlano.Gratuito when recurso == Recurso.LancamentosMensal => 30,
+            TipoPlano.Gratuito when recurso == Recurso.CartoesCredito => 1,
+            TipoPlano.Gratuito when recurso == Recurso.ContasBancarias => 1,
+            TipoPlano.Gratuito when recurso == Recurso.TelegramMensagensDia => 5,
+            TipoPlano.Gratuito when recurso == Recurso.MetasFinanceiras => 1,
+            TipoPlano.Gratuito when recurso == Recurso.ContasFixas => 3,
+            TipoPlano.Gratuito when recurso == Recurso.ChatInApp => 5,
+            TipoPlano.Gratuito => 0,
+            TipoPlano.Individual => familiar ? 0 : -1,
+            TipoPlano.Familia when recurso == Recurso.MembrosFamilia => 2,
+            TipoPlano.Familia => -1,
+            _ => 0
+        };
+    }
+
+    private static string ObterDescricaoLimiteInicial(TipoPlano tipo, Recurso recurso)
+    {
+        var limite = ObterLimiteInicial(tipo, recurso);
+        if (limite == -1)
+            return recurso == Recurso.MembrosFamilia ? "Titular + 1 membro" : "Ilimitado";
+        if (limite == 0)
+            return "Não disponível";
+        return recurso switch
+        {
+            Recurso.LancamentosMensal => $"Até {limite} por mês",
+            Recurso.CartoesCredito => $"{limite} cartão",
+            Recurso.ContasBancarias => $"{limite} conta",
+            Recurso.TelegramMensagensDia => $"{limite} mensagens/dia",
+            Recurso.MetasFinanceiras => $"{limite} meta",
+            Recurso.ContasFixas => $"Até {limite} contas fixas",
+            Recurso.ChatInApp => $"{limite} mensagens/dia",
+            Recurso.MembrosFamilia => "Titular + 1 membro",
+            _ => limite.ToString()
+        };
+    }
 }

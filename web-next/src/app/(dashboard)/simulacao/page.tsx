@@ -884,59 +884,60 @@ export default function ConsultorFinanceiroPage() {
                       {/* AI Scenarios panel */}
                       <div className="col-span-4">
                         <div className="exec-card rounded-2xl sm:rounded-[2.5rem] lg:rounded-[3rem] p-5 sm:p-8 lg:p-10 flex flex-col h-full">
-                          <div className="flex items-center gap-4 mb-8">
-                            <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shrink-0">
+                          <div className="flex items-start gap-4 mb-6 sm:mb-8">
+                            <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shrink-0 mt-0.5">
                               <Brain className="h-4 w-4" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em]">
-                                Falcon AI
+                                Ravier
                               </h3>
-                              <h2 className="text-xl serif-italic text-slate-900 dark:text-white">
-                                Cenários Alternativos
+                              <h2 className="text-lg sm:text-xl font-semibold leading-tight text-slate-900 dark:text-white">
+                                Estratégias de compra
                               </h2>
+                              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Assim que a análise terminar, a Ravier sugere leituras mais seguras para esta decisão.
+                              </p>
                             </div>
                           </div>
                           <div className="space-y-4 flex-1">
-                            <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700">
-                              <div className="flex justify-between items-start mb-3">
+                            <div className="p-5 sm:p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700">
+                              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                                 <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[8px] font-bold uppercase tracking-widest rounded-full">
-                                  Otimizado
+                                  Mais seguro
                                 </span>
                                 <span className="text-[10px] mono-data font-bold text-emerald-600">
-                                  -15% Risco
+                                  Menor risco
                                 </span>
                               </div>
-                              <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
-                                Aguarde o processamento para ver a análise personalizada de cenários
-                                para esta compra.
+                              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                A Ravier vai mostrar a opção com melhor equilíbrio entre impacto mensal, folga no caixa e estabilidade ao longo dos próximos meses.
                               </p>
                             </div>
-                            <div className="p-6 rounded-[2rem] border border-slate-100 dark:border-slate-700">
-                              <div className="flex justify-between items-start mb-3">
+                            <div className="p-5 sm:p-6 rounded-[2rem] border border-slate-100 dark:border-slate-700 bg-white/70 dark:bg-transparent">
+                              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                                 <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[8px] font-bold uppercase tracking-widest rounded-full">
-                                  Parcelado
+                                  Suaviza parcelas
                                 </span>
                                 <span className="text-[10px] mono-data font-bold text-indigo-600">
-                                  +Yield
+                                  Menor pressão mensal
                                 </span>
                               </div>
-                              <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
-                                Opções de parcelamento com menor impacto no fluxo de caixa serão
-                                calculadas.
+                              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Se parcelar fizer sentido, você verá combinações que reduzem o peso da compra no orçamento sem distorcer sua projeção financeira.
                               </p>
                             </div>
-                            <div className="p-6 rounded-[2rem] border border-slate-100 dark:border-slate-700">
-                              <div className="flex justify-between items-start mb-3">
+                            <div className="p-5 sm:p-6 rounded-[2rem] border border-slate-100 dark:border-slate-700 bg-white/70 dark:bg-transparent">
+                              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                                 <span className="px-3 py-1 bg-amber-50 text-amber-700 text-[8px] font-bold uppercase tracking-widest rounded-full">
-                                  Alternativo
+                                  Preserva caixa
                                 </span>
                                 <span className="text-[10px] mono-data font-bold text-amber-600">
-                                  Liquidez
+                                  Mais liquidez
                                 </span>
                               </div>
-                              <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
-                                Cenários alternativos de compra aparecerão aqui após a análise.
+                              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Quando houver alternativa melhor, a Ravier destaca caminhos que preservam seu saldo livre e evitam apertos nos meses mais sensíveis.
                               </p>
                             </div>
                           </div>
@@ -1650,7 +1651,7 @@ function ProjecaoResult({
       {data.cenariosAlternativos && data.cenariosAlternativos.length > 0 && (
         <div className="glass-panel p-6 rounded-2xl">
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
-            Cenários Alternativos
+            Estratégias recomendadas pela Ravier
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {data.cenariosAlternativos.map((c) => (

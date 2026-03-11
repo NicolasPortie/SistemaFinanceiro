@@ -57,8 +57,8 @@ public static class ServiceCollectionExtensions
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
                 ClockSkew = TimeSpan.FromMinutes(1),
-                ValidIssuer = configuration["Jwt:Issuer"] ?? "ControlFinance",
-                ValidAudience = configuration["Jwt:Audience"] ?? "ControlFinanceApp",
+                    ValidIssuer = configuration["Jwt:Issuer"] ?? "Ravier",
+                    ValidAudience = configuration["Jwt:Audience"] ?? "RavierApp",
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
             };
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Loader2, Mail, Timer, Users, XCircle } from "lucide-react";
@@ -8,6 +9,7 @@ import { AlertTriangle, CheckCircle2, Loader2, Mail, Timer, Users, XCircle } fro
 import { api, type ConviteFamilia } from "@/lib/api";
 import { formatShortDate } from "@/lib/format";
 import { queryKeys, useAceitarConviteFamilia, useRecusarConviteFamilia } from "@/hooks/use-queries";
+import { useAuth } from "@/contexts/auth-context";
 import {
   FamilyHero,
   FamilyPanel,
@@ -18,10 +20,15 @@ import { Button } from "@/components/ui/button";
 
 export default function ConviteTokenPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
+  const { usuario } = useAuth();
   const router = useRouter();
   const aceitar = useAceitarConviteFamilia();
   const recusar = useRecusarConviteFamilia();
   const [resultado, setResultado] = useState<"aceito" | "recusado" | null>(null);
+
+  const redirectUrl = useMemo(() => `/familia/convite/${token}`, [token]);
+  const loginHref = useMemo(() => `/login?redirect=${encodeURIComponent(redirectUrl)}`, [redirectUrl]);
+  const registroHref = useMemo(() => `/registro?redirect=${encodeURIComponent(redirectUrl)}`, [redirectUrl]);
 
   const {
     data: convite,
@@ -53,7 +60,7 @@ export default function ConviteTokenPage({ params }: { params: Promise<{ token: 
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6">
+    <div className="mx-auto min-h-screen w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-10">
       <FamilyShell>
         <FamilyHero
           icon={<Users className="h-6 w-6" />}
@@ -85,8 +92,8 @@ export default function ConviteTokenPage({ params }: { params: Promise<{ token: 
                 "Esse convite pode ter expirado ou já ter sido utilizado."
               }
               action={
-                <Button variant="outline" onClick={() => router.push("/dashboard")}>
-                  Ir para dashboard
+                <Button variant="outline" onClick={() => router.push("/")}>
+                  Ir para início
                 </Button>
               }
             />
@@ -102,8 +109,8 @@ export default function ConviteTokenPage({ params }: { params: Promise<{ token: 
               title="Convite recusado"
               description="O convite foi recusado. Sua conta continua operando normalmente."
               action={
-                <Button variant="outline" onClick={() => router.push("/dashboard")}>
-                  Ir para dashboard
+                <Button variant="outline" onClick={() => router.push("/")}>
+                  Ir para início
                 </Button>
               }
             />
@@ -141,7 +148,24 @@ export default function ConviteTokenPage({ params }: { params: Promise<{ token: 
                 />
               )}
 
-              {podeAceitar ? (
+              {!usuario ? (
+                <div className="space-y-3 rounded-[1.5rem] border border-slate-200/70 bg-slate-50/70 p-5 dark:border-white/8 dark:bg-slate-900/35">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Entre com a conta convidada para continuar.
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    O aceite só é liberado para o e-mail que recebeu este convite. Faça login ou crie sua conta e você voltará para esta tela automaticamente.
+                  </p>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button asChild variant="outline" className="h-12 flex-1">
+                      <Link href={loginHref}>Fazer login</Link>
+                    </Button>
+                    <FamilyPrimaryAction asChild className="h-12 flex-1">
+                      <Link href={registroHref}>Criar conta</Link>
+                    </FamilyPrimaryAction>
+                  </div>
+                </div>
+              ) : podeAceitar ? (
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button
                     variant="outline"
@@ -170,12 +194,8 @@ export default function ConviteTokenPage({ params }: { params: Promise<{ token: 
                   </FamilyPrimaryAction>
                 </div>
               ) : (
-                <Button
-                  variant="outline"
-                  className="h-12 w-full"
-                  onClick={() => router.push("/dashboard")}
-                >
-                  Ir para dashboard
+                <Button variant="outline" className="h-12 w-full" onClick={() => router.push("/")}>
+                  Ir para início
                 </Button>
               )}
             </div>

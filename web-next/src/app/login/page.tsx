@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/auth-context";
@@ -8,7 +8,7 @@ import { formatPhoneInput, hasValidPhoneDigits } from "@/lib/phone";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginData } from "@/lib/schemas";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { toast } from "sonner";
 import {
   Eye,
@@ -26,6 +26,14 @@ import { Input } from "@/components/ui/input";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [socialError, setSocialError] = useState<string | null>(null);
@@ -38,6 +46,13 @@ export default function LoginPage() {
   const [celularCompletar, setCelularCompletar] = useState("");
   const { login, loginComGoogle, loginComApple, usuario } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const codigoConvite = searchParams.get("convite") ?? undefined;
+  const redirectPath = searchParams.get("redirect");
+  const targetAfterAuth =
+    redirectPath && redirectPath.startsWith("/") && !redirectPath.startsWith("//")
+      ? redirectPath
+      : "/dashboard";
 
   const {
     register,
@@ -48,8 +63,8 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    if (usuario) router.replace("/dashboard");
-  }, [usuario, router]);
+    if (usuario) router.replace(targetAfterAuth);
+  }, [usuario, router, targetAfterAuth]);
 
   useEffect(() => {
     setIsLocalEnv(["localhost", "127.0.0.1"].includes(window.location.hostname));
@@ -62,7 +77,7 @@ export default function LoginPage() {
     try {
       await login(data.email, data.senha);
       toast.success("Login realizado com sucesso!");
-      router.replace("/dashboard");
+      router.replace(targetAfterAuth);
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : "Erro ao fazer login");
     }
@@ -193,7 +208,7 @@ export default function LoginPage() {
               text="signin_with"
               onSuccess={async (credential) => {
                 try {
-                  await loginComGoogle(credential);
+                  await loginComGoogle(credential, undefined, codigoConvite);
                   toast.success("Login com Google realizado com sucesso!");
                   router.replace("/dashboard");
                 } catch (err) {
@@ -218,7 +233,7 @@ export default function LoginPage() {
                 text="signin"
                 onSuccess={async (idToken, nome) => {
                   try {
-                    await loginComApple(idToken, undefined, nome);
+                    await loginComApple(idToken, undefined, nome, codigoConvite);
                     toast.success("Login com Apple realizado com sucesso!");
                     router.replace("/dashboard");
                   } catch (err) {
@@ -285,12 +300,17 @@ export default function LoginPage() {
                     }
                     try {
                       if (socialTokenToComplete.provider === "google") {
-                        await loginComGoogle(socialTokenToComplete.token, celularCompletar);
+                        await loginComGoogle(
+                          socialTokenToComplete.token,
+                          celularCompletar,
+                          codigoConvite
+                        );
                       } else {
                         await loginComApple(
                           socialTokenToComplete.token,
                           celularCompletar,
-                          socialTokenToComplete.nome
+                          socialTokenToComplete.nome,
+                          codigoConvite
                         );
                       }
                       toast.success("Conta criada com sucesso!");

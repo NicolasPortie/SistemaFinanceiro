@@ -75,6 +75,11 @@ function RegistroContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const codigoConvite = searchParams.get("convite") ?? undefined;
+  const redirectPath = searchParams.get("redirect");
+  const targetAfterAuth =
+    redirectPath && redirectPath.startsWith("/") && !redirectPath.startsWith("//")
+      ? redirectPath
+      : "/dashboard";
 
   const {
     register,
@@ -127,9 +132,9 @@ function RegistroContent() {
 
   useEffect(() => {
     if (usuario) {
-      router.replace("/dashboard");
+      router.replace(targetAfterAuth);
     }
-  }, [usuario, router]);
+  }, [usuario, router, targetAfterAuth]);
 
   if (usuario) {
     return null;
@@ -160,9 +165,9 @@ function RegistroContent() {
     setVerifyError(null);
     setVerifying(true);
     try {
-      await verificarRegistro(pendingEmail, data.codigo);
+      await verificarRegistro(pendingEmail, data.codigo, codigoConvite);
       toast.success("Conta criada com sucesso!");
-      router.push("/dashboard");
+      router.push(targetAfterAuth);
     } catch (err) {
       setVerifyError(err instanceof Error ? err.message : "Código inválido");
       toast.error(err instanceof Error ? err.message : "Código inválido");
@@ -312,12 +317,17 @@ function RegistroContent() {
                     }
                     try {
                       if (socialTokenToComplete.provider === "google") {
-                        await loginComGoogle(socialTokenToComplete.token, celularCompletar);
+                        await loginComGoogle(
+                          socialTokenToComplete.token,
+                          celularCompletar,
+                          codigoConvite
+                        );
                       } else {
                         await loginComApple(
                           socialTokenToComplete.token,
                           celularCompletar,
-                          socialTokenToComplete.nome
+                          socialTokenToComplete.nome,
+                          codigoConvite
                         );
                       }
                       toast.success("Conta criada com sucesso!");
@@ -408,7 +418,7 @@ function RegistroContent() {
                     text="signup_with"
                     onSuccess={async (credential) => {
                       try {
-                        await loginComGoogle(credential);
+                        await loginComGoogle(credential, undefined, codigoConvite);
                         toast.success("Conta criada com Google!");
                         router.replace("/dashboard");
                       } catch (err) {
@@ -433,7 +443,7 @@ function RegistroContent() {
                       text="signup"
                       onSuccess={async (idToken, nome) => {
                         try {
-                          await loginComApple(idToken, undefined, nome);
+                          await loginComApple(idToken, undefined, nome, codigoConvite);
                           toast.success("Conta criada com Apple!");
                           router.replace("/dashboard");
                         } catch (err) {
