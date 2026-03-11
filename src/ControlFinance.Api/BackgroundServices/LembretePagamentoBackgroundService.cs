@@ -257,6 +257,16 @@ public class LembretePagamentoBackgroundService : BackgroundService
                 var waMsg = mensagem + $"\n\n🌐 Gerenciar: {WebUrl}/contas-fixas";
                 await whatsAppService.EnviarMensagemAsync(lembrete.Usuario!.WhatsAppPhone!, waMsg);
 
+                // Log para idempotência (evita reenvio a cada ciclo de 5 min)
+                await logRepo.RegistrarAsync(new LogLembreteTelegram
+                {
+                    LembretePagamentoId = lembrete.Id,
+                    UsuarioId = lembrete.UsuarioId,
+                    Status = "enviado",
+                    TipoLembrete = tipoLembrete,
+                    EnviadoEm = agoraUtc
+                });
+
                 _logger.LogInformation("Lembrete {Id} ({Tipo}) enviado via WhatsApp para {User}",
                     lembrete.Id, tipoLembrete, lembrete.Usuario.Nome);
             }
