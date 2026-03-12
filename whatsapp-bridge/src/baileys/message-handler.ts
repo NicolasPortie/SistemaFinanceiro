@@ -38,6 +38,45 @@ function toTimestamp(ts: any): number {
   return Math.floor(Date.now() / 1000)
 }
 
+type MessageContent = NonNullable<WAMessage['message']>
+
+export function unwrapMessageContent(
+  content: MessageContent | null | undefined
+): MessageContent | null {
+  let current = content as MessageContent | null | undefined
+
+  for (let depth = 0; depth < 8 && current; depth += 1) {
+    if (current.ephemeralMessage?.message) {
+      current = current.ephemeralMessage.message as MessageContent
+      continue
+    }
+
+    if (current.viewOnceMessage?.message) {
+      current = current.viewOnceMessage.message as MessageContent
+      continue
+    }
+
+    if (current.viewOnceMessageV2?.message) {
+      current = current.viewOnceMessageV2.message as MessageContent
+      continue
+    }
+
+    if (current.viewOnceMessageV2Extension?.message) {
+      current = current.viewOnceMessageV2Extension.message as MessageContent
+      continue
+    }
+
+    if (current.documentWithCaptionMessage?.message) {
+      current = current.documentWithCaptionMessage.message as MessageContent
+      continue
+    }
+
+    break
+  }
+
+  return current ?? null
+}
+
 /**
  * Handler principal para mensagens recebidas do WhatsApp.
  * Extrai conteúdo (texto, áudio, imagem) e envia para a API C#.
@@ -69,7 +108,7 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
     return
   }
 
-  const content = msg.message
+  const content = unwrapMessageContent(msg.message)
   if (!content) {
     logger.debug({ key: msg.key }, 'Mensagem sem conteúdo — ignorando (possível notificação de sistema)')
     return
