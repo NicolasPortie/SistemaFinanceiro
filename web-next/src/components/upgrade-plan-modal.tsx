@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, createContext, useContext } from "react";
+import { useState, useCallback, createContext, useContext } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, type PlanoInfo } from "@/lib/api";
 import type { TipoPlano } from "@/lib/api";
@@ -161,10 +161,10 @@ function UpgradePlanModal({
 
   // CPF modal state
   const [cpfDialogOpen, setCpfDialogOpen] = useState(false);
+  const [cpfPlan, setCpfPlan] = useState<PlanoInfo | null>(null);
   const [cpfValue, setCpfValue] = useState("");
   const [cpfError, setCpfError] = useState("");
   const [savingCpf, setSavingCpf] = useState(false);
-  const pendingPlanoRef = useRef<PlanoInfo | null>(null);
 
   const { data: planos, isLoading: loadingPlanos } = useQuery({
     queryKey: ["planos"],
@@ -191,12 +191,20 @@ function UpgradePlanModal({
     }
   }, []);
 
+  const closeCpfDialog = useCallback(() => {
+    if (savingCpf) return;
+    setCpfDialogOpen(false);
+    setCpfPlan(null);
+    setCpfValue("");
+    setCpfError("");
+  }, [savingCpf]);
+
   const handleCheckout = useCallback(
     async (plano: PlanoInfo) => {
       if (!plano.podeFazerCheckout) return;
 
       if (plano.trialDisponivel && plano.diasGratis > 0 && !usuario?.temCpf) {
-        pendingPlanoRef.current = plano;
+        setCpfPlan(plano);
         setCpfValue("");
         setCpfError("");
         setCpfDialogOpen(true);
@@ -209,6 +217,8 @@ function UpgradePlanModal({
   );
 
   const handleSaveCpf = useCallback(async () => {
+    if (!cpfPlan) return;
+
     const digits = cpfValue.replace(/\D/g, "");
     if (!validarCpfLocal(digits)) {
       setCpfError("CPF inválido. Verifique os dígitos.");
@@ -220,19 +230,15 @@ function UpgradePlanModal({
     try {
       await api.auth.atualizarPerfil({ cpf: digits });
       await atualizarPerfil();
-      setCpfDialogOpen(false);
+      closeCpfDialog();
       toast.success("CPF salvo com sucesso!");
-
-      if (pendingPlanoRef.current) {
-        await proceedToCheckout(pendingPlanoRef.current);
-        pendingPlanoRef.current = null;
-      }
+      await proceedToCheckout(cpfPlan);
     } catch (err) {
       setCpfError(err instanceof Error ? err.message : "Erro ao salvar CPF");
     } finally {
       setSavingCpf(false);
     }
-  }, [cpfValue, atualizarPerfil, proceedToCheckout]);
+  }, [cpfPlan, cpfValue, atualizarPerfil, closeCpfDialog, proceedToCheckout]);
 
   const handlePortal = useCallback(async () => {
     try {
@@ -413,6 +419,11 @@ function UpgradePlanModal({
                                     <Loader2 className="size-4 animate-spin" />
                                     Redirecionando...
                                   </>
+                                ) : plano.trialDisponivel && plano.diasGratis > 0 && !usuario?.temCpf ? (
+                                  <>
+                                    <Sparkles className="size-4" />
+                                    Ver trial de {plano.diasGratis} dias
+                                  </>
                                 ) : plano.trialDisponivel ? (
                                   <>
                                     <Sparkles className="size-4" />
@@ -430,7 +441,9 @@ function UpgradePlanModal({
                             {/* Sub-CTA text */}
                             {plano.trialDisponivel && plano.diasGratis > 0 && !isCurrentPlan && (
                               <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-3">
-                                {plano.diasGratis} dias grátis — cancele quando quiser
+                                {!usuario?.temCpf
+                                  ? `CPF só é pedido ao ativar o trial de ${plano.diasGratis} dias`
+                                  : `${plano.diasGratis} dias grátis — cancele antes do fim para não cobrar`}
                               </p>
                             )}
                           </motion.div>
@@ -515,24 +528,51 @@ function UpgradePlanModal({
       <Dialog
         open={cpfDialogOpen}
         onOpenChange={(o) => {
-          if (!savingCpf) setCpfDialogOpen(o);
+          if (!o) closeCpfDialog();
         }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="sr-only">Informe seu CPF</DialogTitle>
+            <DialogTitle className="sr-only">Ative seu trial com CPF</DialogTitle>
             <DialogDescription className="sr-only">
-              Para ativar o período de teste gratuito, precisamos do seu CPF. Ele será armazenado de
-              forma segura e criptografada.
+              Revise o trial e informe seu CPF apenas para liberar a ativação.
             </DialogDescription>
             <DialogShellHeader
               icon={<Lock className="h-5 w-5 sm:h-6 sm:w-6" />}
-              title="Informe seu CPF"
-              description="Para ativar o período de teste gratuito, precisamos do seu CPF. Ele será armazenado de forma segura e criptografada."
+              title={cpfPlan ? `Ativar ${cpfPlan.diasGratis} dias grátis` : "Ativar trial grátis"}
+              description={
+                cpfPlan
+                  ? `Você escolheu o plano ${cpfPlan.nome}. Falta só confirmar seu CPF para liberar o trial antes do checkout.`
+                  : "Falta só confirmar seu CPF para liberar o trial antes do checkout."
+              }
               tone="amber"
             />
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-4 py-2">
+            {cpfPlan && (
+              <div className="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4 dark:border-amber-500/15 dark:bg-amber-500/8">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {cpfPlan.nome}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Teste tudo por {cpfPlan.diasGratis} dias. Se você não cancelar antes do fim do período, a cobrança segue em {formatCurrency(cpfPlan.preco)}/mês no cartão cadastrado.
+                    </p>
+                  </div>
+                  <Badge className="border-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                    Trial
+                  </Badge>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-900 dark:text-white">Último passo: confirme seu CPF</p>
+              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                O CPF é usado para liberar o período grátis com mais segurança e fica salvo de forma protegida no seu perfil.
+              </p>
+            </div>
             <Input
               placeholder="000.000.000-00"
               value={cpfValue}
@@ -549,14 +589,14 @@ function UpgradePlanModal({
             {cpfError && <p className="text-sm text-red-600 dark:text-red-400">{cpfError}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCpfDialogOpen(false)} disabled={savingCpf}>
-              Cancelar
+            <Button variant="outline" onClick={closeCpfDialog} disabled={savingCpf}>
+              Agora não
             </Button>
             <Button
               onClick={handleSaveCpf}
               disabled={savingCpf || cpfValue.replace(/\D/g, "").length !== 11}
             >
-              {savingCpf ? "Salvando..." : "Confirmar e continuar"}
+              {savingCpf ? "Salvando..." : "Salvar CPF e continuar"}
             </Button>
           </DialogFooter>
         </DialogContent>

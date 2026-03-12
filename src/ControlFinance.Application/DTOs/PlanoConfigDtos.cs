@@ -19,6 +19,7 @@ public class PlanoConfigDto
     public string? StripePriceId { get; set; }
     public string? StripeProductId { get; set; }
     public string? StripeLookupKey { get; set; }
+    public bool StripeGerenciadoAutomaticamente { get; set; }
     public string StripeCurrency { get; set; } = "brl";
     public string StripeInterval { get; set; } = "month";
     public DateTime CriadoEm { get; set; }
@@ -83,6 +84,7 @@ public class AtualizarPlanoRequest
     public string? StripePriceId { get; set; }
     public string? StripeProductId { get; set; }
     public string? StripeLookupKey { get; set; }
+    public bool StripeGerenciadoAutomaticamente { get; set; }
     public string StripeCurrency { get; set; } = "brl";
     public string StripeInterval { get; set; } = "month";
     public List<PromocaoPlanoRequest> Promocoes { get; set; } = [];
@@ -102,6 +104,7 @@ public class CriarPlanoRequest
     public string? StripePriceId { get; set; }
     public string? StripeProductId { get; set; }
     public string? StripeLookupKey { get; set; }
+    public bool StripeGerenciadoAutomaticamente { get; set; } = true;
     public string StripeCurrency { get; set; } = "brl";
     public string StripeInterval { get; set; } = "month";
     public List<PromocaoPlanoRequest> Promocoes { get; set; } = [];

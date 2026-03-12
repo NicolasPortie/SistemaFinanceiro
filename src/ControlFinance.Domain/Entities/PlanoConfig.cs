@@ -46,6 +46,12 @@ public class PlanoConfig
     /// <summary>Lookup key do Stripe Price.</summary>
     public string? StripeLookupKey { get; set; }
 
+    /// <summary>
+    /// Se o plano deve criar e atualizar Product/Price automaticamente no Stripe.
+    /// Quando false, o admin informa os IDs manualmente.
+    /// </summary>
+    public bool StripeGerenciadoAutomaticamente { get; set; }
+
     /// <summary>Moeda do Stripe para o plano.</summary>
     public string StripeCurrency { get; set; } = "brl";
 

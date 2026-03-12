@@ -99,6 +99,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.RendaMensal).HasColumnName("renda_mensal").HasColumnType("numeric(18,2)").IsRequired(false);
             entity.Property(e => e.Cpf).HasColumnName("cpf").HasMaxLength(600)
                 .HasConversion(deterministicNullableConverter).IsRequired(false); // 🔒 PII criptografado
+            entity.Property(e => e.TrialConsumidoEm).HasColumnName("trial_consumido_em").IsRequired(false);
             entity.Property(e => e.Role).HasColumnName("role").HasDefaultValue(Domain.Enums.RoleUsuario.Usuario);
 
             entity.HasIndex(e => e.Email).IsUnique();
@@ -914,6 +915,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.StripePriceId).HasColumnName("stripe_price_id").HasMaxLength(200).IsRequired(false);
             entity.Property(e => e.StripeProductId).HasColumnName("stripe_product_id").HasMaxLength(200).IsRequired(false);
             entity.Property(e => e.StripeLookupKey).HasColumnName("stripe_lookup_key").HasMaxLength(200).IsRequired(false);
+            entity.Property(e => e.StripeGerenciadoAutomaticamente).HasColumnName("stripe_gerenciado_automaticamente").HasDefaultValue(false);
             entity.Property(e => e.StripeCurrency).HasColumnName("stripe_currency").HasMaxLength(10).HasDefaultValue("brl");
             entity.Property(e => e.StripeInterval).HasColumnName("stripe_interval").HasMaxLength(20).HasDefaultValue("month");
             entity.Property(e => e.CriadoEm).HasColumnName("criado_em");

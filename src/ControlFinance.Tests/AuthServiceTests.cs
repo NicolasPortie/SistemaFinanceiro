@@ -129,6 +129,64 @@ public class AuthServiceTests
         _codigoConviteRepo.Verify(r => r.AtualizarAsync(It.Is<CodigoConvite>(c => c.UsosRealizados == 1 && c.Usado)), Times.Once);
     }
 
+    [Fact]
+    public async Task AtualizarPerfilAsync_ComCpfECelularValidos_PersisteDadosNormalizados()
+    {
+        var usuario = new Usuario
+        {
+            Id = 7,
+            Nome = "Usuario",
+            Email = "usuario@ravier.com",
+            WhatsAppVinculado = true
+        };
+
+        _usuarioRepo.Setup(r => r.ObterPorIdAsync(7)).ReturnsAsync(usuario);
+        _usuarioRepo.Setup(r => r.CpfExisteAsync("52998224725")).ReturnsAsync(false);
+        _usuarioRepo.Setup(r => r.CelularExisteAsync("5511999887766")).ReturnsAsync(false);
+        _usuarioRepo.Setup(r => r.AtualizarAsync(usuario)).Returns(Task.CompletedTask);
+
+        var service = CreateService();
+
+        var (response, erro) = await service.AtualizarPerfilAsync(7, new AtualizarPerfilDto
+        {
+            Cpf = "529.982.247-25",
+            Celular = "(11) 99988-7766"
+        });
+
+        Assert.Null(erro);
+        Assert.NotNull(response);
+        Assert.Equal("52998224725", usuario.Cpf);
+        Assert.Equal("5511999887766", usuario.Celular);
+        Assert.True(response!.TemCpf);
+        Assert.Equal("5511999887766", response.Celular);
+        Assert.True(response.WhatsAppVinculado);
+    }
+
+    [Fact]
+    public async Task AtualizarPerfilAsync_ComCpfDuplicado_RetornaErro()
+    {
+        var usuario = new Usuario
+        {
+            Id = 8,
+            Nome = "Usuario",
+            Email = "usuario2@ravier.com"
+        };
+
+        _usuarioRepo.Setup(r => r.ObterPorIdAsync(8)).ReturnsAsync(usuario);
+        _usuarioRepo.Setup(r => r.CpfExisteAsync("52998224725")).ReturnsAsync(true);
+
+        var service = CreateService();
+
+        var (response, erro) = await service.AtualizarPerfilAsync(8, new AtualizarPerfilDto
+        {
+            Cpf = "529.982.247-25"
+        });
+
+        Assert.Null(response);
+        Assert.Equal("Este CPF ja esta em uso.", erro);
+        _usuarioRepo.Verify(r => r.AtualizarAsync(It.IsAny<Usuario>()), Times.Never);
+    }
+
     private AuthService CreateService()
     {
         var configuration = new ConfigurationBuilder()

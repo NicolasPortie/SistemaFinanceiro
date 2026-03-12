@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { BarChart3, Loader2, Plus, Save, Search, Settings, Tag, Trash2, Users } from "lucide-react";
+import { BarChart3, Loader2, Plus, RefreshCw, Save, Search, Settings, Sparkles, Tag, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -59,6 +59,7 @@ const CREATE_FORM_INITIAL: CriarPlanoRequest = {
   stripePriceId: null,
   stripeProductId: null,
   stripeLookupKey: null,
+  stripeGerenciadoAutomaticamente: true,
   stripeCurrency: "brl",
   stripeInterval: "month",
   promocoes: [],
@@ -143,6 +144,7 @@ export default function AdminPlanosPage() {
     stripePriceId: null,
     stripeProductId: null,
     stripeLookupKey: null,
+    stripeGerenciadoAutomaticamente: true,
     stripeCurrency: "brl",
     stripeInterval: "month",
     promocoes: [],
@@ -239,6 +241,7 @@ export default function AdminPlanosPage() {
       stripePriceId: selectedPlano.stripePriceId,
       stripeProductId: selectedPlano.stripeProductId,
       stripeLookupKey: selectedPlano.stripeLookupKey,
+      stripeGerenciadoAutomaticamente: selectedPlano.stripeGerenciadoAutomaticamente,
       stripeCurrency: selectedPlano.stripeCurrency,
       stripeInterval: selectedPlano.stripeInterval,
       promocoes: selectedPlano.promocoes.map((promocao) => ({
@@ -557,6 +560,32 @@ export default function AdminPlanosPage() {
                 <h3 className="mb-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
                   <Settings className="h-3.5 w-3.5" /> Configuração Stripe
                 </h3>
+                <div className="mb-6 rounded-[1.5rem] border border-emerald-200/70 bg-emerald-50/70 p-4 dark:border-emerald-500/15 dark:bg-emerald-500/8">
+                  <label className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={form.stripeGerenciadoAutomaticamente}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          stripeGerenciadoAutomaticamente: e.target.checked,
+                          stripePriceId: e.target.checked ? current.stripePriceId : current.stripePriceId,
+                          stripeProductId: e.target.checked ? current.stripeProductId : current.stripeProductId,
+                        }))
+                      }
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
+                        <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+                        Gerenciar Stripe automaticamente
+                      </span>
+                      <span className="mt-1 block text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                        Quando ativado, o sistema cria ou atualiza o Product e gera um novo Price automaticamente no Stripe sempre que o preço, moeda ou intervalo mudar.
+                      </span>
+                    </span>
+                  </label>
+                </div>
                 <div className="grid grid-cols-12 gap-4 lg:gap-6">
                   <div className="col-span-12 md:col-span-6">
                     <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
@@ -567,6 +596,7 @@ export default function AdminPlanosPage() {
                       onChange={(e) =>
                         setForm((current) => ({ ...current, stripeProductId: e.target.value || null }))
                       }
+                      disabled={form.stripeGerenciadoAutomaticamente}
                       className="h-auto rounded-xl border-slate-100 bg-slate-50 px-4 py-2.5 text-[12px] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
                     />
                   </div>
@@ -579,6 +609,7 @@ export default function AdminPlanosPage() {
                       onChange={(e) =>
                         setForm((current) => ({ ...current, stripePriceId: e.target.value || null }))
                       }
+                      disabled={form.stripeGerenciadoAutomaticamente}
                       className="h-auto rounded-xl border-slate-100 bg-slate-50 px-4 py-2.5 text-[12px] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
                     />
                   </div>
@@ -591,6 +622,7 @@ export default function AdminPlanosPage() {
                       onChange={(e) =>
                         setForm((current) => ({ ...current, stripeLookupKey: e.target.value || null }))
                       }
+                      disabled={form.stripeGerenciadoAutomaticamente}
                       className="h-auto rounded-xl border-slate-100 bg-slate-50 px-4 py-2.5 text-[12px] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
                     />
                   </div>
@@ -623,6 +655,20 @@ export default function AdminPlanosPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div className="col-span-12 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
+                    {form.stripeGerenciadoAutomaticamente ? (
+                      <div className="flex items-start gap-2">
+                        <RefreshCw className="mt-0.5 h-3.5 w-3.5 text-emerald-500" />
+                        <span>
+                          O admin cuida só do plano. Na gravação, o sistema sincroniza o Stripe automaticamente e mantém os IDs preenchidos para referência.
+                        </span>
+                      </div>
+                    ) : (
+                      <div>
+                        Modo manual: informe ao menos o Stripe Price ID para planos pagos. Use este modo apenas quando o produto/preço já existirem no Stripe.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1261,12 +1307,30 @@ function CreatePlanDialog({
             </div>
 
             <div className="sm:col-span-2">
+              <label className="mb-2 flex items-start gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50/70 px-4 py-3 text-sm text-slate-700 dark:border-emerald-500/15 dark:bg-emerald-500/8 dark:text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={form.stripeGerenciadoAutomaticamente}
+                  onChange={(e) => onChange({ ...form, stripeGerenciadoAutomaticamente: e.target.checked })}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="font-semibold text-slate-900 dark:text-white">Criar Stripe automaticamente</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                    O sistema cria Product e Price no Stripe para você. Se o preço mudar depois, um novo Price é gerado automaticamente.
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <div className="sm:col-span-2">
               <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400">
                 Stripe Price ID
               </label>
               <Input
                 value={form.stripePriceId ?? ""}
                 onChange={(e) => onChange({ ...form, stripePriceId: e.target.value || null })}
+                disabled={form.stripeGerenciadoAutomaticamente}
               />
             </div>
 
@@ -1277,6 +1341,7 @@ function CreatePlanDialog({
               <Input
                 value={form.stripeProductId ?? ""}
                 onChange={(e) => onChange({ ...form, stripeProductId: e.target.value || null })}
+                disabled={form.stripeGerenciadoAutomaticamente}
               />
             </div>
 
@@ -1287,6 +1352,7 @@ function CreatePlanDialog({
               <Input
                 value={form.stripeLookupKey ?? ""}
                 onChange={(e) => onChange({ ...form, stripeLookupKey: e.target.value || null })}
+                disabled={form.stripeGerenciadoAutomaticamente}
               />
             </div>
 

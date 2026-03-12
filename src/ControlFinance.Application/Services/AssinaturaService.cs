@@ -218,6 +218,25 @@ public class AssinaturaService : IAssinaturaService
 
     public static string ObterNomePlanoPublico(TipoPlano plano) => ObterNomePlano(plano);
 
+    private static int? DeterminarDiasTrial(PlanoConfig planoConfig, Usuario usuario, Assinatura? assinatura)
+    {
+        if (!planoConfig.TrialDisponivel || planoConfig.DiasGratis <= 0)
+            return null;
+
+        if (usuario.TrialConsumidoEm.HasValue)
+            return null;
+
+        return assinatura == null || assinatura.Plano == TipoPlano.Gratuito
+            ? planoConfig.DiasGratis
+            : null;
+    }
+
+    private static void MarcarTrialComoConsumido(Usuario usuario, DateTime referenciaUtc)
+    {
+        if (!usuario.TrialConsumidoEm.HasValue)
+            usuario.TrialConsumidoEm = referenciaUtc;
+    }
+
     // ── Trial ──
 
     public async Task IniciarTrialAsync(int usuarioId, TipoPlano plano)
@@ -372,14 +391,7 @@ public class AssinaturaService : IAssinaturaService
         }
 
         // Determinar se o trial Stripe se aplica
-        int? trialDays = null;
-        if (planoConfig.TrialDisponivel && planoConfig.DiasGratis > 0)
-        {
-            var isNovo = assinatura == null || assinatura.Status == StatusAssinatura.Trial
-                || assinatura.Plano == TipoPlano.Gratuito;
-            if (isNovo)
-                trialDays = planoConfig.DiasGratis;
-        }
+        var trialDays = DeterminarDiasTrial(planoConfig, usuario, assinatura);
 
         var promocaoAtiva = planoConfig.ObterPromocaoAtiva();
 
@@ -403,7 +415,8 @@ public class AssinaturaService : IAssinaturaService
                 Metadata = new Dictionary<string, string>
                 {
                     ["usuario_id"] = usuarioId.ToString(),
-                    ["plano"] = plano.ToString()
+                    ["plano"] = plano.ToString(),
+                    ["trial_aplicado"] = trialDays.HasValue ? "true" : "false"
                 }
             },
             SuccessUrl = $"{_frontendUrl}/dashboard?checkout=success",
@@ -411,7 +424,8 @@ public class AssinaturaService : IAssinaturaService
             Metadata = new Dictionary<string, string>
             {
                 ["usuario_id"] = usuarioId.ToString(),
-                ["plano"] = plano.ToString()
+                ["plano"] = plano.ToString(),
+                ["trial_aplicado"] = trialDays.HasValue ? "true" : "false"
             }
         };
 
@@ -516,6 +530,10 @@ public class AssinaturaService : IAssinaturaService
 
         var usuarioIdStr = session.Metadata.GetValueOrDefault("usuario_id");
         var planoStr = session.Metadata.GetValueOrDefault("plano");
+        var trialAplicado = string.Equals(
+            session.Metadata.GetValueOrDefault("trial_aplicado"),
+            "true",
+            StringComparison.OrdinalIgnoreCase);
 
         if (!int.TryParse(usuarioIdStr, out var usuarioId)) return;
         if (!Enum.TryParse<TipoPlano>(planoStr, out var plano)) plano = TipoPlano.Individual;
@@ -533,14 +551,29 @@ public class AssinaturaService : IAssinaturaService
             await _assinaturaRepo.AdicionarAsync(assinatura);
         }
 
+        var agora = DateTime.UtcNow;
         assinatura.Plano = plano;
-        assinatura.Status = StatusAssinatura.Ativa;
+        assinatura.Status = trialAplicado ? StatusAssinatura.Trial : StatusAssinatura.Ativa;
         assinatura.StripeCustomerId = session.CustomerId;
         assinatura.StripeSubscriptionId = session.SubscriptionId;
 
         var planoConfig = await _planoConfigRepo.ObterPorTipoAsync(plano);
         assinatura.ValorMensal = planoConfig?.PrecoMensal ?? 0;
         assinatura.MaxMembros = plano == TipoPlano.Familia ? 2 : 1;
+        assinatura.CanceladoEm = null;
+
+        if (trialAplicado && planoConfig is not null && planoConfig.DiasGratis > 0)
+        {
+            assinatura.InicioTrial = agora;
+            assinatura.FimTrial = agora.AddDays(planoConfig.DiasGratis);
+            assinatura.ProximaCobranca = assinatura.FimTrial;
+        }
+        else
+        {
+            assinatura.InicioTrial = agora;
+            assinatura.FimTrial = agora;
+            assinatura.ProximaCobranca = null;
+        }
 
         await _assinaturaRepo.AtualizarAsync(assinatura);
 
@@ -548,7 +581,16 @@ public class AssinaturaService : IAssinaturaService
         var usuario = await _usuarioRepo.ObterPorIdAsync(usuarioId);
         if (usuario != null)
         {
-            usuario.AcessoExpiraEm = null; // Sem expiração enquanto paga
+            if (trialAplicado)
+            {
+                MarcarTrialComoConsumido(usuario, agora);
+                usuario.AcessoExpiraEm = assinatura.FimTrial;
+            }
+            else
+            {
+                usuario.AcessoExpiraEm = null; // Sem expiração enquanto paga
+            }
+
             await _usuarioRepo.AtualizarAsync(usuario);
         }
 
@@ -611,13 +653,44 @@ public class AssinaturaService : IAssinaturaService
             _ => assinatura.Status
         };
 
+        var proximaCobranca = subscription.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd;
+
         if (subscription.CancelAt.HasValue)
         {
             assinatura.CanceladoEm = subscription.CancelAt.Value;
         }
+        else if (subscription.CancelAtPeriodEnd && proximaCobranca.HasValue)
+        {
+            assinatura.CanceladoEm = proximaCobranca.Value;
+        }
+        else if (!subscription.CancelAtPeriodEnd && assinatura.Status != StatusAssinatura.Cancelada)
+        {
+            assinatura.CanceladoEm = null;
+        }
 
-        assinatura.ProximaCobranca = subscription.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd;
+        if (assinatura.Status == StatusAssinatura.Trial && proximaCobranca.HasValue)
+        {
+            assinatura.FimTrial = proximaCobranca.Value;
+        }
+
+        assinatura.ProximaCobranca = proximaCobranca;
         await _assinaturaRepo.AtualizarAsync(assinatura);
+
+        var usuario = await _usuarioRepo.ObterPorIdAsync(assinatura.UsuarioId);
+        if (usuario != null)
+        {
+            if (assinatura.Status == StatusAssinatura.Trial)
+            {
+                MarcarTrialComoConsumido(usuario, assinatura.InicioTrial == default ? DateTime.UtcNow : assinatura.InicioTrial);
+                usuario.AcessoExpiraEm = assinatura.FimTrial;
+            }
+            else if (assinatura.Status == StatusAssinatura.Ativa)
+            {
+                usuario.AcessoExpiraEm = null;
+            }
+
+            await _usuarioRepo.AtualizarAsync(usuario);
+        }
 
         _logger.LogInformation("Assinatura {Sub} atualizada para status {Status}.", subscription.Id, assinatura.Status);
     }
@@ -637,6 +710,7 @@ public class AssinaturaService : IAssinaturaService
         assinatura.ValorMensal = 0;
         assinatura.CanceladoEm = DateTime.UtcNow;
         assinatura.StripeSubscriptionId = null;
+        assinatura.ProximaCobranca = null;
         assinatura.FimTrial = DateTime.MaxValue;
         await _assinaturaRepo.AtualizarAsync(assinatura);
 

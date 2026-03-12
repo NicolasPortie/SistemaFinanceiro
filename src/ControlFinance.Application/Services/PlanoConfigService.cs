@@ -11,6 +11,7 @@ namespace ControlFinance.Application.Services;
 public class PlanoConfigService : IPlanoConfigService
 {
     private readonly IPlanoConfigRepository _repo;
+    private readonly IStripePlanCatalogService _stripePlanCatalogService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<PlanoConfigService> _logger;
 
@@ -19,10 +20,12 @@ public class PlanoConfigService : IPlanoConfigService
 
     public PlanoConfigService(
         IPlanoConfigRepository repo,
+        IStripePlanCatalogService stripePlanCatalogService,
         IMemoryCache cache,
         ILogger<PlanoConfigService> logger)
     {
         _repo = repo;
+        _stripePlanCatalogService = stripePlanCatalogService;
         _cache = cache;
         _logger = logger;
     }
@@ -63,6 +66,10 @@ public class PlanoConfigService : IPlanoConfigService
         if (await _repo.ObterPorTipoAsync(request.Tipo) is not null)
             return (null, "Já existe um plano cadastrado para esse tipo.");
 
+        var erroStripe = ValidarConfiguracaoStripe(request.Tipo, request.StripeGerenciadoAutomaticamente, request.StripePriceId);
+        if (erroStripe is not null)
+            return (null, erroStripe);
+
         var plano = new PlanoConfig
         {
             Tipo = request.Tipo,
@@ -77,11 +84,35 @@ public class PlanoConfigService : IPlanoConfigService
             StripePriceId = request.StripePriceId,
             StripeProductId = request.StripeProductId,
             StripeLookupKey = request.StripeLookupKey,
+            StripeGerenciadoAutomaticamente = request.StripeGerenciadoAutomaticamente,
             StripeCurrency = NormalizarTextoOuPadrao(request.StripeCurrency, "brl"),
             StripeInterval = NormalizarTextoOuPadrao(request.StripeInterval, "month"),
             Promocoes = MapearPromocoes(request.Promocoes),
             Recursos = CriarRecursosIniciais(request.Tipo)
         };
+
+        if (plano.Tipo != TipoPlano.Gratuito && plano.StripeGerenciadoAutomaticamente)
+        {
+            var sync = await _stripePlanCatalogService.SyncAsync(new StripePlanCatalogSyncRequest
+            {
+                Nome = plano.Nome,
+                Descricao = plano.Descricao,
+                PrecoMensal = plano.PrecoMensal,
+                Ativo = plano.Ativo,
+                Currency = plano.StripeCurrency,
+                Interval = plano.StripeInterval,
+                TipoPlano = plano.Tipo.ToString(),
+                RequestedLookupKey = plano.StripeLookupKey
+            });
+
+            plano.StripeProductId = sync.ProductId;
+            plano.StripePriceId = sync.PriceId;
+            plano.StripeLookupKey = sync.LookupKey;
+        }
+        else if (plano.Tipo == TipoPlano.Gratuito)
+        {
+            LimparStripeDoPlano(plano);
+        }
 
         await _repo.AdicionarAsync(plano);
         InvalidarCache();
@@ -96,6 +127,14 @@ public class PlanoConfigService : IPlanoConfigService
         if (plano is null)
             return "Plano não encontrado.";
 
+        var erroStripe = ValidarConfiguracaoStripe(plano.Tipo, request.StripeGerenciadoAutomaticamente, request.StripePriceId);
+        if (erroStripe is not null)
+            return erroStripe;
+
+        var precoMudou = plano.PrecoMensal != request.PrecoMensal;
+        var moedaMudou = !string.Equals(plano.StripeCurrency, NormalizarTextoOuPadrao(request.StripeCurrency, "brl"), StringComparison.OrdinalIgnoreCase);
+        var intervaloMudou = !string.Equals(plano.StripeInterval, NormalizarTextoOuPadrao(request.StripeInterval, "month"), StringComparison.OrdinalIgnoreCase);
+
         plano.Nome = request.Nome;
         plano.Descricao = request.Descricao;
         plano.PrecoMensal = request.PrecoMensal;
@@ -107,10 +146,38 @@ public class PlanoConfigService : IPlanoConfigService
         plano.StripePriceId = request.StripePriceId;
         plano.StripeProductId = request.StripeProductId;
         plano.StripeLookupKey = request.StripeLookupKey;
+        plano.StripeGerenciadoAutomaticamente = request.StripeGerenciadoAutomaticamente;
         plano.StripeCurrency = NormalizarTextoOuPadrao(request.StripeCurrency, "brl");
         plano.StripeInterval = NormalizarTextoOuPadrao(request.StripeInterval, "month");
         SincronizarPromocoes(plano, request.Promocoes);
         plano.AtualizadoEm = DateTime.UtcNow;
+
+        if (plano.Tipo == TipoPlano.Gratuito)
+        {
+            LimparStripeDoPlano(plano);
+        }
+        else if (plano.StripeGerenciadoAutomaticamente)
+        {
+            var sync = await _stripePlanCatalogService.SyncAsync(new StripePlanCatalogSyncRequest
+            {
+                Nome = plano.Nome,
+                Descricao = plano.Descricao,
+                PrecoMensal = plano.PrecoMensal,
+                Ativo = plano.Ativo,
+                Currency = plano.StripeCurrency,
+                Interval = plano.StripeInterval,
+                TipoPlano = plano.Tipo.ToString(),
+                ExistingProductId = plano.StripeProductId,
+                ExistingPriceId = plano.StripePriceId,
+                ExistingLookupKey = plano.StripeLookupKey,
+                RequestedLookupKey = request.StripeLookupKey,
+                ForceCreateNewPrice = precoMudou || moedaMudou || intervaloMudou || string.IsNullOrWhiteSpace(plano.StripePriceId)
+            });
+
+            plano.StripeProductId = sync.ProductId;
+            plano.StripePriceId = sync.PriceId;
+            plano.StripeLookupKey = sync.LookupKey;
+        }
 
         await _repo.AtualizarAsync(plano);
         InvalidarCache();
@@ -182,6 +249,7 @@ public class PlanoConfigService : IPlanoConfigService
         StripePriceId = plano.StripePriceId,
         StripeProductId = plano.StripeProductId,
         StripeLookupKey = plano.StripeLookupKey,
+        StripeGerenciadoAutomaticamente = plano.StripeGerenciadoAutomaticamente,
         StripeCurrency = plano.StripeCurrency,
         StripeInterval = plano.StripeInterval,
         CriadoEm = plano.CriadoEm,
@@ -261,6 +329,24 @@ public class PlanoConfigService : IPlanoConfigService
 
     private static List<PromocaoPlano> MapearPromocoes(IEnumerable<PromocaoPlanoRequest>? promocoes)
         => promocoes?.Select(MapearPromocaoRequest).ToList() ?? [];
+
+    private static string? ValidarConfiguracaoStripe(TipoPlano tipo, bool gerenciadoAutomaticamente, string? stripePriceId)
+    {
+        if (tipo == TipoPlano.Gratuito)
+            return null;
+
+        if (!gerenciadoAutomaticamente && string.IsNullOrWhiteSpace(stripePriceId))
+            return "Informe o Stripe Price ID ou habilite o gerenciamento automático do Stripe.";
+
+        return null;
+    }
+
+    private static void LimparStripeDoPlano(PlanoConfig plano)
+    {
+        plano.StripePriceId = null;
+        plano.StripeProductId = null;
+        plano.StripeLookupKey = null;
+    }
 
     private static PromocaoPlano MapearPromocaoRequest(PromocaoPlanoRequest request) => new()
     {

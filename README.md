@@ -75,3 +75,46 @@ Artefatos temporarios, capturas locais, backups e clones de referencia nao devem
 - `dotnet test src/ControlFinance.Tests/ControlFinance.Tests.csproj`
 - `cd web-next && npm run validate`
 - `cd whatsapp-bridge && npm run build`
+
+## Stripe e trial local
+
+Para validar o trial de 7 dias do plano Individual em ambiente local:
+
+1. Garanta que a API esteja rodando em modo Development com as chaves de teste do Stripe configuradas.
+2. Aplique as migrations pendentes:
+
+  ```bash
+  dotnet ef database update --project src/ControlFinance.Infrastructure/ControlFinance.Infrastructure.csproj --startup-project src/ControlFinance.Api/ControlFinance.Api.csproj --context AppDbContext
+  ```
+
+3. Execute o smoke test autenticado do checkout:
+
+  ```powershell
+  .\tools\stripe-trial-smoke.ps1
+  ```
+
+Esse script usa o usuario seed `dev@ravier.app`, garante um CPF valido no perfil e cria uma sessao real de checkout no Stripe de teste.
+
+Observacoes importantes:
+
+- O trial de 7 dias existe apenas no plano Individual.
+- O Stripe coleta o cartao no checkout e cobra automaticamente quando o trial termina, caso a assinatura nao seja cancelada antes.
+- Sem um webhook publico apontando para a API local, a confirmacao completa do checkout nao sincroniza o estado local da assinatura. Para validar o ciclo completo de webhook, exponha a API com tunnel antes de concluir o pagamento no Stripe.
+
+## Administracao de planos no Stripe
+
+O cadastro e a edicao de planos pagos no painel administrativo agora suportam dois modos:
+
+- Automatico: ao salvar o plano, o backend cria ou atualiza o Product no Stripe e garante um Price recorrente compativel com o valor mensal, moeda e intervalo configurados.
+- Manual: o admin informa o Stripe Price ID existente e o sistema preserva o vinculo manual.
+
+Regras operacionais:
+
+- O modo automatico e o padrao recomendado para novos planos pagos.
+- Quando o preco de um plano pago muda no modo automatico, um novo Price e criado no Stripe e o Price anterior e desativado.
+- Planos gratuitos nao mantem IDs de Product ou Price no Stripe.
+- Depois de puxar alteracoes do repositorio, aplique as migrations antes de usar a tela admin de planos:
+
+  ```bash
+  dotnet ef database update --project src/ControlFinance.Infrastructure/ControlFinance.Infrastructure.csproj --startup-project src/ControlFinance.Api/ControlFinance.Api.csproj --context AppDbContext
+  ```

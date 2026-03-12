@@ -97,6 +97,7 @@ export default function ConfiguracoesPage() {
     staleTime: 5 * 60 * 1000,
   });
   const assinatura = minha?.assinatura;
+  const cancelamentoAgendado = !!assinatura?.canceladoEm && assinatura.status !== "Cancelada";
 
   /* ── forms ── */
   const nomeForm = useForm<AtualizarPerfilData>({
@@ -425,6 +426,26 @@ export default function ConfiguracoesPage() {
             </div>
             {assinatura ? (
               <>
+                {cancelamentoAgendado && (
+                  <div className="mb-8 rounded-3xl border border-amber-200 bg-amber-50/80 p-5 dark:border-amber-900/40 dark:bg-amber-950/20">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="mt-0.5 size-5 text-amber-600 dark:text-amber-400" />
+                      <div>
+                        <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                          {assinatura.emTrial
+                            ? "Cancelamento agendado antes da primeira cobrança"
+                            : "Cancelamento agendado da assinatura"}
+                        </p>
+                        <p className="mt-1 text-sm leading-relaxed text-amber-800 dark:text-amber-300">
+                          {assinatura.emTrial
+                            ? `Seu acesso continua até ${formatDate(assinatura.canceladoEm!)}. Como o cancelamento foi agendado dentro do trial, não deve haver cobrança se você não reativar antes dessa data.`
+                            : `Sua assinatura segue ativa até ${formatDate(assinatura.canceladoEm!)}. Depois disso, o plano volta para o gratuito automaticamente.`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-12">
                   <div className="p-6 rounded-3xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                     <p className="text-[9px] uppercase tracking-widest font-bold text-slate-400 mb-2">
@@ -444,10 +465,14 @@ export default function ConfiguracoesPage() {
                   </div>
                   <div className="p-6 rounded-3xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
                     <p className="text-[9px] uppercase tracking-widest font-bold text-slate-400 mb-2">
-                      Próxima Cobrança
+                      {cancelamentoAgendado ? "Encerramento" : "Próxima Cobrança"}
                     </p>
                     <p className="text-lg font-bold mono-data text-slate-900 dark:text-white">
-                      {assinatura.proximaCobranca ? formatDate(assinatura.proximaCobranca) : "—"}
+                      {cancelamentoAgendado
+                        ? formatDate(assinatura.canceladoEm!)
+                        : assinatura.proximaCobranca
+                          ? formatDate(assinatura.proximaCobranca)
+                          : "—"}
                     </p>
                   </div>
                 </div>

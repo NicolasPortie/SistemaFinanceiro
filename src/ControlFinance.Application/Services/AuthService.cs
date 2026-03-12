@@ -6,6 +6,7 @@ using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
+using ControlFinance.Domain.Helpers;
 using ControlFinance.Domain.Interfaces;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
@@ -589,10 +590,13 @@ public class AuthService : IAuthService
         Id = usuario.Id,
         Nome = usuario.Nome,
         Email = usuario.Email,
+        Celular = usuario.Celular,
         TelegramVinculado = usuario.TelegramVinculado,
+        WhatsAppVinculado = usuario.WhatsAppVinculado,
         CriadoEm = usuario.CriadoEm,
         Role = usuario.Role.ToString(),
-        RendaMensal = usuario.RendaMensal
+        RendaMensal = usuario.RendaMensal,
+        TemCpf = !string.IsNullOrWhiteSpace(usuario.Cpf)
     };
 
     public async Task<UsuarioDto?> ObterPerfilAsync(int usuarioId)
@@ -613,6 +617,46 @@ public class AuthService : IAuthService
         // Atualizar renda mensal (null = manter, 0 = limpar, >0 = novo valor)
         if (dto.RendaMensal.HasValue)
             usuario.RendaMensal = dto.RendaMensal.Value == 0 ? null : dto.RendaMensal.Value;
+
+        if (dto.Cpf != null)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Cpf))
+            {
+                usuario.Cpf = null;
+            }
+            else
+            {
+                var cpfNormalizado = CpfHelper.Normalizar(dto.Cpf);
+                if (!CpfHelper.Validar(cpfNormalizado))
+                    return (null, "CPF invalido.");
+
+                var cpfAlterado = !string.Equals(usuario.Cpf, cpfNormalizado, StringComparison.Ordinal);
+                if (cpfAlterado && await _usuarioRepo.CpfExisteAsync(cpfNormalizado))
+                    return (null, "Este CPF ja esta em uso.");
+
+                usuario.Cpf = cpfNormalizado;
+            }
+        }
+
+        if (dto.Celular != null)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Celular))
+            {
+                usuario.Celular = null;
+            }
+            else
+            {
+                var celularNormalizado = CelularHelper.Normalizar(dto.Celular);
+                if (!CelularHelper.Validar(celularNormalizado))
+                    return (null, "Celular invalido.");
+
+                var celularAlterado = !string.Equals(usuario.Celular, celularNormalizado, StringComparison.Ordinal);
+                if (celularAlterado && await _usuarioRepo.CelularExisteAsync(celularNormalizado))
+                    return (null, "Este celular ja esta em uso.");
+
+                usuario.Celular = celularNormalizado;
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(dto.NovaSenha))
         {

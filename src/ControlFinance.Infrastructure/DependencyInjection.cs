@@ -58,6 +58,7 @@ public static class DependencyInjection
 
         // Planos
         services.AddScoped<IPlanoConfigRepository, PlanoConfigRepository>();
+        services.AddScoped<IStripePlanCatalogService, StripePlanCatalogService>();
 
         // Importação de Extratos
         services.AddScoped<IImportacaoHistoricoRepository, ImportacaoHistoricoRepository>();

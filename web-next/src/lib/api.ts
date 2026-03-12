@@ -1455,6 +1455,7 @@ export interface PlanoConfigDto {
   stripePriceId: string | null;
   stripeProductId: string | null;
   stripeLookupKey: string | null;
+  stripeGerenciadoAutomaticamente: boolean;
   stripeCurrency: string;
   stripeInterval: string;
   criadoEm: string;
@@ -1493,6 +1494,7 @@ export interface AtualizarPlanoRequest {
   stripePriceId: string | null;
   stripeProductId: string | null;
   stripeLookupKey: string | null;
+  stripeGerenciadoAutomaticamente: boolean;
   stripeCurrency: string;
   stripeInterval: string;
   promocoes: PromocaoPlanoRequest[];
@@ -1511,6 +1513,7 @@ export interface CriarPlanoRequest {
   stripePriceId: string | null;
   stripeProductId: string | null;
   stripeLookupKey: string | null;
+  stripeGerenciadoAutomaticamente: boolean;
   stripeCurrency: string;
   stripeInterval: string;
   promocoes: PromocaoPlanoRequest[];

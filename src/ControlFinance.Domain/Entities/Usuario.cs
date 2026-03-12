@@ -50,6 +50,12 @@ public class Usuario
     public string? Cpf { get; set; }
 
     /// <summary>
+    /// Momento em que o usuário consumiu o trial comercial do Stripe.
+    /// Null = ainda elegível ao trial.
+    /// </summary>
+    public DateTime? TrialConsumidoEm { get; set; }
+
+    /// <summary>
     /// Renda mensal informada pelo usuário. Usado como piso para projeções financeiras.
     /// Null = não informado (usa apenas média calculada dos lançamentos).
     /// </summary>
