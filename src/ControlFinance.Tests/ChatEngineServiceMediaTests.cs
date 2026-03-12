@@ -81,6 +81,65 @@ public class ChatEngineServiceMediaTests
         Assert.DoesNotContain("consigo analisar fotos e imagens", resultado, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task ProcessarDocumentoAsync_ComTextoQueParecePerguntaDeCapacidade_NaoCaiNoAtalhoGenerico()
+    {
+        var usuario = new Usuario { Id = 100, Nome = "Nicolas", Email = "nicolas@ravier.app" };
+        var documentData = System.Text.Encoding.UTF8.GetBytes("Sim. Eu consigo analisar fotos e imagens no WhatsApp, Telegram e chat web.");
+
+        _chatExclusaoLancamentoService
+            .Setup(s => s.ProcessarConfirmacaoAsync(It.IsAny<long>(), It.IsAny<string>()))
+            .ReturnsAsync((string?)null);
+        _chatExclusaoLancamentoService
+            .Setup(s => s.ProcessarSelecaoAsync(It.IsAny<long>(), It.IsAny<string>()))
+            .ReturnsAsync((string?)null);
+        _lancamentoHandler
+            .Setup(s => s.ProcessarEtapaPendenteAsync(It.IsAny<long>(), usuario, It.IsAny<string>()))
+            .ReturnsAsync((string?)null);
+        _chatContextoFinanceiroService
+            .Setup(s => s.MontarAsync(usuario))
+            .ReturnsAsync("contexto de documento");
+        _aiService
+            .Setup(s => s.ProcessarMensagemCompletaAsync(
+                It.Is<string>(msg => msg.Contains("Documento enviado (comprovante.txt):") && msg.Contains("consigo analisar fotos e imagens")),
+                "contexto de documento",
+                OrigemDado.Documento))
+            .ReturnsAsync(new RespostaIA
+            {
+                Intencao = "responder_generico",
+                Resposta = "Documento analisado como comprovante em teste."
+            });
+
+        var service = CreateService();
+
+        var resultado = await service.ProcessarDocumentoAsync(usuario, documentData, "text/plain", "comprovante.txt", null);
+
+        Assert.Equal("Documento analisado como comprovante em teste.", resultado);
+        Assert.DoesNotContain("consigo analisar fotos e imagens", resultado, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ProcessarMensagemAsync_TextoDeCapacidade_ContinuaRespondendoAtalhoGenerico()
+    {
+        var usuario = new Usuario { Id = 101, Nome = "Nicolas", Email = "nicolas@ravier.app" };
+
+        _chatExclusaoLancamentoService
+            .Setup(s => s.ProcessarConfirmacaoAsync(It.IsAny<long>(), It.IsAny<string>()))
+            .ReturnsAsync((string?)null);
+        _chatExclusaoLancamentoService
+            .Setup(s => s.ProcessarSelecaoAsync(It.IsAny<long>(), It.IsAny<string>()))
+            .ReturnsAsync((string?)null);
+        _lancamentoHandler
+            .Setup(s => s.ProcessarEtapaPendenteAsync(It.IsAny<long>(), usuario, It.IsAny<string>()))
+            .ReturnsAsync((string?)null);
+
+        var service = CreateService();
+
+        var resultado = await service.ProcessarMensagemAsync(usuario, "e foto?", OrigemDado.Texto);
+
+        Assert.Contains("consigo analisar fotos e imagens", resultado, StringComparison.OrdinalIgnoreCase);
+    }
+
     private ChatEngineService CreateService() => new(
         _usuarioRepo.Object,
         _categoriaRepo.Object,
