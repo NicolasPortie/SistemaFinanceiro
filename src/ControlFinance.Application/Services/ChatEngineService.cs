@@ -310,7 +310,7 @@ public class ChatEngineService : IChatEngineService
             if (rich != null) return rich.ToJson();
         }
 
-        var respostaDireta = await TentarRespostaDirectaAsync(usuario, msgLower, msgNormalizado);
+        var respostaDireta = await TentarRespostaDirectaAsync(usuario, msgLower, msgNormalizado, origem);
         if (respostaDireta != null)
             return isInApp ? await HumanizarSeNecessarioAsync(textoLimpo, respostaDireta) : respostaDireta;
 
@@ -436,8 +436,11 @@ public class ChatEngineService : IChatEngineService
     // Respostas diretas (sem IA)
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    private async Task<string?> TentarRespostaDirectaAsync(Usuario usuario, string msgLower, string msgNormalizado)
+    private async Task<string?> TentarRespostaDirectaAsync(Usuario usuario, string msgLower, string msgNormalizado, OrigemDado origem)
     {
+        if (origem is OrigemDado.Imagem or OrigemDado.Documento or OrigemDado.Importacao)
+            return null;
+
         // SaudaÃ§Ãµes simples
         if (msgLower is "oi" or "olá" or "ola" or "hey" or "eae" or "e aí" or "e ai" or "fala" or "salve"
             or "bom dia" or "boa tarde" or "boa noite" or "hello" or "hi" or "opa")
