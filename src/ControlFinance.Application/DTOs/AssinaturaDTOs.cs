@@ -39,11 +39,13 @@ public record PlanoInfo(
     string Nome,
     string Descricao,
     decimal Preco,
+    decimal PrecoBase,
     TipoPlano Tipo,
     int MaxMembros,
     bool TrialDisponivel,
     int DiasGratis,
     List<string> Recursos,
     bool Destaque,
-    bool PodeFazerCheckout
+    bool PodeFazerCheckout,
+    PromocaoPlanoResumoDto? PromocaoAtiva
 );

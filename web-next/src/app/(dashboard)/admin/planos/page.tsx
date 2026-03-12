@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { BarChart3, Loader2, Plus, Save, Search, Settings, Users } from "lucide-react";
+import { BarChart3, Loader2, Plus, Save, Search, Settings, Tag, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -12,8 +12,10 @@ import {
   type AtualizarRecursoRequest,
   type CriarPlanoRequest,
   type PlanoConfigDto,
+  type PromocaoPlanoRequest,
   type RecursoPlanoDto,
   type TipoPlano,
+  type TipoPromocaoPlano,
 } from "@/lib/api";
 import { ErrorState } from "@/components/shared/page-components";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 const TIPOS_PLANO: TipoPlano[] = ["Gratuito", "Individual", "Familia"];
+const TIPOS_PROMOCAO: Array<{ value: TipoPromocaoPlano; label: string }> = [
+  { value: "Percentual", label: "Desconto em %" },
+  { value: "ValorFixo", label: "Desconto em R$" },
+  { value: "PrecoFixo", label: "Preço final" },
+];
+const STRIPE_INTERVALOS = ["month", "year", "week"];
 const RECURSOS_FAMILIA = new Set([
   "MembrosFamilia",
   "DashboardFamiliar",
@@ -49,7 +57,56 @@ const CREATE_FORM_INITIAL: CriarPlanoRequest = {
   ordem: 1,
   destaque: false,
   stripePriceId: null,
+  stripeProductId: null,
+  stripeLookupKey: null,
+  stripeCurrency: "brl",
+  stripeInterval: "month",
+  promocoes: [],
 };
+
+function createEmptyPromotion(ordem = 1): PromocaoPlanoRequest {
+  return {
+    nome: "",
+    descricao: null,
+    badgeTexto: null,
+    tipoPromocao: "Percentual",
+    valorPromocional: 0,
+    stripeCouponId: null,
+    stripePromotionCode: null,
+    inicioEm: null,
+    fimEm: null,
+    ativa: true,
+    ordem,
+  };
+}
+
+function toDateTimeLocalValue(value: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function fromDateTimeLocalValue(value: string) {
+  return value ? new Date(value).toISOString() : null;
+}
+
+function calcularPrecoPromocional(precoBase: number, promocao: PromocaoPlanoRequest) {
+  if (promocao.tipoPromocao === "Percentual") {
+    return Math.max(0, precoBase * (1 - promocao.valorPromocional / 100));
+  }
+
+  if (promocao.tipoPromocao === "ValorFixo") {
+    return Math.max(0, precoBase - promocao.valorPromocional);
+  }
+
+  return Math.max(0, promocao.valorPromocional);
+}
 
 function isFamilyResource(recurso: RecursoPlanoDto) {
   return RECURSOS_FAMILIA.has(recurso.recurso);
@@ -84,6 +141,11 @@ export default function AdminPlanosPage() {
     ordem: 0,
     destaque: false,
     stripePriceId: null,
+    stripeProductId: null,
+    stripeLookupKey: null,
+    stripeCurrency: "brl",
+    stripeInterval: "month",
+    promocoes: [],
   });
   const [createForm, setCreateForm] = useState<CriarPlanoRequest>(CREATE_FORM_INITIAL);
   const [limites, setLimites] = useState<Record<string, number>>({});
@@ -175,6 +237,24 @@ export default function AdminPlanosPage() {
       ordem: selectedPlano.ordem,
       destaque: selectedPlano.destaque,
       stripePriceId: selectedPlano.stripePriceId,
+      stripeProductId: selectedPlano.stripeProductId,
+      stripeLookupKey: selectedPlano.stripeLookupKey,
+      stripeCurrency: selectedPlano.stripeCurrency,
+      stripeInterval: selectedPlano.stripeInterval,
+      promocoes: selectedPlano.promocoes.map((promocao) => ({
+        id: promocao.id,
+        nome: promocao.nome,
+        descricao: promocao.descricao,
+        badgeTexto: promocao.badgeTexto,
+        tipoPromocao: promocao.tipoPromocao,
+        valorPromocional: promocao.valorPromocional,
+        stripeCouponId: promocao.stripeCouponId,
+        stripePromotionCode: promocao.stripePromotionCode,
+        inicioEm: promocao.inicioEm,
+        fimEm: promocao.fimEm,
+        ativa: promocao.ativa,
+        ordem: promocao.ordem,
+      })),
       tipo: selectedPlano.tipo,
     });
 
@@ -440,18 +520,11 @@ export default function AdminPlanosPage() {
                   </div>
                   <div className="col-span-12 sm:col-span-4">
                     <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                      Stripe Price ID
+                      Preço atual estimado
                     </label>
-                    <Input
-                      value={form.stripePriceId ?? ""}
-                      onChange={(e) =>
-                        setForm((current) => ({
-                          ...current,
-                          stripePriceId: e.target.value || null,
-                        }))
-                      }
-                      className="h-auto rounded-xl border-slate-100 bg-slate-50 px-4 py-2.5 text-[12px] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
-                    />
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-[12px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200">
+                      R$ {form.precoMensal.toFixed(2).replace(".", ",")}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -478,6 +551,351 @@ export default function AdminPlanosPage() {
                   }
                   emptyMessage="Esse plano não expõe recursos familiares."
                 />
+              </div>
+
+              <div className="exec-card rounded-[2rem] p-6 lg:p-8">
+                <h3 className="mb-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  <Settings className="h-3.5 w-3.5" /> Configuração Stripe
+                </h3>
+                <div className="grid grid-cols-12 gap-4 lg:gap-6">
+                  <div className="col-span-12 md:col-span-6">
+                    <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                      Stripe Product ID
+                    </label>
+                    <Input
+                      value={form.stripeProductId ?? ""}
+                      onChange={(e) =>
+                        setForm((current) => ({ ...current, stripeProductId: e.target.value || null }))
+                      }
+                      className="h-auto rounded-xl border-slate-100 bg-slate-50 px-4 py-2.5 text-[12px] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
+                    />
+                  </div>
+                  <div className="col-span-12 md:col-span-6">
+                    <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                      Stripe Price ID
+                    </label>
+                    <Input
+                      value={form.stripePriceId ?? ""}
+                      onChange={(e) =>
+                        setForm((current) => ({ ...current, stripePriceId: e.target.value || null }))
+                      }
+                      className="h-auto rounded-xl border-slate-100 bg-slate-50 px-4 py-2.5 text-[12px] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
+                    />
+                  </div>
+                  <div className="col-span-12 md:col-span-4">
+                    <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                      Lookup key
+                    </label>
+                    <Input
+                      value={form.stripeLookupKey ?? ""}
+                      onChange={(e) =>
+                        setForm((current) => ({ ...current, stripeLookupKey: e.target.value || null }))
+                      }
+                      className="h-auto rounded-xl border-slate-100 bg-slate-50 px-4 py-2.5 text-[12px] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
+                    />
+                  </div>
+                  <div className="col-span-12 md:col-span-4">
+                    <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                      Moeda
+                    </label>
+                    <Input
+                      value={form.stripeCurrency}
+                      onChange={(e) =>
+                        setForm((current) => ({ ...current, stripeCurrency: e.target.value || "brl" }))
+                      }
+                      className="h-auto rounded-xl border-slate-100 bg-slate-50 px-4 py-2.5 text-[12px] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
+                    />
+                  </div>
+                  <div className="col-span-12 md:col-span-4">
+                    <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                      Intervalo
+                    </label>
+                    <select
+                      value={form.stripeInterval}
+                      onChange={(e) =>
+                        setForm((current) => ({ ...current, stripeInterval: e.target.value || "month" }))
+                      }
+                      className="w-full rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-[12px] focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
+                    >
+                      {STRIPE_INTERVALOS.map((intervalo) => (
+                        <option key={intervalo} value={intervalo}>
+                          {intervalo}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="exec-card rounded-[2rem] p-6 lg:p-8">
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                      <Tag className="h-3.5 w-3.5" /> Promoções do plano
+                    </h3>
+                    <p className="mt-2 text-[11px] text-slate-400">
+                      Crie campanhas de lançamento, desconto temporário ou preço fixo promocional. Se informar cupom ou promotion code do Stripe, o checkout aplica automaticamente.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      setForm((current) => ({
+                        ...current,
+                        promocoes: [...current.promocoes, createEmptyPromotion(current.promocoes.length + 1)],
+                      }))
+                    }
+                    className="rounded-full text-[10px] font-bold uppercase tracking-widest"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Nova promoção
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  {form.promocoes.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-[11px] text-slate-400 dark:border-slate-700">
+                      Nenhuma promoção cadastrada para este plano.
+                    </div>
+                  )}
+
+                  {form.promocoes.map((promocao, index) => {
+                    const precoPromocional = calcularPrecoPromocional(form.precoMensal, promocao);
+                    const desconto = Math.max(0, form.precoMensal - precoPromocional);
+
+                    return (
+                      <div key={`${promocao.id ?? "novo"}-${index}`} className="rounded-[1.5rem] border border-slate-100 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-900/40">
+                        <div className="mb-4 flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">
+                              Promoção {index + 1}
+                            </p>
+                            <p className="mt-1 text-[11px] text-slate-400">
+                              Preço estimado: R$ {precoPromocional.toFixed(2).replace(".", ",")} | desconto de R$ {desconto.toFixed(2).replace(".", ",")}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((current) => ({
+                                ...current,
+                                promocoes: current.promocoes.filter((_, currentIndex) => currentIndex !== index),
+                              }))
+                            }
+                            className="rounded-full p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-12 gap-4">
+                          <div className="col-span-12 md:col-span-5">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Nome interno
+                            </label>
+                            <Input
+                              value={promocao.nome}
+                              onChange={(e) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  promocoes: current.promocoes.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, nome: e.target.value } : item
+                                  ),
+                                }))
+                              }
+                              className="h-auto rounded-xl border-slate-100 bg-white px-4 py-2.5 text-[12px] dark:border-slate-700 dark:bg-slate-900/50"
+                            />
+                          </div>
+                          <div className="col-span-12 md:col-span-4">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Badge
+                            </label>
+                            <Input
+                              value={promocao.badgeTexto ?? ""}
+                              onChange={(e) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  promocoes: current.promocoes.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, badgeTexto: e.target.value || null } : item
+                                  ),
+                                }))
+                              }
+                              className="h-auto rounded-xl border-slate-100 bg-white px-4 py-2.5 text-[12px] dark:border-slate-700 dark:bg-slate-900/50"
+                            />
+                          </div>
+                          <div className="col-span-12 md:col-span-3">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Ordem
+                            </label>
+                            <Input
+                              type="number"
+                              value={promocao.ordem}
+                              onChange={(e) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  promocoes: current.promocoes.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, ordem: Number.parseInt(e.target.value, 10) || 0 } : item
+                                  ),
+                                }))
+                              }
+                              className="h-auto rounded-xl border-slate-100 bg-white px-4 py-2.5 text-[12px] dark:border-slate-700 dark:bg-slate-900/50"
+                            />
+                          </div>
+                          <div className="col-span-12">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Descrição
+                            </label>
+                            <textarea
+                              value={promocao.descricao ?? ""}
+                              onChange={(e) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  promocoes: current.promocoes.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, descricao: e.target.value || null } : item
+                                  ),
+                                }))
+                              }
+                              rows={2}
+                              className="w-full rounded-xl border border-slate-100 bg-white px-4 py-2.5 text-[12px] dark:border-slate-700 dark:bg-slate-900/50"
+                            />
+                          </div>
+                          <div className="col-span-12 md:col-span-4">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Tipo da promoção
+                            </label>
+                            <select
+                              value={promocao.tipoPromocao}
+                              onChange={(e) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  promocoes: current.promocoes.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, tipoPromocao: e.target.value as TipoPromocaoPlano } : item
+                                  ),
+                                }))
+                              }
+                              className="w-full rounded-xl border border-slate-100 bg-white px-4 py-2.5 text-[12px] focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
+                            >
+                              {TIPOS_PROMOCAO.map((tipo) => (
+                                <option key={tipo.value} value={tipo.value}>
+                                  {tipo.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="col-span-12 md:col-span-4">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Valor
+                            </label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={promocao.valorPromocional}
+                              onChange={(e) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  promocoes: current.promocoes.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, valorPromocional: Number.parseFloat(e.target.value) || 0 } : item
+                                  ),
+                                }))
+                              }
+                              className="h-auto rounded-xl border-slate-100 bg-white px-4 py-2.5 text-[12px] dark:border-slate-700 dark:bg-slate-900/50"
+                            />
+                          </div>
+                          <div className="col-span-12 md:col-span-4">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Status
+                            </label>
+                            <label className="flex h-10.5 items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 text-[12px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200">
+                              <input
+                                type="checkbox"
+                                checked={promocao.ativa}
+                                onChange={(e) =>
+                                  setForm((current) => ({
+                                    ...current,
+                                    promocoes: current.promocoes.map((item, itemIndex) =>
+                                      itemIndex === index ? { ...item, ativa: e.target.checked } : item
+                                    ),
+                                  }))
+                                }
+                              />
+                              Promoção ativa
+                            </label>
+                          </div>
+                          <div className="col-span-12 md:col-span-6">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Início
+                            </label>
+                            <Input
+                              type="datetime-local"
+                              value={toDateTimeLocalValue(promocao.inicioEm)}
+                              onChange={(e) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  promocoes: current.promocoes.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, inicioEm: fromDateTimeLocalValue(e.target.value) } : item
+                                  ),
+                                }))
+                              }
+                              className="h-auto rounded-xl border-slate-100 bg-white px-4 py-2.5 text-[12px] dark:border-slate-700 dark:bg-slate-900/50"
+                            />
+                          </div>
+                          <div className="col-span-12 md:col-span-6">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Fim
+                            </label>
+                            <Input
+                              type="datetime-local"
+                              value={toDateTimeLocalValue(promocao.fimEm)}
+                              onChange={(e) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  promocoes: current.promocoes.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, fimEm: fromDateTimeLocalValue(e.target.value) } : item
+                                  ),
+                                }))
+                              }
+                              className="h-auto rounded-xl border-slate-100 bg-white px-4 py-2.5 text-[12px] dark:border-slate-700 dark:bg-slate-900/50"
+                            />
+                          </div>
+                          <div className="col-span-12 md:col-span-6">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Stripe Coupon ID
+                            </label>
+                            <Input
+                              value={promocao.stripeCouponId ?? ""}
+                              onChange={(e) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  promocoes: current.promocoes.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, stripeCouponId: e.target.value || null } : item
+                                  ),
+                                }))
+                              }
+                              className="h-auto rounded-xl border-slate-100 bg-white px-4 py-2.5 text-[12px] dark:border-slate-700 dark:bg-slate-900/50"
+                            />
+                          </div>
+                          <div className="col-span-12 md:col-span-6">
+                            <label className="mb-2 block text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                              Stripe Promotion Code
+                            </label>
+                            <Input
+                              value={promocao.stripePromotionCode ?? ""}
+                              onChange={(e) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  promocoes: current.promocoes.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, stripePromotionCode: e.target.value || null } : item
+                                  ),
+                                }))
+                              }
+                              className="h-auto rounded-xl border-slate-100 bg-white px-4 py-2.5 text-[12px] dark:border-slate-700 dark:bg-slate-900/50"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="exec-card rounded-[2rem] p-6 lg:p-8">
@@ -850,6 +1268,53 @@ function CreatePlanDialog({
                 value={form.stripePriceId ?? ""}
                 onChange={(e) => onChange({ ...form, stripePriceId: e.target.value || null })}
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Stripe Product ID
+              </label>
+              <Input
+                value={form.stripeProductId ?? ""}
+                onChange={(e) => onChange({ ...form, stripeProductId: e.target.value || null })}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Lookup key
+              </label>
+              <Input
+                value={form.stripeLookupKey ?? ""}
+                onChange={(e) => onChange({ ...form, stripeLookupKey: e.target.value || null })}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Moeda
+              </label>
+              <Input
+                value={form.stripeCurrency}
+                onChange={(e) => onChange({ ...form, stripeCurrency: e.target.value || "brl" })}
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Intervalo Stripe
+              </label>
+              <select
+                value={form.stripeInterval}
+                onChange={(e) => onChange({ ...form, stripeInterval: e.target.value || "month" })}
+                className="w-full rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-sm focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/50"
+              >
+                {STRIPE_INTERVALOS.map((intervalo) => (
+                  <option key={intervalo} value={intervalo}>
+                    {intervalo}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">

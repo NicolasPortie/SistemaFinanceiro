@@ -297,6 +297,8 @@ public class AuthService : IAuthService
             await _usuarioRepo.AtualizarAsync(usuario);
         }
 
+        await _categoriaRepo.CriarCategoriasIniciais(usuario.Id);
+
         _logger.LogInformation("Login realizado: {UserId}", usuario.Id);
 
         var response = await GerarTokenResponseAsync(usuario, ipAddress);
@@ -393,6 +395,8 @@ public class AuthService : IAuthService
             usuario.BloqueadoAte = null;
             await _usuarioRepo.AtualizarAsync(usuario);
         }
+
+        await _categoriaRepo.CriarCategoriasIniciais(usuario.Id);
 
         _logger.LogInformation("Login Google realizado: {UserId}", usuario.Id);
 
@@ -525,6 +529,8 @@ public class AuthService : IAuthService
             usuario.BloqueadoAte = null;
             await _usuarioRepo.AtualizarAsync(usuario);
         }
+
+        await _categoriaRepo.CriarCategoriasIniciais(usuario.Id);
 
         _logger.LogInformation("Login Apple realizado: {UserId}", usuario.Id);
 

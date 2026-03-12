@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useQuery } from "@tanstack/react-query";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -20,6 +21,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { ChatDemo } from "@/components/landing/chat-demo";
+import { api, type ComparacaoPlanoDto } from "@/lib/api";
+import { formatCurrency } from "@/lib/format";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -754,7 +757,59 @@ function FAQ() {
 // ============================================================================
 // H. PRICING
 // ============================================================================
+const PRICING_RESOURCE_ORDER = [
+  "ChatInApp",
+  "ConsultorIA",
+  "ImportacaoExtratos",
+  "SimulacaoCompras",
+  "MetasFinanceiras",
+  "CategoriasCompartilhadas",
+  "DashboardFamiliar",
+  "MembrosFamilia",
+  "TelegramMensagensDia",
+  "LancamentosMensal",
+  "ContasFixasCompartilhadas",
+  "ContasFixas",
+];
+
+const PRICING_RESOURCE_LABELS: Record<string, string> = {
+  ChatInApp: "Chat financeiro no app",
+  ConsultorIA: "Consultor financeiro com IA",
+  ImportacaoExtratos: "Importação de extratos",
+  SimulacaoCompras: "Simulação de compras",
+  MetasFinanceiras: "Metas financeiras",
+  CategoriasCompartilhadas: "Categorias compartilhadas",
+  DashboardFamiliar: "Dashboard familiar",
+  MembrosFamilia: "Titular + 1 membro",
+  TelegramMensagensDia: "Bot no Telegram",
+  LancamentosMensal: "Lançamentos mensais",
+  ContasFixasCompartilhadas: "Contas fixas compartilhadas",
+  ContasFixas: "Contas fixas",
+};
+
+function buildPricingFeatures(plano: ComparacaoPlanoDto) {
+  const keys = Object.keys(plano.recursos).filter((key) => plano.recursos[key]?.limite !== 0);
+  const orderedKeys = keys.sort((a, b) => {
+    const orderA = PRICING_RESOURCE_ORDER.indexOf(a);
+    const orderB = PRICING_RESOURCE_ORDER.indexOf(b);
+    return (orderA === -1 ? 999 : orderA) - (orderB === -1 ? 999 : orderB);
+  });
+
+  return orderedKeys.slice(0, 5).map((key) => {
+    const descricao = plano.recursos[key]?.descricaoLimite;
+    return descricao || PRICING_RESOURCE_LABELS[key] || key;
+  });
+}
+
 function Pricing() {
+  const { data: planos = [], isLoading, isError } = useQuery<ComparacaoPlanoDto[]>({
+    queryKey: ["landing", "planos"],
+    queryFn: () => api.planos.comparacao(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const orderedPlanos = [...planos].sort((a, b) => a.ordem - b.ordem);
+
   return (
     <section id="planos" className="py-20 sm:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-6 sm:px-12 lg:px-24">
@@ -769,144 +824,112 @@ function Pricing() {
             Escolha o plano ideal pra você
           </h2>
           <p className="text-stone-500 text-lg max-w-xl mx-auto">
-            Comece grátis. Evolua quando quiser.
+            Os planos abaixo refletem exatamente o que está ativo no painel administrativo.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
-          {/* Pessoal */}
-          <div className="bg-stone-50 rounded-[2rem] p-8 sm:p-10 border border-stone-200 flex flex-col hover:shadow-xl hover:shadow-stone-200/50 transition-all duration-300">
-            <h3
-              className="text-xl font-bold text-[#1a1a1a] mb-2"
-              style={{ fontFamily: "'Georgia', serif" }}
-            >
-              Pessoal
-            </h3>
-            <p className="text-sm text-stone-500 mb-8">
-              Pra quem quer organizar sua vida financeira sozinho.
-            </p>
-            <div className="mb-8">
-              <span className="text-4xl font-black text-[#1a1a1a]">R$ 19</span>
-              <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">
-                /mês
-              </span>
-            </div>
-            <ul className="space-y-4 mb-10 text-sm text-stone-600 font-medium flex-1">
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Lançamentos por áudio
-                e foto
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Bot inteligente no
-                WhatsApp e Telegram
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Painel completo em
-                tempo real
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Até 5 metas
-                simultâneas
-              </li>
-            </ul>
-            <Link
-              href="/registro?plano=pessoal"
-              className="block w-full text-center py-4 rounded-xl bg-white text-stone-700 font-bold uppercase tracking-wider text-xs border border-stone-200 shadow-sm hover:bg-stone-100 hover:shadow-md transition-all"
-            >
-              Começar grátis
-            </Link>
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="h-105 animate-pulse rounded-[2rem] border border-stone-200 bg-stone-50" />
+            ))}
           </div>
+        ) : isError || orderedPlanos.length === 0 ? (
+          <div className="rounded-[2rem] border border-dashed border-stone-200 bg-stone-50 px-6 py-10 text-center text-stone-500">
+            Não foi possível carregar os planos publicados no momento.
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 items-stretch">
+            {orderedPlanos.map((plano) => {
+              const destaque = plano.destaque;
+              const temPromocao = Boolean(
+                plano.promocaoAtiva && plano.precoBaseMensal > plano.precoMensal
+              );
+              const features = buildPricingFeatures(plano);
 
-          {/* Família — Highlighted */}
-          <div className="bg-white rounded-[2rem] p-8 sm:p-12 border-2 border-emerald-700 shadow-2xl shadow-emerald-100/30 relative flex flex-col transform md:scale-105 z-10">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-emerald-700 text-white font-bold uppercase tracking-widest text-[10px] px-5 py-1.5 rounded-full shadow-md">
-              Mais popular
-            </div>
-            <h3
-              className="text-2xl font-bold text-[#1a1a1a] mb-2"
-              style={{ fontFamily: "'Georgia', serif" }}
-            >
-              2 Pessoas
-            </h3>
-            <p className="text-sm text-stone-500 mb-8">
-              Titular + 1 membro com compartilhamento opcional.
-            </p>
-            <div className="mb-8">
-              <span className="text-5xl font-black text-[#1a1a1a]">R$ 49</span>
-              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-                /mês
-              </span>
-            </div>
-            <ul className="space-y-4 mb-10 text-sm text-stone-600 font-medium flex-1">
-              <li className="flex items-start gap-3">
-                <Sparkles className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Titular + 1 membro
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Divisão automática de
-                despesas
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Orçamento
-                compartilhado opcional
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Simulação de compras
-                com IA
-              </li>
-              <li className="flex items-start gap-3 text-emerald-800 font-bold">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Metas e dashboard em
-                dupla
-              </li>
-            </ul>
-            <Link
-              href="/registro?plano=familia"
-              className="relative block w-full overflow-hidden group rounded-xl bg-emerald-700 text-white px-8 py-4 text-center font-bold tracking-wider uppercase text-xs transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              <span className="relative z-10">Começar agora</span>
-              <div className="absolute inset-0 bg-emerald-800 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-            </Link>
-          </div>
+              return (
+                <div
+                  key={plano.tipo}
+                  className={
+                    destaque
+                      ? "bg-white rounded-[2rem] p-8 sm:p-12 border-2 border-emerald-700 shadow-2xl shadow-emerald-100/30 relative flex flex-col md:scale-[1.02] z-10"
+                      : "bg-stone-50 rounded-[2rem] p-8 sm:p-10 border border-stone-200 flex flex-col hover:shadow-xl hover:shadow-stone-200/50 transition-all duration-300"
+                  }
+                >
+                  {destaque && (
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-emerald-700 text-white font-bold uppercase tracking-widest text-[10px] px-5 py-1.5 rounded-full shadow-md">
+                      Mais popular
+                    </div>
+                  )}
 
-          {/* Empresarial */}
-          <div className="bg-stone-50 rounded-[2rem] p-8 sm:p-10 border border-stone-200 flex flex-col hover:shadow-xl hover:shadow-stone-200/50 transition-all duration-300">
-            <h3
-              className="text-xl font-bold text-[#1a1a1a] mb-2"
-              style={{ fontFamily: "'Georgia', serif" }}
-            >
-              Empresarial
-            </h3>
-            <p className="text-sm text-stone-500 mb-8">
-              Para empresas e equipes que precisam de mais.
-            </p>
-            <div className="mb-8">
-              <span className="text-4xl font-black text-[#1a1a1a]">R$ 149</span>
-              <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">
-                /mês
-              </span>
-            </div>
-            <ul className="space-y-4 mb-10 text-sm text-stone-600 font-medium flex-1">
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Usuários ilimitados
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Relatórios avançados
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Integração com
-                sistemas
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" /> Suporte prioritário
-              </li>
-            </ul>
-            <Link
-              href="/registro?plano=empresarial"
-              className="block w-full text-center py-4 rounded-xl bg-white text-stone-700 font-bold uppercase tracking-wider text-xs border border-stone-200 shadow-sm hover:bg-stone-100 hover:shadow-md transition-all"
-            >
-              Falar com a gente
-            </Link>
+                  {plano.promocaoAtiva?.badgeTexto && (
+                    <div className="mb-4 inline-flex w-fit rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-800">
+                      {plano.promocaoAtiva.badgeTexto}
+                    </div>
+                  )}
+
+                  <h3
+                    className={`${destaque ? "text-2xl" : "text-xl"} font-bold text-[#1a1a1a] mb-2`}
+                    style={{ fontFamily: "'Georgia', serif" }}
+                  >
+                    {plano.nome}
+                  </h3>
+                  <p className="text-sm text-stone-500 mb-8">{plano.descricao}</p>
+                  <div className="mb-3">
+                    {temPromocao && (
+                      <p className="mb-2 text-sm font-semibold text-stone-400 line-through">
+                        {formatCurrency(plano.precoBaseMensal)}/mês
+                      </p>
+                    )}
+                    <span className={`${destaque ? "text-5xl" : "text-4xl"} font-black text-[#1a1a1a]`}>
+                      {plano.precoMensal === 0 ? "Grátis" : formatCurrency(plano.precoMensal)}
+                    </span>
+                    {plano.precoMensal > 0 && (
+                      <span className={`text-xs font-bold uppercase tracking-wider ${destaque ? "text-emerald-700" : "text-stone-400"}`}>
+                        /mês
+                      </span>
+                    )}
+                  </div>
+
+                  {(plano.trialDisponivel || plano.promocaoAtiva?.descricao) && (
+                    <div className="mb-6 rounded-2xl bg-white/80 px-4 py-3 text-sm text-stone-600 border border-stone-200/70">
+                      {plano.promocaoAtiva?.descricao ? plano.promocaoAtiva.descricao : `${plano.diasGratis} dias grátis para testar tudo`}
+                    </div>
+                  )}
+
+                  <ul className="space-y-4 mb-10 text-sm text-stone-600 font-medium flex-1">
+                    {features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-3">
+                        {destaque ? (
+                          <Sparkles className="size-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <Check className="size-4 text-emerald-600 shrink-0 mt-0.5" />
+                        )}
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    href={`/registro?plano=${plano.tipo.toLowerCase()}`}
+                    className={
+                      destaque
+                        ? "relative block w-full overflow-hidden group rounded-xl bg-emerald-700 text-white px-8 py-4 text-center font-bold tracking-wider uppercase text-xs transition-all duration-300 shadow-lg hover:shadow-xl"
+                        : "block w-full text-center py-4 rounded-xl bg-white text-stone-700 font-bold uppercase tracking-wider text-xs border border-stone-200 shadow-sm hover:bg-stone-100 hover:shadow-md transition-all"
+                    }
+                  >
+                    <span className="relative z-10">
+                      {plano.precoMensal === 0 ? "Começar grátis" : "Escolher plano"}
+                    </span>
+                    {destaque && (
+                      <div className="absolute inset-0 bg-emerald-800 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+                    )}
+                  </Link>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
       </div>
     </section>
   );

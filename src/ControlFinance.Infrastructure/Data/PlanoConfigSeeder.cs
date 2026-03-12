@@ -54,6 +54,10 @@ public static class PlanoConfigSeeder
                 Ordem = 1,
                 Destaque = false,
                 StripePriceId = null,
+                StripeProductId = null,
+                StripeLookupKey = null,
+                StripeCurrency = "brl",
+                StripeInterval = "month",
                 Recursos = RecursosGratuito()
             },
 
@@ -70,6 +74,10 @@ public static class PlanoConfigSeeder
                 Ordem = 2,
                 Destaque = true,
                 StripePriceId = priceIdIndividual,
+                StripeProductId = null,
+                StripeLookupKey = null,
+                StripeCurrency = "brl",
+                StripeInterval = "month",
                 Recursos = RecursosIndividual()
             },
 
@@ -86,6 +94,10 @@ public static class PlanoConfigSeeder
                 Ordem = 3,
                 Destaque = false,
                 StripePriceId = priceIdFamilia,
+                StripeProductId = null,
+                StripeLookupKey = null,
+                StripeCurrency = "brl",
+                StripeInterval = "month",
                 Recursos = RecursosFamilia()
             }
         ];

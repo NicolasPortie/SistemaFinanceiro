@@ -48,28 +48,14 @@ public class PlanoConfigService : IPlanoConfigService
 
     public async Task<List<PlanoConfigDto>> ListarTodosAsync()
     {
-        var planos = await _repo.ObterTodosAtivosAsync();
-
-        // ObterTodosAtivosAsync não inclui Recursos, refazemos com Include
-        var resultado = new List<PlanoConfigDto>();
-        foreach (var tipo in planos.Select(p => p.Tipo))
-        {
-            var config = await _repo.ObterComRecursosAsync(tipo);
-            if (config is not null)
-                resultado.Add(MapearDto(config));
-        }
-
-        return resultado.OrderBy(p => p.Ordem).ToList();
+        var planos = await _repo.ObterTodosAsync();
+        return planos.Select(MapearDto).OrderBy(p => p.Ordem).ToList();
     }
 
     public async Task<PlanoConfigDto?> ObterPorIdAsync(int id)
     {
         var plano = await _repo.ObterPorIdAsync(id);
-        if (plano is null) return null;
-
-        // ObterPorIdAsync não traz Recursos — buscamos pelo Tipo
-        var config = await _repo.ObterComRecursosAsync(plano.Tipo);
-        return config is not null ? MapearDto(config) : null;
+        return plano is not null ? MapearDto(plano) : null;
     }
 
     public async Task<(PlanoConfigDto? Plano, string? Erro)> CriarPlanoAsync(CriarPlanoRequest request)
@@ -89,6 +75,11 @@ public class PlanoConfigService : IPlanoConfigService
             Ordem = request.Ordem,
             Destaque = request.Destaque,
             StripePriceId = request.StripePriceId,
+            StripeProductId = request.StripeProductId,
+            StripeLookupKey = request.StripeLookupKey,
+            StripeCurrency = NormalizarTextoOuPadrao(request.StripeCurrency, "brl"),
+            StripeInterval = NormalizarTextoOuPadrao(request.StripeInterval, "month"),
+            Promocoes = MapearPromocoes(request.Promocoes),
             Recursos = CriarRecursosIniciais(request.Tipo)
         };
 
@@ -114,6 +105,11 @@ public class PlanoConfigService : IPlanoConfigService
         plano.Ordem = request.Ordem;
         plano.Destaque = request.Destaque;
         plano.StripePriceId = request.StripePriceId;
+        plano.StripeProductId = request.StripeProductId;
+        plano.StripeLookupKey = request.StripeLookupKey;
+        plano.StripeCurrency = NormalizarTextoOuPadrao(request.StripeCurrency, "brl");
+        plano.StripeInterval = NormalizarTextoOuPadrao(request.StripeInterval, "month");
+        SincronizarPromocoes(plano, request.Promocoes);
         plano.AtualizadoEm = DateTime.UtcNow;
 
         await _repo.AtualizarAsync(plano);
@@ -184,6 +180,10 @@ public class PlanoConfigService : IPlanoConfigService
         Ordem = plano.Ordem,
         Destaque = plano.Destaque,
         StripePriceId = plano.StripePriceId,
+        StripeProductId = plano.StripeProductId,
+        StripeLookupKey = plano.StripeLookupKey,
+        StripeCurrency = plano.StripeCurrency,
+        StripeInterval = plano.StripeInterval,
         CriadoEm = plano.CriadoEm,
         AtualizadoEm = plano.AtualizadoEm,
         Recursos = plano.Recursos.Select(r => new RecursoPlanoDto
@@ -193,25 +193,134 @@ public class PlanoConfigService : IPlanoConfigService
             NomeRecurso = ObterNomeRecurso(r.Recurso),
             Limite = r.Limite,
             DescricaoLimite = r.DescricaoLimite
-        }).ToList()
+        }).ToList(),
+        Promocoes = plano.Promocoes
+            .OrderBy(p => p.Ordem)
+            .ThenBy(p => p.Id)
+            .Select(p => MapearPromocaoDto(p, plano.PrecoMensal))
+            .ToList()
     };
 
-    private static ComparacaoPlanoDto MapearComparacao(PlanoConfig plano) => new()
+    private static ComparacaoPlanoDto MapearComparacao(PlanoConfig plano)
     {
-        Tipo = plano.Tipo,
-        Nome = plano.Nome,
-        Descricao = plano.Descricao,
-        PrecoMensal = plano.PrecoMensal,
-        Destaque = plano.Destaque,
-        Ordem = plano.Ordem,
-        Recursos = plano.Recursos.ToDictionary(
-            r => r.Recurso,
-            r => new RecursoResumoDto
-            {
-                Limite = r.Limite,
-                DescricaoLimite = r.DescricaoLimite
-            })
+        var promocaoAtiva = plano.ObterPromocaoAtiva();
+        var precoAtual = promocaoAtiva?.CalcularPrecoPromocional(plano.PrecoMensal) ?? plano.PrecoMensal;
+
+        return new ComparacaoPlanoDto
+        {
+            Tipo = plano.Tipo,
+            Nome = plano.Nome,
+            Descricao = plano.Descricao,
+            PrecoMensal = precoAtual,
+            PrecoBaseMensal = plano.PrecoMensal,
+            Destaque = plano.Destaque,
+            Ordem = plano.Ordem,
+            TrialDisponivel = plano.TrialDisponivel,
+            DiasGratis = plano.DiasGratis,
+            PromocaoAtiva = promocaoAtiva is not null ? MapearPromocaoResumo(promocaoAtiva, plano.PrecoMensal) : null,
+            Recursos = plano.Recursos.ToDictionary(
+                r => r.Recurso,
+                r => new RecursoResumoDto
+                {
+                    Limite = r.Limite,
+                    DescricaoLimite = r.DescricaoLimite
+                })
+        };
+    }
+
+    private static PromocaoPlanoDto MapearPromocaoDto(PromocaoPlano promocao, decimal precoBase) => new()
+    {
+        Id = promocao.Id,
+        Nome = promocao.Nome,
+        Descricao = promocao.Descricao,
+        BadgeTexto = promocao.BadgeTexto,
+        TipoPromocao = promocao.TipoPromocao,
+        ValorPromocional = promocao.ValorPromocional,
+        PrecoPromocionalCalculado = promocao.CalcularPrecoPromocional(precoBase),
+        DescontoCalculado = promocao.CalcularDesconto(precoBase),
+        StripeCouponId = promocao.StripeCouponId,
+        StripePromotionCode = promocao.StripePromotionCode,
+        InicioEm = promocao.InicioEm,
+        FimEm = promocao.FimEm,
+        Ativa = promocao.Ativa,
+        Ordem = promocao.Ordem
     };
+
+    private static PromocaoPlanoResumoDto MapearPromocaoResumo(PromocaoPlano promocao, decimal precoBase) => new()
+    {
+        Nome = promocao.Nome,
+        Descricao = promocao.Descricao,
+        BadgeTexto = promocao.BadgeTexto,
+        TipoPromocao = promocao.TipoPromocao,
+        ValorPromocional = promocao.ValorPromocional,
+        PrecoPromocional = promocao.CalcularPrecoPromocional(precoBase),
+        DescontoCalculado = promocao.CalcularDesconto(precoBase),
+        InicioEm = promocao.InicioEm,
+        FimEm = promocao.FimEm
+    };
+
+    private static List<PromocaoPlano> MapearPromocoes(IEnumerable<PromocaoPlanoRequest>? promocoes)
+        => promocoes?.Select(MapearPromocaoRequest).ToList() ?? [];
+
+    private static PromocaoPlano MapearPromocaoRequest(PromocaoPlanoRequest request) => new()
+    {
+        Nome = request.Nome,
+        Descricao = request.Descricao,
+        BadgeTexto = request.BadgeTexto,
+        TipoPromocao = request.TipoPromocao,
+        ValorPromocional = request.ValorPromocional,
+        StripeCouponId = request.StripeCouponId,
+        StripePromotionCode = request.StripePromotionCode,
+        InicioEm = request.InicioEm,
+        FimEm = request.FimEm,
+        Ativa = request.Ativa,
+        Ordem = request.Ordem
+    };
+
+    private static void SincronizarPromocoes(PlanoConfig plano, IEnumerable<PromocaoPlanoRequest>? requests)
+    {
+        var promocoesSolicitadas = requests?.ToList() ?? [];
+        var idsSolicitados = promocoesSolicitadas
+            .Where(p => p.Id.HasValue)
+            .Select(p => p.Id!.Value)
+            .ToHashSet();
+
+        var promocoesRemovidas = plano.Promocoes
+            .Where(p => !idsSolicitados.Contains(p.Id))
+            .ToList();
+
+        foreach (var promocao in promocoesRemovidas)
+            plano.Promocoes.Remove(promocao);
+
+        foreach (var request in promocoesSolicitadas)
+        {
+            var promocao = request.Id.HasValue
+                ? plano.Promocoes.FirstOrDefault(p => p.Id == request.Id.Value)
+                : null;
+
+            if (promocao is null)
+            {
+                plano.Promocoes.Add(MapearPromocaoRequest(request));
+                continue;
+            }
+
+            promocao.Nome = request.Nome;
+            promocao.Descricao = request.Descricao;
+            promocao.BadgeTexto = request.BadgeTexto;
+            promocao.TipoPromocao = request.TipoPromocao;
+            promocao.ValorPromocional = request.ValorPromocional;
+            promocao.StripeCouponId = request.StripeCouponId;
+            promocao.StripePromotionCode = request.StripePromotionCode;
+            promocao.InicioEm = request.InicioEm;
+            promocao.FimEm = request.FimEm;
+            promocao.Ativa = request.Ativa;
+            promocao.Ordem = request.Ordem;
+            promocao.AtualizadoEm = DateTime.UtcNow;
+        }
+    }
+
+    private static string NormalizarTextoOuPadrao(string? valor, string padrao)
+        => string.IsNullOrWhiteSpace(valor) ? padrao : valor.Trim().ToLowerInvariant();
 
     private static string ObterNomeRecurso(Recurso recurso) => recurso switch
     {

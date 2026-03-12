@@ -54,23 +54,44 @@ public class AssinaturaService : IAssinaturaService
 
         return planosDb
             .OrderBy(p => p.Ordem)
-            .Select(p => new PlanoInfo(
-                Id: p.Tipo.ToString().ToLowerInvariant(),
-                Nome: p.Nome,
-                Descricao: p.Descricao,
-                Preco: p.PrecoMensal,
-                Tipo: p.Tipo,
-                MaxMembros: p.Tipo == TipoPlano.Familia ? 2 : 1,
-                TrialDisponivel: p.TrialDisponivel,
-                DiasGratis: p.DiasGratis,
-                Recursos: p.Recursos
-                    .OrderBy(r => r.Recurso)
-                    .Where(r => r.Limite != 0)
-                    .Select(r => r.DescricaoLimite ?? r.Recurso.ToString())
-                    .ToList(),
-                Destaque: p.Destaque,
-                PodeFazerCheckout: p.Tipo != TipoPlano.Gratuito
-            ))
+            .Select(p =>
+            {
+                var promocaoAtiva = p.ObterPromocaoAtiva();
+                var precoAtual = promocaoAtiva?.CalcularPrecoPromocional(p.PrecoMensal) ?? p.PrecoMensal;
+
+                return new PlanoInfo(
+                    Id: p.Tipo.ToString().ToLowerInvariant(),
+                    Nome: p.Nome,
+                    Descricao: p.Descricao,
+                    Preco: precoAtual,
+                    PrecoBase: p.PrecoMensal,
+                    Tipo: p.Tipo,
+                    MaxMembros: p.Tipo == TipoPlano.Familia ? 2 : 1,
+                    TrialDisponivel: p.TrialDisponivel,
+                    DiasGratis: p.DiasGratis,
+                    Recursos: p.Recursos
+                        .OrderBy(r => r.Recurso)
+                        .Where(r => r.Limite != 0)
+                        .Select(r => r.DescricaoLimite ?? r.Recurso.ToString())
+                        .ToList(),
+                    Destaque: p.Destaque,
+                    PodeFazerCheckout: p.Tipo != TipoPlano.Gratuito,
+                    PromocaoAtiva: promocaoAtiva is not null
+                        ? new PromocaoPlanoResumoDto
+                        {
+                            Nome = promocaoAtiva.Nome,
+                            Descricao = promocaoAtiva.Descricao,
+                            BadgeTexto = promocaoAtiva.BadgeTexto,
+                            TipoPromocao = promocaoAtiva.TipoPromocao,
+                            ValorPromocional = promocaoAtiva.ValorPromocional,
+                            PrecoPromocional = precoAtual,
+                            DescontoCalculado = promocaoAtiva.CalcularDesconto(p.PrecoMensal),
+                            InicioEm = promocaoAtiva.InicioEm,
+                            FimEm = promocaoAtiva.FimEm
+                        }
+                        : null
+                );
+            })
             .ToList();
     }
 
@@ -360,9 +381,10 @@ public class AssinaturaService : IAssinaturaService
                 trialDays = planoConfig.DiasGratis;
         }
 
+        var promocaoAtiva = planoConfig.ObterPromocaoAtiva();
+
         // Criar sessão de checkout
-        var sessionService = new SessionService();
-        var session = await sessionService.CreateAsync(new SessionCreateOptions
+        var sessionOptions = new SessionCreateOptions
         {
             Customer = customerId,
             PaymentMethodTypes = new List<string> { "card" },
@@ -391,7 +413,28 @@ public class AssinaturaService : IAssinaturaService
                 ["usuario_id"] = usuarioId.ToString(),
                 ["plano"] = plano.ToString()
             }
-        });
+        };
+
+        if (promocaoAtiva is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(promocaoAtiva.StripePromotionCode))
+            {
+                sessionOptions.Discounts = [new SessionDiscountOptions { PromotionCode = promocaoAtiva.StripePromotionCode }];
+                sessionOptions.Metadata["promocao"] = promocaoAtiva.Nome;
+            }
+            else if (!string.IsNullOrWhiteSpace(promocaoAtiva.StripeCouponId))
+            {
+                sessionOptions.Discounts = [new SessionDiscountOptions { Coupon = promocaoAtiva.StripeCouponId }];
+                sessionOptions.Metadata["promocao"] = promocaoAtiva.Nome;
+            }
+            else
+            {
+                _logger.LogWarning("Promoção ativa {Promocao} no plano {Plano} sem Coupon/PromotionCode Stripe configurado.", promocaoAtiva.Nome, plano);
+            }
+        }
+
+        var sessionService = new SessionService();
+        var session = await sessionService.CreateAsync(sessionOptions);
 
         _logger.LogInformation("Checkout Stripe criado para usuário {Id}, plano {Plano}, session {Session}.",
             usuarioId, plano, session.Id);

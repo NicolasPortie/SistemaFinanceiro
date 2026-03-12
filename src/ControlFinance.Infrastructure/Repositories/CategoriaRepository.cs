@@ -72,9 +72,10 @@ public class CategoriaRepository : ICategoriaRepository
     {
         var categoriasPadrao = new[]
         {
-            "Alimentação", "Transporte", "Moradia", "Saúde", "Lazer",
-            "Educação", "Vestuário", "Assinaturas", "Salário",
-            "Renda Extra", "Reembolso", "Outros"
+            "Alimentação", "Mercado", "Transporte", "Moradia", "Casa",
+            "Saúde", "Farmácia", "Lazer", "Educação", "Vestuário",
+            "Compras Online", "Assinaturas", "Beleza", "Pets", "Trabalho",
+            "Viagens", "Tarifas", "Salário", "Renda Extra", "Reembolso", "Outros"
         };
 
         foreach (var nome in categoriasPadrao)

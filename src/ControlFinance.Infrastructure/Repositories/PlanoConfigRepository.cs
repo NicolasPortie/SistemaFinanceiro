@@ -15,10 +15,20 @@ public class PlanoConfigRepository : IPlanoConfigRepository
         _context = context;
     }
 
+    public async Task<List<PlanoConfig>> ObterTodosAsync()
+    {
+        return await _context.PlanosConfig
+            .Include(p => p.Recursos)
+            .Include(p => p.Promocoes)
+            .OrderBy(p => p.Ordem)
+            .ToListAsync();
+    }
+
     public async Task<List<PlanoConfig>> ObterTodosAtivosAsync()
     {
         return await _context.PlanosConfig
             .Include(p => p.Recursos)
+            .Include(p => p.Promocoes)
             .Where(p => p.Ativo)
             .OrderBy(p => p.Ordem)
             .ToListAsync();
@@ -28,6 +38,7 @@ public class PlanoConfigRepository : IPlanoConfigRepository
     {
         return await _context.PlanosConfig
             .Include(p => p.Recursos)
+            .Include(p => p.Promocoes)
             .FirstOrDefaultAsync(p => p.Tipo == tipo);
     }
 
@@ -35,6 +46,7 @@ public class PlanoConfigRepository : IPlanoConfigRepository
     {
         return await _context.PlanosConfig
             .Include(p => p.Recursos)
+            .Include(p => p.Promocoes)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 
@@ -42,7 +54,8 @@ public class PlanoConfigRepository : IPlanoConfigRepository
     {
         return await _context.PlanosConfig
             .Include(p => p.Recursos)
-            .FirstOrDefaultAsync(p => p.Tipo == tipo && p.Ativo);
+            .Include(p => p.Promocoes)
+            .FirstOrDefaultAsync(p => p.Tipo == tipo);
     }
 
     public async Task AtualizarAsync(PlanoConfig plano)

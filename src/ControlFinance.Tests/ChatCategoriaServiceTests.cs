@@ -11,6 +11,7 @@ public class ChatCategoriaServiceTests
 {
     private readonly Mock<ICategoriaRepository> _categoriaRepoMock = new();
     private readonly Mock<ILancamentoRepository> _lancamentoRepoMock = new();
+    private readonly Mock<IMapeamentoCategorizacaoRepository> _mapeamentoRepoMock = new();
     private readonly Mock<IPerfilFinanceiroService> _perfilServiceMock = new();
     private readonly Mock<ILogger<ChatCategoriaService>> _loggerMock = new();
 
@@ -81,12 +82,17 @@ public class ChatCategoriaServiceTests
 
         Assert.Contains("Transporte", resposta);
         _lancamentoRepoMock.Verify(r => r.AtualizarAsync(It.Is<Lancamento>(l => l.Id == 11 && l.CategoriaId == 3)), Times.Once);
+        _mapeamentoRepoMock.Verify(r => r.CriarAsync(It.Is<MapeamentoCategorizacao>(m =>
+            m.UsuarioId == usuario.Id &&
+            m.CategoriaId == 3 &&
+            m.DescricaoNormalizada == "UBER")), Times.Once);
         _perfilServiceMock.Verify(s => s.InvalidarAsync(usuario.Id), Times.Once);
     }
 
     private IChatCategoriaService CreateService() => new ChatCategoriaService(
         _categoriaRepoMock.Object,
         _lancamentoRepoMock.Object,
+        _mapeamentoRepoMock.Object,
         _perfilServiceMock.Object,
         _loggerMock.Object);
 }

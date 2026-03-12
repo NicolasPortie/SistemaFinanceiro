@@ -50,6 +50,7 @@ public class AppDbContext : DbContext
     public DbSet<Assinatura> Assinaturas => Set<Assinatura>();
     public DbSet<PlanoConfig> PlanosConfig => Set<PlanoConfig>();
     public DbSet<RecursoPlano> RecursosPlano => Set<RecursoPlano>();
+    public DbSet<PromocaoPlano> PromocoesPlano => Set<PromocaoPlano>();
 
     // ── Família ──
     public DbSet<Familia> Familias => Set<Familia>();
@@ -911,6 +912,10 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Ordem).HasColumnName("ordem").HasDefaultValue(0);
             entity.Property(e => e.Destaque).HasColumnName("destaque").HasDefaultValue(false);
             entity.Property(e => e.StripePriceId).HasColumnName("stripe_price_id").HasMaxLength(200).IsRequired(false);
+            entity.Property(e => e.StripeProductId).HasColumnName("stripe_product_id").HasMaxLength(200).IsRequired(false);
+            entity.Property(e => e.StripeLookupKey).HasColumnName("stripe_lookup_key").HasMaxLength(200).IsRequired(false);
+            entity.Property(e => e.StripeCurrency).HasColumnName("stripe_currency").HasMaxLength(10).HasDefaultValue("brl");
+            entity.Property(e => e.StripeInterval).HasColumnName("stripe_interval").HasMaxLength(20).HasDefaultValue("month");
             entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
             entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em").IsRequired(false);
 
@@ -930,6 +935,31 @@ public class AppDbContext : DbContext
 
             entity.HasOne(e => e.PlanoConfig).WithMany(p => p.Recursos).HasForeignKey(e => e.PlanoConfigId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => new { e.PlanoConfigId, e.Recurso }).IsUnique();
+        });
+
+        // ── PromocaoPlano ──
+        modelBuilder.Entity<PromocaoPlano>(entity =>
+        {
+            entity.ToTable("promocoes_plano");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.PlanoConfigId).HasColumnName("plano_config_id");
+            entity.Property(e => e.Nome).HasColumnName("nome").HasMaxLength(120);
+            entity.Property(e => e.Descricao).HasColumnName("descricao").HasMaxLength(500).IsRequired(false);
+            entity.Property(e => e.BadgeTexto).HasColumnName("badge_texto").HasMaxLength(80).IsRequired(false);
+            entity.Property(e => e.TipoPromocao).HasColumnName("tipo_promocao");
+            entity.Property(e => e.ValorPromocional).HasColumnName("valor_promocional").HasColumnType("numeric(18,2)");
+            entity.Property(e => e.StripeCouponId).HasColumnName("stripe_coupon_id").HasMaxLength(200).IsRequired(false);
+            entity.Property(e => e.StripePromotionCode).HasColumnName("stripe_promotion_code").HasMaxLength(200).IsRequired(false);
+            entity.Property(e => e.InicioEm).HasColumnName("inicio_em").IsRequired(false);
+            entity.Property(e => e.FimEm).HasColumnName("fim_em").IsRequired(false);
+            entity.Property(e => e.Ativa).HasColumnName("ativa").HasDefaultValue(true);
+            entity.Property(e => e.Ordem).HasColumnName("ordem").HasDefaultValue(0);
+            entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
+            entity.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em").IsRequired(false);
+
+            entity.HasOne(e => e.PlanoConfig).WithMany(p => p.Promocoes).HasForeignKey(e => e.PlanoConfigId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.PlanoConfigId, e.Ordem });
         });
 
         // ── Familia ──

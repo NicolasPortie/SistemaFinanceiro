@@ -1,5 +1,6 @@
 using System.Globalization;
 using ControlFinance.Application.Interfaces;
+using ControlFinance.Application.Services.Importacao;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -10,17 +11,20 @@ public class ChatCategoriaService : IChatCategoriaService
 {
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ILancamentoRepository _lancamentoRepo;
+    private readonly IMapeamentoCategorizacaoRepository _mapeamentoRepo;
     private readonly IPerfilFinanceiroService _perfilService;
     private readonly ILogger<ChatCategoriaService> _logger;
 
     public ChatCategoriaService(
         ICategoriaRepository categoriaRepo,
         ILancamentoRepository lancamentoRepo,
+        IMapeamentoCategorizacaoRepository mapeamentoRepo,
         IPerfilFinanceiroService perfilService,
         ILogger<ChatCategoriaService> logger)
     {
         _categoriaRepo = categoriaRepo;
         _lancamentoRepo = lancamentoRepo;
+        _mapeamentoRepo = mapeamentoRepo;
         _perfilService = perfilService;
         _logger = logger;
     }
@@ -86,6 +90,7 @@ public class ChatCategoriaService : IChatCategoriaService
 
             ultimo.CategoriaId = categoria.Id;
             await _lancamentoRepo.AtualizarAsync(ultimo);
+            await SalvarAprendizadoAsync(usuario.Id, ultimo.Descricao, categoria.Id);
             await _perfilService.InvalidarAsync(usuario.Id);
 
             return $"✅ Categoria alterada para **{categoria.Nome}**\n\n{ultimo.Descricao}\nR$ {ultimo.Valor:N2}";
@@ -95,5 +100,31 @@ public class ChatCategoriaService : IChatCategoriaService
             _logger.LogError(ex, "Erro ao categorizar ultimo lancamento via chat");
             return "❌ Erro ao atualizar categoria.";
         }
+    }
+
+    private async Task SalvarAprendizadoAsync(int usuarioId, string descricao, int categoriaId)
+    {
+        if (string.IsNullOrWhiteSpace(descricao))
+            return;
+
+        var descricaoNormalizada = NormalizacaoService.NormalizarDescricao(descricao);
+        var existente = await _mapeamentoRepo.ObterPorDescricaoAsync(usuarioId, descricaoNormalizada);
+
+        if (existente != null)
+        {
+            existente.CategoriaId = categoriaId;
+            existente.Contagem++;
+            existente.AtualizadoEm = DateTime.UtcNow;
+            await _mapeamentoRepo.AtualizarAsync(existente);
+            return;
+        }
+
+        await _mapeamentoRepo.CriarAsync(new MapeamentoCategorizacao
+        {
+            UsuarioId = usuarioId,
+            DescricaoNormalizada = descricaoNormalizada,
+            CategoriaId = categoriaId,
+            Contagem = 1
+        });
     }
 }

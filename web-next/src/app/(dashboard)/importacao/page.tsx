@@ -33,7 +33,6 @@ export default function ImportacaoPage() {
     cartaoCreditoId?: number;
     banco?: string;
     forcarReimportacao?: boolean;
-    mesFaturaReferencia?: string;
   }) => {
     uploadMutation.mutate(params, {
       onSuccess: (data) => {

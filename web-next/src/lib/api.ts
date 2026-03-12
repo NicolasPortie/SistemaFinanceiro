@@ -58,13 +58,27 @@ export interface AuthResponse {
 // ── Assinatura / Stripe ────────────────────────────────────
 
 export type TipoPlano = "Gratuito" | "Individual" | "Familia";
+export type TipoPromocaoPlano = "Percentual" | "ValorFixo" | "PrecoFixo";
 export type StatusAssinatura = "Trial" | "Ativa" | "Cancelada" | "Expirada" | "Inadimplente";
+
+export interface PromocaoPlanoResumoDto {
+  nome: string;
+  descricao: string | null;
+  badgeTexto: string | null;
+  tipoPromocao: TipoPromocaoPlano;
+  valorPromocional: number;
+  precoPromocional: number;
+  descontoCalculado: number;
+  inicioEm: string | null;
+  fimEm: string | null;
+}
 
 export interface PlanoInfo {
   id: string;
   nome: string;
   descricao: string;
   preco: number;
+  precoBase: number;
   tipo: TipoPlano;
   maxMembros: number;
   trialDisponivel: boolean;
@@ -72,6 +86,7 @@ export interface PlanoInfo {
   recursos: string[];
   destaque: boolean;
   podeFazerCheckout: boolean;
+  promocaoAtiva: PromocaoPlanoResumoDto | null;
 }
 
 export interface AssinaturaResponse {
@@ -958,8 +973,7 @@ export const api = {
       contaBancariaId?: number,
       cartaoCreditoId?: number,
       banco?: string,
-      forcarReimportacao?: boolean,
-      mesFaturaReferencia?: string
+      forcarReimportacao?: boolean
     ): Promise<ImportacaoPreview> => {
       const formData = new FormData();
       formData.append("arquivo", arquivo);
@@ -968,7 +982,6 @@ export const api = {
       if (cartaoCreditoId) formData.append("CartaoCreditoId", String(cartaoCreditoId));
       if (banco) formData.append("Banco", banco);
       if (forcarReimportacao) formData.append("ForcarReimportacao", "true");
-      if (mesFaturaReferencia) formData.append("MesFaturaReferencia", mesFaturaReferencia);
 
       // File upload needs FormData — bypass the JSON request() helper
       const csrfToken = await obterCsrfToken();
@@ -1440,9 +1453,31 @@ export interface PlanoConfigDto {
   ordem: number;
   destaque: boolean;
   stripePriceId: string | null;
+  stripeProductId: string | null;
+  stripeLookupKey: string | null;
+  stripeCurrency: string;
+  stripeInterval: string;
   criadoEm: string;
   atualizadoEm: string;
   recursos: RecursoPlanoDto[];
+  promocoes: PromocaoPlanoDto[];
+}
+
+export interface PromocaoPlanoDto {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  badgeTexto: string | null;
+  tipoPromocao: TipoPromocaoPlano;
+  valorPromocional: number;
+  precoPromocionalCalculado: number;
+  descontoCalculado: number;
+  stripeCouponId: string | null;
+  stripePromotionCode: string | null;
+  inicioEm: string | null;
+  fimEm: string | null;
+  ativa: boolean;
+  ordem: number;
 }
 
 export interface AtualizarPlanoRequest {
@@ -1456,6 +1491,11 @@ export interface AtualizarPlanoRequest {
   ordem: number;
   destaque: boolean;
   stripePriceId: string | null;
+  stripeProductId: string | null;
+  stripeLookupKey: string | null;
+  stripeCurrency: string;
+  stripeInterval: string;
+  promocoes: PromocaoPlanoRequest[];
 }
 
 export interface CriarPlanoRequest {
@@ -1469,6 +1509,26 @@ export interface CriarPlanoRequest {
   ordem: number;
   destaque: boolean;
   stripePriceId: string | null;
+  stripeProductId: string | null;
+  stripeLookupKey: string | null;
+  stripeCurrency: string;
+  stripeInterval: string;
+  promocoes: PromocaoPlanoRequest[];
+}
+
+export interface PromocaoPlanoRequest {
+  id?: number;
+  nome: string;
+  descricao: string | null;
+  badgeTexto: string | null;
+  tipoPromocao: TipoPromocaoPlano;
+  valorPromocional: number;
+  stripeCouponId: string | null;
+  stripePromotionCode: string | null;
+  inicioEm: string | null;
+  fimEm: string | null;
+  ativa: boolean;
+  ordem: number;
 }
 
 export interface AtualizarRecursoRequest {
@@ -1487,8 +1547,12 @@ export interface ComparacaoPlanoDto {
   nome: string;
   descricao: string;
   precoMensal: number;
+  precoBaseMensal: number;
   destaque: boolean;
   ordem: number;
+  trialDisponivel: boolean;
+  diasGratis: number;
+  promocaoAtiva: PromocaoPlanoResumoDto | null;
   recursos: Record<string, { limite: number; descricaoLimite: string | null }>;
 }
 

@@ -40,9 +40,33 @@ public class PlanoConfig
     /// <summary>Stripe Price ID (vazio para gratuito).</summary>
     public string? StripePriceId { get; set; }
 
+    /// <summary>Stripe Product ID do plano.</summary>
+    public string? StripeProductId { get; set; }
+
+    /// <summary>Lookup key do Stripe Price.</summary>
+    public string? StripeLookupKey { get; set; }
+
+    /// <summary>Moeda do Stripe para o plano.</summary>
+    public string StripeCurrency { get; set; } = "brl";
+
+    /// <summary>Intervalo de cobrança no Stripe (month, year, etc).</summary>
+    public string StripeInterval { get; set; } = "month";
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime? AtualizadoEm { get; set; }
 
     // Navegação
     public ICollection<RecursoPlano> Recursos { get; set; } = new List<RecursoPlano>();
+    public ICollection<PromocaoPlano> Promocoes { get; set; } = new List<PromocaoPlano>();
+
+    public PromocaoPlano? ObterPromocaoAtiva(DateTime? agoraUtc = null)
+    {
+        var referencia = agoraUtc ?? DateTime.UtcNow;
+
+        return Promocoes
+            .Where(promocao => promocao.EstaAtivaEm(referencia))
+            .OrderBy(promocao => promocao.Ordem)
+            .ThenBy(promocao => promocao.Id)
+            .FirstOrDefault();
+    }
 }

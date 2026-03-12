@@ -73,6 +73,19 @@ web-next/dev.out.log
 ## Local env files
 .env*.local
 
+## Local dotnet caches
+.dotnet/
+.dotnet-cli/.dotnet/
+*.dotnetUserLevelCache
+
+## Local runtime logs
+api-run.log
+route-build.log
+web-next-*.log
+
+## Local scratch notes
+OpenL-*.md
+
 nul
 tmpclaude-*
 

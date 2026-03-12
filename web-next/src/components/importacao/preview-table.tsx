@@ -15,11 +15,10 @@ import {
   Loader2,
   Pencil,
   X,
+  Filter,
   Eye,
   EyeOff,
-  Filter,
   Tag,
-  CalendarRange,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -132,36 +131,12 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
 
   // Show/hide duplicates toggle
   const [showDuplicatas, setShowDuplicatas] = useState(true);
-  const [showOnlyForaDaFaturaPadrao, setShowOnlyForaDaFaturaPadrao] = useState(false);
-
-  const addMonthsToKey = (key: string, delta: number) => {
-    const [year, month] = key.split("-").map(Number);
-    const date = new Date(Date.UTC(year, month - 1 + delta, 1));
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-  };
 
   const formatInvoiceMonthKey = (key?: string | null) => {
     if (!key) return "—";
     const [year, month] = key.split("-");
     return formatMonth(`${month}/${year}`);
   };
-
-  const mesFaturaOptions = useMemo(() => {
-    if (!isFaturaImport) return [] as string[];
-
-    const base =
-      preview.mesFaturaPadrao ?? preview.mesesDetectados[0] ?? new Date().toISOString().slice(0, 7);
-    const values = new Set<string>([
-      addMonthsToKey(base, -2),
-      addMonthsToKey(base, -1),
-      base,
-      addMonthsToKey(base, 1),
-      addMonthsToKey(base, 2),
-      ...preview.mesesDetectados,
-    ]);
-
-    return Array.from(values).sort();
-  }, [isFaturaImport, preview.mesFaturaPadrao, preview.mesesDetectados]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -187,10 +162,9 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
             ? (categoriasLista.find((c) => c.id === (override?.categoriaId ?? t.categoriaId))
                 ?.nome ?? t.categoriaSugerida)
             : t.categoriaSugerida,
-        mesFaturaReferencia: override?.mesFaturaReferencia ?? preview.mesFaturaPadrao ?? null,
       };
     },
-    [overrides, categoriasLista, preview.mesFaturaPadrao]
+    [overrides, categoriasLista]
   );
 
   // Sort, filter and group by month
@@ -202,12 +176,6 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
       items = items.filter((t) => t.status === statusFilter);
     } else if (!showDuplicatas) {
       items = items.filter((t) => t.status !== "Duplicata");
-    }
-
-    if (isFaturaImport && showOnlyForaDaFaturaPadrao && preview.mesFaturaPadrao) {
-      items = items.filter(
-        (t) => t.mesFaturaReferencia && t.mesFaturaReferencia !== preview.mesFaturaPadrao
-      );
     }
 
     items.sort((a, b) => {
@@ -234,9 +202,6 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
     getDisplayTransaction,
     statusFilter,
     showDuplicatas,
-    isFaturaImport,
-    showOnlyForaDaFaturaPadrao,
-    preview.mesFaturaPadrao,
   ]);
 
   // Group by month
@@ -305,7 +270,6 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
       descricao: override?.descricao ?? t.descricao,
       valor: override?.valor ?? t.valor,
       categoriaId: override?.categoriaId ?? t.categoriaId ?? undefined,
-      mesFaturaReferencia: override?.mesFaturaReferencia ?? preview.mesFaturaPadrao ?? undefined,
     });
   };
 
@@ -323,13 +287,6 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
     if (editForm.categoriaId && editForm.categoriaId !== original.categoriaId) {
       ov.categoriaId = editForm.categoriaId;
       ov.categoria = categoriasLista.find((c) => c.id === editForm.categoriaId)?.nome;
-    }
-    if (
-      isFaturaImport &&
-      editForm.mesFaturaReferencia &&
-      editForm.mesFaturaReferencia !== preview.mesFaturaPadrao
-    ) {
-      ov.mesFaturaReferencia = editForm.mesFaturaReferencia;
     }
 
     // Only save if there are actual changes
@@ -354,13 +311,6 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
   ).length;
   const allSelected = selected.size === selectableCount && selectableCount > 0;
   const allDuplicatas = totalDuplicatas === preview.totalTransacoes && totalDuplicatas > 0;
-  const totalForaDaFaturaPadrao = useMemo(() => {
-    if (!isFaturaImport || !preview.mesFaturaPadrao) return 0;
-    return preview.transacoes
-      .map(getDisplayTransaction)
-      .filter((t) => t.mesFaturaReferencia && t.mesFaturaReferencia !== preview.mesFaturaPadrao)
-      .length;
-  }, [isFaturaImport, preview.mesFaturaPadrao, preview.transacoes, getDisplayTransaction]);
 
   // Filter avisos that duplicate the "already imported" info
   const filteredAvisos = useMemo(() => {
@@ -426,8 +376,8 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
                 })()}
               {preview.cartaoDiaFechamento && (
                 <p className="text-[11px] text-violet-700/80 dark:text-violet-300/80 mt-2 leading-relaxed">
-                  Fechamento no dia <strong>{preview.cartaoDiaFechamento}</strong>. Se necessário,
-                  ajuste a <strong>Fatura destino</strong> no lápis.
+                  Fechamento no dia <strong>{preview.cartaoDiaFechamento}</strong>. O sistema usa
+                  esse dia para decidir automaticamente em qual fatura cada compra entra.
                 </p>
               )}
             </div>
@@ -441,21 +391,6 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
           transition={{ delay: 0.05 }}
           className="flex flex-wrap items-center gap-2"
         >
-          {isFaturaImport && preview.mesFaturaPadrao && totalForaDaFaturaPadrao > 0 && (
-            <button
-              onClick={() => setShowOnlyForaDaFaturaPadrao((current) => !current)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all opacity-80 hover:opacity-100",
-                showOnlyForaDaFaturaPadrao
-                  ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              <CalendarRange className="h-3 w-3" />
-              <span>{totalForaDaFaturaPadrao} fora da fatura</span>
-            </button>
-          )}
-
           <button
             onClick={() => setStatusFilter(statusFilter === "Normal" ? "all" : "Normal")}
             className={cn(
@@ -506,14 +441,13 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
             </div>
           )}
 
-          {(statusFilter !== "all" || showOnlyForaDaFaturaPadrao) && (
+          {statusFilter !== "all" && (
             <Button
               variant="ghost"
               size="sm"
               className="h-7 text-xs gap-1 opacity-70 hover:opacity-100 rounded-full"
               onClick={() => {
                 setStatusFilter("all");
-                setShowOnlyForaDaFaturaPadrao(false);
               }}
             >
               <X className="h-3 w-3" />
@@ -651,13 +585,7 @@ export function PreviewTable({ preview, onConfirm, onCancel, isConfirming }: Pre
                             hasOverride={overrides.has(t.indiceOriginal)}
                             isFaturaImport={isFaturaImport}
                             mesFaturaPadrao={preview.mesFaturaPadrao}
-                            mesFaturaOptions={mesFaturaOptions}
-                            mesFaturaAtual={
-                              (t as TransacaoImportada & { mesFaturaReferencia?: string | null })
-                                .mesFaturaReferencia ??
-                              preview.mesFaturaPadrao ??
-                              null
-                            }
+                            mesFaturaAtual={preview.mesFaturaPadrao ?? null}
                             formatInvoiceMonthKey={formatInvoiceMonthKey}
                           />
                         ))}
@@ -850,7 +778,6 @@ function TransactionRow({
   hasOverride,
   isFaturaImport,
   mesFaturaPadrao,
-  mesFaturaOptions,
   mesFaturaAtual,
   formatInvoiceMonthKey,
 }: {
@@ -867,7 +794,6 @@ function TransactionRow({
   hasOverride: boolean;
   isFaturaImport: boolean;
   mesFaturaPadrao: string | null;
-  mesFaturaOptions: string[];
   mesFaturaAtual: string | null;
   formatInvoiceMonthKey: (key?: string | null) => string;
 }) {
@@ -1018,34 +944,9 @@ function TransactionRow({
 
       {isFaturaImport && (
         <td className="px-4 py-4 align-middle">
-          {isEditing ? (
-            <Select
-              value={editForm.mesFaturaReferencia ?? mesFaturaPadrao ?? ""}
-              onValueChange={(v) => setEditForm((f) => ({ ...f, mesFaturaReferencia: v }))}
-            >
-              <SelectTrigger className="h-8 w-36 text-xs">
-                <SelectValue placeholder="Fatura" />
-              </SelectTrigger>
-              <SelectContent>
-                {mesFaturaOptions.map((mes) => (
-                  <SelectItem key={mes} value={mes}>
-                    {formatInvoiceMonthKey(mes)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <span
-              className={cn(
-                "inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium",
-                mesFaturaAtual !== mesFaturaPadrao
-                  ? "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-300"
-                  : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
-              )}
-            >
-              {formatInvoiceMonthKey(mesFaturaAtual)}
-            </span>
-          )}
+          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
+            {formatInvoiceMonthKey(mesFaturaAtual ?? mesFaturaPadrao)}
+          </span>
         </td>
       )}
 

@@ -1,5 +1,6 @@
 using ControlFinance.Application.DTOs.Importacao;
 using ControlFinance.Application.Interfaces;
+using ControlFinance.Application.Services;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
 using ControlFinance.Domain.Interfaces;
@@ -39,6 +40,13 @@ public class CategorizadorImportacaoService : ICategorizadorImportacaoService
         var mapeamentos = await _mapeamentoRepo.ObterPorUsuarioAsync(usuarioId);
         var categorias = await _categoriaRepo.ObterPorUsuarioAsync(usuarioId);
         var categoriasDict = categorias.ToDictionary(c => c.Id, c => c.Nome);
+        var aprendizados = mapeamentos
+            .Select(m => new CategorizacaoHelper.CategoriaAprendida(
+                m.DescricaoNormalizada,
+                categoriasDict.GetValueOrDefault(m.CategoriaId, string.Empty),
+                m.Contagem))
+            .Where(a => !string.IsNullOrWhiteSpace(a.Categoria))
+            .ToList();
 
         var resultado = new List<TransacaoImportadaDto>();
 
@@ -87,19 +95,22 @@ public class CategorizadorImportacaoService : ICategorizadorImportacaoService
             }
             else
             {
-                // 2) Aprendizado local (mapeamentos anteriores)
-                var mapeamento = mapeamentos.FirstOrDefault(m =>
-                    m.DescricaoNormalizada.Equals(t.Descricao, StringComparison.OrdinalIgnoreCase));
-
-                if (mapeamento != null)
+                // 2) Aprendizado local do usuario, incluindo aproximacao por estabelecimento
+                var sugestaoAprendida = CategorizacaoHelper.SugerirCategoriaPorAprendizado(t.Descricao, categorias, aprendizados);
+                if (!string.IsNullOrWhiteSpace(sugestaoAprendida))
                 {
-                    dto.CategoriaId = mapeamento.CategoriaId;
-                    dto.CategoriaSugerida = categoriasDict.GetValueOrDefault(mapeamento.CategoriaId, "");
+                    var categoriaAprendida = categorias.FirstOrDefault(c =>
+                        c.Nome.Equals(sugestaoAprendida, StringComparison.OrdinalIgnoreCase));
+                    if (categoriaAprendida != null)
+                    {
+                        dto.CategoriaId = categoriaAprendida.Id;
+                        dto.CategoriaSugerida = categoriaAprendida.Nome;
+                    }
                 }
                 else
                 {
                     // 2.5) Sugestão por keywords padrão (McDonald's → Alimentação, Uber → Transporte, etc.)
-                    var sugestaoKeyword = SugerirCategoriaPorKeywords(t.Descricao.ToLowerInvariant(), categorias);
+                    var sugestaoKeyword = SugerirCategoriaPorKeywords(t.Descricao, categorias);
                     if (sugestaoKeyword != null)
                     {
                         var catMatch = categorias.FirstOrDefault(c =>
@@ -205,7 +216,7 @@ public class CategorizadorImportacaoService : ICategorizadorImportacaoService
     /// </summary>
     private static string? SugerirCategoriaPorKeywords(string descLower, List<Categoria> categorias)
     {
-        return Handlers.LancamentoFlowHandler.SugerirCategoriaPorKeywords(descLower, categorias);
+        return CategorizacaoHelper.SugerirCategoriaPorKeywords(descLower, categorias);
     }
 
     /// <summary>
@@ -218,6 +229,10 @@ public class CategorizadorImportacaoService : ICategorizadorImportacaoService
     {
         var categoriasNomes = categoriasDict.Values.Distinct().OrderBy(c => c).ToList();
         if (categoriasNomes.Count == 0) return;
+        var categoriasLista = categoriasDict
+            .Select(kv => new Categoria { Id = kv.Key, Nome = kv.Value })
+            .ToList();
+        var guiaCategorias = CategorizacaoHelper.MontarGuiaCategoriasParaIa(categoriasLista);
 
         // Inverter dict: nome → id
         var nomeParaId = categoriasDict
@@ -243,6 +258,7 @@ public class CategorizadorImportacaoService : ICategorizadorImportacaoService
                     Classifique cada descrição de transação bancária em UMA das categorias disponíveis.
                     
                     CATEGORIAS DISPONÍVEIS: {{string.Join(", ", categoriasNomes)}}
+                    {{(string.IsNullOrWhiteSpace(guiaCategorias) ? string.Empty : $"\nGUIA DE CATEGORIAS:\n{guiaCategorias}\n")}}
                     
                     TRANSAÇÕES:
                     {{string.Join("\n", descricoesMap.Select(d => $"{d.Idx}. {d.Descricao}"))}}

@@ -32,6 +32,8 @@ public partial class PdfFileParser : IFileParser
 
     public FormatoArquivo Formato => FormatoArquivo.PDF;
 
+    private sealed record ContextoDataPdf(int AnoFallback, DateTime? ReferenciaFatura);
+
     public bool PodeProcessar(string nomeArquivo, Stream arquivo)
     {
         return nomeArquivo.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
@@ -256,6 +258,7 @@ public partial class PdfFileParser : IFileParser
 
         // Detectar o ano predominante no texto (para datas sem ano)
         var anoDetectado = DetectarAnoExtrato(texto);
+        var contextoData = new ContextoDataPdf(anoDetectado, DetectarReferenciaFatura(texto, anoDetectado));
 
         // 0) Pré-processar: separar linhas com layout multi-coluna (faturas lado a lado)
         var linhas = SepararLinhasMultiColuna(linhasOriginais);
@@ -269,7 +272,7 @@ public partial class PdfFileParser : IFileParser
             var l = linha.Trim();
             if (string.IsNullOrWhiteSpace(l) || l.Length < 8) continue;
 
-            var transacao = TentarExtrairTransacao(l, ref indice, anoDetectado);
+            var transacao = TentarExtrairTransacao(l, ref indice, contextoData);
             if (transacao != null)
                 transacoes.Add(transacao);
         }
@@ -282,7 +285,7 @@ public partial class PdfFileParser : IFileParser
 
         // 2) Tentar formato tabular com hora (PicPay, bancos digitais)
         _logger.LogInformation("Tentando extração tabular com hora (formato PicPay/similar)");
-        transacoes = ExtrairFormatoTabelarComHora(linhas, anoDetectado);
+        transacoes = ExtrairFormatoTabelarComHora(linhas, contextoData);
         if (transacoes.Count > 0)
         {
             _logger.LogInformation("Formato tabular com hora extraiu {Count} transações", transacoes.Count);
@@ -291,7 +294,7 @@ public partial class PdfFileParser : IFileParser
 
         // 3) Se não encontrou nada, tentar extração multi-linha genérica
         _logger.LogInformation("Tentando extração multi-linha genérica");
-        transacoes = ExtrairMultiLinha(linhas, anoDetectado, ref indice);
+        transacoes = ExtrairMultiLinha(linhas, contextoData, ref indice);
 
         _logger.LogInformation("Regex (multi-line) extraiu {Count} transações do PDF", transacoes.Count);
         return transacoes;
@@ -401,7 +404,7 @@ public partial class PdfFileParser : IFileParser
     /// Ou Nubank v2:
     ///   02 JAN Transferência enviada - Fulano R$ 150,00
     /// </summary>
-    private List<RawTransacaoImportada> ExtrairMultiLinha(string[] linhas, int anoFallback, ref int indice)
+    private List<RawTransacaoImportada> ExtrairMultiLinha(string[] linhas, ContextoDataPdf contextoData, ref int indice)
     {
         var transacoes = new List<RawTransacaoImportada>();
         string? dataAtual = null;
@@ -413,7 +416,7 @@ public partial class PdfFileParser : IFileParser
             if (string.IsNullOrWhiteSpace(l)) continue;
 
             // Tentar detectar data nesta linha
-            var dataDetectada = TentarExtrairData(l, anoFallback);
+            var dataDetectada = TentarExtrairData(l, contextoData);
 
             if (dataDetectada != null)
             {
@@ -422,7 +425,7 @@ public partial class PdfFileParser : IFileParser
                 descricaoBuffer.Clear();
 
                 // Verificar se há conteúdo após a data na mesma linha
-                var restoPosData = RemoverDataDoInicio(l, anoFallback);
+                var restoPosData = RemoverDataDoInicio(l, contextoData.AnoFallback);
                 if (!string.IsNullOrWhiteSpace(restoPosData))
                 {
                     // Verificar se o resto contém um valor (transação completa em 1 linha)
@@ -520,7 +523,7 @@ public partial class PdfFileParser : IFileParser
     ///   00:56 Compra realizada Com saldo -R$ 2,50
     ///   Birigui Bra              (← continuação do destino)
     /// </summary>
-    private List<RawTransacaoImportada> ExtrairFormatoTabelarComHora(string[] linhas, int anoFallback)
+    private List<RawTransacaoImportada> ExtrairFormatoTabelarComHora(string[] linhas, ContextoDataPdf contextoData)
     {
         var transacaoRegex = new Regex(
             @"^(?<hora>\d{1,2}:\d{2})\s+(?<desc>.+?)\s+(?<valor>[+\-]?\s*R\$\s*[\d.,]+)\s*$",
@@ -548,7 +551,7 @@ public partial class PdfFileParser : IFileParser
             var l = linhas[i].Trim();
             if (string.IsNullOrWhiteSpace(l)) { tipo[i] = OTHER; continue; }
 
-            if (TentarExtrairData(l, anoFallback) != null) { tipo[i] = DATE; continue; }
+            if (TentarExtrairData(l, contextoData) != null) { tipo[i] = DATE; continue; }
             if (transacaoRegex.IsMatch(l)) { tipo[i] = TXN; continue; }
 
             var upper = l.ToUpperInvariant();
@@ -597,7 +600,7 @@ public partial class PdfFileParser : IFileParser
         for (int i = 0; i < linhas.Length; i++)
         {
             if (tipo[i] == DATE)
-                currentDate = TentarExtrairData(linhas[i].Trim(), anoFallback);
+                currentDate = TentarExtrairData(linhas[i].Trim(), contextoData);
             else if (tipo[i] == TXN && currentDate != null)
                 txnDate[i] = currentDate;
         }
@@ -665,7 +668,7 @@ public partial class PdfFileParser : IFileParser
     /// Tenta detectar uma data em qualquer formato no início da linha.
     /// Retorna a data normalizada como string dd/MM/yyyy ou null.
     /// </summary>
-    private static string? TentarExtrairData(string linha, int anoFallback)
+    private static string? TentarExtrairData(string linha, ContextoDataPdf contextoData)
     {
         // Padrão 1: "02 de janeiro de 2026" ou "02 de janeiro 2026" ou "02 de janeiro"
         var matchExtenso = Regex.Match(linha,
@@ -675,10 +678,14 @@ public partial class PdfFileParser : IFileParser
         {
             var dia = matchExtenso.Groups[1].Value;
             var mesNome = matchExtenso.Groups[2].Value;
-            var ano = matchExtenso.Groups[3].Success ? matchExtenso.Groups[3].Value : anoFallback.ToString();
             var mesNum = MesExtensoParaNumero(mesNome);
             if (mesNum != null)
+            {
+                var ano = matchExtenso.Groups[3].Success
+                    ? matchExtenso.Groups[3].Value
+                    : InferirAnoDataCurta(int.Parse(mesNum, CultureInfo.InvariantCulture), contextoData).ToString(CultureInfo.InvariantCulture);
                 return $"{dia}/{mesNum}/{ano}";
+            }
         }
 
         // Padrão 2: "02 JAN" ou "02 JAN 2026"
@@ -689,10 +696,14 @@ public partial class PdfFileParser : IFileParser
         {
             var dia = matchAbrev.Groups[1].Value;
             var mesAbrev = matchAbrev.Groups[2].Value.ToUpperInvariant();
-            var ano = matchAbrev.Groups[3].Success ? matchAbrev.Groups[3].Value : anoFallback.ToString();
             var mesNum = MesAbrevParaNumero(mesAbrev);
             if (mesNum != null)
+            {
+                var ano = matchAbrev.Groups[3].Success
+                    ? matchAbrev.Groups[3].Value
+                    : InferirAnoDataCurta(int.Parse(mesNum, CultureInfo.InvariantCulture), contextoData).ToString(CultureInfo.InvariantCulture);
                 return $"{dia}/{mesNum}/{ano}";
+            }
         }
 
         // Padrão 3: dd/MM/yyyy ou dd/MM/yy
@@ -703,7 +714,11 @@ public partial class PdfFileParser : IFileParser
         // Padrão 4: dd/MM (sem ano)
         var matchCurta = Regex.Match(linha, @"^(\d{1,2}/\d{1,2})(?:\s|$)");
         if (matchCurta.Success)
-            return $"{matchCurta.Groups[1].Value}/{anoFallback}";
+        {
+            var partes = matchCurta.Groups[1].Value.Split('/');
+            var mes = int.Parse(partes[1], CultureInfo.InvariantCulture);
+            return $"{matchCurta.Groups[1].Value}/{InferirAnoDataCurta(mes, contextoData)}";
+        }
 
         return null;
     }
@@ -771,7 +786,7 @@ public partial class PdfFileParser : IFileParser
     /// Tenta extrair uma transação de uma linha usando múltiplos padrões regex.
     /// Cobre formatos de: Itaú, Nubank, Bradesco, Santander, Inter, C6, Caixa, BB, etc.
     /// </summary>
-    private RawTransacaoImportada? TentarExtrairTransacao(string linha, ref int indice, int anoFallback)
+    private RawTransacaoImportada? TentarExtrairTransacao(string linha, ref int indice, ContextoDataPdf contextoData)
     {
         // Pular linhas que parecem cabeçalhos, saldos ou resumos
         if (EhLinhaIgnorada(linha))
@@ -813,7 +828,7 @@ public partial class PdfFileParser : IFileParser
                 continue;
 
             // Normalizar data curta (dd/MM → dd/MM/yyyy)
-            dataRaw = CompletarDataCurta(dataRaw, anoFallback);
+            dataRaw = CompletarDataCurta(dataRaw, contextoData, descricao);
 
             // Limpar valor
             valorRaw = LimparValorRaw(valorRaw);
@@ -924,11 +939,93 @@ public partial class PdfFileParser : IFileParser
         return DateTime.UtcNow.Year;
     }
 
+    private static DateTime? DetectarReferenciaFatura(string texto, int anoFallback)
+    {
+        if (string.IsNullOrWhiteSpace(texto) || !texto.Contains("fatura", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var fechamentoNumerico = Regex.Match(texto,
+            @"(?<data>\d{1,2}[/-]\d{1,2}[/-]\d{4})[^\n]{0,30}Fechamento",
+            RegexOptions.IgnoreCase);
+        if (fechamentoNumerico.Success && TentarParseDataReferencia(fechamentoNumerico.Groups["data"].Value, out var dataFechamento))
+            return dataFechamento;
+
+        var fechamentoNumericoInvertido = Regex.Match(texto,
+            @"Fechamento[^\n]{0,30}(?<data>\d{1,2}[/-]\d{1,2}[/-]\d{4})",
+            RegexOptions.IgnoreCase);
+        if (fechamentoNumericoInvertido.Success && TentarParseDataReferencia(fechamentoNumericoInvertido.Groups["data"].Value, out dataFechamento))
+            return dataFechamento;
+
+        var mesFatura = Regex.Match(texto,
+            @"fatura\s+de\s+(?<mes>janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)",
+            RegexOptions.IgnoreCase);
+        if (mesFatura.Success)
+        {
+            var mesNum = MesExtensoParaNumero(mesFatura.Groups["mes"].Value);
+            if (mesNum != null)
+                return new DateTime(anoFallback, int.Parse(mesNum, CultureInfo.InvariantCulture), 1);
+        }
+
+        return null;
+    }
+
+    private static bool TentarParseDataReferencia(string valor, out DateTime data)
+    {
+        return DateTime.TryParseExact(
+            valor.Replace('-', '/'),
+            "d/M/yyyy",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out data);
+    }
+
+    private static int InferirAnoDataCurta(int mesTransacao, ContextoDataPdf contextoData, string? descricao = null)
+    {
+        if (contextoData.ReferenciaFatura == null)
+            return contextoData.AnoFallback;
+
+        var referencia = contextoData.ReferenciaFatura.Value;
+
+        var anoPelaParcela = InferirAnoPelaParcela(mesTransacao, referencia, descricao);
+        if (anoPelaParcela.HasValue)
+            return anoPelaParcela.Value;
+
+        return mesTransacao > referencia.Month
+            ? referencia.Year - 1
+            : referencia.Year;
+    }
+
+    private static int? InferirAnoPelaParcela(int mesTransacao, DateTime referenciaFatura, string? descricao)
+    {
+        if (string.IsNullOrWhiteSpace(descricao))
+            return null;
+
+        var (numeroParcela, _, _) = NormalizacaoService.ExtrairParcela(descricao);
+        if (!numeroParcela.HasValue)
+            return null;
+
+        // A parcela atual pertence à fatura de referência.
+        // A compra original pode ter ocorrido no mês da primeira fatura da compra
+        // ou no mês imediatamente anterior, dependendo do fechamento do cartão.
+        var mesPrimeiraFatura = new DateTime(referenciaFatura.Year, referenciaFatura.Month, 1)
+            .AddMonths(-(numeroParcela.Value - 1));
+        var mesCompraMesmoMesDaPrimeiraFatura = mesPrimeiraFatura;
+        var mesCompraMesAnteriorAoFechamento = mesPrimeiraFatura.AddMonths(-1);
+
+        if (mesTransacao == mesCompraMesAnteriorAoFechamento.Month)
+            return mesCompraMesAnteriorAoFechamento.Year;
+
+        if (mesTransacao == mesCompraMesmoMesDaPrimeiraFatura.Month)
+            return mesCompraMesmoMesDaPrimeiraFatura.Year;
+
+        return null;
+    }
+
     /// <summary>
     /// Completa datas curtas (dd/MM) adicionando o ano.
     /// Também converte "12 JAN" → "12/01".
     /// </summary>
-    private static string CompletarDataCurta(string dataRaw, int anoFallback)
+    private static string CompletarDataCurta(string dataRaw, ContextoDataPdf contextoData, string? descricao = null)
     {
         // Converter meses por extenso: "12 JAN" → "12/01/yyyy"
         var mesesAbrev = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -950,13 +1047,16 @@ public partial class PdfFileParser : IFileParser
         var mesMatch = Regex.Match(dataRaw, @"^(\d{1,2})\s+([A-Za-zÇç]+)$");
         if (mesMatch.Success && mesesAbrev.TryGetValue(mesMatch.Groups[2].Value.Trim(), out var mesNum))
         {
-            return $"{mesMatch.Groups[1].Value}/{mesNum}/{anoFallback}";
+            var ano = InferirAnoDataCurta(int.Parse(mesNum, CultureInfo.InvariantCulture), contextoData, descricao);
+            return $"{mesMatch.Groups[1].Value}/{mesNum}/{ano}";
         }
 
         // Se é dd/MM (sem ano), adicionar o ano
         if (Regex.IsMatch(dataRaw, @"^\d{1,2}/\d{1,2}$"))
         {
-            return $"{dataRaw}/{anoFallback}";
+            var partes = dataRaw.Split('/');
+            var mes = int.Parse(partes[1], CultureInfo.InvariantCulture);
+            return $"{dataRaw}/{InferirAnoDataCurta(mes, contextoData, descricao)}";
         }
 
         return dataRaw;

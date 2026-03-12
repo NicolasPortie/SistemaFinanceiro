@@ -542,6 +542,40 @@ public class ImportacaoServiceTests
     }
 
     [Fact]
+    public async Task Categorizador_LearnedMappings_ApproximateMerchantMatch_Applied()
+    {
+        var regrasRepo = new Mock<IRegraCategorizacaoRepository>();
+        regrasRepo.Setup(r => r.ObterPorUsuarioAsync(It.IsAny<int>())).ReturnsAsync(new List<RegraCategorizacao>());
+
+        var mapeamentoRepo = new Mock<IMapeamentoCategorizacaoRepository>();
+        mapeamentoRepo.Setup(r => r.ObterPorUsuarioAsync(It.IsAny<int>())).ReturnsAsync(new List<MapeamentoCategorizacao>
+        {
+            new() { DescricaoNormalizada = "AMIGAO", CategoriaId = 4, Contagem = 6 }
+        });
+
+        var categoriaRepo = new Mock<ICategoriaRepository>();
+        categoriaRepo.Setup(r => r.ObterPorUsuarioAsync(It.IsAny<int>())).ReturnsAsync(new List<Categoria>
+        {
+            new() { Id = 4, Nome = "Mercado" }
+        });
+
+        var aiService = new Mock<IAiService>();
+        var logger = CreateLogger<CategorizadorImportacaoService>();
+        var service = new CategorizadorImportacaoService(regrasRepo.Object, mapeamentoRepo.Object, categoriaRepo.Object, aiService.Object, logger);
+
+        var transacoes = new List<TransacaoNormalizada>
+        {
+            new() { IndiceOriginal = 0, Data = DateTime.UtcNow, Descricao = "SUPERMERCADO AMIGAO LOJA 02", DescricaoOriginal = "SUPERMERCADO AMIGAO LOJA 02", Valor = -80m, TipoTransacao = TipoTransacao.Debito, Valida = true, Flags = new() }
+        };
+
+        var result = await service.CategorizarAsync(1, transacoes);
+
+        Assert.Single(result);
+        Assert.Equal(4, result[0].CategoriaId);
+        Assert.Equal("Mercado", result[0].CategoriaSugerida);
+    }
+
+    [Fact]
     public async Task Categorizador_SalvarAprendizado_CreatesMappings()
     {
         var regrasRepo = new Mock<IRegraCategorizacaoRepository>();
@@ -571,6 +605,7 @@ public class ImportacaoServiceTests
     [InlineData("LS COMERCIO DE BEBIDA BIRIGUI BRA", "Alimentação")]
     [InlineData("KOTAS SERVICOS DE INTERNET", "Moradia")]
     [InlineData("OTICA MEIRELLES LTDA", "Saúde")]
+    [InlineData("MERCADO LIVRE*FULANO", "Compras Online")]
     [InlineData("CUPONOMIA DIVULGACAO VIRTUAL LTDA", null)] // Sem keyword match
     [InlineData("SUZILEINE MARIA SUSSAI", null)] // Nome de pessoa, sem match
     public async Task Categorizador_Keywords_MatchesPicPayDescriptions(string descricao, string? expectedCategoria)
@@ -591,7 +626,9 @@ public class ImportacaoServiceTests
             new() { Id = 6, Nome = "Educação" },
             new() { Id = 7, Nome = "Vestuário" },
             new() { Id = 8, Nome = "Assinaturas" },
-            new() { Id = 9, Nome = "Outros" },
+            new() { Id = 9, Nome = "Compras Online" },
+            new() { Id = 10, Nome = "Mercado" },
+            new() { Id = 11, Nome = "Outros" },
         });
 
         var aiService = new Mock<IAiService>();
@@ -943,6 +980,62 @@ Cartão";
         // Should be parsed by single-line regex, not PicPay
         Assert.Equal(2, transacoes.Count);
         Assert.Contains("PIX RECEBIDO", transacoes[0].DescricaoRaw);
+    }
+
+    [Fact]
+    public void PdfParser_PicPayFatura_InfersPreviousYearForShortDatesAfterInvoiceMonth()
+    {
+        var parser = CreatePdfParser();
+        var texto = @"Esta é a sua fatura de Março
+10/03/2026 | 04/03/2026
+Vencimento: Fechamento:
+11/12 CASADASMOTOS PARC03/03 100,00
+19/12 SHOPEE *PRINCIPARC03/03 71,22
+15/01 MERCADO*MERCADPARC02/06 34,00
+03/03 FARMACIA 20,00";
+
+        texto = PdfFileParser.LimparTextoPdf(texto);
+        var transacoes = parser.ExtrairPorRegex(texto);
+
+        Assert.Equal(4, transacoes.Count);
+        Assert.Contains(transacoes, t => t.DescricaoRaw.Contains("CASADASMOTOS") && t.DataRaw == "11/12/2025");
+        Assert.Contains(transacoes, t => t.DescricaoRaw.Contains("SHOPEE") && t.DataRaw == "19/12/2025");
+        Assert.Contains(transacoes, t => t.DescricaoRaw.Contains("MERCADO*MERCAD") && t.DataRaw == "15/01/2026");
+        Assert.Contains(transacoes, t => t.DescricaoRaw.Contains("FARMACIA") && t.DataRaw == "03/03/2026");
+    }
+
+    [Fact]
+    public void PdfParser_PicPayFatura_UsesInstallmentNumberToInferPreviousYearWhenMonthMatchesInvoiceMonth()
+    {
+        var parser = CreatePdfParser();
+        var texto = @"Esta é a sua fatura de Março
+10/03/2026 | 04/03/2026
+Vencimento: Fechamento:
+03/03 STREAMING PARC12/12 59,90
+04/04 CURSO ONLINE PARC12/12 89,90";
+
+        texto = PdfFileParser.LimparTextoPdf(texto);
+        var transacoes = parser.ExtrairPorRegex(texto);
+
+        Assert.Equal(2, transacoes.Count);
+        Assert.Contains(transacoes, t => t.DescricaoRaw.Contains("STREAMING") && t.DataRaw == "03/03/2025");
+        Assert.Contains(transacoes, t => t.DescricaoRaw.Contains("CURSO ONLINE") && t.DataRaw == "04/04/2025");
+    }
+
+    [Fact]
+    public void PdfParser_ShortDatesWithoutInvoiceContext_KeepDetectedYearFallback()
+    {
+        var parser = CreatePdfParser();
+        var texto = @"Período 31 de janeiro de 2026 a 01 de março de 2026
+12/01 PIX ENVIADO FULANO 150,00
+28/02 COMPRA MERCADO 89,90";
+
+        texto = PdfFileParser.LimparTextoPdf(texto);
+        var transacoes = parser.ExtrairPorRegex(texto);
+
+        Assert.Equal(2, transacoes.Count);
+        Assert.Contains(transacoes, t => t.DescricaoRaw.Contains("PIX ENVIADO") && t.DataRaw == "12/01/2026");
+        Assert.Contains(transacoes, t => t.DescricaoRaw.Contains("COMPRA MERCADO") && t.DataRaw == "28/02/2026");
     }
 
     [Fact]
