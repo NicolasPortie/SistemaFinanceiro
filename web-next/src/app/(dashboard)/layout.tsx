@@ -2,15 +2,17 @@
 
 import { AuthGuard } from "@/components/auth-guard";
 import { UpgradeModal } from "@/components/upgrade-modal";
-import { UpgradePlanProvider } from "@/components/upgrade-plan-modal";
+import { UpgradePlanProvider, useUpgradePlan } from "@/components/upgrade-plan-modal";
 import { useAuth } from "@/contexts/auth-context";
 import { useAdminMode, AdminContextProvider } from "@/contexts/admin-context";
+import { api } from "@/lib/api";
 import { getInitials, getFirstName } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Settings, Moon, Sun, Shield } from "lucide-react";
+import { ChevronDown, LogOut, Settings, Moon, Sun, Shield, Crown, ArrowRight } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useRef, useEffect } from "react";
 import { SuporteWidget } from "@/components/suporte-widget";
@@ -179,6 +181,57 @@ function UserDropdown() {
   );
 }
 
+function UpgradeNavbarButton({ mobile = false }: { mobile?: boolean }) {
+  const { openUpgrade } = useUpgradePlan();
+  const { data: minha } = useQuery({
+    queryKey: ["assinatura-minha-navbar"],
+    queryFn: () => api.assinaturas.minha(),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const assinatura = minha?.assinatura;
+  const isFreePlan = !assinatura || assinatura.plano === "Gratuito";
+
+  if (!isFreePlan) return null;
+
+  if (mobile) {
+    return (
+      <button
+        onClick={() => openUpgrade("Individual")}
+        className="flex w-full items-center gap-3 rounded-2xl border border-emerald-200 bg-linear-to-r from-emerald-500 to-teal-500 px-4 py-3 text-left text-white shadow-lg shadow-emerald-500/20 transition-all hover:brightness-105 dark:border-emerald-800"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+          <Crown className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-50/80">
+            Plano Pago
+          </p>
+          <p className="text-sm font-semibold leading-tight">Destrave mais recursos agora</p>
+        </div>
+        <ArrowRight className="h-4 w-4 shrink-0" />
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => openUpgrade("Individual")}
+      className="hidden xl:flex items-center gap-3 rounded-full border border-emerald-200 bg-linear-to-r from-emerald-500 via-emerald-500 to-teal-500 px-4 py-2 text-white shadow-[0_10px_30px_rgba(16,185,129,0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(16,185,129,0.24)] dark:border-emerald-800"
+      title="Ver planos pagos"
+    >
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
+        <Crown className="h-4 w-4" />
+      </div>
+      <div className="text-left leading-none">
+        <p className="text-[9px] font-black uppercase tracking-[0.28em] text-emerald-50/80">Upgrade</p>
+        <p className="mt-1 text-[11px] font-semibold">Sair do grátis</p>
+      </div>
+      <ArrowRight className="h-4 w-4" />
+    </button>
+  );
+}
+
 /* ─── Admin mobile items (flat) ─────────────────────────── */
 const adminMobileItems = [
   { label: "Painel", href: "/admin" },
@@ -297,6 +350,7 @@ function MobileNav({ isAdminMode }: { isAdminMode: boolean }) {
 
           {/* Bottom actions */}
           <div className="px-4 pb-8 space-y-1 border-t border-slate-100 dark:border-slate-800 pt-3">
+            {!isAdminMode && <UpgradeNavbarButton mobile />}
             <Link
               href="/configuracoes"
               onClick={() => setOpen(false)}
@@ -437,6 +491,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
         {/* Right: User + Mobile */}
         <div className="flex items-center gap-4 lg:gap-6">
+          {!isAdminMode && <UpgradeNavbarButton />}
+
           {/* Admin toggle — only for admins */}
           {isAdmin && (
             <button

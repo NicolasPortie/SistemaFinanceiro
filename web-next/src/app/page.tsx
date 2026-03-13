@@ -757,48 +757,38 @@ function FAQ() {
 // ============================================================================
 // H. PRICING
 // ============================================================================
-const PRICING_RESOURCE_ORDER = [
-  "ChatInApp",
-  "ConsultorIA",
-  "ImportacaoExtratos",
-  "SimulacaoCompras",
-  "MetasFinanceiras",
-  "CategoriasCompartilhadas",
-  "DashboardFamiliar",
-  "MembrosFamilia",
-  "TelegramMensagensDia",
-  "LancamentosMensal",
-  "ContasFixasCompartilhadas",
-  "ContasFixas",
-];
+const PRICING_PLAN_DESCRIPTIONS: Record<string, string> = {
+  Gratuito: "Para organizar a rotina financeira e começar sem compromisso.",
+  Individual: "Todas as funcionalidades do sistema para uso individual, sem ficar preso no plano grátis.",
+  Familia: "Tudo do Individual, com recursos extras para organizar a vida financeira em conjunto.",
+};
 
-const PRICING_RESOURCE_LABELS: Record<string, string> = {
-  ChatInApp: "Chat financeiro no app",
-  ConsultorIA: "Consultor financeiro com IA",
-  ImportacaoExtratos: "Importação de extratos",
-  SimulacaoCompras: "Simulação de compras",
-  MetasFinanceiras: "Metas financeiras",
-  CategoriasCompartilhadas: "Categorias compartilhadas",
-  DashboardFamiliar: "Dashboard familiar",
-  MembrosFamilia: "Titular + 1 membro",
-  TelegramMensagensDia: "Bot no Telegram",
-  LancamentosMensal: "Lançamentos mensais",
-  ContasFixasCompartilhadas: "Contas fixas compartilhadas",
-  ContasFixas: "Contas fixas",
+const PRICING_PLAN_FEATURES: Record<string, string[]> = {
+  Gratuito: [
+    "Base para começar a organizar a vida financeira",
+    "Lançamentos e controle do dia a dia",
+    "Acesso inicial ao app sem cobrança",
+    "Ideal para conhecer a experiência",
+    "Upgrade quando quiser destravar o restante",
+  ],
+  Individual: [
+    "Todas as funcionalidades do sistema liberadas",
+    "Consultor com IA, metas, importação e automações",
+    "Chat financeiro, simulações e visão completa da operação",
+    "Bots e recursos premium para rotina pessoal",
+    "Plano completo para uso individual",
+  ],
+  Familia: [
+    "Tudo que existe no plano Individual",
+    "Dashboard familiar e visão compartilhada",
+    "Categorias, metas e orçamentos da família",
+    "Titular + 1 membro no mesmo ambiente",
+    "Recursos extras para gestão financeira em conjunto",
+  ],
 };
 
 function buildPricingFeatures(plano: ComparacaoPlanoDto) {
-  const keys = Object.keys(plano.recursos).filter((key) => plano.recursos[key]?.limite !== 0);
-  const orderedKeys = keys.sort((a, b) => {
-    const orderA = PRICING_RESOURCE_ORDER.indexOf(a);
-    const orderB = PRICING_RESOURCE_ORDER.indexOf(b);
-    return (orderA === -1 ? 999 : orderA) - (orderB === -1 ? 999 : orderB);
-  });
-
-  return orderedKeys.slice(0, 5).map((key) => {
-    const descricao = plano.recursos[key]?.descricaoLimite;
-    return descricao || PRICING_RESOURCE_LABELS[key] || key;
-  });
+  return PRICING_PLAN_FEATURES[plano.tipo] ?? ["Plano disponível para sua operação financeira"];
 }
 
 function Pricing() {
@@ -824,7 +814,7 @@ function Pricing() {
             Escolha o plano ideal pra você
           </h2>
           <p className="text-stone-500 text-lg max-w-xl mx-auto">
-            Os planos abaixo refletem exatamente o que está ativo no painel administrativo.
+            Escolha o formato que combina com sua rotina e evolua no seu ritmo.
           </p>
         </div>
 
@@ -874,7 +864,9 @@ function Pricing() {
                   >
                     {plano.nome}
                   </h3>
-                  <p className="text-sm text-stone-500 mb-8">{plano.descricao}</p>
+                  <p className="text-sm text-stone-500 mb-8">
+                    {PRICING_PLAN_DESCRIPTIONS[plano.tipo] ?? "Escolha um plano para evoluir sua operação financeira."}
+                  </p>
                   <div className="mb-3">
                     {temPromocao && (
                       <p className="mb-2 text-sm font-semibold text-stone-400 line-through">
@@ -891,9 +883,11 @@ function Pricing() {
                     )}
                   </div>
 
-                  {(plano.trialDisponivel || plano.promocaoAtiva?.descricao) && (
+                  {(plano.trialDisponivel || temPromocao) && (
                     <div className="mb-6 rounded-2xl bg-white/80 px-4 py-3 text-sm text-stone-600 border border-stone-200/70">
-                      {plano.promocaoAtiva?.descricao ? plano.promocaoAtiva.descricao : `${plano.diasGratis} dias grátis para testar tudo`}
+                      {plano.trialDisponivel
+                        ? `${plano.diasGratis} dias grátis para testar tudo`
+                        : "Oferta especial disponível por tempo limitado"}
                     </div>
                   )}
 
