@@ -126,7 +126,9 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
   // ── Texto simples ──
   const textContent =
     content.conversation ||
-    content.extendedTextMessage?.text
+    content.extendedTextMessage?.text ||
+    content.buttonsResponseMessage?.selectedButtonId ||
+    content.templateButtonReplyMessage?.selectedId
 
   if (textContent) {
     payload.type = 'text'
@@ -260,6 +262,33 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
     const apiElapsedMs = Date.now() - apiStart
 
     if (response.success && response.reply) {
+      if (response.buttons?.length) {
+        const sent = await sock.sendMessage(jid, {
+          text: response.reply,
+          footer: 'Ravier',
+          buttons: response.buttons.slice(0, 3).map((button) => ({
+            buttonId: button.id,
+            buttonText: { displayText: button.title },
+            type: 1,
+          })),
+          headerType: 1,
+        } as any)
+        recordSentMessage()
+        recordSentTo(phoneNumber)
+
+        if (sent?.key?.id && sent?.message) {
+          storeMessage(sent.key.id, sent.message)
+        }
+
+        logger.info(
+          { phone: phoneNumber, buttons: response.buttons.length, replyLen: response.reply.length },
+          '✅ Resposta com botões enviada'
+        )
+
+        await sock.sendPresenceUpdate('paused', jid)
+        return
+      }
+
       // 5. Dividir mensagem longa em partes naturais
       const parts = splitLongMessage(response.reply)
 

@@ -10,6 +10,7 @@ using Moq;
 
 namespace ControlFinance.Tests;
 
+[Collection("WhatsApp Sequential")]
 public class WhatsAppBotServiceTests
 {
     private readonly Mock<IUsuarioRepository> _usuarioRepoMock;
@@ -27,6 +28,8 @@ public class WhatsAppBotServiceTests
 
     public WhatsAppBotServiceTests()
     {
+        WhatsAppBotService.LimparEstadoTeste();
+
         _usuarioRepoMock = new Mock<IUsuarioRepository>();
         _chatEngineMock = new Mock<IChatEngineService>();
         _featureGateMock = new Mock<IFeatureGateService>();
@@ -257,6 +260,30 @@ public class WhatsAppBotServiceTests
 
         // Assert — deve pedir confirmação (a mensagem vem do ChatEngine ou do flow de desvinculação)
         Assert.NotNull(resultado);
+    }
+
+    [Fact]
+    public async Task ProcessarMensagemAsync_ComandoDesvincular_DefineBotoesDeConfirmacao()
+    {
+        WhatsAppBotService.LimparEstadoTeste();
+
+        var usuario = CriarUsuario(id: 1, whatsAppPhone: TestPhone, whatsAppVinculado: true);
+        _usuarioRepoMock
+            .Setup(r => r.ObterPorWhatsAppPhoneAsync(TestPhone))
+            .ReturnsAsync(usuario);
+
+        _ = await _service.ProcessarMensagemAsync(TestPhone, "/desvincular", TestName);
+
+        var botoes = WhatsAppBotService.ConsumirBotoes(TestPhone);
+
+        Assert.NotNull(botoes);
+        Assert.Collection(botoes!,
+            botao =>
+            {
+                Assert.Equal("sim", botao.Id);
+                Assert.Contains("desvincular", botao.Title, StringComparison.OrdinalIgnoreCase);
+            },
+            botao => Assert.Equal("cancelar", botao.Id));
     }
 
     // ════════════════ ConverterMarkdownParaWhatsApp ════════════════

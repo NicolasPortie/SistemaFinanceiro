@@ -41,6 +41,7 @@ export interface WhatsAppIncomingMessage {
 /** Resposta da API C# */
 export interface ApiResponse {
   reply: string
+  buttons?: WhatsAppReplyButton[]
   success: boolean
   error?: string
 }
@@ -49,6 +50,12 @@ export interface ApiResponse {
 export interface SendMessageRequest {
   phoneNumber: string
   message: string
+  buttons?: WhatsAppReplyButton[]
+}
+
+export interface WhatsAppReplyButton {
+  id: string
+  title: string
 }
 
 /** Status da conexão WhatsApp */

@@ -51,6 +51,25 @@ public class WhatsAppBotService : IWhatsAppBotService
         WriteIndented = false
     };
 
+    public static List<WhatsAppReplyButtonDto>? ConsumirBotoes(string phoneNumber)
+    {
+        return WhatsAppBotaoHelper.ConsumirBotoes(phoneNumber);
+    }
+
+    public static void LimparEstadoTeste()
+    {
+        _phoneLocks.Clear();
+        _rateLimits.Clear();
+        _desvinculacaoPendente.Clear();
+        _mensagensDiarias.Clear();
+        WhatsAppBotaoHelper.LimparTodos();
+    }
+
+    private static void DefinirBotoes(string phoneNumber, params (string Id, string Title)[] botoes)
+    {
+        WhatsAppBotaoHelper.DefinirBotoes(phoneNumber, botoes);
+    }
+
     public WhatsAppBotService(
         IUsuarioRepository usuarioRepo,
         IChatEngineService chatEngine,
@@ -320,7 +339,8 @@ public class WhatsAppBotService : IWhatsAppBotService
                 JsonSerializer.Serialize(new WhatsAppSendRequest
                 {
                     PhoneNumber = phoneNumber,
-                    Message = mensagem
+                    Message = mensagem,
+                    Buttons = ConsumirBotoes(phoneNumber)
                 }, _jsonOpts),
                 System.Text.Encoding.UTF8,
                 "application/json");
@@ -349,6 +369,9 @@ public class WhatsAppBotService : IWhatsAppBotService
     private string ProcessarPedidoDesvinculacao(string phoneNumber)
     {
         _desvinculacaoPendente[phoneNumber] = DateTime.UtcNow;
+        DefinirBotoes(phoneNumber,
+            ("sim", "✅ Sim, desvincular"),
+            ("cancelar", "❌ Cancelar"));
         return "*Tem certeza que deseja desvincular?*\n\n" +
                "Você perderá o acesso ao bot pelo WhatsApp.\n" +
                "Seus dados na conta web continuarão salvos.\n\n" +
@@ -380,6 +403,9 @@ public class WhatsAppBotService : IWhatsAppBotService
             return "Cancelado. Seu WhatsApp continua vinculado.";
         }
 
+        DefinirBotoes(phoneNumber,
+            ("sim", "✅ Sim, desvincular"),
+            ("cancelar", "❌ Cancelar"));
         return "⚠️ Não entendi. Responda *sim* para desvincular ou *cancelar* para manter.";
     }
 
@@ -389,6 +415,8 @@ public class WhatsAppBotService : IWhatsAppBotService
 
         if (_desvinculacaoPendente.TryRemove(phoneNumber, out _))
             cancelou = true;
+
+        WhatsAppBotaoHelper.RemoverBotoes(phoneNumber);
 
         return cancelou
             ? "Operação cancelada."

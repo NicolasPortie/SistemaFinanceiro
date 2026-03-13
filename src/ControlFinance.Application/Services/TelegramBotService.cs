@@ -1119,7 +1119,7 @@ public class TelegramBotService : ITelegramBotService
             _logger.LogInformation("Telegram desvinculado: {Email} | ChatId {ChatId}", usuario.Email, chatId);
             return "Telegram desvinculado.\n\n" +
                    "Sua conta web continua ativa.\n" +
-                   "Para vincular novamente, gere um novo código em finance.nicolasportie.com";
+                   "Para vincular novamente, abra o bot e compartilhe seu contato para validar o celular automaticamente.";
         }
 
         if (BotParseHelper.EhCancelamento(msg))

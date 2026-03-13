@@ -25,10 +25,18 @@ public class WhatsAppWebhookResponse
     public string Reply { get; set; } = string.Empty;
     public bool Success { get; set; } = true;
     public string? Error { get; set; }
+    public List<WhatsAppReplyButtonDto>? Buttons { get; set; }
 }
 
 public class WhatsAppSendRequest
 {
     public string PhoneNumber { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public List<WhatsAppReplyButtonDto>? Buttons { get; set; }
+}
+
+public class WhatsAppReplyButtonDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
 }

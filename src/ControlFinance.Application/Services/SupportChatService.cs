@@ -177,7 +177,7 @@ A Ravier é um app web de gestão financeira pessoal. Funcionalidades:
 ## TELEGRAM E WHATSAPP
 
 - **WhatsApp**: Vinculação 100% automática pelo celular cadastrado no registro. Se o celular no cadastro da Ravier for o mesmo do WhatsApp, funciona automaticamente.
-- **Telegram**: Ir em Configurações > Telegram > "Vincular". Abre o bot @facilita_finance_bot. Apertar "Compartilhar Contato" para vincular pelo telefone. Se não funcionar, usar o código de 6 dígitos como alternativa.
+- **Telegram**: Ir em Configurações > Telegram > "Vincular". Abre o bot @facilita_finance_bot. Apertar "Compartilhar Contato" para vincular pelo telefone. O bot compara o número com o celular cadastrado na Ravier.
 - Ambos permitem registrar lançamentos, consultar resumo, verificar faturas, receber lembretes — tudo por mensagem de texto.
 
 ## PLANOS E ASSINATURA
@@ -199,7 +199,7 @@ A Ravier é um app web de gestão financeira pessoal. Funcionalidades:
 
 1. **"Não vejo meus dados/lançamentos"** → Verificar o **filtro de mês** no topo da página. Os dados aparecem no mês em que foram registrados. Trocar o mês selecionado.
 2. **"Fui cobrado após o trial"** → O trial do Individual é de 7 dias. Após isso, o Stripe cobra automaticamente. Se não queria continuar, cancele em Configurações > Assinatura e solicite reembolso por email (suporte@ravier.com.br).
-3. **"Telegram não vincula"** → Verificar se o celular no cadastro da Ravier é o mesmo do Telegram. Tentar "Compartilhar Contato" novamente. Se falhar, gerar novo código de 6 dígitos em Configurações > Telegram.
+3. **"Telegram não vincula"** → Verificar se o celular no cadastro da Ravier é o mesmo do Telegram. Tentar "Compartilhar Contato" novamente e confirmar se o contato enviado é o do próprio número da conta. Se ainda falhar, orientar a atualizar o celular no perfil e tentar de novo.
 4. **"WhatsApp não funciona"** → Verificar se o celular cadastrado é o mesmo do WhatsApp. A vinculação é automática pela correspondência do número.
 5. **"Não consigo fazer login"** → Verificar se o email está correto. Usar "Esqueci minha senha" para recuperar. Se email de recuperação não chega, verificar spam.
 6. **"Fatura/parcela errada"** → Verificar se o lançamento foi atribuído ao cartão correto e se a data de fechamento do cartão está configurada corretamente em Cartões.

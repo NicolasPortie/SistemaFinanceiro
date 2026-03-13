@@ -2,6 +2,8 @@ using System.Text;
 using ControlFinance.Api.Controllers;
 using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
+using ControlFinance.Application.Services;
+using ControlFinance.Application.Services.Handlers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -11,11 +13,17 @@ using Moq;
 
 namespace ControlFinance.Tests;
 
+[Collection("WhatsApp Sequential")]
 public class WhatsAppControllerTests
 {
     private readonly Mock<IWhatsAppBotService> _botServiceMock = new();
     private readonly Mock<ILogger<WhatsAppController>> _loggerMock = new();
     private readonly Mock<IServiceScopeFactory> _scopeFactoryMock = new();
+
+    public WhatsAppControllerTests()
+    {
+        WhatsAppBotService.LimparEstadoTeste();
+    }
 
     [Fact]
     public async Task Webhook_ComDocumento_DelegaParaBotService()
@@ -83,6 +91,38 @@ public class WhatsAppControllerTests
         Assert.True(payload.Success);
         Assert.Equal("Audio processado", payload.Reply);
         _botServiceMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task Webhook_QuandoHaBotoesPendentes_RetornaBotoesNaResposta()
+    {
+        var controller = CreateController();
+        var request = new WhatsAppWebhookRequest
+        {
+            PhoneNumber = "5511999999999",
+            MessageId = Guid.NewGuid().ToString("N"),
+            PushName = "Nicolas",
+            Type = "text",
+            Text = "/desvincular"
+        };
+
+        WhatsAppBotaoHelper.DefinirBotoes(
+            request.PhoneNumber,
+            ("sim", "✅ Sim, desvincular"),
+            ("cancelar", "❌ Cancelar"));
+
+        _botServiceMock
+            .Setup(s => s.ProcessarMensagemAsync(request.PhoneNumber, request.Text!, "Nicolas", It.IsAny<ControlFinance.Domain.Enums.OrigemDado>()))
+            .ReturnsAsync("Tem certeza?");
+
+        var action = await controller.Webhook(request);
+
+        var ok = Assert.IsType<OkObjectResult>(action);
+        var payload = Assert.IsType<WhatsAppWebhookResponse>(ok.Value);
+        Assert.NotNull(payload.Buttons);
+        Assert.Equal(2, payload.Buttons!.Count);
+        Assert.Equal("sim", payload.Buttons[0].Id);
+        Assert.Equal("cancelar", payload.Buttons[1].Id);
     }
 
     [Fact]

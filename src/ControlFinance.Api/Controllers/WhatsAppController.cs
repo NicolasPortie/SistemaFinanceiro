@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using ControlFinance.Application.DTOs;
 using ControlFinance.Application.Interfaces;
+using ControlFinance.Application.Services.Handlers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -133,6 +134,7 @@ public class WhatsAppController : ControllerBase
             return Ok(new WhatsAppWebhookResponse
             {
                 Reply = resposta,
+                Buttons = WhatsAppBotaoHelper.ConsumirBotoes(request.PhoneNumber),
                 Success = true
             });
         }

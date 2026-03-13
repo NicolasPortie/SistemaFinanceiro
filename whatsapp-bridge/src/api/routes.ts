@@ -16,7 +16,7 @@ export const router = Router()
  * Requer X-WhatsApp-Bridge-Secret header.
  */
 router.post('/send', authMiddleware, async (req: Request, res: Response) => {
-  const { phoneNumber, message } = req.body as SendMessageRequest
+  const { phoneNumber, message, buttons } = req.body as SendMessageRequest
 
   if (!phoneNumber || !message) {
     res.status(400).json({ error: 'phoneNumber e message são obrigatórios' })
@@ -32,7 +32,19 @@ router.post('/send', authMiddleware, async (req: Request, res: Response) => {
   const jid = `${phoneNumber.replace(/\D/g, '')}@s.whatsapp.net`
 
   try {
-    const sent = await sock.sendMessage(jid, { text: message })
+    const sent = buttons?.length
+      ? await sock.sendMessage(jid, {
+          text: message,
+          footer: 'Ravier',
+          buttons: buttons.slice(0, 3).map((button) => ({
+            buttonId: button.id,
+            buttonText: { displayText: button.title },
+            type: 1,
+          })),
+          headerType: 1,
+        } as any)
+      : await sock.sendMessage(jid, { text: message })
+  logger.info({ phone: phoneNumber, msgLen: message.length, buttons: buttons?.length || 0 }, '📤 Mensagem proativa enviada')
 
     // Salvar no store para retry (getMessage callback)
     if (sent?.key?.id && sent?.message) {
