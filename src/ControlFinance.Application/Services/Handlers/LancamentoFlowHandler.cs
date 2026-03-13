@@ -899,7 +899,6 @@ public class LancamentoFlowHandler : ILancamentoHandler
                 }
 
                 var resultado = await RegistrarLancamentoAsync(usuario, pendente.Dados, pendente.Origem, cartaoId);
-                await _perfilService.InvalidarAsync(usuario.Id);
 
                 if (pendente.Dados.Tipo?.ToLower() == "gasto" && !string.IsNullOrWhiteSpace(pendente.Dados.Categoria))
                 {

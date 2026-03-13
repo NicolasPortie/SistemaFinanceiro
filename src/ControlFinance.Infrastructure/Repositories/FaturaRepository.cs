@@ -43,6 +43,14 @@ public class FaturaRepository : IFaturaRepository
                 && f.Status == StatusFatura.Aberta);
     }
 
+    public async Task<Fatura?> ObterPorCartaoEMesAsync(int cartaoId, DateTime mesReferencia)
+    {
+        var inicioMes = new DateTime(mesReferencia.Year, mesReferencia.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        return await _context.Faturas
+            .Include(f => f.Parcelas)
+            .FirstOrDefaultAsync(f => f.CartaoCreditoId == cartaoId && f.MesReferencia == inicioMes);
+    }
+
     public async Task<Fatura?> ObterOuCriarFaturaAsync(int cartaoId, DateTime mesReferencia)
     {
         var inicioMes = new DateTime(mesReferencia.Year, mesReferencia.Month, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -57,12 +65,9 @@ public class FaturaRepository : IFaturaRepository
         var cartao = await _context.CartoesCredito.FindAsync(cartaoId);
         if (cartao == null) return null;
 
-        // Fechamento = DiaFechamento configurado no cartão, no mês de referência
         var diaFech = Math.Min(cartao.DiaFechamento, DateTime.DaysInMonth(inicioMes.Year, inicioMes.Month));
         var dataFechamento = new DateTime(inicioMes.Year, inicioMes.Month, diaFech, 0, 0, 0, DateTimeKind.Utc);
 
-        // Vencimento = DiaVencimento configurado no cartão, no mês de referência
-        // Se cair em fim de semana, avança para o próximo dia útil
         var diaVenc = Math.Min(cartao.DiaVencimento, DateTime.DaysInMonth(inicioMes.Year, inicioMes.Month));
         var dataVencimento = new DateTime(inicioMes.Year, inicioMes.Month, diaVenc, 0, 0, 0, DateTimeKind.Utc);
         dataVencimento = FaturaCicloHelper.AjustarParaDiaUtil(dataVencimento);
@@ -133,28 +138,82 @@ public class FaturaRepository : IFaturaRepository
 
     public async Task<bool> RecalcularTotalAtomicamenteAsync(int faturaId)
     {
-        // Calcular total via SQL para evitar race conditions
-        var total = await _context.Set<Domain.Entities.Parcela>()
+        var statusAtual = await _context.Faturas
+            .Where(f => f.Id == faturaId)
+            .Select(f => (StatusFatura?)f.Status)
+            .FirstOrDefaultAsync();
+
+        if (statusAtual == null)
+            return false;
+
+        var total = await _context.Set<Parcela>()
             .Where(p => p.FaturaId == faturaId)
             .SumAsync(p => (decimal?)p.Valor) ?? 0;
 
-        var temParcelas = await _context.Set<Domain.Entities.Parcela>()
+        var temParcelas = await _context.Set<Parcela>()
             .AnyAsync(p => p.FaturaId == faturaId);
+        var possuiParcelasPendentes = temParcelas && await _context.Set<Parcela>()
+            .AnyAsync(p => p.FaturaId == faturaId && !p.Paga);
 
         if (total == 0 && !temParcelas)
         {
-            // Remover fatura vazia não paga (evita faturas fantasma com R$0)
+            if (EhBancoEmMemoria())
+            {
+                var fatura = await _context.Faturas.FirstAsync(f => f.Id == faturaId);
+                if (fatura.Status == StatusFatura.Paga)
+                    return true;
+
+                _context.Faturas.Remove(fatura);
+                await _context.SaveChangesAsync();
+                return false;
+            }
+
             var removidas = await _context.Faturas
                 .Where(f => f.Id == faturaId && f.Status != StatusFatura.Paga)
                 .ExecuteDeleteAsync();
-            return removidas == 0; // Se não removeu (porque é Paga), ainda existe
+            return removidas == 0;
         }
 
-        // Atualizar total atomicamente
+        var statusReconciliado = ReconciliarStatus(
+            statusAtual.Value,
+            temParcelas,
+            possuiParcelasPendentes);
+
+        if (EhBancoEmMemoria())
+        {
+            var fatura = await _context.Faturas.FirstAsync(f => f.Id == faturaId);
+            fatura.Total = total;
+            fatura.Status = statusReconciliado;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         await _context.Faturas
             .Where(f => f.Id == faturaId)
-            .ExecuteUpdateAsync(f => f.SetProperty(x => x.Total, total));
+            .ExecuteUpdateAsync(f => f
+                .SetProperty(x => x.Total, total)
+                .SetProperty(x => x.Status, statusReconciliado));
 
         return true;
     }
+
+    private static StatusFatura ReconciliarStatus(
+        StatusFatura statusAtual,
+        bool temParcelas,
+        bool possuiParcelasPendentes)
+    {
+        if (!temParcelas)
+            return statusAtual;
+
+        if (!possuiParcelasPendentes)
+            return StatusFatura.Paga;
+
+        return statusAtual == StatusFatura.Paga ? StatusFatura.Aberta : statusAtual;
+    }
+
+    private bool EhBancoEmMemoria()
+        => string.Equals(
+            _context.Database.ProviderName,
+            "Microsoft.EntityFrameworkCore.InMemory",
+            StringComparison.Ordinal);
 }

@@ -10,6 +10,7 @@ import {
   useCategorias,
   usePagarContaFixa,
   useContasBancarias,
+  useCartoes,
 } from "@/hooks/use-queries";
 import { formatCurrency } from "@/lib/format";
 import type { FrequenciaLembrete } from "@/lib/api";
@@ -46,6 +47,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Banknote,
+  Power,
+  PowerOff,
 } from "lucide-react";
 import { EmptyState, ErrorState, CardSkeleton } from "@/components/shared/page-components";
 import { DialogShellHeader } from "@/components/shared/dialog-shell";
@@ -53,7 +56,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -79,6 +81,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { LembretePagamento } from "@/lib/api";
+import { toast } from "sonner";
 
 // ── Category icon helper ─────────────────────────────────
 function getCategoryIcon(categoria: string) {
@@ -251,10 +254,29 @@ function getLembreteStatusInfo(lembrete: LembretePagamento) {
   };
 }
 
+function getCanalResumo(
+  lembrete: Pick<LembretePagamento, "lembreteTelegramAtivo" | "lembreteWhatsAppAtivo">
+) {
+  if (lembrete.lembreteTelegramAtivo && lembrete.lembreteWhatsAppAtivo) {
+    return "Telegram + WhatsApp";
+  }
+
+  if (lembrete.lembreteTelegramAtivo) {
+    return "Telegram";
+  }
+
+  if (lembrete.lembreteWhatsAppAtivo) {
+    return "WhatsApp";
+  }
+
+  return "Sem lembretes";
+}
+
 export default function ContasFixasPage() {
   const { data: lembretes = [], isLoading, isError, error, refetch } = useLembretes(false);
   const { data: categorias = [] } = useCategorias();
   const { data: contasBancarias = [] } = useContasBancarias();
+  const { data: cartoes = [] } = useCartoes();
   const criarLembrete = useCriarLembrete();
   const atualizarLembrete = useAtualizarLembrete();
   const desativarLembrete = useDesativarLembrete();
@@ -266,6 +288,7 @@ export default function ContasFixasPage() {
   const [pagarItem, setPagarItem] = useState<LembretePagamento | null>(null);
   const [pagarValor, setPagarValor] = useState("");
   const [pagarContaBancariaId, setPagarContaBancariaId] = useState("");
+  const [pagarCartaoId, setPagarCartaoId] = useState("");
   const [pagarData, setPagarData] = useState("");
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
@@ -284,6 +307,7 @@ export default function ContasFixasPage() {
       categoria: "",
       formaPagamento: "",
       lembreteTelegramAtivo: true,
+      lembreteWhatsAppAtivo: true,
       dataFimRecorrencia: "",
     },
   });
@@ -300,6 +324,7 @@ export default function ContasFixasPage() {
       categoria: "",
       formaPagamento: "",
       lembreteTelegramAtivo: true,
+      lembreteWhatsAppAtivo: true,
       dataFimRecorrencia: "",
     },
   });
@@ -326,6 +351,7 @@ export default function ContasFixasPage() {
       categoria: matchedCat?.nome ?? lembrete.categoria ?? "",
       formaPagamento: (lembrete.formaPagamento ?? "").toLowerCase(),
       lembreteTelegramAtivo: lembrete.lembreteTelegramAtivo ?? true,
+      lembreteWhatsAppAtivo: lembrete.lembreteWhatsAppAtivo ?? true,
       dataFimRecorrencia: lembrete.dataFimRecorrencia ?? "",
     });
   };
@@ -358,6 +384,7 @@ export default function ContasFixasPage() {
         categoria: data.categoria.trim(),
         formaPagamento: data.formaPagamento,
         lembreteTelegramAtivo: data.lembreteTelegramAtivo,
+        lembreteWhatsAppAtivo: data.lembreteWhatsAppAtivo,
         dataFimRecorrencia:
           isRecorrente && data.dataFimRecorrencia ? data.dataFimRecorrencia : undefined,
       },
@@ -394,6 +421,7 @@ export default function ContasFixasPage() {
           categoria: data.categoria.trim(),
           formaPagamento: data.formaPagamento,
           lembreteTelegramAtivo: data.lembreteTelegramAtivo,
+          lembreteWhatsAppAtivo: data.lembreteWhatsAppAtivo,
           dataFimRecorrencia:
             isRecorrente && data.dataFimRecorrencia
               ? data.dataFimRecorrencia
@@ -411,22 +439,41 @@ export default function ContasFixasPage() {
     desativarLembrete.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
   };
 
+  const handleAlterarAtivo = (id: number, ativo: boolean) => {
+    atualizarLembrete.mutate({ id, data: { ativo } });
+  };
+
   const openPagar = (l: LembretePagamento) => {
     const hoje = new Date().toISOString().split("T")[0];
     setPagarItem(l);
     setPagarValor(l.valor != null ? l.valor.toFixed(2).replace(".", ",") : "");
     setPagarContaBancariaId("");
+    setPagarCartaoId("");
     setPagarData(hoje);
   };
 
   async function handlePagar(e: React.FormEvent) {
     e.preventDefault();
     if (!pagarItem) return;
+
+    const ehCredito = pagarItem.formaPagamento?.toLowerCase() === "credito";
     const valorPago = parseFloat(pagarValor.replace(",", ".")) || undefined;
     const contaBancariaId = pagarContaBancariaId ? parseInt(pagarContaBancariaId) : undefined;
+    const cartaoCreditoId = pagarCartaoId ? parseInt(pagarCartaoId) : undefined;
+
+    if (ehCredito && !cartaoCreditoId) {
+      toast.error("Selecione o cartao de credito para registrar esse pagamento.");
+      return;
+    }
+
     await pagarConta.mutateAsync({
       id: pagarItem.id,
-      data: { valorPago, contaBancariaId, dataPagamento: pagarData || undefined },
+      data: {
+        valorPago,
+        contaBancariaId: ehCredito ? undefined : contaBancariaId,
+        cartaoCreditoId: ehCredito ? cartaoCreditoId : undefined,
+        dataPagamento: pagarData || undefined,
+      },
     });
     setPagarItem(null);
   }
@@ -463,6 +510,7 @@ export default function ContasFixasPage() {
   }, [filtered, page, PAGE_SIZE]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const pagarEhCredito = pagarItem?.formaPagamento?.toLowerCase() === "credito";
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8 lg:gap-10">
@@ -781,6 +829,10 @@ export default function ContasFixasPage() {
                             : "—"}
                         </span>
                       </div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                        <span>{getCanalResumo(l)}</span>
+                        <span>{l.ativo ? "Ativa" : "Inativa"}</span>
+                      </div>
                       <div className="flex items-center gap-2 pt-1">
                         {l.ativo !== false && !l.pagoCicloAtual && (
                           <button
@@ -800,14 +852,25 @@ export default function ContasFixasPage() {
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => setDeleteId(l.id)}
-                          aria-label={`Remover conta fixa ${l.descricao}`}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-200 dark:hover:bg-rose-500/10 rounded-lg cursor-pointer ml-auto"
-                          title="Remover"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {l.ativo ? (
+                          <button
+                            onClick={() => setDeleteId(l.id)}
+                            aria-label={`Desativar conta fixa ${l.descricao}`}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-200 dark:hover:bg-rose-500/10 rounded-lg cursor-pointer ml-auto"
+                            title="Desativar"
+                          >
+                            <PowerOff className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleAlterarAtivo(l.id, true)}
+                            aria-label={`Ativar conta fixa ${l.descricao}`}
+                            className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-200 dark:hover:bg-emerald-500/10 rounded-lg cursor-pointer ml-auto"
+                            title="Ativar"
+                          >
+                            <Power className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -836,7 +899,7 @@ export default function ContasFixasPage() {
                       Próx. Vencimento
                     </th>
                     <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                      Telegram
+                      Canais
                     </th>
                     <th className="px-6 py-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
                       Status
@@ -1005,16 +1068,9 @@ export default function ContasFixasPage() {
                             </span>
                           </td>
                           <td className="px-6 py-6">
-                            <Switch
-                              checked={l.lembreteTelegramAtivo === true}
-                              aria-label={`Ativar lembrete no Telegram para ${l.descricao}`}
-                              onCheckedChange={(checked) =>
-                                atualizarLembrete.mutate({
-                                  id: l.id,
-                                  data: { lembreteTelegramAtivo: checked },
-                                })
-                              }
-                            />
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:bg-slate-700/60 dark:text-slate-300">
+                              {getCanalResumo(l)}
+                            </span>
                           </td>
                           <td className="px-6 py-6">
                             <span
@@ -1046,14 +1102,25 @@ export default function ContasFixasPage() {
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>
-                              <button
-                                onClick={() => setDeleteId(l.id)}
-                                aria-label={`Remover conta fixa ${l.descricao}`}
-                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-200 dark:hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
-                                title="Remover"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              {l.ativo ? (
+                                <button
+                                  onClick={() => setDeleteId(l.id)}
+                                  aria-label={`Desativar conta fixa ${l.descricao}`}
+                                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-200 dark:hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                                  title="Desativar"
+                                >
+                                  <PowerOff className="h-4 w-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleAlterarAtivo(l.id, true)}
+                                  aria-label={`Ativar conta fixa ${l.descricao}`}
+                                  className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:text-emerald-200 dark:hover:bg-emerald-500/10 rounded-lg transition-colors cursor-pointer"
+                                  title="Ativar"
+                                >
+                                  <Power className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1238,32 +1305,72 @@ export default function ContasFixasPage() {
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Lembrete automático no Telegram
+                    Deseja receber lembretes por qual canal?
                   </Label>
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => createForm.setValue("lembreteTelegramAtivo", true)}
+                      onClick={() => {
+                        createForm.setValue("lembreteTelegramAtivo", true);
+                        createForm.setValue("lembreteWhatsAppAtivo", true);
+                      }}
                       className={cn(
                         "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
-                        createForm.watch("lembreteTelegramAtivo")
+                        createForm.watch("lembreteTelegramAtivo") &&
+                          createForm.watch("lembreteWhatsAppAtivo")
                           ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
                           : "border-border/40 text-muted-foreground"
                       )}
                     >
-                      Sim
+                      Ambos
                     </button>
                     <button
                       type="button"
-                      onClick={() => createForm.setValue("lembreteTelegramAtivo", false)}
+                      onClick={() => {
+                        createForm.setValue("lembreteTelegramAtivo", true);
+                        createForm.setValue("lembreteWhatsAppAtivo", false);
+                      }}
                       className={cn(
                         "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
-                        !createForm.watch("lembreteTelegramAtivo")
+                        createForm.watch("lembreteTelegramAtivo") &&
+                          !createForm.watch("lembreteWhatsAppAtivo")
                           ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
                           : "border-border/40 text-muted-foreground"
                       )}
                     >
-                      Não
+                      Telegram
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        createForm.setValue("lembreteTelegramAtivo", false);
+                        createForm.setValue("lembreteWhatsAppAtivo", true);
+                      }}
+                      className={cn(
+                        "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        !createForm.watch("lembreteTelegramAtivo") &&
+                          createForm.watch("lembreteWhatsAppAtivo")
+                          ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
+                          : "border-border/40 text-muted-foreground"
+                      )}
+                    >
+                      WhatsApp
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        createForm.setValue("lembreteTelegramAtivo", false);
+                        createForm.setValue("lembreteWhatsAppAtivo", false);
+                      }}
+                      className={cn(
+                        "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                        !createForm.watch("lembreteTelegramAtivo") &&
+                          !createForm.watch("lembreteWhatsAppAtivo")
+                          ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
+                          : "border-border/40 text-muted-foreground"
+                      )}
+                    >
+                      Nenhum
                     </button>
                   </div>
                 </div>
@@ -1646,32 +1753,72 @@ export default function ContasFixasPage() {
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Lembrete automático no Telegram
+                  Deseja receber lembretes por qual canal?
                 </Label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => editForm.setValue("lembreteTelegramAtivo", true)}
+                    onClick={() => {
+                      editForm.setValue("lembreteTelegramAtivo", true);
+                      editForm.setValue("lembreteWhatsAppAtivo", true);
+                    }}
                     className={cn(
                       "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
-                      editForm.watch("lembreteTelegramAtivo")
+                      editForm.watch("lembreteTelegramAtivo") &&
+                        editForm.watch("lembreteWhatsAppAtivo")
                         ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
                         : "border-border/40 text-muted-foreground"
                     )}
                   >
-                    Sim
+                    Ambos
                   </button>
                   <button
                     type="button"
-                    onClick={() => editForm.setValue("lembreteTelegramAtivo", false)}
+                    onClick={() => {
+                      editForm.setValue("lembreteTelegramAtivo", true);
+                      editForm.setValue("lembreteWhatsAppAtivo", false);
+                    }}
                     className={cn(
                       "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
-                      !editForm.watch("lembreteTelegramAtivo")
+                      editForm.watch("lembreteTelegramAtivo") &&
+                        !editForm.watch("lembreteWhatsAppAtivo")
                         ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
                         : "border-border/40 text-muted-foreground"
                     )}
                   >
-                    Não
+                    Telegram
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      editForm.setValue("lembreteTelegramAtivo", false);
+                      editForm.setValue("lembreteWhatsAppAtivo", true);
+                    }}
+                    className={cn(
+                      "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                      !editForm.watch("lembreteTelegramAtivo") &&
+                        editForm.watch("lembreteWhatsAppAtivo")
+                        ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
+                        : "border-border/40 text-muted-foreground"
+                    )}
+                  >
+                    WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      editForm.setValue("lembreteTelegramAtivo", false);
+                      editForm.setValue("lembreteWhatsAppAtivo", false);
+                    }}
+                    className={cn(
+                      "h-10 px-3 rounded-xl border text-sm font-medium cursor-pointer transition-all",
+                      !editForm.watch("lembreteTelegramAtivo") &&
+                        !editForm.watch("lembreteWhatsAppAtivo")
+                        ? "border-emerald-600 bg-emerald-600/10 text-emerald-600"
+                        : "border-border/40 text-muted-foreground"
+                    )}
+                  >
+                    Nenhum
                   </button>
                 </div>
               </div>
@@ -1877,14 +2024,14 @@ export default function ContasFixasPage() {
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader className="items-start text-left">
-            <AlertDialogTitle className="sr-only">Desativar lembrete?</AlertDialogTitle>
+            <AlertDialogTitle className="sr-only">Desativar conta fixa?</AlertDialogTitle>
             <AlertDialogDescription className="sr-only">
-              Tem certeza que deseja desativar este lembrete? Ele não aparecerá mais na lista.
+              Tem certeza que deseja desativar esta conta fixa? O historico sera preservado.
             </AlertDialogDescription>
             <DialogShellHeader
               icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
-              title="Desativar lembrete?"
-              description="Tem certeza que deseja desativar este lembrete? Ele nao aparecera mais na lista."
+              title="Desativar conta fixa?"
+              description="Tem certeza que deseja desativar esta conta fixa? O historico sera preservado."
               tone="rose"
             />
           </AlertDialogHeader>
@@ -1961,25 +2108,52 @@ export default function ContasFixasPage() {
               </div>
             </div>
 
-            {/* Conta Bancária */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Conta Bancária{" "}
-                <span className="text-muted-foreground/40 normal-case">(opcional)</span>
-              </Label>
-              <Select value={pagarContaBancariaId} onValueChange={setPagarContaBancariaId}>
-                <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700">
-                  <SelectValue placeholder="Selecionar conta..." />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
-                  {contasBancarias.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)} className="dark:focus:bg-slate-800">
-                      {c.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {pagarEhCredito ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Cartão de crédito
+                </Label>
+                <Select value={pagarCartaoId} onValueChange={setPagarCartaoId}>
+                  <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700">
+                    <SelectValue placeholder="Selecionar cartao..." />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
+                    {cartoes.map((cartao) => (
+                      <SelectItem
+                        key={cartao.id}
+                        value={String(cartao.id)}
+                        className="dark:focus:bg-slate-800"
+                      >
+                        {cartao.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Conta Bancária{" "}
+                  <span className="text-muted-foreground/40 normal-case">(opcional)</span>
+                </Label>
+                <Select value={pagarContaBancariaId} onValueChange={setPagarContaBancariaId}>
+                  <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background dark:bg-slate-800 dark:border-slate-700">
+                    <SelectValue placeholder="Selecionar conta..." />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
+                    {contasBancarias.map((conta) => (
+                      <SelectItem
+                        key={conta.id}
+                        value={String(conta.id)}
+                        className="dark:focus:bg-slate-800"
+                      >
+                        {conta.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button

@@ -11,12 +11,18 @@ public class FaturaService : IFaturaService
     private readonly IFaturaRepository _faturaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
     private readonly IParcelaRepository _parcelaRepo;
+    private readonly IPerfilFinanceiroService _perfilService;
 
-    public FaturaService(IFaturaRepository faturaRepo, ICartaoCreditoRepository cartaoRepo, IParcelaRepository parcelaRepo)
+    public FaturaService(
+        IFaturaRepository faturaRepo,
+        ICartaoCreditoRepository cartaoRepo,
+        IParcelaRepository parcelaRepo,
+        IPerfilFinanceiroService perfilService)
     {
         _faturaRepo = faturaRepo;
         _cartaoRepo = cartaoRepo;
         _parcelaRepo = parcelaRepo;
+        _perfilService = perfilService;
     }
 
     public async Task<FaturaResumoDto?> ObterFaturaAtualAsync(int cartaoId)
@@ -55,6 +61,9 @@ public class FaturaService : IFaturaService
         }
 
         await _faturaRepo.AtualizarAsync(fatura);
+
+        if (fatura.CartaoCredito != null)
+            await _perfilService.InvalidarAsync(fatura.CartaoCredito.UsuarioId);
     }
 
     public async Task<bool> TogglePagaFaturaAsync(int faturaId, int usuarioId)
@@ -74,6 +83,10 @@ public class FaturaService : IFaturaService
             p.Paga = !agora;
 
         await _faturaRepo.AtualizarAsync(fatura);
+
+        if (fatura.CartaoCredito != null)
+            await _perfilService.InvalidarAsync(fatura.CartaoCredito.UsuarioId);
+
         return !agora; // retorna o novo estado
     }
 

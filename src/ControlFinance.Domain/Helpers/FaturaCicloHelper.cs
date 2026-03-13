@@ -33,6 +33,20 @@ public static class FaturaCicloHelper
     }
 
     /// <summary>
+    /// Determina o mÃªs de fatura de uma parcela especÃ­fica a partir da compra original.
+    /// Usa a mesma regra do lanÃ§amento principal para a primeira parcela e avanÃ§a os meses seguintes.
+    /// </summary>
+    public static DateTime DeterminarMesFaturaParcela(
+        DateTime dataCompra,
+        int diaFechamento,
+        int numeroParcela)
+    {
+        var mesPrimeiraParcela = DeterminarMesFatura(dataCompra, diaFechamento);
+        var indiceParcela = Math.Max(numeroParcela, 1) - 1;
+        return mesPrimeiraParcela.AddMonths(indiceParcela);
+    }
+
+    /// <summary>
     /// Se a data cair em fim de semana ou feriado nacional brasileiro,
     /// avança para o próximo dia útil (modelo dos bancos brasileiros).
     /// Exemplo: vencimento dia 25/Dez (Natal, quinta) → dia 26/Dez (sexta).

@@ -22,6 +22,7 @@ public class FamiliaService : IFamiliaService
     private readonly ILancamentoRepository _lancamentoRepo;
     private readonly IUsuarioRepository _usuarioRepo;
     private readonly IFeatureGateService _featureGate;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<FamiliaService> _logger;
 
     public FamiliaService(
@@ -34,6 +35,7 @@ public class FamiliaService : IFamiliaService
         ILancamentoRepository lancamentoRepo,
         IUsuarioRepository usuarioRepo,
         IFeatureGateService featureGate,
+        IUnitOfWork unitOfWork,
         ILogger<FamiliaService> logger)
     {
         _familiaRepo = familiaRepo;
@@ -45,6 +47,7 @@ public class FamiliaService : IFamiliaService
         _lancamentoRepo = lancamentoRepo;
         _usuarioRepo = usuarioRepo;
         _featureGate = featureGate;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -229,19 +232,31 @@ public class FamiliaService : IFamiliaService
             throw new InvalidOperationException("Não há membro para remover.");
 
         var membroId = familia.MembroId.Value;
-        familia.MembroId = null;
-        familia.Status = StatusFamilia.Pendente;
 
-        // Desativar todos os recursos familiares
-        var recursos = await _recursoRepo.ObterPorFamiliaIdAsync(familia.Id);
-        foreach (var recurso in recursos)
+        await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            recurso.Status = StatusRecursoFamiliar.Desativado;
-            recurso.DesativadoEm = DateTime.UtcNow;
-            await _recursoRepo.AtualizarAsync(recurso);
+            familia.MembroId = null;
+            familia.Status = StatusFamilia.Pendente;
+
+            // Desativar todos os recursos familiares
+            var recursos = await _recursoRepo.ObterPorFamiliaIdAsync(familia.Id);
+            foreach (var recurso in recursos)
+            {
+                recurso.Status = StatusRecursoFamiliar.Desativado;
+                recurso.DesativadoEm = DateTime.UtcNow;
+                await _recursoRepo.AtualizarAsync(recurso);
+            }
+
+            await _familiaRepo.AtualizarAsync(familia);
+            await _unitOfWork.CommitAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
         }
 
-        await _familiaRepo.AtualizarAsync(familia);
         _logger.LogInformation("Membro {MembroId} removido da família {FamiliaId}", membroId, familia.Id);
     }
 
@@ -250,19 +265,30 @@ public class FamiliaService : IFamiliaService
         var familia = await _familiaRepo.ObterPorMembroIdAsync(membroId)
             ?? throw new InvalidOperationException("Você não pertence a nenhuma família.");
 
-        familia.MembroId = null;
-        familia.Status = StatusFamilia.Pendente;
-
-        // Desativar todos os recursos
-        var recursos = await _recursoRepo.ObterPorFamiliaIdAsync(familia.Id);
-        foreach (var recurso in recursos)
+        await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            recurso.Status = StatusRecursoFamiliar.Desativado;
-            recurso.DesativadoEm = DateTime.UtcNow;
-            await _recursoRepo.AtualizarAsync(recurso);
+            familia.MembroId = null;
+            familia.Status = StatusFamilia.Pendente;
+
+            // Desativar todos os recursos
+            var recursos = await _recursoRepo.ObterPorFamiliaIdAsync(familia.Id);
+            foreach (var recurso in recursos)
+            {
+                recurso.Status = StatusRecursoFamiliar.Desativado;
+                recurso.DesativadoEm = DateTime.UtcNow;
+                await _recursoRepo.AtualizarAsync(recurso);
+            }
+
+            await _familiaRepo.AtualizarAsync(familia);
+            await _unitOfWork.CommitAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
         }
 
-        await _familiaRepo.AtualizarAsync(familia);
         _logger.LogInformation("Membro {MembroId} saiu da família {FamiliaId}", membroId, familia.Id);
     }
 

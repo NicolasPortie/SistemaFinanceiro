@@ -53,7 +53,7 @@ public class BotParseHelperTests
         var result = BotParseHelper.TryParseDataLembrete("15/03/2026", out var data);
 
         Assert.True(result);
-        Assert.Equal(new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc), data);
+        Assert.Equal(new DateTime(2026, 3, 15, 12, 0, 0, DateTimeKind.Utc), data);
         Assert.Equal(DateTimeKind.Utc, data.Kind);
     }
 
@@ -91,7 +91,7 @@ public class BotParseHelperTests
         var referencia = new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc);
         var resultado = BotParseHelper.CalcularProximoVencimentoMensal(20, referencia);
 
-        Assert.Equal(new DateTime(2026, 2, 20, 0, 0, 0, DateTimeKind.Utc), resultado);
+        Assert.Equal(new DateTime(2026, 2, 20, 12, 0, 0, DateTimeKind.Utc), resultado);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class BotParseHelperTests
         var referencia = new DateTime(2026, 2, 15, 0, 0, 0, DateTimeKind.Utc);
         var resultado = BotParseHelper.CalcularProximoVencimentoMensal(10, referencia);
 
-        Assert.Equal(new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc), resultado);
+        Assert.Equal(new DateTime(2026, 3, 10, 12, 0, 0, DateTimeKind.Utc), resultado);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class BotParseHelperTests
         var resultado = BotParseHelper.CalcularProximoVencimentoMensal(31, referencia);
 
         // Fevereiro 2026 tem 28 dias
-        Assert.Equal(new DateTime(2026, 2, 28, 0, 0, 0, DateTimeKind.Utc), resultado);
+        Assert.Equal(new DateTime(2026, 2, 28, 12, 0, 0, DateTimeKind.Utc), resultado);
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public class BotParseHelperTests
         var resultado = BotParseHelper.CalcularProximoVencimentoMensal(0, referencia);
 
         // Dia 0 deve ser ajustado para 1, e como 1 < 15 já passou, vai pro próximo mês
-        Assert.Equal(new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc), resultado);
+        Assert.Equal(new DateTime(2026, 4, 1, 12, 0, 0, DateTimeKind.Utc), resultado);
     }
 
     #endregion

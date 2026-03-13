@@ -16,6 +16,7 @@ public class LembreteHandler : ILembreteHandler
     private readonly ILembretePagamentoRepository _lembreteRepo;
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly IPagamentoCicloRepository _cicloRepo;
+    private readonly ILancamentoService _lancamentoService;
     private readonly ILogger<LembreteHandler> _logger;
     private static readonly TimeZoneInfo BrasiliaTimeZone =
         TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows()
@@ -26,11 +27,13 @@ public class LembreteHandler : ILembreteHandler
         ILembretePagamentoRepository lembreteRepo,
         ICategoriaRepository categoriaRepo,
         IPagamentoCicloRepository cicloRepo,
+        ILancamentoService lancamentoService,
         ILogger<LembreteHandler> logger)
     {
         _lembreteRepo = lembreteRepo;
         _categoriaRepo = categoriaRepo;
         _cicloRepo = cicloRepo;
+        _lancamentoService = lancamentoService;
         _logger = logger;
     }
 
@@ -79,7 +82,7 @@ public class LembreteHandler : ILembreteHandler
 
             var pausado = await _lembreteRepo.PausarAsync(usuario.Id, id);
             return pausado
-                ? $"⏸️ Lembrete #{id} pausado. Notificações Telegram não serão enviadas."
+                ? $"⏸️ Lembrete #{id} pausado. Nenhum canal de lembrete sera enviado."
                 : $"❌ Lembrete #{id} não encontrado.";
         }
 
@@ -160,16 +163,16 @@ public class LembreteHandler : ILembreteHandler
         if (formaPagamento == null)
             return "Forma de pagamento inválida. Use: pix, debito, credito, dinheiro ou outro.";
 
-        // Lembrete Telegram (obrigatório, posição 5)
+        // Lembretes por canal (legado: "sim" ativa ambos, "nao" desativa ambos)
         var tokenLembrete = partes[5].Trim().ToLowerInvariant();
-        var lembreteTelegram = tokenLembrete switch
+        var lembreteAtivo = tokenLembrete switch
         {
             "sim" or "s" or "true" or "1" => true,
             "nao" or "não" or "n" or "false" or "0" => false,
             _ => (bool?)null
         };
-        if (lembreteTelegram == null)
-            return "Campo lembrete_telegram inválido. Use: sim ou nao.";
+        if (lembreteAtivo == null)
+            return "Campo de lembrete invalido. Use: sim ou nao.";
 
         var agora = DateTime.UtcNow;
         var proximoVencimento = BotParseHelper.CalcularProximoVencimentoMensal(dia, agora);
@@ -187,7 +190,8 @@ public class LembreteHandler : ILembreteHandler
             Ativo = true,
             CategoriaId = categoriaId,
             FormaPagamento = formaPagamento,
-            LembreteTelegramAtivo = lembreteTelegram.Value,
+            LembreteTelegramAtivo = lembreteAtivo.Value,
+            LembreteWhatsAppAtivo = lembreteAtivo.Value,
             PeriodKeyAtual = periodKey,
             CriadoEm = agora,
             AtualizadoEm = agora
@@ -197,7 +201,7 @@ public class LembreteHandler : ILembreteHandler
 
         var fpTexto = formaPagamento?.ToString() ?? "Não informada";
         var catTexto = categoriaNome ?? "Não informada";
-        var telegramTexto = lembreteTelegram.Value ? "Ativo ✅" : "Desativado ❌";
+        var canaisTexto = lembreteAtivo.Value ? "Telegram + WhatsApp" : "Nenhum";
 
         return $"✅ *Conta fixa cadastrada!*\n\n" +
                $"📝 {lembrete.Descricao}\n" +
@@ -205,7 +209,7 @@ public class LembreteHandler : ILembreteHandler
                $"📅 Dia {dia} de cada mês\n" +
                $"🏷️ Categoria: {catTexto}\n" +
                $"💳 Forma: {fpTexto}\n" +
-               $"🔔 Telegram: {telegramTexto}\n" +
+               $"🔔 Canais: {canaisTexto}\n" +
                $"⏭️ Próximo: {lembrete.DataVencimento:dd/MM/yyyy}\n" +
                $"📆 Ciclo: {periodKey}";
     }
@@ -224,7 +228,7 @@ public class LembreteHandler : ILembreteHandler
                 ? $" (mensal dia {lembrete.DiaRecorrente ?? lembrete.DataVencimento.Day})"
                 : "";
             var catTexto = lembrete.Categoria != null ? $" [{lembrete.Categoria.Nome}]" : "";
-            var telegramIcon = lembrete.LembreteTelegramAtivo ? "🔔" : "🔕";
+            var telegramIcon = (lembrete.LembreteTelegramAtivo || lembrete.LembreteWhatsAppAtivo) ? "🔔" : "🔕";
             var periodKey = !string.IsNullOrEmpty(lembrete.PeriodKeyAtual) ? $" • {lembrete.PeriodKeyAtual}" : "";
 
             texto += $"\n{telegramIcon} *#{lembrete.Id}* — {lembrete.Descricao}\n";
@@ -302,23 +306,41 @@ public class LembreteHandler : ILembreteHandler
         if (jaPagou)
             return $"✅ *Ciclo {periodKey}* do lembrete \"{lembrete.Descricao}\" já está marcado como pago.";
 
-        var ciclo = new PagamentoCiclo
+        if (lembrete.FormaPagamento == FormaPagamento.Credito)
         {
-            LembretePagamentoId = lembrete.Id,
-            PeriodKey = periodKey,
-            Pago = true,
-            DataPagamento = DateTime.UtcNow,
-            ValorPago = lembrete.Valor
-        };
+            return $"⚠️ A conta fixa \"{lembrete.Descricao}\" usa credito.\n\n" +
+                   "Para registrar esse pagamento com seguranca, use a tela de contas fixas e selecione o cartao.";
+        }
 
-        await _cicloRepo.CriarAsync(ciclo);
+        try
+        {
+            var resultado = await _lancamentoService.RegistrarPagamentoContaFixaAsync(
+                lembrete.UsuarioId,
+                lembrete.Id,
+                new RegistrarPagamentoContaFixaDto
+                {
+                    ValorPago = lembrete.Valor,
+                    DataPagamento = DateTime.UtcNow,
+                    PeriodKey = periodKey,
+                });
 
-        _logger.LogInformation("Pagamento ciclo {PeriodKey} marcado para lembrete {Id}", periodKey, lembrete.Id);
+            _logger.LogInformation(
+                "Pagamento ciclo {PeriodKey} marcado para lembrete {Id} com lancamento {LancamentoId}",
+                periodKey,
+                lembrete.Id,
+                resultado.LancamentoId);
 
-        return $"✅ *Conta \"{lembrete.Descricao}\" paga!*\n\n" +
-               $"📆 Ciclo: {periodKey}\n" +
-               (lembrete.Valor.HasValue ? $"💰 Valor: R$ {lembrete.Valor.Value:N2}\n" : "") +
-               "🔕 Lembretes deste ciclo não serão mais enviados.";
+            return $"✅ *Conta \"{lembrete.Descricao}\" paga e lancamento registrado!*\n\n" +
+                   $"📆 Ciclo: {periodKey}\n" +
+                   (resultado.ValorPago.HasValue ? $"💰 Valor: R$ {resultado.ValorPago.Value:N2}\n" : "") +
+                   $"🧾 Lancamento: #{resultado.LancamentoId}\n" +
+                   "🔕 Lembretes deste ciclo nao serao mais enviados.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao registrar pagamento da conta fixa {Id}", lembrete.Id);
+            return "❌ Nao consegui registrar esse pagamento agora.";
+        }
     }
 
     public async Task<string> ProcessarCriarContaFixaIAAsync(Usuario usuario, DadosContaFixaIA dadosIA)
@@ -400,7 +422,8 @@ public class LembreteHandler : ILembreteHandler
                 Ativo = true,
                 CategoriaId = categoriaId,
                 FormaPagamento = forma,
-                LembreteTelegramAtivo = true, // Padrão via IA é sempre enviar
+                LembreteTelegramAtivo = true,
+                LembreteWhatsAppAtivo = true,
                 PeriodKeyAtual = periodKey,
                 DataFimRecorrencia = dataFim,
                 CriadoEm = DateTime.UtcNow,
@@ -492,6 +515,8 @@ public class LembreteHandler : ILembreteHandler
             RecorrenteMensal = recorrente,
             DiaRecorrente = diaRecorrente,
             Ativo = true,
+            LembreteTelegramAtivo = true,
+            LembreteWhatsAppAtivo = true,
             CriadoEm = DateTime.UtcNow,
             AtualizadoEm = DateTime.UtcNow
         };

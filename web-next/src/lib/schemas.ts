@@ -223,6 +223,7 @@ export const lembreteSchema = z
     formaPagamento: z.string().min(1, "Selecione a forma de pagamento"),
     frequencia: z.enum(["Unico", "Semanal", "Quinzenal", "Mensal", "Anual"]),
     lembreteTelegramAtivo: z.boolean(),
+    lembreteWhatsAppAtivo: z.boolean(),
     dataVencimento: z.string().optional(),
     diaRecorrente: z.string().optional(),
     diaSemana: z.string().optional(),

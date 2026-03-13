@@ -15,6 +15,7 @@ public class ChatExclusaoLancamentoService : IChatExclusaoLancamentoService
     private static readonly ConcurrentDictionary<long, SelecaoExclusaoPendente> SelecoesPendentes = new();
 
     private readonly ILancamentoRepository _lancamentoRepo;
+    private readonly ILancamentoService _lancamentoService;
     private readonly IPerfilFinanceiroService _perfilService;
     private readonly ILogger<ChatExclusaoLancamentoService> _logger;
 
@@ -34,10 +35,12 @@ public class ChatExclusaoLancamentoService : IChatExclusaoLancamentoService
 
     public ChatExclusaoLancamentoService(
         ILancamentoRepository lancamentoRepo,
+        ILancamentoService lancamentoService,
         IPerfilFinanceiroService perfilService,
         ILogger<ChatExclusaoLancamentoService> logger)
     {
         _lancamentoRepo = lancamentoRepo;
+        _lancamentoService = lancamentoService;
         _perfilService = perfilService;
         _logger = logger;
     }
@@ -112,8 +115,7 @@ public class ChatExclusaoLancamentoService : IChatExclusaoLancamentoService
 
             try
             {
-                await _lancamentoRepo.RemoverAsync(pendente.Lancamento.Id);
-                await _perfilService.InvalidarAsync(pendente.UsuarioId);
+                await _lancamentoService.RemoverAsync(pendente.Lancamento.Id, pendente.UsuarioId);
                 var emoji = pendente.Lancamento.Tipo == TipoLancamento.Receita ? "💰" : "💸";
                 return $"✅ Lançamento excluído.\n\n{emoji} {pendente.Lancamento.Descricao}\nR$ {pendente.Lancamento.Valor:N2}";
             }
@@ -205,10 +207,15 @@ public class ChatExclusaoLancamentoService : IChatExclusaoLancamentoService
         };
 
         var emoji = lancamento.Tipo == TipoLancamento.Receita ? "💰" : "💸";
+        var avisoContaFixa = lancamento.PagamentoCicloOrigem != null
+            ? "\n\n⚠️ Este lancamento foi gerado por uma conta fixa. Se voce excluir, ela voltara para pendente."
+            : string.Empty;
         return $"**Confirma a exclusão deste lançamento?**\n\n" +
                $"{emoji} {lancamento.Descricao}\n" +
                $"R$ {lancamento.Valor:N2}\n" +
-               $"{lancamento.Data:dd/MM/yyyy}\n\n" +
+               $"{lancamento.Data:dd/MM/yyyy}" +
+               avisoContaFixa +
+               "\n\n" +
                "Responda **sim** ou **cancelar**.";
     }
 

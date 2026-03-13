@@ -114,6 +114,10 @@ public class LancamentosController : BaseAuthController
             _logger.LogInformation("Lançamento {Id} atualizado pelo usuário {UsuarioId}", id, UsuarioId);
             return Ok(new { mensagem = "Lançamento atualizado com sucesso." });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
         catch (InvalidOperationException)
         {
             return NotFound(new { erro = "Lançamento não encontrado." });
@@ -174,6 +178,10 @@ public class LancamentosController : BaseAuthController
         l.CriadoEm,
         contaBancariaId = l.ContaBancariaId,
         contaBancariaNome = l.ContaBancaria?.Nome,
-        origem = l.Origem.ToString()
+        origem = l.Origem.ToString(),
+        geradoPorContaFixa = l.PagamentoCicloOrigem != null,
+        contaFixaOrigemId = l.PagamentoCicloOrigem?.LembretePagamentoId,
+        contaFixaOrigemDescricao = l.PagamentoCicloOrigem?.LembretePagamento?.Descricao,
+        contaFixaOrigemPeriodKey = l.PagamentoCicloOrigem?.PeriodKey
     };
 }

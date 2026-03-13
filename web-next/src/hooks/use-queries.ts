@@ -127,6 +127,7 @@ export function useAtualizarLancamento() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
       queryClient.invalidateQueries({ queryKey: ["resumo"] });
+      queryClient.invalidateQueries({ queryKey: ["lembretes"] });
       toast.success("Lançamento atualizado!");
     },
     onError: (err: Error) => {
@@ -142,6 +143,7 @@ export function useRemoverLancamento() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
       queryClient.invalidateQueries({ queryKey: ["resumo"] });
+      queryClient.invalidateQueries({ queryKey: ["lembretes"] });
       toast.success("Lançamento removido!");
     },
     onError: (err: Error) => {
@@ -157,6 +159,7 @@ export function useRemoverVariosLancamentos() {
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
       queryClient.invalidateQueries({ queryKey: ["resumo"] });
+      queryClient.invalidateQueries({ queryKey: ["lembretes"] });
       toast.success(`${ids.length} lançamento(s) removido(s)!`);
     },
     onError: (err: Error) => {

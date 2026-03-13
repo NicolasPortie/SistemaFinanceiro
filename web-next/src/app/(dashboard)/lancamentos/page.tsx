@@ -399,6 +399,20 @@ export default function LancamentosPage() {
     setPagina(1);
   };
 
+  const deletingLancamento = useMemo(
+    () => lancamentosData?.items.find((item) => item.id === deletingId) ?? null,
+    [deletingId, lancamentosData]
+  );
+
+  const selectedLancamentos = useMemo(
+    () => lancamentosData?.items.filter((item) => selectedIds.includes(item.id)) ?? [],
+    [lancamentosData, selectedIds]
+  );
+
+  const selectedContaFixaCount = selectedLancamentos.filter(
+    (item) => item.geradoPorContaFixa
+  ).length;
+
   const startIdx = lancamentosData ? (lancamentosData.pagina - 1) * 20 + 1 : 0;
   const endIdx = lancamentosData ? Math.min(lancamentosData.pagina * 20, lancamentosData.total) : 0;
 
@@ -753,6 +767,7 @@ export default function LancamentosPage() {
                               ? "Extrato bancário"
                               : getOrigemLabel(l.origem)}
                             {l.parcelado && ` · ${l.numeroParcelas}x`}
+                            {l.geradoPorContaFixa && " · Conta fixa"}
                           </span>
                         </div>
                         {/* Categoria */}
@@ -849,6 +864,11 @@ export default function LancamentosPage() {
                             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:bg-slate-700/50 dark:text-slate-300">
                               {l.categoria}
                             </span>
+                            {l.geradoPorContaFixa && (
+                              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.18em] text-amber-700 dark:bg-amber-500/15 dark:text-amber-200">
+                                Conta fixa
+                              </span>
+                            )}
                             <span
                               className={cn(
                                 "rounded-full px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.18em]",
@@ -1522,6 +1542,11 @@ export default function LancamentosPage() {
                   >
                     {viewingItem.tipo}
                   </Badge>
+                  {viewingItem.geradoPorContaFixa && (
+                    <Badge className="ml-2 text-[11px] mt-1 bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200">
+                      Conta fixa
+                    </Badge>
+                  )}
                 </div>
                 <span
                   className={cn(
@@ -1570,6 +1595,23 @@ export default function LancamentosPage() {
                   </div>
                   <p className="text-sm font-semibold">{formatDate(viewingItem.data)}</p>
                 </div>
+
+                {viewingItem.geradoPorContaFixa && (
+                  <div className="p-3.5 rounded-xl border border-border/30 bg-muted/10 sm:col-span-2">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Receipt className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      <span className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider">
+                        Origem vinculada
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold">
+                      {viewingItem.contaFixaOrigemDescricao ?? "Conta fixa"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Se este lançamento for excluído, a conta fixa voltará a ficar pendente.
+                    </p>
+                  </div>
+                )}
 
                 {viewingItem.parcelado && (
                   <div className="p-3.5 rounded-xl border border-border/30 bg-muted/10">
@@ -1636,12 +1678,18 @@ export default function LancamentosPage() {
           <AlertDialogHeader className="items-start text-left">
             <AlertDialogTitle className="sr-only">Remover lançamento?</AlertDialogTitle>
             <AlertDialogDescription className="sr-only">
-              Esta ação não pode ser desfeita. O lançamento será removido permanentemente.
+              {deletingLancamento?.geradoPorContaFixa
+                ? "Este lançamento foi gerado a partir de uma conta fixa. Ao excluí-lo, a conta fixa voltará a ficar pendente. Deseja continuar?"
+                : "Esta ação não pode ser desfeita. O lançamento será removido permanentemente."}
             </AlertDialogDescription>
             <DialogShellHeader
               icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
               title="Remover lançamento?"
-              description="Esta ação não pode ser desfeita. O lançamento será removido permanentemente."
+              description={
+                deletingLancamento?.geradoPorContaFixa
+                  ? "Este lançamento foi gerado a partir de uma conta fixa. Ao excluí-lo, a conta fixa voltará a ficar pendente. Deseja continuar?"
+                  : "Esta ação não pode ser desfeita. O lançamento será removido permanentemente."
+              }
               tone="rose"
             />
           </AlertDialogHeader>
@@ -1664,13 +1712,18 @@ export default function LancamentosPage() {
           <AlertDialogHeader className="items-start text-left">
             <AlertDialogTitle className="sr-only">Remover vários lançamentos?</AlertDialogTitle>
             <AlertDialogDescription className="sr-only">
-              Tem certeza que deseja remover os lançamentos selecionados? Esta ação não pode ser
-              desfeita.
+              {selectedContaFixaCount > 0
+                ? `${selectedContaFixaCount} lançamento(s) selecionado(s) foram gerados por conta fixa. Ao excluí-los, as respectivas contas voltarão a ficar pendentes.`
+                : "Tem certeza que deseja remover os lançamentos selecionados? Esta ação não pode ser desfeita."}
             </AlertDialogDescription>
             <DialogShellHeader
               icon={<Trash2 className="h-5 w-5 sm:h-6 sm:w-6" />}
               title="Remover vários lançamentos?"
-              description={`Os ${selectedIds.length} lançamentos selecionados serão removidos de forma permanente.`}
+              description={
+                selectedContaFixaCount > 0
+                  ? `${selectedContaFixaCount} lançamento(s) selecionado(s) foram gerados por conta fixa. Ao excluí-los, as respectivas contas voltarão a ficar pendentes.`
+                  : `Os ${selectedIds.length} lançamentos selecionados serão removidos de forma permanente.`
+              }
               tone="rose"
             />
           </AlertDialogHeader>

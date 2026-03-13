@@ -54,7 +54,7 @@ public static class BotParseHelper
                 DateTimeStyles.None,
                 out var dataCompleta))
         {
-            dataUtc = new DateTime(dataCompleta.Year, dataCompleta.Month, dataCompleta.Day, 0, 0, 0, DateTimeKind.Utc);
+            dataUtc = CriarDataUtcSemDeslocamento(dataCompleta.Year, dataCompleta.Month, dataCompleta.Day);
             return true;
         }
 
@@ -67,7 +67,7 @@ public static class BotParseHelper
         {
             var hojeUtc = DateTime.UtcNow.Date;
             var ano = hojeUtc.Year;
-            var candidato = new DateTime(ano, dataSemAno.Month, dataSemAno.Day, 0, 0, 0, DateTimeKind.Utc);
+            var candidato = CriarDataUtcSemDeslocamento(ano, dataSemAno.Month, dataSemAno.Day);
             if (candidato.Date < hojeUtc)
                 candidato = candidato.AddYears(1);
 
@@ -85,13 +85,13 @@ public static class BotParseHelper
     {
         var hoje = referenciaUtc.Date;
         var diaNoMes = Math.Min(Math.Max(diaPreferencial, 1), DateTime.DaysInMonth(hoje.Year, hoje.Month));
-        var candidato = new DateTime(hoje.Year, hoje.Month, diaNoMes, 0, 0, 0, DateTimeKind.Utc);
+        var candidato = CriarDataUtcSemDeslocamento(hoje.Year, hoje.Month, diaNoMes);
 
         if (candidato.Date < hoje)
         {
             var proximoMes = hoje.AddMonths(1);
             var diaNoProximo = Math.Min(Math.Max(diaPreferencial, 1), DateTime.DaysInMonth(proximoMes.Year, proximoMes.Month));
-            candidato = new DateTime(proximoMes.Year, proximoMes.Month, diaNoProximo, 0, 0, 0, DateTimeKind.Utc);
+            candidato = CriarDataUtcSemDeslocamento(proximoMes.Year, proximoMes.Month, diaNoProximo);
         }
 
         return candidato;
@@ -319,4 +319,7 @@ public static class BotParseHelper
 
         return false;
     }
+
+    private static DateTime CriarDataUtcSemDeslocamento(int ano, int mes, int dia)
+        => new(ano, mes, dia, 12, 0, 0, DateTimeKind.Utc);
 }

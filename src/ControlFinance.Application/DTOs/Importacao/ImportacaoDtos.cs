@@ -25,6 +25,7 @@ public class ImportacaoPreviewDto
     public string BancoDetectado { get; set; } = string.Empty;
     public FormatoArquivo FormatoArquivo { get; set; }
     public TipoImportacao TipoImportacao { get; set; }
+    public int? ContaBancariaId { get; set; }
     public int? CartaoCreditoId { get; set; }
     public string? CartaoCreditoNome { get; set; }
     public int? CartaoDiaFechamento { get; set; }

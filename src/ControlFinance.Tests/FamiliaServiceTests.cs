@@ -22,6 +22,7 @@ public class FamiliaServiceTests
     private readonly Mock<ILancamentoRepository> _lancamentoRepoMock = new();
     private readonly Mock<IUsuarioRepository> _usuarioRepoMock = new();
     private readonly Mock<IFeatureGateService> _featureGateMock = new();
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<FamiliaService>> _loggerMock = new();
 
     private readonly FamiliaService _service;
@@ -56,6 +57,7 @@ public class FamiliaServiceTests
             _lancamentoRepoMock.Object,
             _usuarioRepoMock.Object,
             _featureGateMock.Object,
+            _unitOfWorkMock.Object,
             _loggerMock.Object);
     }
 

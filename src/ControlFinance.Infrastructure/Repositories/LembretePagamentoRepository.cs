@@ -76,13 +76,13 @@ public class LembretePagamentoRepository : ILembretePagamentoRepository
         return true;
     }
 
-    public async Task<List<LembretePagamento>> ObterAtivosComLembreteTelegramAsync()
+    public async Task<List<LembretePagamento>> ObterAtivosComCanalLembreteAsync()
     {
         return await _context.Set<LembretePagamento>()
             .Include(l => l.Usuario)
             .Include(l => l.Categoria)
             .Include(l => l.PagamentosCiclo)
-            .Where(l => l.Ativo && l.LembreteTelegramAtivo)
+            .Where(l => l.Ativo && (l.LembreteTelegramAtivo || l.LembreteWhatsAppAtivo))
             .OrderBy(l => l.DataVencimento)
             .ToListAsync();
     }
@@ -113,4 +113,3 @@ public class LembretePagamentoRepository : ILembretePagamentoRepository
         return true;
     }
 }
-

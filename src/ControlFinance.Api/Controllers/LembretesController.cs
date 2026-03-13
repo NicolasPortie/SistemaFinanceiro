@@ -20,10 +20,12 @@ public class LembretesController : BaseAuthController
     private readonly ILancamentoService _lancamentoService;
     private readonly IPagamentoCicloRepository _pagamentoCicloRepo;
     private readonly IFeatureGateService _featureGate;
+
     private static readonly TimeZoneInfo BrasiliaTimeZone =
-        TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows()
-            ? "E. South America Standard Time"
-            : "America/Sao_Paulo");
+        TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows()
+                ? "E. South America Standard Time"
+                : "America/Sao_Paulo");
 
     public LembretesController(
         ILembretePagamentoRepository repo,
@@ -39,234 +41,202 @@ public class LembretesController : BaseAuthController
         _featureGate = featureGate;
     }
 
-    /// <summary>
-    /// Lista todos os lembretes/contas fixas do usuário.
-    /// </summary>
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] bool apenasAtivos = true)
     {
         var lembretes = await _repo.ObterPorUsuarioAsync(UsuarioId, apenasAtivos);
-        var hoje = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BrasiliaTimeZone).Date;
-        var periodKeyAtual = $"{hoje:yyyy-MM}";
-        var lembreteIds = lembretes.Select(l => l.Id).ToList();
-        var idsPagos = lembreteIds.Count > 0
-            ? await _pagamentoCicloRepo.ObterIdsComCiclosPagoAsync(lembreteIds, periodKeyAtual)
-            : new HashSet<int>();
-        var resultado = lembretes.Select(l => new
-        {
-            l.Id,
-            l.Descricao,
-            l.Valor,
-            DataVencimento = l.DataVencimento.ToString("yyyy-MM-dd"),
-            l.RecorrenteMensal,
-            l.DiaRecorrente,
-            Frequencia = l.Frequencia?.ToString(),
-            l.DiaSemanaRecorrente,
-            l.Ativo,
-            l.CategoriaId,
-            Categoria = l.Categoria?.Nome,
-            FormaPagamento = l.FormaPagamento?.ToString(),
-            l.LembreteTelegramAtivo,
-            DataFimRecorrencia = l.DataFimRecorrencia?.ToString("yyyy-MM-dd"),
-            l.PeriodKeyAtual,
-            l.DiasAntecedenciaLembrete,
-            HorarioInicioLembrete = l.HorarioInicioLembrete.ToString(@"hh\:mm"),
-            HorarioFimLembrete = l.HorarioFimLembrete.ToString(@"hh\:mm"),
-            CriadoEm = l.CriadoEm.ToString("o"),
-            AtualizadoEm = l.AtualizadoEm.ToString("o"),
-            PagoCicloAtual = idsPagos.Contains(l.Id),
-        });
-        return Ok(resultado);
+        var ciclosAtuais = lembretes.ToDictionary(
+            lembrete => lembrete.Id,
+            lembrete => !string.IsNullOrWhiteSpace(lembrete.PeriodKeyAtual)
+                ? lembrete.PeriodKeyAtual!
+                : $"{TimeZoneInfo.ConvertTimeFromUtc(lembrete.DataVencimento, BrasiliaTimeZone):yyyy-MM}");
+        var idsPagos = ciclosAtuais.Count == 0
+            ? new HashSet<int>()
+            : await _pagamentoCicloRepo.ObterIdsComCiclosPagoAsync(ciclosAtuais);
+
+        return Ok(lembretes.Select(lembrete => MapearLembreteResponse(
+            lembrete,
+            idsPagos.Contains(lembrete.Id))));
     }
 
-    /// <summary>
-    /// Obtém um lembrete específico.
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> ObterPorId(int id)
     {
         var lembrete = await _repo.ObterPorIdAsync(id);
         if (lembrete == null || lembrete.UsuarioId != UsuarioId)
-            return NotFound(new { erro = "Lembrete não encontrado." });
+            return NotFound(new { erro = "Lembrete nao encontrado." });
 
-        return Ok(new
-        {
-            lembrete.Id,
-            lembrete.Descricao,
-            lembrete.Valor,
-            DataVencimento = lembrete.DataVencimento.ToString("yyyy-MM-dd"),
-            lembrete.RecorrenteMensal,
-            lembrete.DiaRecorrente,
-            Frequencia = lembrete.Frequencia?.ToString(),
-            lembrete.DiaSemanaRecorrente,
-            lembrete.Ativo,
-            lembrete.CategoriaId,
-            Categoria = lembrete.Categoria?.Nome,
-            FormaPagamento = lembrete.FormaPagamento?.ToString(),
-            lembrete.LembreteTelegramAtivo,
-            DataFimRecorrencia = lembrete.DataFimRecorrencia?.ToString("yyyy-MM-dd"),
-            lembrete.PeriodKeyAtual,
-            lembrete.DiasAntecedenciaLembrete,
-            HorarioInicioLembrete = lembrete.HorarioInicioLembrete.ToString(@"hh\:mm"),
-            HorarioFimLembrete = lembrete.HorarioFimLembrete.ToString(@"hh\:mm"),
-            CriadoEm = lembrete.CriadoEm.ToString("o"),
-            AtualizadoEm = lembrete.AtualizadoEm.ToString("o"),
-        });
+        return Ok(MapearLembreteResponse(lembrete, false));
     }
 
-    /// <summary>
-    /// Cria um novo lembrete/conta fixa.
-    /// </summary>
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] CriarLembreteRequest request)
     {
-        // ── Feature Gate: limite de contas fixas ──
-        var lembretesAtual = await _repo.ObterPorUsuarioAsync(UsuarioId, apenasAtivos: true);
-        var gate = await _featureGate.VerificarLimiteAsync(UsuarioId, Recurso.ContasFixas, lembretesAtual.Count);
+        var lembretesAtivos = await _repo.ObterPorUsuarioAsync(UsuarioId, apenasAtivos: true);
+        var gate = await _featureGate.VerificarLimiteAsync(
+            UsuarioId,
+            Recurso.ContasFixas,
+            lembretesAtivos.Count);
+
         if (!gate.Permitido)
-            throw new FeatureGateException(gate.Mensagem!, Recurso.ContasFixas, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
+        {
+            throw new FeatureGateException(
+                gate.Mensagem!,
+                Recurso.ContasFixas,
+                gate.Limite,
+                gate.UsoAtual,
+                gate.PlanoSugerido);
+        }
 
         if (string.IsNullOrWhiteSpace(request.Descricao))
-            return BadRequest(new { erro = "Descrição é obrigatória." });
+            return BadRequest(new { erro = "Descricao e obrigatoria." });
 
-        if (!DateTime.TryParseExact(request.DataVencimento, "yyyy-MM-dd",
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out var dataVenc))
-            return BadRequest(new { erro = "Data de vencimento inválida. Use o formato yyyy-MM-dd." });
+        if (!DateTime.TryParseExact(
+                request.DataVencimento,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var dataVencimento))
+        {
+            return BadRequest(new { erro = "Data de vencimento invalida. Use o formato yyyy-MM-dd." });
+        }
 
         var isContaFixa = request.RecorrenteMensal || !string.IsNullOrWhiteSpace(request.Frequencia);
         if (isContaFixa)
         {
             if (!request.Valor.HasValue || request.Valor.Value <= 0)
-                return BadRequest(new { erro = "Valor é obrigatório para conta fixa." });
+                return BadRequest(new { erro = "Valor e obrigatorio para conta fixa." });
+
             if (string.IsNullOrWhiteSpace(request.Categoria))
-                return BadRequest(new { erro = "Categoria é obrigatória para conta fixa." });
+                return BadRequest(new { erro = "Categoria e obrigatoria para conta fixa." });
+
             if (string.IsNullOrWhiteSpace(request.FormaPagamento))
-                return BadRequest(new { erro = "Forma de pagamento é obrigatória para conta fixa." });
+                return BadRequest(new { erro = "Forma de pagamento e obrigatoria para conta fixa." });
         }
 
-        int? categoriaId = null;
-        string? categoriaNome = null;
+        Categoria? categoria = null;
         if (!string.IsNullOrWhiteSpace(request.Categoria))
         {
-            var categoria = await _categoriaRepo.ObterPorNomeAsync(UsuarioId, request.Categoria.Trim());
+            categoria = await _categoriaRepo.ObterPorNomeAsync(UsuarioId, request.Categoria.Trim());
             if (categoria == null)
-                return BadRequest(new { erro = $"Categoria '{request.Categoria}' não encontrada." });
-
-            categoriaId = categoria.Id;
-            categoriaNome = categoria.Nome;
+                return BadRequest(new { erro = $"Categoria '{request.Categoria}' nao encontrada." });
         }
 
-        FormaPagamento? formaPagamento = null;
-        if (!string.IsNullOrWhiteSpace(request.FormaPagamento))
+        var formaPagamento = ParseFormaPagamento(request.FormaPagamento);
+        if (!string.IsNullOrWhiteSpace(request.FormaPagamento) && formaPagamento == null)
         {
-            formaPagamento = request.FormaPagamento.Trim().ToLowerInvariant() switch
+            return BadRequest(new
             {
-                "pix" => FormaPagamento.PIX,
-                "debito" or "débito" => FormaPagamento.Debito,
-                "credito" or "crédito" => FormaPagamento.Credito,
-                "dinheiro" => FormaPagamento.Dinheiro,
-                "outro" => FormaPagamento.Outro,
-                _ => null
-            };
-
-            if (formaPagamento == null)
-                return BadRequest(new { erro = "Forma de pagamento inválida. Use: pix, debito, credito, dinheiro, outro." });
+                erro = "Forma de pagamento invalida. Use: pix, debito, credito, dinheiro, outro."
+            });
         }
 
-        var vencimentoUtc = ConverterDataBrasiliaParaUtc(dataVenc);
+        var frequencia = ParseFrequencia(request.Frequencia);
+        if (!string.IsNullOrWhiteSpace(request.Frequencia) && frequencia == null)
+            return BadRequest(new { erro = "Frequencia invalida." });
 
+        var recorrente = request.RecorrenteMensal || frequencia.HasValue;
         var lembrete = new LembretePagamento
         {
             UsuarioId = UsuarioId,
             Descricao = request.Descricao.Trim(),
             Valor = request.Valor,
-            DataVencimento = vencimentoUtc,
+            DataVencimento = ConverterDataBrasiliaParaUtc(dataVencimento),
             RecorrenteMensal = request.RecorrenteMensal,
             DiaRecorrente = request.RecorrenteMensal ? request.DiaRecorrente : null,
-            Frequencia = Enum.TryParse<FrequenciaLembrete>(request.Frequencia, true, out var freq) ? freq : null,
+            Frequencia = frequencia,
             DiaSemanaRecorrente = request.DiaSemanaRecorrente,
-            CategoriaId = categoriaId,
+            Ativo = true,
+            CategoriaId = categoria?.Id,
+            Categoria = categoria,
             FormaPagamento = formaPagamento,
             LembreteTelegramAtivo = request.LembreteTelegramAtivo,
+            LembreteWhatsAppAtivo = request.LembreteWhatsAppAtivo,
             DataFimRecorrencia = ParseDataFimRecorrencia(request.DataFimRecorrencia),
-            PeriodKeyAtual = request.RecorrenteMensal || !string.IsNullOrWhiteSpace(request.Frequencia)
-                ? $"{dataVenc:yyyy-MM}"
-                : null,
-            Ativo = true,
+            PeriodKeyAtual = recorrente ? $"{dataVencimento:yyyy-MM}" : null,
             CriadoEm = DateTime.UtcNow,
             AtualizadoEm = DateTime.UtcNow,
         };
 
         var criado = await _repo.CriarAsync(lembrete);
-        return Created($"/api/lembretes/{criado.Id}", new
-        {
-            criado.Id,
-            criado.Descricao,
-            criado.Valor,
-            DataVencimento = criado.DataVencimento.ToString("yyyy-MM-dd"),
-            criado.RecorrenteMensal,
-            criado.DiaRecorrente,
-            Frequencia = criado.Frequencia?.ToString(),
-            criado.DiaSemanaRecorrente,
-            criado.Ativo,
-            criado.CategoriaId,
-            Categoria = categoriaNome,
-            FormaPagamento = criado.FormaPagamento?.ToString(),
-            criado.LembreteTelegramAtivo,
-            DataFimRecorrencia = criado.DataFimRecorrencia?.ToString("yyyy-MM-dd"),
-            criado.PeriodKeyAtual,
-            criado.DiasAntecedenciaLembrete,
-            HorarioInicioLembrete = criado.HorarioInicioLembrete.ToString(@"hh\:mm"),
-            HorarioFimLembrete = criado.HorarioFimLembrete.ToString(@"hh\:mm"),
-            CriadoEm = criado.CriadoEm.ToString("o"),
-            AtualizadoEm = criado.AtualizadoEm.ToString("o"),
-        });
+        return Created($"/api/lembretes/{criado.Id}", MapearLembreteResponse(criado, false));
     }
 
-    /// <summary>
-    /// Atualiza um lembrete existente.
-    /// </summary>
     [HttpPut("{id}")]
     public async Task<IActionResult> Atualizar(int id, [FromBody] AtualizarLembreteRequest request)
     {
         var lembrete = await _repo.ObterPorIdAsync(id);
         if (lembrete == null || lembrete.UsuarioId != UsuarioId)
-            return NotFound(new { erro = "Lembrete não encontrado." });
+            return NotFound(new { erro = "Lembrete nao encontrado." });
 
         if (request.Descricao != null)
             lembrete.Descricao = request.Descricao.Trim();
+
         if (request.Valor.HasValue)
-            lembrete.Valor = request.Valor;
+            lembrete.Valor = request.Valor.Value;
+
         if (request.DataVencimento != null)
         {
-            if (!DateTime.TryParseExact(request.DataVencimento, "yyyy-MM-dd",
-                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var dataVencAtualizar))
-                return BadRequest(new { erro = "Data de vencimento inválida. Use o formato yyyy-MM-dd." });
-            lembrete.DataVencimento = ConverterDataBrasiliaParaUtc(dataVencAtualizar);
+            if (!DateTime.TryParseExact(
+                    request.DataVencimento,
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var dataVencimento))
+            {
+                return BadRequest(new { erro = "Data de vencimento invalida. Use o formato yyyy-MM-dd." });
+            }
+
+            lembrete.DataVencimento = ConverterDataBrasiliaParaUtc(dataVencimento);
         }
+
         if (request.RecorrenteMensal.HasValue)
         {
             lembrete.RecorrenteMensal = request.RecorrenteMensal.Value;
-            lembrete.DiaRecorrente = request.RecorrenteMensal.Value ? request.DiaRecorrente : null;
+            if (!request.RecorrenteMensal.Value)
+                lembrete.DiaRecorrente = null;
         }
+
+        if (request.DiaRecorrente.HasValue)
+            lembrete.DiaRecorrente = request.DiaRecorrente.Value;
+
         if (request.Frequencia != null)
-            lembrete.Frequencia = Enum.TryParse<FrequenciaLembrete>(request.Frequencia, true, out var freqAtualizar) ? freqAtualizar : null;
+        {
+            if (string.IsNullOrWhiteSpace(request.Frequencia))
+            {
+                lembrete.Frequencia = null;
+            }
+            else
+            {
+                var frequencia = ParseFrequencia(request.Frequencia);
+                if (frequencia == null)
+                    return BadRequest(new { erro = "Frequencia invalida." });
+
+                lembrete.Frequencia = frequencia;
+            }
+        }
+
         if (request.DiaSemanaRecorrente.HasValue)
-            lembrete.DiaSemanaRecorrente = request.DiaSemanaRecorrente;
+            lembrete.DiaSemanaRecorrente = request.DiaSemanaRecorrente.Value;
+
         if (request.Categoria != null)
         {
             if (string.IsNullOrWhiteSpace(request.Categoria))
             {
                 lembrete.CategoriaId = null;
+                lembrete.Categoria = null;
             }
             else
             {
                 var categoria = await _categoriaRepo.ObterPorNomeAsync(UsuarioId, request.Categoria.Trim());
                 if (categoria == null)
-                    return BadRequest(new { erro = $"Categoria '{request.Categoria}' não encontrada." });
+                    return BadRequest(new { erro = $"Categoria '{request.Categoria}' nao encontrada." });
+
                 lembrete.CategoriaId = categoria.Id;
+                lembrete.Categoria = categoria;
             }
         }
+
         if (request.FormaPagamento != null)
         {
             if (string.IsNullOrWhiteSpace(request.FormaPagamento))
@@ -275,42 +245,142 @@ public class LembretesController : BaseAuthController
             }
             else
             {
-                var forma = request.FormaPagamento.Trim().ToLowerInvariant() switch
+                var formaPagamento = ParseFormaPagamento(request.FormaPagamento);
+                if (formaPagamento == null)
                 {
-                    "pix" => FormaPagamento.PIX,
-                    "debito" or "débito" => FormaPagamento.Debito,
-                    "credito" or "crédito" => FormaPagamento.Credito,
-                    "dinheiro" => FormaPagamento.Dinheiro,
-                    "outro" => FormaPagamento.Outro,
-                    _ => (FormaPagamento?)null
-                };
+                    return BadRequest(new
+                    {
+                        erro = "Forma de pagamento invalida. Use: pix, debito, credito, dinheiro, outro."
+                    });
+                }
 
-                if (forma == null)
-                    return BadRequest(new { erro = "Forma de pagamento inválida. Use: pix, debito, credito, dinheiro, outro." });
-
-                lembrete.FormaPagamento = forma;
+                lembrete.FormaPagamento = formaPagamento;
             }
         }
+
         if (request.LembreteTelegramAtivo.HasValue)
             lembrete.LembreteTelegramAtivo = request.LembreteTelegramAtivo.Value;
+
+        if (request.LembreteWhatsAppAtivo.HasValue)
+            lembrete.LembreteWhatsAppAtivo = request.LembreteWhatsAppAtivo.Value;
+
+        if (request.Ativo.HasValue && request.Ativo.Value && !lembrete.Ativo)
+        {
+            var lembretesAtivos = await _repo.ObterPorUsuarioAsync(UsuarioId, apenasAtivos: true);
+            var gate = await _featureGate.VerificarLimiteAsync(
+                UsuarioId,
+                Recurso.ContasFixas,
+                lembretesAtivos.Count);
+
+            if (!gate.Permitido)
+            {
+                throw new FeatureGateException(
+                    gate.Mensagem!,
+                    Recurso.ContasFixas,
+                    gate.Limite,
+                    gate.UsoAtual,
+                    gate.PlanoSugerido);
+            }
+        }
+
+        if (request.Ativo.HasValue)
+            lembrete.Ativo = request.Ativo.Value;
+
         if (request.DataFimRecorrencia != null)
         {
-            if (string.IsNullOrWhiteSpace(request.DataFimRecorrencia))
-                lembrete.DataFimRecorrencia = null;
-            else
-                lembrete.DataFimRecorrencia = ParseDataFimRecorrencia(request.DataFimRecorrencia);
+            lembrete.DataFimRecorrencia = string.IsNullOrWhiteSpace(request.DataFimRecorrencia)
+                ? null
+                : ParseDataFimRecorrencia(request.DataFimRecorrencia);
         }
 
         var recorrente = lembrete.RecorrenteMensal || lembrete.Frequencia.HasValue;
-        lembrete.PeriodKeyAtual = recorrente ? $"{lembrete.DataVencimento:yyyy-MM}" : null;
+        var dataBase = TimeZoneInfo.ConvertTimeFromUtc(lembrete.DataVencimento, BrasiliaTimeZone);
+        lembrete.PeriodKeyAtual = recorrente ? $"{dataBase:yyyy-MM}" : null;
 
         await _repo.AtualizarAsync(lembrete);
-        return Ok(new
+        return Ok(MapearLembreteResponse(lembrete, false));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Desativar(int id)
+    {
+        var resultado = await _repo.DesativarAsync(UsuarioId, id);
+        if (!resultado)
+            return NotFound(new { erro = "Lembrete nao encontrado." });
+
+        return Ok(new { mensagem = "Lembrete desativado com sucesso." });
+    }
+
+    [HttpPost("{id}/pagar")]
+    public async Task<IActionResult> MarcarPago(int id, [FromBody] PagarContaFixaRequest request)
+    {
+        DateTime? dataPagamento = null;
+        if (!string.IsNullOrWhiteSpace(request.DataPagamento))
+        {
+            if (!DateTime.TryParseExact(
+                    request.DataPagamento,
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var dataPagamentoLocal))
+            {
+                return BadRequest(new { erro = "Data do pagamento invalida. Use o formato yyyy-MM-dd." });
+            }
+
+            dataPagamento = ConverterDataBrasiliaParaUtc(dataPagamentoLocal);
+        }
+
+        try
+        {
+            var resultado = await _lancamentoService.RegistrarPagamentoContaFixaAsync(
+                UsuarioId,
+                id,
+                new RegistrarPagamentoContaFixaDto
+                {
+                    ValorPago = request.ValorPago,
+                    ContaBancariaId = request.ContaBancariaId,
+                    CartaoCreditoId = request.CartaoCreditoId,
+                    DataPagamento = dataPagamento,
+                    PeriodKey = request.PeriodKey,
+                });
+
+            return Ok(new
+            {
+                id = resultado.PagamentoCicloId,
+                resultado.PeriodKey,
+                resultado.Pago,
+                DataPagamento = resultado.DataPagamento?.ToString("o"),
+                resultado.ValorPago,
+                resultado.LancamentoId,
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { erro = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { erro = ex.Message });
+        }
+    }
+
+    private static object MapearLembreteResponse(LembretePagamento lembrete, bool pagoCicloAtual)
+    {
+        var dataVencimento = TimeZoneInfo.ConvertTimeFromUtc(lembrete.DataVencimento, BrasiliaTimeZone);
+        var dataFimRecorrencia = lembrete.DataFimRecorrencia.HasValue
+            ? TimeZoneInfo.ConvertTimeFromUtc(lembrete.DataFimRecorrencia.Value, BrasiliaTimeZone)
+            : (DateTime?)null;
+
+        return new
         {
             lembrete.Id,
             lembrete.Descricao,
             lembrete.Valor,
-            DataVencimento = lembrete.DataVencimento.ToString("yyyy-MM-dd"),
+            DataVencimento = dataVencimento.ToString("yyyy-MM-dd"),
             lembrete.RecorrenteMensal,
             lembrete.DiaRecorrente,
             Frequencia = lembrete.Frequencia?.ToString(),
@@ -320,112 +390,74 @@ public class LembretesController : BaseAuthController
             Categoria = lembrete.Categoria?.Nome,
             FormaPagamento = lembrete.FormaPagamento?.ToString(),
             lembrete.LembreteTelegramAtivo,
-            DataFimRecorrencia = lembrete.DataFimRecorrencia?.ToString("yyyy-MM-dd"),
+            lembrete.LembreteWhatsAppAtivo,
+            DataFimRecorrencia = dataFimRecorrencia?.ToString("yyyy-MM-dd"),
             lembrete.PeriodKeyAtual,
             lembrete.DiasAntecedenciaLembrete,
             HorarioInicioLembrete = lembrete.HorarioInicioLembrete.ToString(@"hh\:mm"),
             HorarioFimLembrete = lembrete.HorarioFimLembrete.ToString(@"hh\:mm"),
             CriadoEm = lembrete.CriadoEm.ToString("o"),
             AtualizadoEm = lembrete.AtualizadoEm.ToString("o"),
-        });
+            PagoCicloAtual = pagoCicloAtual,
+        };
+    }
+
+    private static FormaPagamento? ParseFormaPagamento(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "pix" => FormaPagamento.PIX,
+            "debito" or "débito" => FormaPagamento.Debito,
+            "credito" or "crédito" => FormaPagamento.Credito,
+            "dinheiro" => FormaPagamento.Dinheiro,
+            "outro" => FormaPagamento.Outro,
+            _ => null,
+        };
+    }
+
+    private static FrequenciaLembrete? ParseFrequencia(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        return Enum.TryParse<FrequenciaLembrete>(value, true, out var frequencia)
+            ? frequencia
+            : null;
     }
 
     private static DateTime ConverterDataBrasiliaParaUtc(DateTime dataLocal)
     {
-        var local = new DateTime(dataLocal.Year, dataLocal.Month, dataLocal.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        var local = new DateTime(
+            dataLocal.Year,
+            dataLocal.Month,
+            dataLocal.Day,
+            0,
+            0,
+            0,
+            DateTimeKind.Unspecified);
+
         return TimeZoneInfo.ConvertTimeToUtc(local, BrasiliaTimeZone);
-    }
-
-    /// <summary>
-    /// Desativa um lembrete (soft-delete).
-    /// </summary>
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Desativar(int id)
-    {
-        var resultado = await _repo.DesativarAsync(UsuarioId, id);
-        if (!resultado)
-            return NotFound(new { erro = "Lembrete não encontrado." });
-
-        return Ok(new { mensagem = "Lembrete desativado com sucesso." });
     }
 
     private static DateTime? ParseDataFimRecorrencia(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return null;
-        if (DateTime.TryParseExact(value, "yyyy-MM-dd",
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out var data))
-            return data;
-        return null;
-    }
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
 
-    /// <summary>
-    /// Registra o pagamento de uma conta fixa no ciclo atual,
-    /// criando automaticamente um lançamento de saída.
-    /// </summary>
-    [HttpPost("{id}/pagar")]
-    public async Task<IActionResult> MarcarPago(int id, [FromBody] PagarContaFixaRequest request)
-    {
-        var lembrete = await _repo.ObterPorIdAsync(id);
-        if (lembrete == null || lembrete.UsuarioId != UsuarioId)
-            return NotFound(new { erro = "Lembrete não encontrado." });
-
-        if (lembrete.Ativo == false)
-            return BadRequest(new { erro = "Conta fixa está inativa." });
-
-        var hoje = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, BrasiliaTimeZone).Date;
-        var periodKey = !string.IsNullOrWhiteSpace(request.PeriodKey)
-            ? request.PeriodKey
-            : $"{hoje:yyyy-MM}";
-
-        var jaPagei = await _pagamentoCicloRepo.JaPagouCicloAsync(id, periodKey);
-        if (jaPagei)
-            return Conflict(new { erro = "Esta conta já foi registrada como paga para este período." });
-
-        var valorPago = request.ValorPago ?? lembrete.Valor ?? 0m;
-        if (valorPago <= 0)
-            return BadRequest(new { erro = "Valor do pagamento deve ser maior que zero." });
-
-        var formaPgto = lembrete.FormaPagamento ?? FormaPagamento.PIX;
-        var categoriaNome = lembrete.Categoria?.Nome ?? "Outros";
-
-        DateTime? dataLancamento = null;
-        if (!string.IsNullOrWhiteSpace(request.DataPagamento) &&
-            DateTime.TryParseExact(request.DataPagamento, "yyyy-MM-dd",
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out var dataParsed))
+        if (!DateTime.TryParseExact(
+                value,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var data))
         {
-            dataLancamento = ConverterDataBrasiliaParaUtc(dataParsed);
+            return null;
         }
 
-        var lancamento = await _lancamentoService.RegistrarAsync(UsuarioId, new RegistrarLancamentoDto
-        {
-            Valor = valorPago,
-            Descricao = lembrete.Descricao,
-            Data = dataLancamento,
-            Tipo = TipoLancamento.Gasto,
-            FormaPagamento = formaPgto,
-            Categoria = categoriaNome,
-            ContaBancariaId = request.ContaBancariaId,
-        });
-
-        var ciclo = await _pagamentoCicloRepo.CriarAsync(new PagamentoCiclo
-        {
-            LembretePagamentoId = id,
-            PeriodKey = periodKey,
-            Pago = true,
-            DataPagamento = DateTime.UtcNow,
-            ValorPago = valorPago,
-            CriadoEm = DateTime.UtcNow,
-        });
-
-        return Ok(new
-        {
-            ciclo.Id,
-            ciclo.PeriodKey,
-            ciclo.Pago,
-            DataPagamento = ciclo.DataPagamento?.ToString("o"),
-            ciclo.ValorPago,
-            LancamentoId = lancamento.Id,
-        });
+        return ConverterDataBrasiliaParaUtc(data);
     }
 }
 
@@ -433,6 +465,7 @@ public class PagarContaFixaRequest
 {
     public decimal? ValorPago { get; set; }
     public int? ContaBancariaId { get; set; }
-    public string? DataPagamento { get; set; } // "yyyy-MM-dd"
-    public string? PeriodKey { get; set; }     // "YYYY-MM", defaults to current month
+    public int? CartaoCreditoId { get; set; }
+    public string? DataPagamento { get; set; }
+    public string? PeriodKey { get; set; }
 }

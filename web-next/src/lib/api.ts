@@ -295,6 +295,10 @@ export interface Lancamento {
   contaBancariaId?: number | null;
   contaBancariaNome?: string | null;
   origem?: string;
+  geradoPorContaFixa?: boolean;
+  contaFixaOrigemId?: number | null;
+  contaFixaOrigemDescricao?: string | null;
+  contaFixaOrigemPeriodKey?: string | null;
 }
 
 export interface LancamentosPaginados {
@@ -422,6 +426,7 @@ export interface LembretePagamento {
   categoria: string | null;
   formaPagamento: string | null;
   lembreteTelegramAtivo: boolean;
+  lembreteWhatsAppAtivo: boolean;
   periodKeyAtual: string | null;
   diasAntecedenciaLembrete: number;
   horarioInicioLembrete: string;
@@ -443,6 +448,7 @@ export interface CriarLembreteRequest {
   categoria?: string;
   formaPagamento?: string;
   lembreteTelegramAtivo?: boolean;
+  lembreteWhatsAppAtivo?: boolean;
   dataFimRecorrencia?: string;
 }
 
@@ -457,6 +463,7 @@ export interface AtualizarLembreteRequest {
   categoria?: string;
   formaPagamento?: string;
   lembreteTelegramAtivo?: boolean;
+  lembreteWhatsAppAtivo?: boolean;
   dataFimRecorrencia?: string;
   ativo?: boolean;
 }
@@ -464,6 +471,7 @@ export interface AtualizarLembreteRequest {
 export interface PagarContaFixaRequest {
   valorPago?: number;
   contaBancariaId?: number;
+  cartaoCreditoId?: number;
   dataPagamento?: string; // "yyyy-MM-dd"
   periodKey?: string; // "YYYY-MM"
 }
@@ -1606,6 +1614,7 @@ export interface ImportacaoPreview {
   bancoDetectado: string;
   formatoArquivo: FormatoArquivo;
   tipoImportacao: TipoImportacao;
+  contaBancariaId: number | null;
   cartaoCreditoId: number | null;
   cartaoCreditoNome: string | null;
   cartaoDiaFechamento: number | null;

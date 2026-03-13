@@ -25,4 +25,5 @@ public class Lancamento
     public ContaBancaria? ContaBancaria { get; set; }
     public ICollection<Parcela> Parcelas { get; set; } = new List<Parcela>();
     public ICollection<TagLancamento> Tags { get; set; } = new List<TagLancamento>();
+    public PagamentoCiclo? PagamentoCicloOrigem { get; set; }
 }

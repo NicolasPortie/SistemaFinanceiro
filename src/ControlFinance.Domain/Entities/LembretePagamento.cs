@@ -25,6 +25,7 @@ public class LembretePagamento
     public int? CategoriaId { get; set; }
     public FormaPagamento? FormaPagamento { get; set; }
     public bool LembreteTelegramAtivo { get; set; } = true;
+    public bool LembreteWhatsAppAtivo { get; set; } = true;
     public string? PeriodKeyAtual { get; set; } // "YYYY-MM" do ciclo corrente
 
     /// <summary>
@@ -43,4 +44,3 @@ public class LembretePagamento
     public ICollection<PagamentoCiclo> PagamentosCiclo { get; set; } = new List<PagamentoCiclo>();
     public ICollection<LogLembreteTelegram> LogsLembrete { get; set; } = new List<LogLembreteTelegram>();
 }
-

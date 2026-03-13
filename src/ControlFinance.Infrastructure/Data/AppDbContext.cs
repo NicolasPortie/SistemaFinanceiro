@@ -508,6 +508,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CategoriaId).HasColumnName("categoria_id");
             entity.Property(e => e.FormaPagamento).HasColumnName("forma_pagamento");
             entity.Property(e => e.LembreteTelegramAtivo).HasColumnName("lembrete_telegram_ativo").HasDefaultValue(true);
+            entity.Property(e => e.LembreteWhatsAppAtivo).HasColumnName("lembrete_whatsapp_ativo").HasDefaultValue(true);
             entity.Property(e => e.PeriodKeyAtual).HasColumnName("period_key_atual").HasMaxLength(10);
             entity.Property(e => e.DiasAntecedenciaLembrete).HasColumnName("dias_antecedencia_lembrete").HasDefaultValue(3);
             entity.Property(e => e.HorarioInicioLembrete).HasColumnName("horario_inicio_lembrete");
@@ -541,15 +542,21 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Pago).HasColumnName("pago");
             entity.Property(e => e.DataPagamento).HasColumnName("data_pagamento");
             entity.Property(e => e.ValorPago).HasColumnName("valor_pago").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.LancamentoId).HasColumnName("lancamento_id").IsRequired(false);
             entity.Property(e => e.CriadoEm).HasColumnName("criado_em");
 
             entity.HasOne(e => e.LembretePagamento)
                   .WithMany(l => l.PagamentosCiclo)
                   .HasForeignKey(e => e.LembretePagamentoId)
                   .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Lancamento)
+                  .WithOne(l => l.PagamentoCicloOrigem)
+                  .HasForeignKey<PagamentoCiclo>(e => e.LancamentoId)
+                  .OnDelete(DeleteBehavior.Restrict);
 
             // Unique constraint: no máximo 1 por (conta_fixa_id, period_key)
             entity.HasIndex(e => new { e.LembretePagamentoId, e.PeriodKey }).IsUnique();
+            entity.HasIndex(e => e.LancamentoId).IsUnique().HasFilter("lancamento_id IS NOT NULL");
         });
 
         // === LogLembreteTelegram ===
@@ -560,6 +567,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.LembretePagamentoId).HasColumnName("lembrete_pagamento_id");
             entity.Property(e => e.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(e => e.Canal).HasColumnName("canal").HasMaxLength(20);
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
             entity.Property(e => e.MensagemTelegramId).HasColumnName("mensagem_telegram_id");
             entity.Property(e => e.TipoLembrete).HasColumnName("tipo_lembrete").HasMaxLength(20);

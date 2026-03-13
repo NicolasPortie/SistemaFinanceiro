@@ -72,10 +72,85 @@ public class CategoriaRepository : ICategoriaRepository
     {
         var categoriasPadrao = new[]
         {
-            "Alimentação", "Mercado", "Transporte", "Moradia", "Casa",
-            "Saúde", "Farmácia", "Lazer", "Educação", "Vestuário",
-            "Compras Online", "Assinaturas", "Beleza", "Pets", "Trabalho",
-            "Viagens", "Tarifas", "Salário", "Renda Extra", "Reembolso", "Outros"
+            // ── Despesas: Moradia ──
+            "Moradia",
+            "Aluguel",
+            "Condomínio",
+            "Energia",
+            "Água",
+            "Gás",
+            "Internet",
+            "Telefone",
+
+            // ── Despesas: Alimentação ──
+            "Mercado",
+            "Alimentação",
+            "Delivery",
+
+            // ── Despesas: Transporte ──
+            "Transporte",
+            "Combustível",
+            "Manutenção Veicular",
+            "Estacionamento",
+
+            // ── Despesas: Saúde e bem-estar ──
+            "Saúde",
+            "Farmácia",
+            "Academia",
+            "Cuidados Pessoais",
+
+            // ── Despesas: Educação e cultura ──
+            "Educação",
+            "Lazer",
+            "Streaming",
+
+            // ── Despesas: Financeiro ──
+            "Assinaturas",
+            "Impostos",
+            "Taxas Bancárias",
+            "Seguros",
+            "Empréstimos",
+            "Cartão de Crédito",
+            "Investimentos",
+            "Multas",
+
+            // ── Despesas: Pessoal ──
+            "Vestuário",
+            "Pets",
+            "Presentes",
+            "Doações",
+
+            // ── Despesas: Empresarial ──
+            "Folha",
+            "Fornecedores",
+            "Marketing",
+            "Tecnologia",
+            "Serviços Terceirizados",
+            "Equipamentos",
+            "Material Escritório",
+            "Manutenção",
+            "Viagens",
+            "Hospedagem",
+            "Limpeza",
+
+            // ── Receitas ──
+            "Salário",
+            "Pró-labore",
+            "Vendas",
+            "Prestação de Serviços",
+            "Freelancer",
+            "Comissões",
+            "Rendimentos",
+            "Dividendos",
+            "Bonificações",
+            "Aluguéis Recebidos",
+            "Transferências Recebidas",
+            "Reembolsos",
+            "Aportes",
+            "Outras Receitas",
+
+            // ── Geral ──
+            "Outros",
         };
 
         foreach (var nome in categoriasPadrao)

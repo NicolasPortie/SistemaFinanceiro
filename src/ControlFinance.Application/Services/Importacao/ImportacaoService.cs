@@ -22,10 +22,12 @@ public class ImportacaoService : IImportacaoService
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly IFaturaRepository _faturaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
+    private readonly IContaBancariaRepository _contaBancariaRepo;
     private readonly IParcelaRepository _parcelaRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMemoryCache _cache;
     private readonly IFeatureGateService _featureGate;
+    private readonly IPerfilFinanceiroService _perfilService;
     private readonly ILogger<ImportacaoService> _logger;
 
     private const long MaxTamanhoArquivo = 5 * 1024 * 1024; // 5MB
@@ -41,10 +43,12 @@ public class ImportacaoService : IImportacaoService
         ICategoriaRepository categoriaRepo,
         IFaturaRepository faturaRepo,
         ICartaoCreditoRepository cartaoRepo,
+        IContaBancariaRepository contaBancariaRepo,
         IParcelaRepository parcelaRepo,
         IUnitOfWork unitOfWork,
         IMemoryCache cache,
         IFeatureGateService featureGate,
+        IPerfilFinanceiroService perfilService,
         ILogger<ImportacaoService> logger)
     {
         _parsers = parsers;
@@ -55,10 +59,12 @@ public class ImportacaoService : IImportacaoService
         _categoriaRepo = categoriaRepo;
         _faturaRepo = faturaRepo;
         _cartaoRepo = cartaoRepo;
+        _contaBancariaRepo = contaBancariaRepo;
         _parcelaRepo = parcelaRepo;
         _unitOfWork = unitOfWork;
         _cache = cache;
         _featureGate = featureGate;
+        _perfilService = perfilService;
         _logger = logger;
     }
 
@@ -69,6 +75,17 @@ public class ImportacaoService : IImportacaoService
         if (!gate.Permitido)
             throw new FeatureGateException(gate.Mensagem!, Recurso.ImportacaoExtratos, gate.Limite, gate.UsoAtual, gate.PlanoSugerido);
         _logger.LogInformation("Iniciando processamento de upload: {Arquivo} para usuário {UsuarioId}", nomeArquivo, usuarioId);
+
+        var isFatura = request.TipoImportacao == TipoImportacao.Fatura;
+        CartaoCredito? cartaoPreview = null;
+        if (isFatura)
+        {
+            cartaoPreview = await ObterCartaoCreditoValidoAsync(usuarioId, request.CartaoCreditoId);
+        }
+        else if (request.ContaBancariaId.HasValue)
+        {
+            await ObterContaBancariaValidaAsync(usuarioId, request.ContaBancariaId.Value);
+        }
 
         // 1) Validar tamanho
         if (arquivo.Length > MaxTamanhoArquivo)
@@ -138,7 +155,6 @@ public class ImportacaoService : IImportacaoService
         var transacoesDto = await _categorizador.CategorizarAsync(usuarioId, normalizadas);
 
         // 7.1) Para fatura de cartão, forçar tipo Débito (gasto) e valor negativo
-        var isFatura = request.TipoImportacao == TipoImportacao.Fatura;
         if (isFatura)
         {
             foreach (var t in transacoesDto)
@@ -156,18 +172,13 @@ public class ImportacaoService : IImportacaoService
         await MarcarDuplicatasAsync(usuarioId, transacoesDto, normalizadas);
 
         // 8.1) Deduplicar contra parcelas existentes na(s) fatura(s) do cartão
-        if (isFatura && request.CartaoCreditoId.HasValue)
+        if (isFatura && cartaoPreview != null)
         {
-            await MarcarDuplicatasFaturaAsync(request.CartaoCreditoId.Value, transacoesDto, normalizadas);
+            await MarcarDuplicatasFaturaAsync(cartaoPreview.Id, transacoesDto, normalizadas);
         }
 
         // 9) Detectar meses (para fatura: usar DeterminarMesFatura com DiaFechamento do cartão)
-        CartaoCredito? cartaoPreview = null;
-        if (isFatura && request.CartaoCreditoId.HasValue)
-        {
-            cartaoPreview = await _cartaoRepo.ObterPorIdAsync(request.CartaoCreditoId.Value);
-            preview.CartaoDiaFechamento = cartaoPreview?.DiaFechamento;
-        }
+        preview.CartaoDiaFechamento = cartaoPreview?.DiaFechamento;
 
         if (isFatura && cartaoPreview != null)
         {
@@ -227,6 +238,7 @@ public class ImportacaoService : IImportacaoService
         preview.TotalIgnoradas = transacoesDto.Count(t => t.Status == StatusTransacaoImportada.Ignorada);
         preview.TotalSuspeitas = transacoesDto.Count(t => t.Status == StatusTransacaoImportada.Suspeita);
         preview.TipoImportacao = request.TipoImportacao;
+        preview.ContaBancariaId = request.ContaBancariaId;
         preview.CartaoCreditoId = request.CartaoCreditoId;
 
         // Carregar nome do cartão se for fatura (reutilizar cartaoPreview já carregado)
@@ -314,14 +326,15 @@ public class ImportacaoService : IImportacaoService
             // Criar lançamentos para cada transação selecionada
             var isFatura = preview.TipoImportacao == TipoImportacao.Fatura;
             CartaoCredito? cartao = null;
+            ContaBancaria? contaBancaria = null;
             var faturasCache = new Dictionary<string, Fatura>(); // mesRef → Fatura
 
             // Para fatura: usar o mês sugerido do preview como padrão, mas permitir override por transação.
             DateTime? mesFaturaPadrao = null;
 
-            if (isFatura && preview.CartaoCreditoId.HasValue)
+            if (isFatura)
             {
-                cartao = await _cartaoRepo.ObterPorIdAsync(preview.CartaoCreditoId.Value);
+                cartao = await ObterCartaoCreditoValidoAsync(usuarioId, preview.CartaoCreditoId);
                 if (cartao == null)
                 {
                     throw new InvalidOperationException("Cartão de crédito não encontrado.");
@@ -333,6 +346,11 @@ public class ImportacaoService : IImportacaoService
                 {
                     mesFaturaPadrao = new DateTime(mesPadraoParseado.Year, mesPadraoParseado.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                 }
+            }
+
+            if (!isFatura && preview.ContaBancariaId.HasValue)
+            {
+                contaBancaria = await ObterContaBancariaValidaAsync(usuarioId, preview.ContaBancariaId.Value);
             }
 
             foreach (var idx in request.IndicesSelecionados)
@@ -359,7 +377,7 @@ public class ImportacaoService : IImportacaoService
                     // Aplicar overrides
                     overridesDict.TryGetValue(idx, out var ov);
 
-                    var data = ov?.Data ?? transacao.Data;
+                    var data = LancamentoDataHelper.NormalizarDataLancamento(ov?.Data ?? transacao.Data);
                     var descricao = ov?.Descricao ?? transacao.Descricao;
                     var valor = ov?.Valor ?? transacao.Valor;
                     var categoriaId = ov?.CategoriaId ?? transacao.CategoriaId;
@@ -424,6 +442,7 @@ public class ImportacaoService : IImportacaoService
                         NumeroParcelas = numeroParcelas,
                         UsuarioId = usuarioId,
                         CategoriaId = categoriaId.Value,
+                        ContaBancariaId = contaBancaria?.Id,
                         CriadoEm = DateTime.UtcNow
                     };
 
@@ -583,6 +602,9 @@ public class ImportacaoService : IImportacaoService
             // Remover preview do cache após confirmação bem-sucedida
             _cache.Remove(cacheKey);
 
+            if (resultado.TotalImportadas > 0)
+                await _perfilService.InvalidarAsync(usuarioId);
+
             _logger.LogInformation("Importação #{Id} confirmada: {Qty} lançamentos criados, {Erros} erros",
                 request.ImportacaoHistoricoId, resultado.TotalImportadas, resultado.TotalErros);
         }
@@ -679,7 +701,7 @@ public class ImportacaoService : IImportacaoService
             // Carregar parcelas da fatura (com cache)
             if (!parcelasCache.ContainsKey(mesKey))
             {
-                var fatura = await _faturaRepo.ObterFaturaAbertaAsync(cartaoCreditoId, mesRef);
+                var fatura = await _faturaRepo.ObterPorCartaoEMesAsync(cartaoCreditoId, mesRef);
                 if (fatura != null)
                 {
                     var parcelas = await _parcelaRepo.ObterPorFaturaAsync(fatura.Id);
@@ -733,6 +755,33 @@ public class ImportacaoService : IImportacaoService
         var totalDup = transacoes.Count(t => t.MotivoStatus?.Contains("fatura") == true);
         if (totalDup > 0)
             _logger.LogInformation("Deduplicação fatura: {Qty} parcelas duplicadas no cartão", totalDup);
+    }
+
+    private async Task<CartaoCredito> ObterCartaoCreditoValidoAsync(int usuarioId, int? cartaoCreditoId)
+    {
+        if (!cartaoCreditoId.HasValue)
+            throw new ArgumentException("Selecione o cartao de credito da fatura.");
+
+        var cartao = await _cartaoRepo.ObterPorIdAsync(cartaoCreditoId.Value);
+        if (cartao == null || cartao.UsuarioId != usuarioId)
+            throw new InvalidOperationException("Cartao de credito invalido para este usuario.");
+
+        if (!cartao.Ativo)
+            throw new InvalidOperationException("Cartao de credito informado esta inativo.");
+
+        return cartao;
+    }
+
+    private async Task<ContaBancaria> ObterContaBancariaValidaAsync(int usuarioId, int contaBancariaId)
+    {
+        var conta = await _contaBancariaRepo.ObterPorIdAsync(contaBancariaId, usuarioId);
+        if (conta == null)
+            throw new InvalidOperationException("Conta bancaria invalida para este usuario.");
+
+        if (!conta.Ativo)
+            throw new InvalidOperationException("Conta bancaria informada esta inativa.");
+
+        return conta;
     }
 
     private static bool DescricaoSimilar(string descExistente, string descImportada)

@@ -28,6 +28,8 @@ public class LancamentoRepository : ILancamentoRepository
             .Include(l => l.Categoria)
             .Include(l => l.Parcelas)
             .Include(l => l.ContaBancaria)
+            .Include(l => l.PagamentoCicloOrigem)
+                .ThenInclude(p => p!.LembretePagamento)
             .FirstOrDefaultAsync(l => l.Id == id);
     }
 
@@ -36,6 +38,8 @@ public class LancamentoRepository : ILancamentoRepository
         var query = _context.Lancamentos
             .AsNoTracking()
             .Include(l => l.Categoria)
+            .Include(l => l.PagamentoCicloOrigem)
+                .ThenInclude(p => p!.LembretePagamento)
             .Where(l => l.UsuarioId == usuarioId);
 
         if (de.HasValue)
@@ -51,6 +55,8 @@ public class LancamentoRepository : ILancamentoRepository
         var query = _context.Lancamentos
             .AsNoTracking()
             .Include(l => l.Categoria)
+            .Include(l => l.PagamentoCicloOrigem)
+                .ThenInclude(p => p!.LembretePagamento)
             .Where(l => l.UsuarioId == usuarioId && l.Tipo == tipo);
 
         if (de.HasValue)
@@ -67,6 +73,8 @@ public class LancamentoRepository : ILancamentoRepository
         var query = _context.Lancamentos
             .AsNoTracking()
             .Include(l => l.Categoria)
+            .Include(l => l.PagamentoCicloOrigem)
+                .ThenInclude(p => p!.LembretePagamento)
             .Where(l => l.UsuarioId == usuarioId);
 
         if (de.HasValue)
@@ -91,6 +99,8 @@ public class LancamentoRepository : ILancamentoRepository
         var query = _context.Lancamentos
             .AsNoTracking()
             .Include(l => l.Categoria)
+            .Include(l => l.PagamentoCicloOrigem)
+                .ThenInclude(p => p!.LembretePagamento)
             .Where(l => l.UsuarioId == usuarioId && l.Tipo == tipo);
 
         if (de.HasValue)
@@ -131,6 +141,8 @@ public class LancamentoRepository : ILancamentoRepository
             .AsNoTracking()
             .Include(l => l.Categoria)
             .Include(l => l.ContaBancaria)
+            .Include(l => l.PagamentoCicloOrigem)
+                .ThenInclude(p => p!.LembretePagamento)
             .Where(l => l.UsuarioId == usuarioId);
 
         if (tipo.HasValue)

@@ -20,6 +20,13 @@ public class PagamentoCicloRepository : IPagamentoCicloRepository
             .FirstOrDefaultAsync(p => p.LembretePagamentoId == lembreteId && p.PeriodKey == periodKey);
     }
 
+    public async Task<PagamentoCiclo?> ObterPorLancamentoIdAsync(int lancamentoId)
+    {
+        return await _context.PagamentosCiclo
+            .Include(p => p.LembretePagamento)
+            .FirstOrDefaultAsync(p => p.LancamentoId == lancamentoId);
+    }
+
     public async Task<PagamentoCiclo> CriarAsync(PagamentoCiclo pagamento)
     {
         _context.PagamentosCiclo.Add(pagamento);
@@ -54,5 +61,25 @@ public class PagamentoCicloRepository : IPagamentoCicloRepository
             .Select(p => p.LembretePagamentoId)
             .ToListAsync();
         return ids.ToHashSet();
+    }
+
+    public async Task<HashSet<int>> ObterIdsComCiclosPagoAsync(
+        IReadOnlyDictionary<int, string> periodKeysPorLembrete)
+    {
+        if (periodKeysPorLembrete.Count == 0)
+            return [];
+
+        var lembreteIds = periodKeysPorLembrete.Keys.ToList();
+        var ciclosPagos = await _context.PagamentosCiclo
+            .Where(p => lembreteIds.Contains(p.LembretePagamentoId) && p.Pago)
+            .Select(p => new { p.LembretePagamentoId, p.PeriodKey })
+            .ToListAsync();
+
+        return ciclosPagos
+            .Where(ciclo =>
+                periodKeysPorLembrete.TryGetValue(ciclo.LembretePagamentoId, out var periodKeyEsperado) &&
+                string.Equals(ciclo.PeriodKey, periodKeyEsperado, StringComparison.Ordinal))
+            .Select(ciclo => ciclo.LembretePagamentoId)
+            .ToHashSet();
     }
 }

@@ -10,14 +10,8 @@ using Telegram.Bot.Types.ReplyMarkups;
 namespace ControlFinance.Api.BackgroundServices;
 
 /// <summary>
-/// Serviço de lembretes inteligentes com lógica D-3/D-1/D+1:
-///   - D-3: "Sua conta X vence em 3 dias (dd/MM). Valor: R$ Y"
-///   - D-1: "Amanhã vence X! Valor: R$ Y. Já pagou? /lembrete pago ID"
-///   - D+1: "Conta X venceu ontem. Se já pagou: /lembrete pago ID"
-/// 
-/// Respeita: timezone America/Sao_Paulo, janela configurável (09:00–20:00),
-/// ciclo via PagamentoCiclo (idempotente), para quando pago, logs no LogLembreteTelegram.
-/// Polling: 5 minutos.
+/// Servico de lembretes inteligentes com logica D-3/D-1/D+1 e controle
+/// de idempotencia por canal.
 /// </summary>
 public class LembretePagamentoBackgroundService : BackgroundService
 {
@@ -27,11 +21,11 @@ public class LembretePagamentoBackgroundService : BackgroundService
 
     private const string WebUrl = "https://finance.nicolasportie.com";
 
-    // Timezone Brasil
     private static readonly TimeZoneInfo BrasiliaTimeZone =
-        TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows()
-            ? "E. South America Standard Time"
-            : "America/Sao_Paulo");
+        TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows()
+                ? "E. South America Standard Time"
+                : "America/Sao_Paulo");
 
     public LembretePagamentoBackgroundService(
         IServiceScopeFactory scopeFactory,
@@ -45,7 +39,8 @@ public class LembretePagamentoBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Serviço de lembretes inteligentes iniciado (polling: 5 min, timezone: Brasília)");
+        _logger.LogInformation(
+            "Servico de lembretes inteligentes iniciado (polling: 5 min, timezone: Brasilia)");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -59,7 +54,7 @@ public class LembretePagamentoBackgroundService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro no serviço de lembretes inteligentes");
+                _logger.LogError(ex, "Erro no servico de lembretes inteligentes");
             }
 
             await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
@@ -76,44 +71,59 @@ public class LembretePagamentoBackgroundService : BackgroundService
         var agoraUtc = DateTime.UtcNow;
         var agoraBrasilia = TimeZoneInfo.ConvertTimeFromUtc(agoraUtc, BrasiliaTimeZone);
 
-        // Buscar lembretes com telegram ativo
-        var lembretes = await lembreteRepo.ObterAtivosComLembreteTelegramAsync();
-        if (!lembretes.Any()) return;
+        var lembretes = await lembreteRepo.ObterAtivosComCanalLembreteAsync();
+        if (!lembretes.Any())
+            return;
 
         foreach (var lembrete in lembretes)
         {
-            if (ct.IsCancellationRequested) break;
+            if (ct.IsCancellationRequested)
+                break;
 
             try
             {
                 await ProcessarLembreteIndividualAsync(
-                    lembrete, agoraUtc, agoraBrasilia, cicloRepo, logRepo, lembreteRepo, ct);
+                    lembrete,
+                    agoraUtc,
+                    agoraBrasilia,
+                    cicloRepo,
+                    logRepo,
+                    lembreteRepo,
+                    ct);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao processar lembrete {Id}", lembrete.Id);
 
-                // Log do erro
                 try
                 {
                     await logRepo.RegistrarAsync(new LogLembreteTelegram
                     {
                         LembretePagamentoId = lembrete.Id,
                         UsuarioId = lembrete.UsuarioId,
+                        Canal = "Sistema",
                         Status = "erro",
                         Erro = ex.Message,
-                        EnviadoEm = agoraUtc
+                        EnviadoEm = agoraUtc,
                     });
                 }
-                catch { /* silently ignore log errors */ }
+                catch
+                {
+                    // Ignora erro de observabilidade.
+                }
             }
         }
 
-        // Limpeza periódica de logs antigos (1x por execução às 03h Brasília)
         if (agoraBrasilia.Hour == 3 && agoraBrasilia.Minute < 10)
         {
-            try { await logRepo.LimparAntigosAsync(30); }
-            catch (Exception ex) { _logger.LogWarning(ex, "Erro ao limpar logs antigos"); }
+            try
+            {
+                await logRepo.LimparAntigosAsync(30);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Erro ao limpar logs antigos");
+            }
         }
     }
 
@@ -126,92 +136,90 @@ public class LembretePagamentoBackgroundService : BackgroundService
         ILembretePagamentoRepository lembreteRepo,
         CancellationToken ct)
     {
-        // Verificar se tem pelo menos um canal vinculado
-        var temTelegram = lembrete.Usuario?.TelegramVinculado == true && lembrete.Usuario.TelegramChatId != null;
-        var temWhatsApp = lembrete.Usuario?.WhatsAppVinculado == true && !string.IsNullOrEmpty(lembrete.Usuario.WhatsAppPhone);
+        var temTelegram =
+            lembrete.LembreteTelegramAtivo &&
+            lembrete.Usuario?.TelegramVinculado == true &&
+            lembrete.Usuario.TelegramChatId != null;
+
+        var temWhatsApp =
+            lembrete.LembreteWhatsAppAtivo &&
+            lembrete.Usuario?.WhatsAppVinculado == true &&
+            !string.IsNullOrEmpty(lembrete.Usuario.WhatsAppPhone);
 
         if (!temTelegram && !temWhatsApp)
             return;
 
-        // Verificar janela de horário (configurável por lembrete) 
         var horaBrasilia = agoraBrasilia.TimeOfDay;
         if (horaBrasilia < lembrete.HorarioInicioLembrete || horaBrasilia > lembrete.HorarioFimLembrete)
             return;
 
-        // Verificar se ultrapassou a data fim de recorrência
         if (lembrete.DataFimRecorrencia.HasValue && agoraUtc.Date > lembrete.DataFimRecorrencia.Value.Date)
         {
             lembrete.Ativo = false;
             lembrete.AtualizadoEm = agoraUtc;
             await lembreteRepo.AtualizarAsync(lembrete);
-            _logger.LogInformation("Lembrete {Id} desativado: ultrapassou DataFimRecorrencia ({Data:dd/MM/yyyy})",
-                lembrete.Id, lembrete.DataFimRecorrencia.Value);
+
+            _logger.LogInformation(
+                "Lembrete {Id} desativado: ultrapassou DataFimRecorrencia ({Data:dd/MM/yyyy})",
+                lembrete.Id,
+                lembrete.DataFimRecorrencia.Value);
             return;
         }
 
-        // Calcular period_key do ciclo atual (baseado no vencimento em Brasília)
         var vencimentoBrasilia = TimeZoneInfo.ConvertTimeFromUtc(lembrete.DataVencimento, BrasiliaTimeZone).Date;
         var periodKey = lembrete.PeriodKeyAtual ?? $"{vencimentoBrasilia:yyyy-MM}";
 
-        // Verificar se já pagou este ciclo — não enviar mais lembretes
         var jaPagou = await cicloRepo.JaPagouCicloAsync(lembrete.Id, periodKey);
         if (jaPagou)
         {
-            // Se pagou e é recorrente, avançar para o próximo ciclo
             await AvancarCicloSeNecessarioAsync(lembrete, agoraUtc, lembreteRepo);
             return;
         }
 
-        // Calcular dias até o vencimento (em Brasília)
         var diasAteVencimento = (vencimentoBrasilia - agoraBrasilia.Date).Days;
-
-        // Determinar se deve enviar lembrete hoje
-        string? mensagem = null;
-        string? tipoLembrete = null;
-
         var antecedencia = lembrete.DiasAntecedenciaLembrete;
 
-        if (diasAteVencimento == antecedencia) // D-3 (ou D-N configurável)
+        string? tipoLembrete = null;
+        string? mensagem = null;
+
+        if (diasAteVencimento == antecedencia)
         {
             tipoLembrete = $"D-{antecedencia}";
             mensagem = FormatarMensagemDMenos(lembrete, diasAteVencimento);
         }
-        else if (diasAteVencimento == 1) // D-1
+        else if (diasAteVencimento == 1)
         {
             tipoLembrete = "D-1";
             mensagem = FormatarMensagemDMenos1(lembrete);
         }
-        else if (diasAteVencimento == 0) // D-0 (dia do vencimento)
+        else if (diasAteVencimento == 0)
         {
             tipoLembrete = "D-0";
             mensagem = FormatarMensagemD0(lembrete);
         }
-        else if (diasAteVencimento < 0) // D+N (todo dia após vencimento até pagar)
+        else if (diasAteVencimento < 0)
         {
             var diasAtraso = Math.Abs(diasAteVencimento);
             tipoLembrete = $"D+{diasAtraso}";
             mensagem = FormatarMensagemAtraso(lembrete, diasAtraso);
         }
 
-        if (mensagem == null) return;
+        if (mensagem == null || tipoLembrete == null)
+            return;
 
-        // Verificar idempotência: já enviou esse tipo hoje?
-        var logsHoje = await logRepo.ObterPorLembreteAsync(lembrete.Id, 10);
-        var jaEnviouHoje = logsHoje.Any(l =>
-            l.Status == "enviado" &&
-            TimeZoneInfo.ConvertTimeFromUtc(l.EnviadoEm, BrasiliaTimeZone).Date == agoraBrasilia.Date &&
-            l.TipoLembrete == tipoLembrete);
+        var logsRecentes = await logRepo.ObterPorLembreteAsync(lembrete.Id, 20);
+        var jaEnviouTelegramHoje = JaEnviouHoje(logsRecentes, "Telegram", tipoLembrete, agoraBrasilia.Date);
+        var jaEnviouWhatsAppHoje = JaEnviouHoje(logsRecentes, "WhatsApp", tipoLembrete, agoraBrasilia.Date);
 
-        if (jaEnviouHoje) return;
+        var enviouAlgumCanal = false;
 
-        // Enviar mensagem via Telegram
-        if (temTelegram)
+        if (temTelegram && !jaEnviouTelegramHoje)
         {
             try
             {
                 var keyboard = new InlineKeyboardMarkup(
-                    InlineKeyboardButton.WithUrl("Gerenciar lembretes", $"{WebUrl}/contas-fixas")
-                );
+                    InlineKeyboardButton.WithUrl("Gerenciar lembretes", $"{WebUrl}/contas-fixas"));
+
                 var sent = await _botClient.SendMessage(
                     chatId: lembrete.Usuario!.TelegramChatId!.Value,
                     text: mensagem,
@@ -219,19 +227,24 @@ public class LembretePagamentoBackgroundService : BackgroundService
                     replyMarkup: keyboard,
                     cancellationToken: ct);
 
-                // Log sucesso
                 await logRepo.RegistrarAsync(new LogLembreteTelegram
                 {
                     LembretePagamentoId = lembrete.Id,
                     UsuarioId = lembrete.UsuarioId,
+                    Canal = "Telegram",
                     Status = "enviado",
                     MensagemTelegramId = sent.Id,
                     TipoLembrete = tipoLembrete,
-                    EnviadoEm = agoraUtc
+                    EnviadoEm = agoraUtc,
                 });
 
-                _logger.LogInformation("Lembrete {Id} ({Tipo}) enviado via Telegram para {User}",
-                    lembrete.Id, tipoLembrete, lembrete.Usuario.Nome);
+                enviouAlgumCanal = true;
+
+                _logger.LogInformation(
+                    "Lembrete {Id} ({Tipo}) enviado via Telegram para {User}",
+                    lembrete.Id,
+                    tipoLembrete,
+                    lembrete.Usuario.Nome);
             }
             catch (Exception ex)
             {
@@ -239,106 +252,131 @@ public class LembretePagamentoBackgroundService : BackgroundService
                 {
                     LembretePagamentoId = lembrete.Id,
                     UsuarioId = lembrete.UsuarioId,
+                    Canal = "Telegram",
                     Status = "erro_envio",
+                    TipoLembrete = tipoLembrete,
                     Erro = $"Telegram {tipoLembrete}: {ex.Message}",
-                    EnviadoEm = agoraUtc
+                    EnviadoEm = agoraUtc,
                 });
+
                 _logger.LogWarning(ex, "Erro ao enviar lembrete {Id} via Telegram", lembrete.Id);
             }
         }
 
-        // Enviar mensagem via WhatsApp
-        if (temWhatsApp)
+        if (temWhatsApp && !jaEnviouWhatsAppHoje)
         {
             try
             {
                 using var whatsAppScope = _scopeFactory.CreateScope();
                 var whatsAppService = whatsAppScope.ServiceProvider.GetRequiredService<IWhatsAppBotService>();
-                var waMsg = mensagem + $"\n\n🌐 Gerenciar: {WebUrl}/contas-fixas";
-                await whatsAppService.EnviarMensagemAsync(lembrete.Usuario!.WhatsAppPhone!, waMsg);
+                var mensagemWhatsApp = mensagem + $"\n\n🌐 Gerenciar: {WebUrl}/contas-fixas";
+                await whatsAppService.EnviarMensagemAsync(lembrete.Usuario!.WhatsAppPhone!, mensagemWhatsApp);
 
-                // Log para idempotência (evita reenvio a cada ciclo de 5 min)
                 await logRepo.RegistrarAsync(new LogLembreteTelegram
                 {
                     LembretePagamentoId = lembrete.Id,
                     UsuarioId = lembrete.UsuarioId,
+                    Canal = "WhatsApp",
                     Status = "enviado",
                     TipoLembrete = tipoLembrete,
-                    EnviadoEm = agoraUtc
+                    EnviadoEm = agoraUtc,
                 });
 
-                _logger.LogInformation("Lembrete {Id} ({Tipo}) enviado via WhatsApp para {User}",
-                    lembrete.Id, tipoLembrete, lembrete.Usuario.Nome);
+                enviouAlgumCanal = true;
+
+                _logger.LogInformation(
+                    "Lembrete {Id} ({Tipo}) enviado via WhatsApp para {User}",
+                    lembrete.Id,
+                    tipoLembrete,
+                    lembrete.Usuario.Nome);
             }
             catch (Exception ex)
             {
+                await logRepo.RegistrarAsync(new LogLembreteTelegram
+                {
+                    LembretePagamentoId = lembrete.Id,
+                    UsuarioId = lembrete.UsuarioId,
+                    Canal = "WhatsApp",
+                    Status = "erro_envio",
+                    TipoLembrete = tipoLembrete,
+                    Erro = $"WhatsApp {tipoLembrete}: {ex.Message}",
+                    EnviadoEm = agoraUtc,
+                });
+
                 _logger.LogWarning(ex, "Erro ao enviar lembrete {Id} via WhatsApp", lembrete.Id);
             }
         }
 
+        if (!enviouAlgumCanal)
+            return;
+
         lembrete.UltimoEnvioEm = agoraUtc;
         lembrete.AtualizadoEm = agoraUtc;
         await lembreteRepo.AtualizarAsync(lembrete);
-
-        // Não avança ciclo por atraso; ciclo só avança quando o usuário marcar como pago.
     }
 
-    // ===== Formatação de Mensagens =====
-
-    private static string FormatarMensagemDMenos(LembretePagamento l, int dias)
+    private static bool JaEnviouHoje(
+        IEnumerable<LogLembreteTelegram> logs,
+        string canal,
+        string tipoLembrete,
+        DateTime dataBrasilia)
     {
-        var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
-        var cat = l.Categoria != null ? $"\n🏷️ Categoria: {l.Categoria.Nome}" : "";
-        return $"🔔 *Lembrete: {l.Descricao}*\n\n" +
-               $"📅 Vence em *{dias} dia(s)* ({l.DataVencimento:dd/MM/yyyy})" +
-               valor + cat +
-               $"\n\nJá pagou? Diga \"paguei {l.Descricao.ToLowerInvariant()}\"";
+        return logs.Any(log =>
+            log.Status == "enviado" &&
+            log.Canal == canal &&
+            log.TipoLembrete == tipoLembrete &&
+            TimeZoneInfo.ConvertTimeFromUtc(log.EnviadoEm, BrasiliaTimeZone).Date == dataBrasilia);
     }
 
-    private static string FormatarMensagemDMenos1(LembretePagamento l)
+    private static string FormatarMensagemDMenos(LembretePagamento lembrete, int dias)
     {
-        var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
-        return $"⚠️ *Amanhã vence: {l.Descricao}!*\n\n" +
-               $"📅 Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
+        var valor = lembrete.Valor.HasValue ? $"\n💰 Valor: *R$ {lembrete.Valor.Value:N2}*" : "";
+        var categoria = lembrete.Categoria != null ? $"\n🏷️ Categoria: {lembrete.Categoria.Nome}" : "";
+        return $"🔔 *Lembrete: {lembrete.Descricao}*\n\n" +
+               $"📅 Vence em *{dias} dia(s)* ({lembrete.DataVencimento:dd/MM/yyyy})" +
+               valor + categoria +
+               $"\n\nJá pagou? Diga \"paguei {lembrete.Descricao.ToLowerInvariant()}\"";
+    }
+
+    private static string FormatarMensagemDMenos1(LembretePagamento lembrete)
+    {
+        var valor = lembrete.Valor.HasValue ? $"\n💰 Valor: *R$ {lembrete.Valor.Value:N2}*" : "";
+        return $"⚠️ *Amanhã vence: {lembrete.Descricao}!*\n\n" +
+               $"📅 Vencimento: {lembrete.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\nJá pagou? Diga \"paguei {l.Descricao.ToLowerInvariant()}\"";
+               $"\n\nJá pagou? Diga \"paguei {lembrete.Descricao.ToLowerInvariant()}\"";
     }
 
-    private static string FormatarMensagemD0(LembretePagamento l)
+    private static string FormatarMensagemD0(LembretePagamento lembrete)
     {
-        var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
-        return $"🚨 *HOJE vence: {l.Descricao}!*\n\n" +
-               $"📅 {l.DataVencimento:dd/MM/yyyy}" +
+        var valor = lembrete.Valor.HasValue ? $"\n💰 Valor: *R$ {lembrete.Valor.Value:N2}*" : "";
+        return $"🚨 *HOJE vence: {lembrete.Descricao}!*\n\n" +
+               $"📅 {lembrete.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\nDiga \"paguei {l.Descricao.ToLowerInvariant()}\" para marcar como pago.";
+               $"\n\nDiga \"paguei {lembrete.Descricao.ToLowerInvariant()}\" para marcar como pago.";
     }
 
-    private static string FormatarMensagemAtraso(LembretePagamento l, int diasAtraso)
+    private static string FormatarMensagemAtraso(LembretePagamento lembrete, int diasAtraso)
     {
-        var valor = l.Valor.HasValue ? $"\n💰 Valor: *R$ {l.Valor.Value:N2}*" : "";
+        var valor = lembrete.Valor.HasValue ? $"\n💰 Valor: *R$ {lembrete.Valor.Value:N2}*" : "";
         var sufixo = diasAtraso == 1 ? "ontem" : $"há {diasAtraso} dias";
-        return $"❗ *Conta vencida {sufixo}: {l.Descricao}!*\n\n" +
-               $"📅 Vencimento: {l.DataVencimento:dd/MM/yyyy}" +
+        return $"❗ *Conta vencida {sufixo}: {lembrete.Descricao}!*\n\n" +
+               $"📅 Vencimento: {lembrete.DataVencimento:dd/MM/yyyy}" +
                valor +
-               $"\n\nSe já pagou, diga \"paguei {l.Descricao.ToLowerInvariant()}\"" +
+               $"\n\nSe já pagou, diga \"paguei {lembrete.Descricao.ToLowerInvariant()}\"" +
                "\n⚠️ Fique atento a multas e juros!";
     }
 
-    // ===== Ciclo =====
-
-    /// <summary>
-    /// Avança o lembrete para o próximo ciclo se for recorrente.
-    /// Atualiza DataVencimento e PeriodKeyAtual.
-    /// </summary>
     private async Task AvancarCicloSeNecessarioAsync(
-        LembretePagamento lembrete, DateTime agoraUtc, ILembretePagamentoRepository repo)
+        LembretePagamento lembrete,
+        DateTime agoraUtc,
+        ILembretePagamentoRepository repo)
     {
         var frequencia = lembrete.Frequencia
             ?? (lembrete.RecorrenteMensal ? FrequenciaLembrete.Mensal : (FrequenciaLembrete?)null);
 
         if (frequencia == null)
         {
-            // Não recorrente — desativar
             lembrete.Ativo = false;
             lembrete.AtualizadoEm = agoraUtc;
             await repo.AtualizarAsync(lembrete);
@@ -347,40 +385,50 @@ public class LembretePagamentoBackgroundService : BackgroundService
 
         var proximaData = AvancarProximaData(lembrete.DataVencimento, frequencia.Value, lembrete.DiaRecorrente);
 
-        // Evita repetir no mesmo dia/ciclo
         while (proximaData.Date <= agoraUtc.Date)
-        {
             proximaData = AvancarProximaData(proximaData, frequencia.Value, lembrete.DiaRecorrente);
-        }
 
         lembrete.DataVencimento = proximaData;
-        lembrete.PeriodKeyAtual = $"{proximaData:yyyy-MM}";
+        lembrete.PeriodKeyAtual = $"{TimeZoneInfo.ConvertTimeFromUtc(proximaData, BrasiliaTimeZone):yyyy-MM}";
         lembrete.AtualizadoEm = agoraUtc;
 
         await repo.AtualizarAsync(lembrete);
 
-        _logger.LogInformation("Lembrete {Id} avançado para ciclo {PeriodKey} ({Data:dd/MM/yyyy})",
-            lembrete.Id, lembrete.PeriodKeyAtual, proximaData);
+        _logger.LogInformation(
+            "Lembrete {Id} avançado para ciclo {PeriodKey} ({Data:dd/MM/yyyy})",
+            lembrete.Id,
+            lembrete.PeriodKeyAtual,
+            proximaData);
     }
 
-    private static DateTime AvancarProximaData(DateTime dataAtual, FrequenciaLembrete frequencia, int? diaPreferencial)
+    private static DateTime AvancarProximaData(
+        DateTime dataAtual,
+        FrequenciaLembrete frequencia,
+        int? diaPreferencial)
     {
         return frequencia switch
         {
             FrequenciaLembrete.Semanal => dataAtual.AddDays(7),
             FrequenciaLembrete.Quinzenal => dataAtual.AddDays(14),
             FrequenciaLembrete.Mensal => AvancarParaProximoMes(dataAtual, diaPreferencial ?? dataAtual.Day),
-            FrequenciaLembrete.Anual => new DateTime(dataAtual.Year + 1, dataAtual.Month, dataAtual.Day, 0, 0, 0, DateTimeKind.Utc),
+            FrequenciaLembrete.Anual => CriarDataUtcSemDeslocamento(
+                dataAtual.Year + 1,
+                dataAtual.Month,
+                dataAtual.Day),
             _ => dataAtual.AddMonths(1),
         };
     }
 
     private static DateTime AvancarParaProximoMes(DateTime dataAtual, int diaPreferencial)
     {
-        var proximoMes = new DateTime(dataAtual.Year, dataAtual.Month, 1, 0, 0, 0, DateTimeKind.Utc)
-            .AddMonths(1);
-        var dia = Math.Min(Math.Max(diaPreferencial, 1), DateTime.DaysInMonth(proximoMes.Year, proximoMes.Month));
-        return new DateTime(proximoMes.Year, proximoMes.Month, dia, 0, 0, 0, DateTimeKind.Utc);
-    }
-}
+        var proximoMes = CriarDataUtcSemDeslocamento(dataAtual.Year, dataAtual.Month, 1).AddMonths(1);
+        var dia = Math.Min(
+            Math.Max(diaPreferencial, 1),
+            DateTime.DaysInMonth(proximoMes.Year, proximoMes.Month));
 
+        return CriarDataUtcSemDeslocamento(proximoMes.Year, proximoMes.Month, dia);
+    }
+
+    private static DateTime CriarDataUtcSemDeslocamento(int ano, int mes, int dia)
+        => new(ano, mes, dia, 12, 0, 0, DateTimeKind.Utc);
+}

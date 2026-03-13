@@ -1082,7 +1082,6 @@ public class ChatEngineService : IChatEngineService
                 return $"VocÃª informou R$ {dados.Valor.Value:N2}, mas a fatura Ã© R$ {valorFatura:N2}.\nPara pagar completa, diga: \"Paguei a fatura do {cartao.Nome}\".";
 
             await _faturaService.PagarFaturaAsync(faturaPagar.Id);
-            await _perfilService.InvalidarAsync(usuario.Id);
 
             return $"âœ… **Fatura Paga**\n\nCartÃ£o: {cartao.Nome}\nMÃªs: {faturaPagar.MesReferencia:MM/yyyy}\nValor: R$ {valorFatura:N2}";
         }

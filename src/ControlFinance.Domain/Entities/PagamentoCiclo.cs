@@ -12,8 +12,10 @@ public class PagamentoCiclo
     public bool Pago { get; set; }
     public DateTime? DataPagamento { get; set; }
     public decimal? ValorPago { get; set; }
+    public int? LancamentoId { get; set; }
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
     // Navegação
     public LembretePagamento LembretePagamento { get; set; } = null!;
+    public Lancamento? Lancamento { get; set; }
 }

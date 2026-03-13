@@ -1283,10 +1283,12 @@ Vencimento: Fechamento:
             categoriaRepo: categoriaRepo.Object,
             faturaRepo: Mock.Of<IFaturaRepository>(),
             cartaoRepo: cartaoRepo.Object,
+            contaBancariaRepo: Mock.Of<IContaBancariaRepository>(),
             parcelaRepo: Mock.Of<IParcelaRepository>(),
             unitOfWork: Mock.Of<IUnitOfWork>(),
             cache: new MemoryCache(new MemoryCacheOptions()),
             featureGate: featureGate.Object,
+            perfilService: Mock.Of<IPerfilFinanceiroService>(),
             logger: Mock.Of<ILogger<ImportacaoService>>());
 
         using var stream = ToStream("csv content");
@@ -1350,10 +1352,12 @@ Vencimento: Fechamento:
             categoriaRepo: categoriaRepo.Object,
             faturaRepo: faturaRepo.Object,
             cartaoRepo: cartaoRepo.Object,
+            contaBancariaRepo: Mock.Of<IContaBancariaRepository>(),
             parcelaRepo: parcelaRepo.Object,
             unitOfWork: unitOfWork.Object,
             cache: cache,
             featureGate: Mock.Of<IFeatureGateService>(),
+            perfilService: Mock.Of<IPerfilFinanceiroService>(),
             logger: Mock.Of<ILogger<ImportacaoService>>());
 
         var preview = new ImportacaoPreviewDto
@@ -1406,7 +1410,8 @@ Vencimento: Fechamento:
     private ImportacaoService CreateImportacaoService(
         Mock<ICartaoCreditoRepository>? cartaoRepo = null,
         Mock<IFaturaRepository>? faturaRepo = null,
-        Mock<IParcelaRepository>? parcelaRepo = null)
+        Mock<IParcelaRepository>? parcelaRepo = null,
+        Mock<IContaBancariaRepository>? contaBancariaRepo = null)
     {
         return new ImportacaoService(
             parsers: Array.Empty<IFileParser>(),
@@ -1417,10 +1422,12 @@ Vencimento: Fechamento:
             categoriaRepo: Mock.Of<ICategoriaRepository>(),
             faturaRepo: faturaRepo?.Object ?? Mock.Of<IFaturaRepository>(),
             cartaoRepo: cartaoRepo?.Object ?? Mock.Of<ICartaoCreditoRepository>(),
+            contaBancariaRepo: contaBancariaRepo?.Object ?? Mock.Of<IContaBancariaRepository>(),
             parcelaRepo: parcelaRepo?.Object ?? Mock.Of<IParcelaRepository>(),
             unitOfWork: Mock.Of<IUnitOfWork>(),
             cache: new MemoryCache(new MemoryCacheOptions()),
             featureGate: Mock.Of<IFeatureGateService>(),
+            perfilService: Mock.Of<IPerfilFinanceiroService>(),
             logger: Mock.Of<ILogger<ImportacaoService>>());
     }
 
@@ -1433,7 +1440,7 @@ Vencimento: Fechamento:
             .ReturnsAsync(new CartaoCredito { Id = 1, Nome = "Nubank", DiaFechamento = 5, UsuarioId = 1 });
 
         var faturaRepo = new Mock<IFaturaRepository>();
-        faturaRepo.Setup(r => r.ObterFaturaAbertaAsync(1, It.IsAny<DateTime>()))
+        faturaRepo.Setup(r => r.ObterPorCartaoEMesAsync(1, It.IsAny<DateTime>()))
             .ReturnsAsync(new Fatura { Id = 10, CartaoCreditoId = 1 });
 
         var parcelaRepo = new Mock<IParcelaRepository>();
@@ -1484,7 +1491,7 @@ Vencimento: Fechamento:
             .ReturnsAsync(new CartaoCredito { Id = 1, Nome = "Nubank", DiaFechamento = 5, UsuarioId = 1 });
 
         var faturaRepo = new Mock<IFaturaRepository>();
-        faturaRepo.Setup(r => r.ObterFaturaAbertaAsync(1, It.IsAny<DateTime>()))
+        faturaRepo.Setup(r => r.ObterPorCartaoEMesAsync(1, It.IsAny<DateTime>()))
             .ReturnsAsync(new Fatura { Id = 10, CartaoCreditoId = 1 });
 
         var parcelaRepo = new Mock<IParcelaRepository>();
@@ -1533,7 +1540,7 @@ Vencimento: Fechamento:
             .ReturnsAsync(new CartaoCredito { Id = 1, Nome = "Nubank", DiaFechamento = 5, UsuarioId = 1 });
 
         var faturaRepo = new Mock<IFaturaRepository>();
-        faturaRepo.Setup(r => r.ObterFaturaAbertaAsync(1, It.IsAny<DateTime>()))
+        faturaRepo.Setup(r => r.ObterPorCartaoEMesAsync(1, It.IsAny<DateTime>()))
             .ReturnsAsync((Fatura?)null);
 
         var service = CreateImportacaoService(cartaoRepo, faturaRepo);
@@ -1602,7 +1609,7 @@ Vencimento: Fechamento:
             .ReturnsAsync(new CartaoCredito { Id = 1, Nome = "Nubank", DiaFechamento = 5, UsuarioId = 1 });
 
         var faturaRepo = new Mock<IFaturaRepository>();
-        faturaRepo.Setup(r => r.ObterFaturaAbertaAsync(1, It.IsAny<DateTime>()))
+        faturaRepo.Setup(r => r.ObterPorCartaoEMesAsync(1, It.IsAny<DateTime>()))
             .ReturnsAsync(new Fatura { Id = 10, CartaoCreditoId = 1 });
 
         var parcelaRepo = new Mock<IParcelaRepository>();
@@ -1650,7 +1657,7 @@ Vencimento: Fechamento:
             .ReturnsAsync(new CartaoCredito { Id = 1, Nome = "Nubank", DiaFechamento = 5, UsuarioId = 1 });
 
         var faturaRepo = new Mock<IFaturaRepository>();
-        faturaRepo.Setup(r => r.ObterFaturaAbertaAsync(1, It.IsAny<DateTime>()))
+        faturaRepo.Setup(r => r.ObterPorCartaoEMesAsync(1, It.IsAny<DateTime>()))
             .ReturnsAsync(new Fatura { Id = 10, CartaoCreditoId = 1 });
 
         var parcelaRepo = new Mock<IParcelaRepository>();
@@ -1690,6 +1697,57 @@ Vencimento: Fechamento:
         Assert.Contains("fatura", transacoes[0].MotivoStatus!);
     }
 
+    [Fact]
+    public async Task DedupFatura_FaturaPaga_AindaMarcaDuplicata()
+    {
+        var cartaoRepo = new Mock<ICartaoCreditoRepository>();
+        cartaoRepo.Setup(r => r.ObterPorIdAsync(1))
+            .ReturnsAsync(new CartaoCredito { Id = 1, Nome = "Nubank", DiaFechamento = 5, UsuarioId = 1, Ativo = true });
+
+        var faturaRepo = new Mock<IFaturaRepository>();
+        faturaRepo.Setup(r => r.ObterPorCartaoEMesAsync(1, It.IsAny<DateTime>()))
+            .ReturnsAsync(new Fatura { Id = 10, CartaoCreditoId = 1, Status = StatusFatura.Paga });
+
+        var parcelaRepo = new Mock<IParcelaRepository>();
+        parcelaRepo.Setup(r => r.ObterPorFaturaAsync(10))
+            .ReturnsAsync(new List<Parcela>
+            {
+                new()
+                {
+                    Id = 101,
+                    NumeroParcela = 1,
+                    TotalParcelas = 1,
+                    Valor = 120m,
+                    LancamentoId = 55,
+                    Lancamento = new Lancamento { Id = 55, Descricao = "Academia Fit", Valor = 120m }
+                }
+            });
+
+        var service = CreateImportacaoService(cartaoRepo, faturaRepo, parcelaRepo);
+
+        var transacoes = new List<TransacaoImportadaDto>
+        {
+            new()
+            {
+                IndiceOriginal = 0,
+                Data = new DateTime(2025, 6, 10),
+                Descricao = "ACADEMIA FIT",
+                Valor = -120m,
+                Status = StatusTransacaoImportada.Normal,
+                Selecionada = true
+            }
+        };
+        var normalizadas = new List<TransacaoNormalizada>
+        {
+            new() { IndiceOriginal = 0, Descricao = "ACADEMIA FIT", Valida = true }
+        };
+
+        await service.MarcarDuplicatasFaturaAsync(1, transacoes, normalizadas);
+
+        Assert.Equal(StatusTransacaoImportada.Duplicata, transacoes[0].Status);
+        Assert.Contains(55, transacoes[0].LancamentosSimilaresIds);
+    }
+
     #endregion
 
     #region ConfirmarImportacaoAsync — Proteção Duplicatas
@@ -1727,10 +1785,12 @@ Vencimento: Fechamento:
             categoriaRepo: categoriaRepo.Object,
             faturaRepo: Mock.Of<IFaturaRepository>(),
             cartaoRepo: Mock.Of<ICartaoCreditoRepository>(),
+            contaBancariaRepo: Mock.Of<IContaBancariaRepository>(),
             parcelaRepo: Mock.Of<IParcelaRepository>(),
             unitOfWork: unitOfWork.Object,
             cache: cache,
             featureGate: Mock.Of<IFeatureGateService>(),
+            perfilService: Mock.Of<IPerfilFinanceiroService>(),
             logger: Mock.Of<ILogger<ImportacaoService>>());
 
         var preview = new ImportacaoPreviewDto
@@ -1806,10 +1866,12 @@ Vencimento: Fechamento:
             categoriaRepo: categoriaRepo.Object,
             faturaRepo: Mock.Of<IFaturaRepository>(),
             cartaoRepo: Mock.Of<ICartaoCreditoRepository>(),
+            contaBancariaRepo: Mock.Of<IContaBancariaRepository>(),
             parcelaRepo: Mock.Of<IParcelaRepository>(),
             unitOfWork: unitOfWork.Object,
             cache: cache,
             featureGate: Mock.Of<IFeatureGateService>(),
+            perfilService: Mock.Of<IPerfilFinanceiroService>(),
             logger: Mock.Of<ILogger<ImportacaoService>>());
 
         var preview = new ImportacaoPreviewDto
@@ -1844,6 +1906,93 @@ Vencimento: Fechamento:
         Assert.Equal(0, resultado.TotalImportadas);
         Assert.Equal(1, resultado.TotalIgnoradas);
         lancamentoRepo.Verify(r => r.CriarAsync(It.IsAny<Lancamento>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmarImportacaoAsync_Extrato_VinculaContaBancariaSelecionadaAoLancamento()
+    {
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var lancamentoRepo = new Mock<ILancamentoRepository>();
+        var categoriaRepo = new Mock<ICategoriaRepository>();
+        var contaRepo = new Mock<IContaBancariaRepository>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var historicoService = new Mock<IImportacaoHistoricoService>();
+        Lancamento? lancamentoCriado = null;
+
+        categoriaRepo.Setup(r => r.ObterPorUsuarioAsync(1))
+            .ReturnsAsync(new List<Categoria>
+            {
+                new() { Id = 1, Nome = "Outras", Padrao = true, UsuarioId = 1 }
+            });
+
+        contaRepo.Setup(r => r.ObterPorIdAsync(7, 1))
+            .ReturnsAsync(new ContaBancaria
+            {
+                Id = 7,
+                UsuarioId = 1,
+                Nome = "Conta principal",
+                Ativo = true,
+            });
+
+        lancamentoRepo.Setup(r => r.CriarAsync(It.IsAny<Lancamento>()))
+            .ReturnsAsync((Lancamento l) =>
+            {
+                l.Id = 501;
+                lancamentoCriado = l;
+                return l;
+            });
+
+        unitOfWork.Setup(u => u.BeginTransactionAsync()).Returns(Task.CompletedTask);
+        unitOfWork.Setup(u => u.CommitAsync()).Returns(Task.CompletedTask);
+        historicoService.Setup(h => h.AtualizarStatusAsync(It.IsAny<int>(), It.IsAny<StatusImportacao>(), It.IsAny<int>(), It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        var service = new ImportacaoService(
+            parsers: Array.Empty<IFileParser>(),
+            normalizacao: new NormalizacaoService(Mock.Of<ILogger<NormalizacaoService>>()),
+            categorizador: Mock.Of<ICategorizadorImportacaoService>(),
+            historicoService: historicoService.Object,
+            lancamentoRepo: lancamentoRepo.Object,
+            categoriaRepo: categoriaRepo.Object,
+            faturaRepo: Mock.Of<IFaturaRepository>(),
+            cartaoRepo: Mock.Of<ICartaoCreditoRepository>(),
+            contaBancariaRepo: contaRepo.Object,
+            parcelaRepo: Mock.Of<IParcelaRepository>(),
+            unitOfWork: unitOfWork.Object,
+            cache: cache,
+            featureGate: Mock.Of<IFeatureGateService>(),
+            perfilService: Mock.Of<IPerfilFinanceiroService>(),
+            logger: Mock.Of<ILogger<ImportacaoService>>());
+
+        cache.Set("importacao_preview_1_44", new ImportacaoPreviewDto
+        {
+            ContaBancariaId = 7,
+            TipoImportacao = TipoImportacao.Extrato,
+            Transacoes = new List<TransacaoImportadaDto>
+            {
+                new()
+                {
+                    IndiceOriginal = 0,
+                    Data = new DateTime(2025, 6, 12),
+                    Descricao = "PIX RECEBIDO",
+                    Valor = 300m,
+                    Status = StatusTransacaoImportada.Normal,
+                    Selecionada = true,
+                    CategoriaId = 1,
+                    TipoTransacao = TipoTransacao.Credito,
+                }
+            }
+        }, TimeSpan.FromMinutes(30));
+
+        var resultado = await service.ConfirmarImportacaoAsync(1, new ConfirmarImportacaoRequest
+        {
+            ImportacaoHistoricoId = 44,
+            IndicesSelecionados = new List<int> { 0 },
+        });
+
+        Assert.Equal(1, resultado.TotalImportadas);
+        Assert.NotNull(lancamentoCriado);
+        Assert.Equal(7, lancamentoCriado!.ContaBancariaId);
     }
 
     #endregion

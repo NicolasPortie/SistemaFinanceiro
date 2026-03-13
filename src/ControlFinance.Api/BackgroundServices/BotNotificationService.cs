@@ -232,6 +232,8 @@ public class BotNotificationService : BackgroundService
         {
             try
             {
+                if (!await UsuarioPodeReceberNotificacaoAsync(scope, user.Id)) continue;
+
                 var lazer = await categoriaRepo.ObterPorNomeAsync(user.Id, "Lazer");
                 if (lazer == null) continue;
 
@@ -272,6 +274,8 @@ public class BotNotificationService : BackgroundService
         {
             try
             {
+                if (!await UsuarioPodeReceberNotificacaoAsync(scope, user.Id)) continue;
+
                 var resumo = await resumoService.GerarResumoSemanalAsync(user.Id);
                 var categoriaMaiorGasto = resumo.GastosPorCategoria.FirstOrDefault()?.Categoria ?? "Sem gastos";
                 var msg = "📊 *Resumo da Semana*\n\n" +
@@ -302,6 +306,8 @@ public class BotNotificationService : BackgroundService
         {
             try
             {
+                if (!await UsuarioPodeReceberNotificacaoAsync(scope, user.Id)) continue;
+
                 var msg = $"📅 *O mês de {mesAtual.ToString("MMMM", new CultureInfo("pt-BR"))} está acabando!*\n\n" +
                           "✅ Confira se todas as contas foram pagas.\n" +
                           "🚀 Amanhã começa um novo ciclo!";
@@ -329,6 +335,8 @@ public class BotNotificationService : BackgroundService
         {
             try
             {
+                if (!await UsuarioPodeReceberNotificacaoAsync(scope, user.Id)) continue;
+
                 var categorias = await categoriaRepo.ObterPorUsuarioAsync(user.Id);
                 foreach (var cat in categorias)
                 {
@@ -390,6 +398,8 @@ public class BotNotificationService : BackgroundService
 
             try
             {
+                if (!await UsuarioPodeReceberNotificacaoAsync(scope, user.Id)) continue;
+
                 var alertas = new List<string>();
 
                 // 1. Verificar crescimento progressivo de gastos
@@ -512,6 +522,17 @@ public class BotNotificationService : BackgroundService
     }
 
     /// <summary>
+    /// Verifica se o usuário tem acesso ao recurso NotificacoesProativas.
+    /// Retorna false se o plano não permite — evita enviar notificações para quem não paga.
+    /// </summary>
+    private static async Task<bool> UsuarioPodeReceberNotificacaoAsync(IServiceScope scope, int usuarioId)
+    {
+        var featureGate = scope.ServiceProvider.GetRequiredService<IFeatureGateService>();
+        var acesso = await featureGate.VerificarAcessoAsync(usuarioId, Recurso.NotificacoesProativas);
+        return acesso.Permitido;
+    }
+
+    /// <summary>
     /// Envia mesma notificação para todos os usuários com WhatsApp vinculado.
     /// Usa a lista de usuários WhatsApp e envia via bridge HTTP.
     /// </summary>
@@ -531,6 +552,8 @@ public class BotNotificationService : BackgroundService
                 if (ct.IsCancellationRequested) break;
                 try
                 {
+                    if (!await UsuarioPodeReceberNotificacaoAsync(scope, user.Id)) continue;
+
                     var msg = await gerarMensagem(user);
                     if (!string.IsNullOrEmpty(msg) && !string.IsNullOrEmpty(user.WhatsAppPhone))
                     {

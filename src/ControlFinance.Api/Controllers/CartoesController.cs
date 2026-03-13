@@ -19,13 +19,20 @@ public class CartoesController : BaseAuthController
     private readonly IFaturaService _faturaService;
     private readonly IResumoService _resumoService;
     private readonly IFeatureGateService _featureGate;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public CartoesController(ICartaoCreditoRepository cartaoRepo, IFaturaService faturaService, IResumoService resumoService, IFeatureGateService featureGate)
+    public CartoesController(
+        ICartaoCreditoRepository cartaoRepo,
+        IFaturaService faturaService,
+        IResumoService resumoService,
+        IFeatureGateService featureGate,
+        IUnitOfWork unitOfWork)
     {
         _cartaoRepo = cartaoRepo;
         _faturaService = faturaService;
         _resumoService = resumoService;
         _featureGate = featureGate;
+        _unitOfWork = unitOfWork;
     }
 
     [HttpGet]
@@ -237,8 +244,18 @@ public class CartoesController : BaseAuthController
 
         cartao.Limite = novoLimiteTotal;
 
-        await _cartaoRepo.AtualizarAsync(cartao);
-        await _cartaoRepo.AdicionarAjusteLimiteAsync(ajuste);
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            await _cartaoRepo.AtualizarAsync(cartao);
+            await _cartaoRepo.AdicionarAjusteLimiteAsync(ajuste);
+            await _unitOfWork.CommitAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
+        }
 
         return Ok(new
         {
@@ -321,8 +338,18 @@ public class CartoesController : BaseAuthController
 
         cartao.Limite = novoLimite;
 
-        await _cartaoRepo.AtualizarAsync(cartao);
-        await _cartaoRepo.AdicionarAjusteLimiteAsync(ajuste);
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            await _cartaoRepo.AtualizarAsync(cartao);
+            await _cartaoRepo.AdicionarAjusteLimiteAsync(ajuste);
+            await _unitOfWork.CommitAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
+        }
 
         var totalComprometido = garantias.Values.Sum();
         var novoSaldoDisponivel = (await _resumoService.GerarSaldoAcumuladoAsync(UsuarioId)) - (totalComprometido - valorResgate);

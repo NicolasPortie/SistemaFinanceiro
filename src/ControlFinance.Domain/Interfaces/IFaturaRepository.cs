@@ -8,6 +8,7 @@ public interface IFaturaRepository
     Task<Fatura> CriarAsync(Fatura fatura);
     Task<Fatura?> ObterPorIdAsync(int id);
     Task<Fatura?> ObterFaturaAbertaAsync(int cartaoId, DateTime mesReferencia);
+    Task<Fatura?> ObterPorCartaoEMesAsync(int cartaoId, DateTime mesReferencia);
     Task<Fatura?> ObterOuCriarFaturaAsync(int cartaoId, DateTime mesReferencia);
     Task<List<Fatura>> ObterPorCartaoAsync(int cartaoId);
     Task<Fatura?> ObterFaturaAtualAsync(int cartaoId);

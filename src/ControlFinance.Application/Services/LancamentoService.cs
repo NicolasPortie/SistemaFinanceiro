@@ -3,8 +3,8 @@ using ControlFinance.Application.Exceptions;
 using ControlFinance.Application.Interfaces;
 using ControlFinance.Domain.Entities;
 using ControlFinance.Domain.Enums;
-using ControlFinance.Domain.Interfaces;
 using ControlFinance.Domain.Helpers;
+using ControlFinance.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace ControlFinance.Application.Services;
@@ -13,43 +13,64 @@ public class LancamentoService : ILancamentoService
 {
     private readonly ILancamentoRepository _lancamentoRepo;
     private readonly ICategoriaRepository _categoriaRepo;
+    private readonly ILembretePagamentoRepository _lembreteRepo;
+    private readonly IPagamentoCicloRepository _pagamentoCicloRepo;
     private readonly IFaturaRepository _faturaRepo;
     private readonly IParcelaRepository _parcelaRepo;
     private readonly ICartaoCreditoRepository _cartaoRepo;
+    private readonly IContaBancariaRepository _contaRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IFeatureGateService _featureGate;
+    private readonly IPerfilFinanceiroService _perfilService;
     private readonly ILogger<LancamentoService> _logger;
+
+    private static readonly TimeZoneInfo BrasiliaTimeZone =
+        TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows()
+                ? "E. South America Standard Time"
+                : "America/Sao_Paulo");
 
     public LancamentoService(
         ILancamentoRepository lancamentoRepo,
         ICategoriaRepository categoriaRepo,
+        ILembretePagamentoRepository lembreteRepo,
+        IPagamentoCicloRepository pagamentoCicloRepo,
         IFaturaRepository faturaRepo,
         IParcelaRepository parcelaRepo,
         ICartaoCreditoRepository cartaoRepo,
+        IContaBancariaRepository contaRepo,
         IUnitOfWork unitOfWork,
         IFeatureGateService featureGate,
+        IPerfilFinanceiroService perfilService,
         ILogger<LancamentoService> logger)
     {
         _lancamentoRepo = lancamentoRepo;
         _categoriaRepo = categoriaRepo;
+        _lembreteRepo = lembreteRepo;
+        _pagamentoCicloRepo = pagamentoCicloRepo;
         _faturaRepo = faturaRepo;
         _parcelaRepo = parcelaRepo;
         _cartaoRepo = cartaoRepo;
+        _contaRepo = contaRepo;
         _unitOfWork = unitOfWork;
         _featureGate = featureGate;
+        _perfilService = perfilService;
         _logger = logger;
     }
 
     public async Task<Lancamento> RegistrarAsync(int usuarioId, RegistrarLancamentoDto dto)
     {
-        // ── Feature Gate: limite de lançamentos mensais ──
         await VerificarLimiteLancamentosAsync(usuarioId, dto.Data ?? DateTime.UtcNow);
 
-        // Validação de valor
         if (dto.Valor <= 0)
-            throw new ArgumentException("O valor do lançamento deve ser maior que zero.");
+            throw new ArgumentException("O valor do lancamento deve ser maior que zero.");
 
-        // Buscar ou criar categoria
+        var cartao = await ValidarMeioPagamentoAsync(
+            usuarioId,
+            dto.FormaPagamento,
+            dto.ContaBancariaId,
+            dto.CartaoCreditoId);
+
         var categoria = await _categoriaRepo.ObterPorNomeAsync(usuarioId, dto.Categoria);
         if (categoria == null)
         {
@@ -57,33 +78,28 @@ public class LancamentoService : ILancamentoService
             {
                 Nome = dto.Categoria,
                 Padrao = false,
-                UsuarioId = usuarioId
+                UsuarioId = usuarioId,
             });
         }
 
-        // REGRA DE NEGÓCIO CRÍTICA: Impedir categoria de receita em lançamento de gasto e vice-versa
         if (dto.Tipo == TipoLancamento.Gasto && Categoria.NomeEhCategoriaReceita(categoria.Nome))
         {
-            _logger.LogWarning("Tentativa de registrar gasto com categoria de receita: {Categoria}", categoria.Nome);
-            // Reclassificar automaticamente para "Outros" ao invés de bloquear
+            _logger.LogWarning(
+                "Tentativa de registrar gasto com categoria de receita: {Categoria}",
+                categoria.Nome);
+
             var categoriaOutros = await _categoriaRepo.ObterPorNomeAsync(usuarioId, "Outros");
             if (categoriaOutros != null)
                 categoria = categoriaOutros;
         }
 
-        var dataLanc = dto.Data ?? DateTime.UtcNow;
-        if (dataLanc.Kind == DateTimeKind.Unspecified)
-            dataLanc = DateTime.SpecifyKind(dataLanc, DateTimeKind.Utc);
-
-        // Normalizar: usar apenas a data (sem hora) para evitar problemas de ordenação.
-        // A ordenação por dia é feita via Data.Date no repositório, e CriadoEm serve de tiebreaker.
-        dataLanc = new DateTime(dataLanc.Year, dataLanc.Month, dataLanc.Day, 12, 0, 0, DateTimeKind.Utc);
+        var dataLancamento = LancamentoDataHelper.NormalizarDataLancamento(dto.Data ?? DateTime.UtcNow);
 
         var lancamento = new Lancamento
         {
             Valor = dto.Valor,
             Descricao = dto.Descricao,
-            Data = dataLanc,
+            Data = dataLancamento,
             Tipo = dto.Tipo,
             FormaPagamento = dto.FormaPagamento,
             Origem = dto.Origem,
@@ -92,121 +108,165 @@ public class LancamentoService : ILancamentoService
             CategoriaId = categoria.Id,
             Categoria = categoria,
             ContaBancariaId = dto.ContaBancariaId,
-            CriadoEm = DateTime.UtcNow
+            CriadoEm = DateTime.UtcNow,
         };
 
-        lancamento = await _lancamentoRepo.CriarAsync(lancamento);
-
-        // Se for crédito parcelado, gerar parcelas e vincular às faturas
-        if (dto.FormaPagamento == FormaPagamento.Credito && dto.NumeroParcelas > 1)
+        if (cartao != null)
         {
-            await GerarParcelasAsync(lancamento, dto.CartaoCreditoId);
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                lancamento = await _lancamentoRepo.CriarAsync(lancamento);
+
+                if (dto.NumeroParcelas > 1)
+                    await GerarParcelasAsync(lancamento, cartao);
+                else
+                    await GerarParcelaUnicaAsync(lancamento, cartao);
+
+                await _unitOfWork.CommitAsync();
+            }
+            catch
+            {
+                await _unitOfWork.RollbackAsync();
+                throw;
+            }
         }
-        else if (dto.FormaPagamento == FormaPagamento.Credito)
+        else
         {
-            // Crédito à vista — uma única parcela na fatura atual
-            await GerarParcelaUnicaAsync(lancamento, dto.CartaoCreditoId);
+            lancamento = await _lancamentoRepo.CriarAsync(lancamento);
         }
 
-        _logger.LogInformation("Lançamento {Id} registrado: {Tipo} de {Valor} em {Categoria}",
-            lancamento.Id, lancamento.Tipo, lancamento.Valor, dto.Categoria);
+        await _perfilService.InvalidarAsync(usuarioId);
+
+        _logger.LogInformation(
+            "Lancamento {Id} registrado: {Tipo} de {Valor} em {Categoria}",
+            lancamento.Id,
+            lancamento.Tipo,
+            lancamento.Valor,
+            dto.Categoria);
 
         return lancamento;
     }
 
-    private async Task GerarParcelasAsync(Lancamento lancamento, int? cartaoId)
+    public async Task<PagamentoContaFixaResultDto> RegistrarPagamentoContaFixaAsync(
+        int usuarioId,
+        int lembreteId,
+        RegistrarPagamentoContaFixaDto dto)
     {
-        if (!cartaoId.HasValue)
-            throw new ArgumentException("Cartão de crédito é obrigatório para lançamento parcelado.");
+        var lembrete = await _lembreteRepo.ObterPorIdAsync(lembreteId);
+        if (lembrete == null || lembrete.UsuarioId != usuarioId)
+            throw new KeyNotFoundException("Conta fixa nao encontrada.");
 
-        // Buscar cartão para saber o DiaFechamento
-        var cartao = await _cartaoRepo.ObterPorIdAsync(cartaoId.Value);
-        if (cartao == null)
-            throw new ArgumentException($"Cartão de crédito {cartaoId.Value} não encontrado.");
+        if (!lembrete.Ativo)
+            throw new ArgumentException("Conta fixa esta inativa.");
 
-        var valorParcela = Math.Round(lancamento.Valor / lancamento.NumeroParcelas, 2);
-        var resto = lancamento.Valor - (valorParcela * lancamento.NumeroParcelas);
-        var parcelas = new List<Parcela>();
+        var dataPagamento = LancamentoDataHelper.NormalizarDataLancamento(dto.DataPagamento ?? DateTime.UtcNow);
+        var periodKey = !string.IsNullOrWhiteSpace(dto.PeriodKey)
+            ? dto.PeriodKey
+            : DeterminarPeriodKey(dataPagamento);
 
-        // Determinar em qual mês a PRIMEIRA parcela entra (baseado no dia de fechamento)
-        var mesPrimeiraParcela = FaturaCicloHelper.DeterminarMesFatura(lancamento.Data, cartao.DiaFechamento);
+        var ciclo = await _pagamentoCicloRepo.ObterAsync(lembreteId, periodKey);
+        if (ciclo?.Pago == true)
+            throw new InvalidOperationException(
+                "Esta conta fixa ja foi registrada como paga para este periodo.");
 
-        for (int i = 0; i < lancamento.NumeroParcelas; i++)
+        var valorPago = dto.ValorPago ?? lembrete.Valor ?? 0m;
+        if (valorPago <= 0)
+            throw new ArgumentException("Valor do pagamento deve ser maior que zero.");
+
+        var formaPagamento = lembrete.FormaPagamento ?? FormaPagamento.PIX;
+        if (formaPagamento == FormaPagamento.Credito && !dto.CartaoCreditoId.HasValue)
+            throw new ArgumentException(
+                "Selecione o cartao de credito para registrar este pagamento.");
+
+        if (formaPagamento != FormaPagamento.Credito && dto.CartaoCreditoId.HasValue)
+            throw new ArgumentException(
+                "Cartao de credito so pode ser informado para pagamentos no credito.");
+
+        await _unitOfWork.BeginTransactionAsync();
+
+        try
         {
-            // Cada parcela subsequente vai para o mês seguinte
-            var mesParcela = mesPrimeiraParcela.AddMonths(i);
-            var fatura = await _faturaRepo.ObterOuCriarFaturaAsync(cartaoId.Value, mesParcela);
+            var lancamento = await RegistrarAsync(
+                usuarioId,
+                new RegistrarLancamentoDto
+                {
+                    Valor = valorPago,
+                    Descricao = lembrete.Descricao,
+                    Data = dataPagamento,
+                    Tipo = TipoLancamento.Gasto,
+                    FormaPagamento = formaPagamento,
+                    Categoria = lembrete.Categoria?.Nome ?? "Outros",
+                    ContaBancariaId =
+                        formaPagamento == FormaPagamento.Credito ? null : dto.ContaBancariaId,
+                    CartaoCreditoId = dto.CartaoCreditoId,
+                });
 
-            var valor = valorParcela;
-            if (i == lancamento.NumeroParcelas - 1)
-                valor += resto; // Ajuste de centavos na última parcela
-
-            parcelas.Add(new Parcela
+            if (ciclo == null)
             {
-                NumeroParcela = i + 1,
-                TotalParcelas = lancamento.NumeroParcelas,
-                Valor = valor,
-                DataVencimento = fatura?.DataVencimento ?? mesParcela,
+                ciclo = await _pagamentoCicloRepo.CriarAsync(new PagamentoCiclo
+                {
+                    LembretePagamentoId = lembreteId,
+                    PeriodKey = periodKey,
+                    Pago = true,
+                    DataPagamento = dataPagamento,
+                    ValorPago = valorPago,
+                    LancamentoId = lancamento.Id,
+                    CriadoEm = DateTime.UtcNow,
+                });
+            }
+            else
+            {
+                ciclo.Pago = true;
+                ciclo.DataPagamento = dataPagamento;
+                ciclo.ValorPago = valorPago;
+                ciclo.LancamentoId = lancamento.Id;
+                await _pagamentoCicloRepo.AtualizarAsync(ciclo);
+            }
+
+            await _unitOfWork.CommitAsync();
+
+            return new PagamentoContaFixaResultDto
+            {
+                PagamentoCicloId = ciclo.Id,
+                LembretePagamentoId = lembrete.Id,
+                LembreteDescricao = lembrete.Descricao,
+                PeriodKey = ciclo.PeriodKey,
+                Pago = ciclo.Pago,
+                DataPagamento = ciclo.DataPagamento,
+                ValorPago = ciclo.ValorPago,
                 LancamentoId = lancamento.Id,
-                FaturaId = fatura?.Id
-            });
+            };
         }
-
-        await _parcelaRepo.CriarVariasAsync(parcelas);
-
-        // Atualizar totais das faturas afetadas
-        foreach (var faturaId in parcelas.Where(p => p.FaturaId.HasValue).Select(p => p.FaturaId!.Value).Distinct())
+        catch
         {
-            await AtualizarTotalFaturaAsync(faturaId);
+            await _unitOfWork.RollbackAsync();
+            throw;
         }
     }
 
-    private async Task GerarParcelaUnicaAsync(Lancamento lancamento, int? cartaoId)
+    public async Task<List<Lancamento>> ObterGastosAsync(
+        int usuarioId,
+        DateTime? de = null,
+        DateTime? ate = null)
     {
-        if (!cartaoId.HasValue)
-            throw new ArgumentException("Cartão de crédito é obrigatório para lançamento em crédito.");
-
-        // Buscar cartão para saber o DiaFechamento
-        var cartao = await _cartaoRepo.ObterPorIdAsync(cartaoId.Value);
-        if (cartao == null)
-            throw new ArgumentException($"Cartão de crédito {cartaoId.Value} não encontrado.");
-
-        // Determinar em qual fatura a compra entra (baseado no dia de fechamento)
-        var mesFatura = FaturaCicloHelper.DeterminarMesFatura(lancamento.Data, cartao.DiaFechamento);
-        var fatura = await _faturaRepo.ObterOuCriarFaturaAsync(cartaoId.Value, mesFatura);
-
-        if (fatura == null) return;
-
-        var parcela = new Parcela
-        {
-            NumeroParcela = 1,
-            TotalParcelas = 1,
-            Valor = lancamento.Valor,
-            DataVencimento = fatura.DataVencimento,
-            LancamentoId = lancamento.Id,
-            FaturaId = fatura.Id
-        };
-        
-        await _parcelaRepo.CriarVariasAsync(new List<Parcela> { parcela });
-
-        await AtualizarTotalFaturaAsync(fatura.Id);
+        return await _lancamentoRepo.ObterPorUsuarioETipoAsync(
+            usuarioId,
+            TipoLancamento.Gasto,
+            de,
+            ate);
     }
 
-    private async Task AtualizarTotalFaturaAsync(int faturaId)
+    public async Task<List<Lancamento>> ObterReceitasAsync(
+        int usuarioId,
+        DateTime? de = null,
+        DateTime? ate = null)
     {
-        var existe = await _faturaRepo.RecalcularTotalAtomicamenteAsync(faturaId);
-        if (!existe)
-            _logger.LogInformation("Fatura {Id} removida por estar vazia (total R$ 0,00)", faturaId);
-    }
-
-    public async Task<List<Lancamento>> ObterGastosAsync(int usuarioId, DateTime? de = null, DateTime? ate = null)
-    {
-        return await _lancamentoRepo.ObterPorUsuarioETipoAsync(usuarioId, TipoLancamento.Gasto, de, ate);
-    }
-
-    public async Task<List<Lancamento>> ObterReceitasAsync(int usuarioId, DateTime? de = null, DateTime? ate = null)
-    {
-        return await _lancamentoRepo.ObterPorUsuarioETipoAsync(usuarioId, TipoLancamento.Receita, de, ate);
+        return await _lancamentoRepo.ObterPorUsuarioETipoAsync(
+            usuarioId,
+            TipoLancamento.Receita,
+            de,
+            ate);
     }
 
     public async Task<Lancamento?> ObterPorIdAsync(int usuarioId, int lancamentoId)
@@ -214,32 +274,47 @@ public class LancamentoService : ILancamentoService
         var lancamento = await _lancamentoRepo.ObterPorIdAsync(lancamentoId);
         if (lancamento == null || lancamento.UsuarioId != usuarioId)
             return null;
+
         return lancamento;
     }
 
     public async Task<(List<Lancamento> Itens, int Total)> ListarPaginadoAsync(
-        int usuarioId, int pagina, int tamanhoPagina,
-        string? tipo = null, int? categoriaId = null, string? busca = null,
-        DateTime? de = null, DateTime? ate = null)
+        int usuarioId,
+        int pagina,
+        int tamanhoPagina,
+        string? tipo = null,
+        int? categoriaId = null,
+        string? busca = null,
+        DateTime? de = null,
+        DateTime? ate = null)
     {
         TipoLancamento? tipoEnum = null;
         if (!string.IsNullOrEmpty(tipo) && Enum.TryParse<TipoLancamento>(tipo, true, out var parsed))
             tipoEnum = parsed;
 
         return await _lancamentoRepo.ObterPaginadoComFiltrosAsync(
-            usuarioId, pagina, tamanhoPagina, tipoEnum, categoriaId, busca, de, ate);
+            usuarioId,
+            pagina,
+            tamanhoPagina,
+            tipoEnum,
+            categoriaId,
+            busca,
+            de,
+            ate);
     }
 
     public async Task AtualizarAsync(int usuarioId, int lancamentoId, AtualizarLancamentoDto dto)
     {
         var lancamento = await _lancamentoRepo.ObterPorIdAsync(lancamentoId);
         if (lancamento == null || lancamento.UsuarioId != usuarioId)
-            throw new InvalidOperationException("Lançamento não encontrado.");
+            throw new InvalidOperationException("Lancamento nao encontrado.");
 
+        var cicloOrigem = lancamento.PagamentoCicloOrigem;
         var dataAnterior = lancamento.Data;
         var valorAnterior = lancamento.Valor;
         var mudouValor = false;
-        var mudouData = false;
+        var mudouPeriodo = false;
+        var atualizouData = false;
 
         if (dto.Valor.HasValue && dto.Valor.Value > 0)
         {
@@ -252,11 +327,16 @@ public class LancamentoService : ILancamentoService
 
         if (dto.Data.HasValue)
         {
-            var data = dto.Data.Value;
-            if (data.Kind == DateTimeKind.Unspecified)
-                data = DateTime.SpecifyKind(data, DateTimeKind.Utc);
-            mudouData = data.Year != dataAnterior.Year || data.Month != dataAnterior.Month;
-            lancamento.Data = data;
+            var novaData = LancamentoDataHelper.NormalizarDataLancamento(dto.Data.Value);
+            if (cicloOrigem != null && DeterminarPeriodKey(novaData) != cicloOrigem.PeriodKey)
+            {
+                throw new ArgumentException(
+                    "Nao e possivel mover para outro periodo um lancamento gerado por conta fixa.");
+            }
+
+            mudouPeriodo = novaData.Year != dataAnterior.Year || novaData.Month != dataAnterior.Month;
+            atualizouData = novaData != dataAnterior;
+            lancamento.Data = novaData;
         }
 
         if (!string.IsNullOrWhiteSpace(dto.Categoria))
@@ -268,30 +348,196 @@ public class LancamentoService : ILancamentoService
                 {
                     Nome = dto.Categoria,
                     Padrao = false,
-                    UsuarioId = usuarioId
+                    UsuarioId = usuarioId,
                 });
             }
+
             lancamento.CategoriaId = categoria.Id;
         }
 
-        await _lancamentoRepo.AtualizarAsync(lancamento);
-
-        // Se mudou data (mês diferente) ou valor, recalcular parcelas e faturas
-        if ((mudouData || mudouValor) && lancamento.FormaPagamento == FormaPagamento.Credito)
+        try
         {
-            await RecalcularParcelasFaturaAsync(lancamento);
+            await _unitOfWork.BeginTransactionAsync();
+
+            await _lancamentoRepo.AtualizarAsync(lancamento);
+
+            if (cicloOrigem != null && (mudouValor || atualizouData))
+            {
+                cicloOrigem.ValorPago = lancamento.Valor;
+                cicloOrigem.DataPagamento = lancamento.Data;
+                await _pagamentoCicloRepo.AtualizarAsync(cicloOrigem);
+            }
+
+            if ((mudouPeriodo || mudouValor) && lancamento.FormaPagamento == FormaPagamento.Credito)
+                await RecalcularParcelasFaturaAsync(lancamento);
+
+            await _unitOfWork.CommitAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
         }
 
-        _logger.LogInformation("Lançamento {Id} atualizado (mudouData={MudouData}, mudouValor={MudouValor})",
-            lancamentoId, mudouData, mudouValor);
+        await _perfilService.InvalidarAsync(usuarioId);
+
+        _logger.LogInformation(
+            "Lancamento {Id} atualizado (mudouPeriodo={MudouPeriodo}, mudouValor={MudouValor})",
+            lancamentoId,
+            mudouPeriodo,
+            mudouValor);
     }
 
-    /// <summary>
-    /// Remove as parcelas antigas do lançamento, recria na fatura correta e recalcula totais.
-    /// </summary>
+    public async Task RemoverAsync(int lancamentoId, int usuarioId)
+    {
+        var lancamento = await _lancamentoRepo.ObterPorIdAsync(lancamentoId);
+        if (lancamento == null || lancamento.UsuarioId != usuarioId)
+            throw new KeyNotFoundException("Lancamento nao encontrado.");
+
+        await _unitOfWork.BeginTransactionAsync();
+
+        try
+        {
+            var faturaIdsAfetadas = await ObterFaturasAfetadasAsync(lancamento.Id);
+            await ReverterContaFixaVinculadaAsync(lancamento);
+            await _lancamentoRepo.RemoverAsync(lancamentoId);
+            await RecalcularFaturasAfetadasAsync(faturaIdsAfetadas);
+            await _unitOfWork.CommitAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
+        }
+
+        await _perfilService.InvalidarAsync(usuarioId);
+
+        _logger.LogInformation(
+            "Lancamento {Id} removido pelo usuario {UsuarioId}",
+            lancamentoId,
+            usuarioId);
+    }
+
+    public async Task RemoverEmMassaAsync(IEnumerable<int> lancamentosIds, int usuarioId)
+    {
+        var idsList = lancamentosIds.ToList();
+        if (!idsList.Any())
+            return;
+
+        var lancamentos = new List<Lancamento>();
+        foreach (var id in idsList)
+        {
+            var lancamento = await _lancamentoRepo.ObterPorIdAsync(id);
+            if (lancamento != null && lancamento.UsuarioId == usuarioId)
+                lancamentos.Add(lancamento);
+        }
+
+        if (!lancamentos.Any())
+            return;
+
+        await _unitOfWork.BeginTransactionAsync();
+
+        try
+        {
+            var faturaIdsAfetadas = new HashSet<int>();
+            foreach (var lancamento in lancamentos)
+            {
+                foreach (var faturaId in await ObterFaturasAfetadasAsync(lancamento.Id))
+                    faturaIdsAfetadas.Add(faturaId);
+
+                await ReverterContaFixaVinculadaAsync(lancamento);
+            }
+
+            await _lancamentoRepo.RemoverEmMassaAsync(lancamentos);
+            await RecalcularFaturasAfetadasAsync(faturaIdsAfetadas);
+            await _unitOfWork.CommitAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
+        }
+
+        await _perfilService.InvalidarAsync(usuarioId);
+
+        _logger.LogInformation(
+            "{Count} lancamentos removidos pelo usuario {UsuarioId}",
+            lancamentos.Count,
+            usuarioId);
+    }
+
+    private async Task GerarParcelasAsync(Lancamento lancamento, CartaoCredito cartao)
+    {
+        var valorParcela = Math.Round(lancamento.Valor / lancamento.NumeroParcelas, 2);
+        var resto = lancamento.Valor - (valorParcela * lancamento.NumeroParcelas);
+        var parcelas = new List<Parcela>();
+
+        for (var i = 0; i < lancamento.NumeroParcelas; i++)
+        {
+            var mesParcela = FaturaCicloHelper.DeterminarMesFaturaParcela(
+                lancamento.Data,
+                cartao.DiaFechamento,
+                i + 1);
+            var fatura = await _faturaRepo.ObterOuCriarFaturaAsync(cartao.Id, mesParcela);
+
+            var valorAtual = valorParcela;
+            if (i == lancamento.NumeroParcelas - 1)
+                valorAtual += resto;
+
+            parcelas.Add(new Parcela
+            {
+                NumeroParcela = i + 1,
+                TotalParcelas = lancamento.NumeroParcelas,
+                Valor = valorAtual,
+                DataVencimento = fatura?.DataVencimento ?? mesParcela,
+                LancamentoId = lancamento.Id,
+                FaturaId = fatura?.Id,
+            });
+        }
+
+        await _parcelaRepo.CriarVariasAsync(parcelas);
+
+        foreach (var faturaId in parcelas.Where(p => p.FaturaId.HasValue).Select(p => p.FaturaId!.Value).Distinct())
+            await AtualizarTotalFaturaAsync(faturaId);
+    }
+
+    private async Task GerarParcelaUnicaAsync(Lancamento lancamento, CartaoCredito cartao)
+    {
+        var mesFatura = FaturaCicloHelper.DeterminarMesFatura(lancamento.Data, cartao.DiaFechamento);
+        var fatura = await _faturaRepo.ObterOuCriarFaturaAsync(cartao.Id, mesFatura);
+        if (fatura == null)
+            return;
+
+        await _parcelaRepo.CriarVariasAsync(
+            new List<Parcela>
+            {
+                new()
+                {
+                    NumeroParcela = 1,
+                    TotalParcelas = 1,
+                    Valor = lancamento.Valor,
+                    DataVencimento = fatura.DataVencimento,
+                    LancamentoId = lancamento.Id,
+                    FaturaId = fatura.Id,
+                },
+            });
+
+        await AtualizarTotalFaturaAsync(fatura.Id);
+    }
+
+    private async Task AtualizarTotalFaturaAsync(int faturaId)
+    {
+        var existe = await _faturaRepo.RecalcularTotalAtomicamenteAsync(faturaId);
+        if (!existe)
+        {
+            _logger.LogInformation(
+                "Fatura {Id} removida por estar vazia (total R$ 0,00)",
+                faturaId);
+        }
+    }
+
     private async Task RecalcularParcelasFaturaAsync(Lancamento lancamento)
     {
-        // Coletar faturas antigas afetadas para recalcular depois
         var parcelasAntigas = await _parcelaRepo.ObterPorLancamentoAsync(lancamento.Id);
         var faturaIdsAntigas = parcelasAntigas
             .Where(p => p.FaturaId.HasValue)
@@ -299,15 +545,8 @@ public class LancamentoService : ILancamentoService
             .Distinct()
             .ToList();
 
-        // Descobrir o cartão a partir das parcelas antigas (buscar todas faturas de uma vez — evita N+1)
         int? cartaoId = null;
-        var faturaIdsParaBuscar = parcelasAntigas
-            .Where(p => p.FaturaId.HasValue)
-            .Select(p => p.FaturaId!.Value)
-            .Distinct()
-            .ToList();
-
-        foreach (var faturaId in faturaIdsParaBuscar)
+        foreach (var faturaId in faturaIdsAntigas)
         {
             var fatura = await _faturaRepo.ObterPorIdAsync(faturaId);
             if (fatura != null)
@@ -319,80 +558,139 @@ public class LancamentoService : ILancamentoService
 
         if (cartaoId == null)
         {
-            _logger.LogWarning("Não foi possível determinar o cartão do lançamento {Id} para recalcular parcelas", lancamento.Id);
+            _logger.LogWarning(
+                "Nao foi possivel determinar o cartao do lancamento {Id} para recalcular parcelas",
+                lancamento.Id);
             return;
         }
 
-        // Remover parcelas antigas
         await _parcelaRepo.RemoverPorLancamentoAsync(lancamento.Id);
 
-        // Recriar parcelas com a nova data/valor
+        var cartao = await _cartaoRepo.ObterPorIdAsync(cartaoId.Value);
+        if (cartao == null)
+        {
+            _logger.LogWarning(
+                "Nao foi possivel recarregar o cartao {CartaoId} do lancamento {Id} para recalcular parcelas",
+                cartaoId.Value,
+                lancamento.Id);
+            return;
+        }
+
         if (lancamento.NumeroParcelas > 1)
-        {
-            await GerarParcelasAsync(lancamento, cartaoId);
-        }
+            await GerarParcelasAsync(lancamento, cartao);
         else
-        {
-            await GerarParcelaUnicaAsync(lancamento, cartaoId);
-        }
+            await GerarParcelaUnicaAsync(lancamento, cartao);
 
-        // Recalcular totais das faturas antigas (que agora perderam parcelas)
         foreach (var faturaId in faturaIdsAntigas)
-        {
             await AtualizarTotalFaturaAsync(faturaId);
-        }
 
-        _logger.LogInformation("Parcelas do lançamento {Id} recalculadas para nova data/valor", lancamento.Id);
+        _logger.LogInformation(
+            "Parcelas do lancamento {Id} recalculadas para nova data/valor",
+            lancamento.Id);
     }
 
-    public async Task RemoverAsync(int lancamentoId, int usuarioId)
+    private async Task<HashSet<int>> ObterFaturasAfetadasAsync(int lancamentoId)
     {
-        var lancamento = await _lancamentoRepo.ObterPorIdAsync(lancamentoId);
-        if (lancamento == null || lancamento.UsuarioId != usuarioId)
-            throw new KeyNotFoundException("Lançamento não encontrado.");
-
-        await _lancamentoRepo.RemoverAsync(lancamentoId);
-        _logger.LogInformation("Lançamento {Id} removido pelo usuário {UsuarioId}", lancamentoId, usuarioId);
+        var parcelas = await _parcelaRepo.ObterPorLancamentoAsync(lancamentoId);
+        return parcelas
+            .Where(p => p.FaturaId.HasValue)
+            .Select(p => p.FaturaId!.Value)
+            .ToHashSet();
     }
-    
-    public async Task RemoverEmMassaAsync(IEnumerable<int> lancamentosIds, int usuarioId)
+
+    private async Task RecalcularFaturasAfetadasAsync(IEnumerable<int> faturaIds)
     {
-        var idsList = lancamentosIds.ToList();
-        if (!idsList.Any()) return;
-        
-        var lancamentos = new List<Lancamento>();
-        foreach(var id in idsList)
-        {
-            var l = await _lancamentoRepo.ObterPorIdAsync(id);
-            if(l != null && l.UsuarioId == usuarioId)
-            {
-                lancamentos.Add(l);
-            }
-        }
-        
-        if (lancamentos.Any())
-        {
-            await _lancamentoRepo.RemoverEmMassaAsync(lancamentos);
-            _logger.LogInformation("{Count} lançamentos removidos pelo usuário {UsuarioId}", lancamentos.Count, usuarioId);
-        }
+        foreach (var faturaId in faturaIds.Distinct())
+            await AtualizarTotalFaturaAsync(faturaId);
     }
 
-    // ── Feature Gate ─────────────────────────────────────────────────
+    private async Task ReverterContaFixaVinculadaAsync(Lancamento lancamento)
+    {
+        var ciclo = lancamento.PagamentoCicloOrigem
+            ?? await _pagamentoCicloRepo.ObterPorLancamentoIdAsync(lancamento.Id);
+
+        if (ciclo == null)
+            return;
+
+        ciclo.Pago = false;
+        ciclo.DataPagamento = null;
+        ciclo.ValorPago = null;
+        ciclo.LancamentoId = null;
+        await _pagamentoCicloRepo.AtualizarAsync(ciclo);
+    }
 
     private async Task VerificarLimiteLancamentosAsync(int usuarioId, DateTime dataReferencia)
     {
-        var inicioMes = new DateTime(dataReferencia.Year, dataReferencia.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var inicioMes = new DateTime(
+            dataReferencia.Year,
+            dataReferencia.Month,
+            1,
+            0,
+            0,
+            0,
+            DateTimeKind.Utc);
         var fimMes = inicioMes.AddMonths(1);
 
         var lancamentosMes = await _lancamentoRepo.ObterPorUsuarioAsync(usuarioId, inicioMes, fimMes);
-        var resultado = await _featureGate.VerificarLimiteAsync(usuarioId, Recurso.LancamentosMensal, lancamentosMes.Count);
+        var resultado = await _featureGate.VerificarLimiteAsync(
+            usuarioId,
+            Recurso.LancamentosMensal,
+            lancamentosMes.Count);
 
         if (!resultado.Permitido)
+        {
             throw new FeatureGateException(
                 resultado.Mensagem!,
                 Recurso.LancamentosMensal,
                 resultado.Limite,
                 resultado.UsoAtual,
                 resultado.PlanoSugerido);
+        }
+    }
+
+    private async Task<CartaoCredito?> ValidarMeioPagamentoAsync(
+        int usuarioId,
+        FormaPagamento formaPagamento,
+        int? contaBancariaId,
+        int? cartaoCreditoId)
+    {
+        if (formaPagamento == FormaPagamento.Credito)
+        {
+            if (!cartaoCreditoId.HasValue)
+                throw new ArgumentException("Cartao de credito e obrigatorio para lancamento em credito.");
+
+            if (contaBancariaId.HasValue)
+                throw new ArgumentException("Conta bancaria nao pode ser informada para lancamento em credito.");
+
+            var cartao = await _cartaoRepo.ObterPorIdAsync(cartaoCreditoId.Value);
+            if (cartao == null || cartao.UsuarioId != usuarioId)
+                throw new ArgumentException("Cartao de credito invalido para este usuario.");
+
+            if (!cartao.Ativo)
+                throw new ArgumentException("Cartao de credito informado esta inativo.");
+
+            return cartao;
+        }
+
+        if (cartaoCreditoId.HasValue)
+            throw new ArgumentException("Cartao de credito so pode ser informado para lancamento em credito.");
+
+        if (!contaBancariaId.HasValue)
+            return null;
+
+        var conta = await _contaRepo.ObterPorIdAsync(contaBancariaId.Value, usuarioId);
+        if (conta == null)
+            throw new ArgumentException("Conta bancaria invalida para este usuario.");
+
+        if (!conta.Ativo)
+            throw new ArgumentException("Conta bancaria informada esta inativa.");
+
+        return null;
+    }
+
+    private static string DeterminarPeriodKey(DateTime dataUtc)
+    {
+        var dataBrasilia = TimeZoneInfo.ConvertTimeFromUtc(dataUtc, BrasiliaTimeZone);
+        return $"{dataBrasilia:yyyy-MM}";
     }
 }

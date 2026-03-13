@@ -14,6 +14,7 @@ public class ChatExclusaoLancamentoServiceTests
     private static long _nextChatId = 1000;
 
     private readonly Mock<ILancamentoRepository> _lancamentoRepoMock = new();
+    private readonly Mock<ILancamentoService> _lancamentoServiceMock = new();
     private readonly Mock<IPerfilFinanceiroService> _perfilServiceMock = new();
     private readonly Mock<ILogger<ChatExclusaoLancamentoService>> _loggerMock = new();
 
@@ -85,13 +86,13 @@ public class ChatExclusaoLancamentoServiceTests
 
         Assert.NotNull(resposta);
         Assert.Contains("exclu", resposta, StringComparison.OrdinalIgnoreCase);
-        _lancamentoRepoMock.Verify(r => r.RemoverAsync(22), Times.Once);
-        _perfilServiceMock.Verify(s => s.InvalidarAsync(5), Times.Once);
+        _lancamentoServiceMock.Verify(r => r.RemoverAsync(22, 5), Times.Once);
         Assert.False(service.TemExclusaoPendente(chatId));
     }
 
     private IChatExclusaoLancamentoService CreateService() => new ChatExclusaoLancamentoService(
         _lancamentoRepoMock.Object,
+        _lancamentoServiceMock.Object,
         _perfilServiceMock.Object,
         _loggerMock.Object);
 

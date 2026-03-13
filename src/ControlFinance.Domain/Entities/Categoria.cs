@@ -25,9 +25,29 @@ public class Categoria
     /// </summary>
     private static readonly HashSet<string> CategoriasReceita = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Salário", "Salario", "Renda Extra", "Reembolso", "Freelance",
-        "Investimento", "Dividendos", "Aluguel Recebido", "Pensão Recebida",
-        "Receita", "Receitas"
+        "Salario",
+        "Salário",
+        "Pro-labore",
+        "Pró-labore",
+        "Vendas",
+        "Prestacao de Servicos",
+        "Prestação de Serviços",
+        "Freelancer",
+        "Comissoes",
+        "Comissões",
+        "Rendimentos",
+        "Dividendos",
+        "Bonificações",
+        "Bonificacoes",
+        "Alugueis Recebidos",
+        "Aluguéis Recebidos",
+        "Transferencias Recebidas",
+        "Transferências Recebidas",
+        "Reembolsos",
+        "Aportes",
+        "Outras Receitas",
+        "Receita",
+        "Receitas"
     };
 
     /// <summary>
