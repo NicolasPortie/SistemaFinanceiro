@@ -128,7 +128,8 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
     content.conversation ||
     content.extendedTextMessage?.text ||
     content.buttonsResponseMessage?.selectedButtonId ||
-    content.templateButtonReplyMessage?.selectedId
+    content.templateButtonReplyMessage?.selectedId ||
+    (content as any).listResponseMessage?.singleSelectReply?.selectedRowId
 
   if (textContent) {
     payload.type = 'text'
@@ -263,16 +264,33 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
 
     if (response.success && response.reply) {
       if (response.buttons?.length) {
-        const sent = await sock.sendMessage(jid, {
-          text: response.reply,
-          footer: 'Ravier',
-          buttons: response.buttons.slice(0, 3).map((button) => ({
-            buttonId: button.id,
-            buttonText: { displayText: button.title },
-            type: 1,
-          })),
-          headerType: 1,
-        } as any)
+        let sent: any
+        if (response.buttons.length <= 3) {
+          sent = await sock.sendMessage(jid, {
+            text: response.reply,
+            footer: 'Ravier',
+            buttons: response.buttons.slice(0, 3).map((button) => ({
+              buttonId: button.id,
+              buttonText: { displayText: button.title },
+              type: 1,
+            })),
+            headerType: 1,
+          } as any)
+        } else {
+          sent = await sock.sendMessage(jid, {
+            text: response.reply,
+            footer: 'Ravier',
+            title: '',
+            buttonText: 'Escolher',
+            sections: [{
+              title: 'Opções',
+              rows: response.buttons.map((button) => ({
+                title: button.title,
+                rowId: button.id,
+              })),
+            }],
+          } as any)
+        }
         recordSentMessage()
         recordSentTo(phoneNumber)
 

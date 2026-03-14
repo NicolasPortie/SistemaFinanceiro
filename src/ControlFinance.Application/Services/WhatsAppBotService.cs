@@ -258,6 +258,7 @@ public class WhatsAppBotService : IWhatsAppBotService
 
         // Delegar ao ChatEngine compartilhado
         var resposta = await _chatEngine.ProcessarMensagemAsync(chatId, usuario, mensagem, origem);
+        PontearTecladoParaBotoes(chatId, phoneNumber);
         return ConverterMarkdownParaWhatsApp(resposta);
     }
 
@@ -271,6 +272,7 @@ public class WhatsAppBotService : IWhatsAppBotService
         {
             var chatId = PhoneToChatId(phoneNumber);
             var resposta = await _chatEngine.ProcessarAudioAsync(chatId, usuario, audioData, mimeType);
+            PontearTecladoParaBotoes(chatId, phoneNumber);
             return ConverterMarkdownParaWhatsApp(resposta);
         }
         catch (Exception ex)
@@ -290,6 +292,7 @@ public class WhatsAppBotService : IWhatsAppBotService
         {
             var chatId = PhoneToChatId(phoneNumber);
             var resposta = await _chatEngine.ProcessarImagemAsync(chatId, usuario, imageData, mimeType, caption);
+            PontearTecladoParaBotoes(chatId, phoneNumber);
             return ConverterMarkdownParaWhatsApp(resposta);
         }
         catch (Exception ex)
@@ -311,6 +314,7 @@ public class WhatsAppBotService : IWhatsAppBotService
         {
             var chatId = PhoneToChatId(phoneNumber);
             var resposta = await _chatEngine.ProcessarDocumentoAsync(chatId, usuario, documentData, mimeType, fileName, caption);
+            PontearTecladoParaBotoes(chatId, phoneNumber);
             return ConverterMarkdownParaWhatsApp(resposta);
         }
         catch (Exception ex)
@@ -421,6 +425,26 @@ public class WhatsAppBotService : IWhatsAppBotService
         return cancelou
             ? "Operação cancelada."
             : "Não há operação pendente para cancelar.";
+    }
+
+    // ── Bridge: BotTecladoHelper → WhatsAppBotaoHelper ──
+
+    /// <summary>
+    /// Converte teclados inline pendentes (BotTecladoHelper, usado por handlers compartilhados)
+    /// em botões WhatsApp (WhatsAppBotaoHelper). O bridge auto-seleciona botões ou lista.
+    /// </summary>
+    private static void PontearTecladoParaBotoes(long chatId, string phoneNumber)
+    {
+        var teclado = BotTecladoHelper.ConsumirTeclado(chatId);
+        if (teclado == null || teclado.Count == 0) return;
+
+        var botoes = teclado
+            .SelectMany(linha => linha)
+            .Select(b => (b.Data, b.Label))
+            .ToArray();
+
+        if (botoes.Length > 0)
+            DefinirBotoes(phoneNumber, botoes);
     }
 
     // ── Helpers ──

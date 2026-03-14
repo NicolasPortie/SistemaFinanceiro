@@ -32,18 +32,35 @@ router.post('/send', authMiddleware, async (req: Request, res: Response) => {
   const jid = `${phoneNumber.replace(/\D/g, '')}@s.whatsapp.net`
 
   try {
-    const sent = buttons?.length
-      ? await sock.sendMessage(jid, {
-          text: message,
-          footer: 'Ravier',
-          buttons: buttons.slice(0, 3).map((button) => ({
-            buttonId: button.id,
-            buttonText: { displayText: button.title },
-            type: 1,
+    let sent: any
+    if (buttons?.length && buttons.length <= 3) {
+      sent = await sock.sendMessage(jid, {
+        text: message,
+        footer: 'Ravier',
+        buttons: buttons.slice(0, 3).map((button) => ({
+          buttonId: button.id,
+          buttonText: { displayText: button.title },
+          type: 1,
+        })),
+        headerType: 1,
+      } as any)
+    } else if (buttons?.length) {
+      sent = await sock.sendMessage(jid, {
+        text: message,
+        footer: 'Ravier',
+        title: '',
+        buttonText: 'Escolher',
+        sections: [{
+          title: 'Opções',
+          rows: buttons.map((button) => ({
+            title: button.title,
+            rowId: button.id,
           })),
-          headerType: 1,
-        } as any)
-      : await sock.sendMessage(jid, { text: message })
+        }],
+      } as any)
+    } else {
+      sent = await sock.sendMessage(jid, { text: message })
+    }
   logger.info({ phone: phoneNumber, msgLen: message.length, buttons: buttons?.length || 0 }, '📤 Mensagem proativa enviada')
 
     // Salvar no store para retry (getMessage callback)

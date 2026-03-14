@@ -90,7 +90,10 @@ public class ChatExclusaoLancamentoService : IChatExclusaoLancamentoService
                 texto += $"{i + 1}. {emoji} {lancamentoAtual.Descricao} — R$ {lancamentoAtual.Valor:N2} ({lancamentoAtual.Data:dd/MM})\n";
             }
 
-            texto += "\nDigite o número ou \"cancelar\".";
+            texto += "\nEscolha o número ou cancele.";
+            var botoesSelecao = topN.Select((l, i) => new (string, string)[] { ($"{i + 1}. {l.Descricao}", (i + 1).ToString()) })
+                .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+            BotTecladoHelper.DefinirTeclado(chatId, botoesSelecao);
             return texto;
         }
         catch (Exception ex)
@@ -132,6 +135,8 @@ public class ChatExclusaoLancamentoService : IChatExclusaoLancamentoService
             return "Exclusão cancelada.";
         }
 
+        BotTecladoHelper.DefinirTeclado(chatId,
+            new[] { ("✅ Sim", "sim"), ("❌ Cancelar", "cancelar") });
         return "⚠️ Não entendi. Responda **sim** para confirmar ou **cancelar**.";
     }
 
@@ -157,7 +162,10 @@ public class ChatExclusaoLancamentoService : IChatExclusaoLancamentoService
             return Task.FromResult<string?>(PedirConfirmacao(chatId, selecao.UsuarioId, escolhido));
         }
 
-        return Task.FromResult<string?>("⚠️ Não entendi. Digite o número do lançamento ou \"cancelar\".");
+        var botoesRetry = selecao.Opcoes.Select((l, i) => new (string, string)[] { ($"{i + 1}. {l.Descricao}", (i + 1).ToString()) })
+            .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+        BotTecladoHelper.DefinirTeclado(chatId, botoesRetry);
+        return Task.FromResult<string?>("⚠️ Não entendi. Escolha um lançamento ou cancele.");
     }
 
     public void RestaurarEstadoExclusao(long chatId, Lancamento lancamento, int usuarioId)
@@ -210,6 +218,10 @@ public class ChatExclusaoLancamentoService : IChatExclusaoLancamentoService
         var avisoContaFixa = lancamento.PagamentoCicloOrigem != null
             ? "\n\n⚠️ Este lancamento foi gerado por uma conta fixa. Se voce excluir, ela voltara para pendente."
             : string.Empty;
+
+        BotTecladoHelper.DefinirTeclado(chatId,
+            new[] { ("✅ Sim", "sim"), ("❌ Cancelar", "cancelar") });
+
         return $"**Confirma a exclusão deste lançamento?**\n\n" +
                $"{emoji} {lancamento.Descricao}\n" +
                $"R$ {lancamento.Valor:N2}\n" +
