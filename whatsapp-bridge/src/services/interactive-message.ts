@@ -1,4 +1,5 @@
 import { generateWAMessageFromContent, proto, type WASocket } from '@whiskeysockets/baileys'
+import { config } from '../config.js'
 
 export interface ButtonOption {
   id: string
@@ -144,6 +145,12 @@ export async function sendInteractiveMessage(
   text: string,
   buttons: ButtonOption[]
 ) {
+  if (!config.ENABLE_LEGACY_BUTTONS) {
+    return await sock.sendMessage(jid, {
+      text: buildButtonsFallbackText(text, buttons),
+    })
+  }
+
   const message = generateWAMessageFromContent(
     jid,
     buildInteractiveMessage(text, buttons),

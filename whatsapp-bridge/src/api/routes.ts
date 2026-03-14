@@ -34,28 +34,33 @@ router.post('/send', authMiddleware, async (req: Request, res: Response) => {
 
   try {
     let sent: any
+    let deliveryMode: 'text' | 'text-options' | 'interactive' = 'text'
     if (buttons?.length) {
       try {
         sent = await sendInteractiveMessage(sock, jid, message, buttons)
+        deliveryMode = 'text-options'
       } catch (err: any) {
         logger.warn(
           { err: err?.message, phone: phoneNumber, buttons: buttons.length },
           'Falha ao enviar mensagem interativa proativa; usando fallback em texto'
         )
         sent = await sock.sendMessage(jid, { text: buildButtonsFallbackText(message, buttons) })
+        deliveryMode = 'text-options'
       }
     } else {
       sent = await sock.sendMessage(jid, { text: message })
     }
 
-    logger.info({ phone: phoneNumber, msgLen: message.length, buttons: buttons?.length || 0 }, '📤 Mensagem proativa enviada')
+    logger.info(
+      { phone: phoneNumber, msgLen: message.length, buttons: buttons?.length || 0, deliveryMode },
+      '📤 Mensagem proativa enviada'
+    )
 
     // Salvar no store para retry (getMessage callback)
     if (sent?.key?.id && sent?.message) {
       storeMessage(sent.key.id, sent.message)
     }
 
-    logger.info({ phone: phoneNumber, msgLen: message.length }, '📤 Mensagem proativa enviada')
     res.json({ success: true, messageId: sent?.key?.id })
   } catch (err: any) {
     logger.error({ err: err.message, phone: phoneNumber }, 'Erro ao enviar mensagem')

@@ -4,6 +4,7 @@
 export const config = {
   PORT: parseInt(process.env.PORT || '3100', 10),
   NODE_ENV: process.env.NODE_ENV || 'development',
+  ENABLE_LEGACY_BUTTONS: process.env.WHATSAPP_ENABLE_LEGACY_BUTTONS === 'true',
 
   // Comunicação com API C#
   API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:5000',

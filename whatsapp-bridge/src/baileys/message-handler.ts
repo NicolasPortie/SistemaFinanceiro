@@ -28,20 +28,29 @@ async function sendReplyWithOptionalButtons(
   buttons?: Array<{ id: string; title: string }>
 ) {
   if (!buttons?.length) {
-    return await sock.sendMessage(jid, { text: reply })
+    return {
+      sent: await sock.sendMessage(jid, { text: reply }),
+      deliveryMode: 'text' as const,
+    }
   }
 
   try {
-    return await sendInteractiveMessage(sock, jid, reply, buttons)
+    return {
+      sent: await sendInteractiveMessage(sock, jid, reply, buttons),
+      deliveryMode: 'text-options' as const,
+    }
   } catch (err) {
     logger.warn(
       { err, phone: phoneNumber, buttons: buttons.length },
       'Falha ao enviar mensagem interativa; usando fallback em texto'
     )
 
-    return await sock.sendMessage(jid, {
-      text: buildButtonsFallbackText(reply, buttons),
-    })
+    return {
+      sent: await sock.sendMessage(jid, {
+        text: buildButtonsFallbackText(reply, buttons),
+      }),
+      deliveryMode: 'text-options' as const,
+    }
   }
 }
 
@@ -301,7 +310,13 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
 
     if (response.success && response.reply) {
       if (response.buttons?.length) {
-        const sent = await sendReplyWithOptionalButtons(sock, jid, phoneNumber, response.reply, response.buttons)
+        const { sent, deliveryMode } = await sendReplyWithOptionalButtons(
+          sock,
+          jid,
+          phoneNumber,
+          response.reply,
+          response.buttons
+        )
         recordSentMessage()
         recordSentTo(phoneNumber)
 
@@ -310,8 +325,15 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
         }
 
         logger.info(
-          { phone: phoneNumber, buttons: response.buttons.length, replyLen: response.reply.length },
-          '✅ Resposta com botões enviada'
+          {
+            phone: phoneNumber,
+            buttons: response.buttons.length,
+            replyLen: response.reply.length,
+            deliveryMode,
+          },
+          deliveryMode === 'text-options'
+            ? '✅ Resposta com opções em texto enviada'
+            : '✅ Resposta com botões enviada'
         )
 
         await sock.sendPresenceUpdate('paused', jid)
