@@ -223,10 +223,7 @@ function UpgradeNavbarButton({ mobile = false }: { mobile?: boolean }) {
       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
         <Crown className="h-4 w-4" />
       </div>
-      <div className="text-left leading-none">
-        <p className="text-[9px] font-black uppercase tracking-[0.28em] text-emerald-50/80">Upgrade</p>
-        <p className="mt-1 text-[11px] font-semibold">Sair do grátis</p>
-      </div>
+      <span className="text-[11px] font-black uppercase tracking-[0.28em] text-white">Upgrade</span>
       <ArrowRight className="h-4 w-4" />
     </button>
   );

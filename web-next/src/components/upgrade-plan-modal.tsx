@@ -18,7 +18,6 @@ import {
   Loader2,
   Lock,
   Headphones,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { DialogShellHeader } from "@/components/shared/dialog-shell";
 import { cn } from "@/lib/utils";
+import { getPricingDescription, getPricingFeatures } from "@/lib/pricing";
 
 /* ═══════════════════════════════════════════════
    Context — global open/close for the upgrade modal
@@ -251,32 +251,50 @@ function UpgradePlanModal({
 
   const isLoading = loadingPlanos || loadingMinha;
   const assinatura = minha?.assinatura;
+  const visiblePlanos = (planos ?? []).filter((plano) => plano.tipo !== "Gratuito");
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-4xl max-h-[95vh] overflow-hidden flex flex-col p-0 gap-0 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-2xl">
-          {/* Close button */}
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="absolute top-5 right-5 z-10 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <X className="size-5" />
-          </button>
+        <DialogContent
+          showCloseButton={false}
+          className="sm:max-w-5xl max-h-[94vh] overflow-hidden border-0 bg-transparent p-0 shadow-none"
+        >
+          <div className="relative flex max-h-[94vh] flex-col overflow-hidden rounded-[2rem] border border-slate-200/80 bg-linear-to-br from-white via-white to-stone-50 shadow-[0_32px_90px_rgba(15,23,42,0.18)] dark:border-white/10 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-linear-to-b from-emerald-50/80 via-white/20 to-transparent" />
+            <div className="pointer-events-none absolute -top-20 right-16 size-56 rounded-full bg-emerald-200/30 blur-3xl" />
+            <div className="pointer-events-none absolute bottom-0 left-10 size-52 rounded-full bg-violet-200/25 blur-3xl" />
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto overscroll-contain">
-            <div className="px-6 py-8 md:px-12 md:py-10">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="absolute right-5 top-5 z-20 rounded-2xl border border-white/70 bg-white/90 p-2 text-slate-500 shadow-sm backdrop-blur transition-all duration-200 hover:border-slate-300 hover:text-slate-800 dark:border-white/10 dark:bg-slate-900/85 dark:text-slate-300 dark:hover:border-white/20 dark:hover:text-white"
+              aria-label="Fechar modal"
+            >
+              <span className="sr-only">Fechar</span>
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            </button>
+
+            <div className="relative flex-1 overflow-y-auto overscroll-contain">
+              <div className="px-6 py-8 md:px-10 md:py-10 lg:px-12">
               {/* ── Header ── */}
-              <header className="text-center mb-10">
-                <DialogHeader className="gap-0">
-                  <DialogTitle className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mb-3 text-slate-900 dark:text-white leading-tight">
+              <header className="mb-10 text-center">
+                <div className="mb-4 flex justify-center">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/85 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-700 shadow-sm backdrop-blur">
+                    <Sparkles className="size-3.5" />
+                    Planos premium
+                  </span>
+                </div>
+                <DialogHeader className="gap-0 text-center">
+                  <DialogTitle className="mb-3 text-3xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-4xl md:text-5xl">
                     Escolha o plano ideal para sua <br className="hidden md:block" />
                     <span className="text-emerald-500">liberdade financeira</span>
                   </DialogTitle>
-                  <DialogDescription className="text-slate-500 dark:text-slate-400 font-medium text-sm sm:text-base">
-                    Potencialize seus investimentos com recursos exclusivos
+                  <DialogDescription className="mx-auto max-w-2xl text-sm font-medium text-slate-500 dark:text-slate-400 sm:text-base">
+                    A mesma estrutura da landing, agora com uma vitrine mais clara para comparar os planos sem ruído visual.
                   </DialogDescription>
                 </DialogHeader>
               </header>
@@ -289,16 +307,18 @@ function UpgradePlanModal({
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-col md:flex-row justify-center gap-6 items-stretch mb-10 max-w-3xl mx-auto">
-                    {planos
-                      ?.filter((p) => p.tipo !== "Gratuito")
-                      .map((plano, i) => {
+                  <div className="mx-auto mb-10 grid max-w-4xl gap-6 md:grid-cols-2 md:items-stretch">
+                    {visiblePlanos.map((plano, i) => {
                         const colors = PLANO_COLORS[plano.tipo] ?? PLANO_COLORS.Gratuito;
                         const isCurrentPlan = plano.tipo === assinatura?.plano;
                         const isSuggested = plano.tipo === suggestedPlan;
                         const isCheckingOut = checkingOut === plano.id;
                         const isPopular =
                           plano.destaque || isSuggested || plano.tipo === "Individual";
+                        const temPromocao = Boolean(
+                          plano.promocaoAtiva && plano.precoBase > plano.preco
+                        );
+                        const features = getPricingFeatures(plano.tipo);
 
                         return (
                           <motion.div
@@ -307,22 +327,27 @@ function UpgradePlanModal({
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.08 * (i + 1), ease: [0.22, 1, 0.36, 1] }}
                             className={cn(
-                              "relative bg-white dark:bg-slate-900/80 p-6 sm:p-8 rounded-2xl flex flex-col w-full transition-all duration-200",
+                              "relative flex w-full flex-col overflow-hidden rounded-[2rem] p-8 transition-all duration-200 sm:p-10",
                               isPopular && !isCurrentPlan
                                 ? cn(
-                                    "border-2 border-emerald-500 shadow-xl shadow-emerald-500/5 md:scale-[1.03] z-10",
+                                    "z-10 border-2 border-emerald-700 bg-white shadow-2xl shadow-emerald-100/30 md:scale-[1.01]",
                                     colors.glow
                                   )
-                                : cn("border", isCurrentPlan ? colors.cardActive : colors.card),
+                                : cn(
+                                    "border bg-stone-50/92 shadow-[0_18px_50px_rgba(15,23,42,0.06)]",
+                                    isCurrentPlan ? colors.cardActive : colors.card
+                                  ),
                               !isCurrentPlan &&
                                 !isPopular &&
                                 "hover:shadow-lg hover:-translate-y-0.5"
                             )}
                           >
+                            <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b from-white via-white/70 to-transparent" />
+
                             {/* Top badge */}
                             {isPopular && !isCurrentPlan && (
                               <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                                <span className="bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-full shadow-lg inline-block">
+                                <span className="inline-block rounded-full bg-emerald-700 px-5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
                                   {isSuggested ? "Recomendado" : "Mais Popular"}
                                 </span>
                               </div>
@@ -336,59 +361,82 @@ function UpgradePlanModal({
                             )}
 
                             {/* Plan name + type label */}
-                            <div className="mb-6">
+                            <div className="relative mb-8">
                               <span
                                 className={cn(
                                   "text-[10px] font-black uppercase tracking-widest",
                                   plano.tipo === "Familia" ? "text-violet-500" : "text-emerald-600"
                                 )}
                               >
-                                {plano.tipo}
+                                {plano.tipo === "Familia" ? "Família" : "Individual"}
                               </span>
-                              <h3 className="text-xl sm:text-2xl font-bold mt-1 text-slate-900 dark:text-white">
+                              <h3 className="mt-2 text-2xl font-bold text-[#1a1a1a] sm:text-[2rem]" style={{ fontFamily: "'Georgia', serif" }}>
                                 {plano.nome}
                               </h3>
+                              <p className="mt-2 max-w-sm text-sm leading-relaxed text-stone-500">
+                                {getPricingDescription(plano.tipo)}
+                              </p>
 
                               {/* Price */}
-                              <div className="mt-4 flex items-baseline">
-                                <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                                  {formatCurrency(plano.preco)}
-                                </span>
-                                <span className="text-slate-500 text-sm ml-1">/mês</span>
+                              <div className="mt-6">
+                                {temPromocao && (
+                                  <p className="mb-2 text-sm font-semibold text-stone-400 line-through">
+                                    {formatCurrency(plano.precoBase)}/mês
+                                  </p>
+                                )}
+                                <div className="flex items-baseline">
+                                  <span className="text-4xl font-black text-[#1a1a1a] sm:text-5xl">
+                                    {formatCurrency(plano.preco)}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      "ml-1 text-xs font-bold uppercase tracking-wider",
+                                      isPopular ? "text-emerald-700" : "text-stone-400"
+                                    )}
+                                  >
+                                    /mês
+                                  </span>
+                                </div>
                               </div>
 
-                              {plano.trialDisponivel && plano.diasGratis > 0 && (
-                                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 font-medium flex items-center gap-1">
-                                  <Sparkles className="size-3" />
-                                  {plano.diasGratis} dias grátis para testar
-                                </p>
-                              )}
-                            </div>
+                              {(plano.trialDisponivel && plano.diasGratis > 0) || temPromocao ? (
+                                <div className="mt-4 rounded-2xl border border-stone-200/70 bg-white/85 px-4 py-3 text-sm text-stone-600 shadow-sm">
+                                  {plano.trialDisponivel && plano.diasGratis > 0
+                                    ? `${plano.diasGratis} dias grátis para testar tudo`
+                                    : "Oferta especial disponível por tempo limitado"}
+                                </div>
+                              ) : null}
 
-                            {/* Resources */}
-                            <div className="mb-8 grow">
-                              {/* Highlight card for Familia */}
                               {plano.tipo === "Familia" && plano.maxMembros > 1 && (
-                                <div className="flex items-center gap-2.5 p-3 mb-4 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30">
-                                  <Users className="size-4 text-violet-500 shrink-0" />
-                                  <span className="text-sm font-semibold text-violet-700 dark:text-violet-300">
+                                <div className="mt-4 inline-flex items-center gap-2.5 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 shadow-sm">
+                                  <Users className="size-4 shrink-0 text-violet-500" />
+                                  <span className="text-sm font-semibold text-violet-700">
                                     {plano.maxMembros === 2
                                       ? "Titular + 1 membro inclusos"
                                       : `Até ${plano.maxMembros} membros inclusos`}
                                   </span>
                                 </div>
                               )}
+                            </div>
 
-                              <ul className="space-y-2.5">
-                                {plano.recursos.map((feat, j) => {
+                            {/* Resources */}
+                            <div className="mb-8 grow rounded-[1.75rem] border border-white/80 bg-white/70 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+                              <div className="mb-4 flex items-center justify-between gap-3">
+                                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                                  O que está incluso
+                                </p>
+                                <div className={cn("h-px flex-1", plano.tipo === "Familia" ? "bg-violet-100" : "bg-emerald-100")} />
+                              </div>
+                              <ul className="space-y-4 text-sm font-medium text-stone-600">
+                                {features.map((feat, j) => {
                                   return (
                                     <li key={j} className="flex items-start gap-2.5">
-                                      <>
-                                        <Check className="size-4 mt-0.5 shrink-0 text-emerald-500" />
-                                        <span className="text-sm text-slate-600 dark:text-slate-300 leading-snug">
-                                          {feat}
-                                        </span>
-                                      </>
+                                      {isPopular ? (
+                                        <Sparkles className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                                      ) : (
+                                        <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                                      )}
+                                      <span className="leading-snug text-stone-600">{feat}</span>
                                     </li>
                                   );
                                 })}
@@ -400,14 +448,14 @@ function UpgradePlanModal({
                               <Button
                                 variant="outline"
                                 disabled
-                                className="w-full rounded-xl h-12 text-sm font-bold"
+                                className="h-12 w-full rounded-xl border-slate-200 bg-white text-sm font-bold text-slate-700"
                               >
                                 Plano atual
                               </Button>
                             ) : (
                               <Button
                                 className={cn(
-                                  "w-full rounded-xl h-12 text-sm gap-2 font-bold transition-all",
+                                  "h-12 w-full rounded-xl text-sm gap-2 font-bold transition-all",
                                   colors.button,
                                   isPopular && "animate-[pulse-green_2s_infinite]"
                                 )}
@@ -469,7 +517,7 @@ function UpgradePlanModal({
               )}
 
               {/* ── Trust footer ── */}
-              <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
+              <div className="rounded-[1.75rem] border border-slate-200/70 bg-white/80 px-6 pt-8 backdrop-blur dark:border-white/10 dark:bg-white/5">
                 {/* Current plan notice */}
                 {assinatura && (
                   <div className="mb-6 text-center">
@@ -520,6 +568,7 @@ function UpgradePlanModal({
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </DialogContent>
       </Dialog>

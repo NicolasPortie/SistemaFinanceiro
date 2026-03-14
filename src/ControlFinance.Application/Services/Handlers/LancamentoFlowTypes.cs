@@ -12,6 +12,7 @@ public enum EstadoPendente
     AguardandoDescricao,
     AguardandoFormaPagamento,
     AguardandoCartao,
+    AguardandoContaBancaria,
     AguardandoParcelas,
     AguardandoCategoria,
     AguardandoConfirmacao,
@@ -31,6 +32,7 @@ public enum CampoCorrecao
     Valor,
     Categoria,
     FormaPagamento,
+    ContaBancaria,
     Data
 }
 
@@ -44,6 +46,7 @@ public class LancamentoPendente
     public int UsuarioId { get; set; }
     public EstadoPendente Estado { get; set; } = EstadoPendente.AguardandoConfirmacao;
     public List<CartaoCredito>? CartoesDisponiveis { get; set; }
+    public List<ContaBancaria>? ContasBancariasDisponiveis { get; set; }
     public List<Categoria>? CategoriasDisponiveis { get; set; }
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 

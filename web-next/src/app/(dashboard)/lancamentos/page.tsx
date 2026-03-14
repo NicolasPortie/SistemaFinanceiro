@@ -261,6 +261,11 @@ export default function LancamentosPage() {
   const formaPagamentoSelecionada = useWatch({ control: form.control, name: "formaPagamento" });
   const valorDigitado = useWatch({ control: form.control, name: "valor" });
   const parcelasSelecionadas = useWatch({ control: form.control, name: "numeroParcelas" });
+  const shouldShowContaBancaria =
+    tipoSelecionado === "receita" ||
+    (tipoSelecionado === "despesa" &&
+      formaPagamentoSelecionada !== "" &&
+      formaPagamentoSelecionada !== "credito");
 
   const activeFilters =
     (filtroTipo !== "todos" ? 1 : 0) +
@@ -282,6 +287,7 @@ export default function LancamentosPage() {
 
     if (data.tipo === "receita") {
       formaPagamento = "PIX";
+      contaBancariaId = data.contaId ? parseInt(data.contaId, 10) : undefined;
     } else if (data.formaPagamento === "credito") {
       formaPagamento = "Credito";
       cartaoId = data.cartaoId ? parseInt(data.cartaoId, 10) : undefined;
@@ -1066,7 +1072,10 @@ export default function LancamentosPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => form.setValue("tipo", "despesa")}
+                  onClick={() => {
+                    form.setValue("tipo", "despesa");
+                    form.setValue("contaId", "");
+                  }}
                   className={cn(
                     "relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-300 cursor-pointer",
                     tipoSelecionado === "despesa"
@@ -1230,15 +1239,13 @@ export default function LancamentosPage() {
                 </div>
               )}
 
-              {/* Conta Bancária (pix / débito) */}
-              {tipoSelecionado === "despesa" &&
-                formaPagamentoSelecionada !== "" &&
-                formaPagamentoSelecionada !== "credito" && (
+              {/* Conta Bancária */}
+              {shouldShowContaBancaria && (
                   <div className="space-y-4 rounded-2xl border border-emerald-600/8 dark:border-slate-700/40 bg-white dark:bg-slate-800/60 shadow-[0_1px_6px_rgba(16,185,129,0.06)] dark:shadow-none p-5">
                     <div className="flex items-center gap-2">
                       <Landmark className="h-4 w-4 text-muted-foreground/50" />
                       <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Conta Bancária
+                        {tipoSelecionado === "receita" ? "Conta de Recebimento" : "Conta Bancária"}
                       </span>
                     </div>
                     {contasBancarias.length === 0 ? (
@@ -1254,7 +1261,7 @@ export default function LancamentosPage() {
                     ) : (
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium text-foreground/70">
-                          Conta{" "}
+                          {tipoSelecionado === "receita" ? "Conta" : "Conta"}{" "}
                           <span className="text-muted-foreground font-normal">(opcional)</span>
                         </Label>
                         <Select
@@ -1262,7 +1269,13 @@ export default function LancamentosPage() {
                           onValueChange={(v) => form.setValue("contaId", v === "__none" ? "" : v)}
                         >
                           <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background">
-                            <SelectValue placeholder="Selecionar conta" />
+                            <SelectValue
+                              placeholder={
+                                tipoSelecionado === "receita"
+                                  ? "Selecionar conta de recebimento"
+                                  : "Selecionar conta"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__none">Nenhuma</SelectItem>

@@ -65,10 +65,16 @@ public class LancamentoService : ILancamentoService
         if (dto.Valor <= 0)
             throw new ArgumentException("O valor do lancamento deve ser maior que zero.");
 
+        var contaBancariaId = await ResolverContaBancariaAutomaticamenteAsync(
+            usuarioId,
+            dto.Tipo,
+            dto.FormaPagamento,
+            dto.ContaBancariaId);
+
         var cartao = await ValidarMeioPagamentoAsync(
             usuarioId,
             dto.FormaPagamento,
-            dto.ContaBancariaId,
+            contaBancariaId,
             dto.CartaoCreditoId);
 
         var categoria = await _categoriaRepo.ObterPorNomeAsync(usuarioId, dto.Categoria);
@@ -107,7 +113,7 @@ public class LancamentoService : ILancamentoService
             UsuarioId = usuarioId,
             CategoriaId = categoria.Id,
             Categoria = categoria,
-            ContaBancariaId = dto.ContaBancariaId,
+            ContaBancariaId = contaBancariaId,
             CriadoEm = DateTime.UtcNow,
         };
 
@@ -686,6 +692,24 @@ public class LancamentoService : ILancamentoService
             throw new ArgumentException("Conta bancaria informada esta inativa.");
 
         return null;
+    }
+
+    private async Task<int?> ResolverContaBancariaAutomaticamenteAsync(
+        int usuarioId,
+        TipoLancamento tipo,
+        FormaPagamento formaPagamento,
+        int? contaBancariaId)
+    {
+        if (tipo != TipoLancamento.Receita ||
+            formaPagamento == FormaPagamento.Credito ||
+            contaBancariaId.HasValue)
+            return contaBancariaId;
+
+        var contasAtivas = await _contaRepo.ObterPorUsuarioAsync(usuarioId);
+        if (contasAtivas.Count != 1)
+            return contaBancariaId;
+
+        return contasAtivas[0].Id;
     }
 
     private static string DeterminarPeriodKey(DateTime dataUtc)

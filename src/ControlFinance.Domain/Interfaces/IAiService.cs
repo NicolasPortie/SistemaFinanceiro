@@ -130,6 +130,8 @@ public class DadosLancamento
     public string FormaPagamento { get; set; } = "pix";
     public string Tipo { get; set; } = "gasto";
     public int NumeroParcelas { get; set; } = 1;
+    public int? ContaBancariaId { get; set; }
+    public string? ContaBancariaNome { get; set; }
     public DateTime? Data { get; set; }
 }
 

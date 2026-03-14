@@ -24,6 +24,13 @@ public class LancamentoServiceTests
     private readonly Mock<IPerfilFinanceiroService> _perfilServiceMock = new();
     private readonly Mock<ILogger<LancamentoService>> _loggerMock = new();
 
+    public LancamentoServiceTests()
+    {
+        _contaRepoMock
+            .Setup(r => r.ObterPorUsuarioAsync(It.IsAny<int>()))
+            .ReturnsAsync([]);
+    }
+
     [Fact]
     public async Task RegistrarPagamentoContaFixaAsync_DeveCriarLancamentoEVincularPagamentoCiclo()
     {
@@ -326,6 +333,151 @@ public class LancamentoServiceTests
 
         Assert.Contains("inativa", exception.Message, StringComparison.OrdinalIgnoreCase);
         _lancamentoRepoMock.Verify(r => r.CriarAsync(It.IsAny<Lancamento>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RegistrarAsync_DeveVincularContaBancariaAutomaticamente_QuandoHouverUmaContaAtiva()
+    {
+        Lancamento? lancamentoCriado = null;
+
+        ConfigurarLimiteLancamentos();
+        _categoriaRepoMock.Setup(r => r.ObterPorNomeAsync(7, "Renda Extra")).ReturnsAsync(new Categoria
+        {
+            Id = 21,
+            UsuarioId = 7,
+            Nome = "Renda Extra",
+        });
+        _contaRepoMock
+            .Setup(r => r.ObterPorUsuarioAsync(7))
+            .ReturnsAsync([
+                new ContaBancaria
+                {
+                    Id = 11,
+                    UsuarioId = 7,
+                    Nome = "PicPay",
+                    Ativo = true,
+                }
+            ]);
+        _contaRepoMock
+            .Setup(r => r.ObterPorIdAsync(11, 7))
+            .ReturnsAsync(new ContaBancaria
+            {
+                Id = 11,
+                UsuarioId = 7,
+                Nome = "PicPay",
+                Ativo = true,
+            });
+        _lancamentoRepoMock
+            .Setup(r => r.CriarAsync(It.IsAny<Lancamento>()))
+            .ReturnsAsync((Lancamento lancamento) =>
+            {
+                lancamento.Id = 501;
+                lancamentoCriado = lancamento;
+                return lancamento;
+            });
+
+        var service = CreateService();
+
+        await service.RegistrarAsync(7, new RegistrarLancamentoDto
+        {
+            Valor = 1749m,
+            Descricao = "Pixcredito",
+            Tipo = TipoLancamento.Receita,
+            FormaPagamento = FormaPagamento.PIX,
+            Categoria = "Renda Extra",
+        });
+
+        Assert.NotNull(lancamentoCriado);
+        Assert.Equal(11, lancamentoCriado!.ContaBancariaId);
+    }
+
+    [Fact]
+    public async Task RegistrarAsync_NaoDeveVincularContaAutomaticamente_QuandoHouverMaisDeUmaContaAtiva()
+    {
+        Lancamento? lancamentoCriado = null;
+
+        ConfigurarLimiteLancamentos();
+        _categoriaRepoMock.Setup(r => r.ObterPorNomeAsync(7, "Renda Extra")).ReturnsAsync(new Categoria
+        {
+            Id = 21,
+            UsuarioId = 7,
+            Nome = "Renda Extra",
+        });
+        _contaRepoMock
+            .Setup(r => r.ObterPorUsuarioAsync(7))
+            .ReturnsAsync([
+                new ContaBancaria { Id = 11, UsuarioId = 7, Nome = "PicPay", Ativo = true },
+                new ContaBancaria { Id = 12, UsuarioId = 7, Nome = "Inter", Ativo = true },
+            ]);
+        _lancamentoRepoMock
+            .Setup(r => r.CriarAsync(It.IsAny<Lancamento>()))
+            .ReturnsAsync((Lancamento lancamento) =>
+            {
+                lancamento.Id = 502;
+                lancamentoCriado = lancamento;
+                return lancamento;
+            });
+
+        var service = CreateService();
+
+        await service.RegistrarAsync(7, new RegistrarLancamentoDto
+        {
+            Valor = 1749m,
+            Descricao = "Pixcredito",
+            Tipo = TipoLancamento.Receita,
+            FormaPagamento = FormaPagamento.PIX,
+            Categoria = "Renda Extra",
+        });
+
+        Assert.NotNull(lancamentoCriado);
+        Assert.Null(lancamentoCriado!.ContaBancariaId);
+    }
+
+    [Fact]
+    public async Task RegistrarAsync_NaoDeveVincularContaAutomaticamente_QuandoForGastoPix()
+    {
+        Lancamento? lancamentoCriado = null;
+
+        ConfigurarLimiteLancamentos();
+        _categoriaRepoMock.Setup(r => r.ObterPorNomeAsync(7, "Mercado")).ReturnsAsync(new Categoria
+        {
+            Id = 22,
+            UsuarioId = 7,
+            Nome = "Mercado",
+        });
+        _contaRepoMock
+            .Setup(r => r.ObterPorUsuarioAsync(7))
+            .ReturnsAsync([
+                new ContaBancaria
+                {
+                    Id = 11,
+                    UsuarioId = 7,
+                    Nome = "PicPay",
+                    Ativo = true,
+                }
+            ]);
+        _lancamentoRepoMock
+            .Setup(r => r.CriarAsync(It.IsAny<Lancamento>()))
+            .ReturnsAsync((Lancamento lancamento) =>
+            {
+                lancamento.Id = 503;
+                lancamentoCriado = lancamento;
+                return lancamento;
+            });
+
+        var service = CreateService();
+
+        await service.RegistrarAsync(7, new RegistrarLancamentoDto
+        {
+            Valor = 89.9m,
+            Descricao = "Mercado",
+            Tipo = TipoLancamento.Gasto,
+            FormaPagamento = FormaPagamento.PIX,
+            Categoria = "Mercado",
+        });
+
+        Assert.NotNull(lancamentoCriado);
+        Assert.Null(lancamentoCriado!.ContaBancariaId);
     }
 
     [Fact]

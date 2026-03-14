@@ -23,6 +23,7 @@ import {
 import { ChatDemo } from "@/components/landing/chat-demo";
 import { api, type ComparacaoPlanoDto } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
+import { getPricingDescription, getPricingFeatures } from "@/lib/pricing";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -757,40 +758,6 @@ function FAQ() {
 // ============================================================================
 // H. PRICING
 // ============================================================================
-const PRICING_PLAN_DESCRIPTIONS: Record<string, string> = {
-  Gratuito: "Para organizar a rotina financeira e começar sem compromisso.",
-  Individual: "Todas as funcionalidades do sistema para uso individual, sem ficar preso no plano grátis.",
-  Familia: "Tudo do Individual, com recursos extras para organizar a vida financeira em conjunto.",
-};
-
-const PRICING_PLAN_FEATURES: Record<string, string[]> = {
-  Gratuito: [
-    "Base para começar a organizar a vida financeira",
-    "Lançamentos e controle do dia a dia",
-    "Acesso inicial ao app sem cobrança",
-    "Ideal para conhecer a experiência",
-    "Upgrade quando quiser destravar o restante",
-  ],
-  Individual: [
-    "Todas as funcionalidades do sistema liberadas",
-    "Consultor com IA, metas, importação e automações",
-    "Chat financeiro, simulações e visão completa da operação",
-    "Bots e recursos premium para rotina pessoal",
-    "Plano completo para uso individual",
-  ],
-  Familia: [
-    "Tudo que existe no plano Individual",
-    "Dashboard familiar e visão compartilhada",
-    "Categorias, metas e orçamentos da família",
-    "Titular + 1 membro no mesmo ambiente",
-    "Recursos extras para gestão financeira em conjunto",
-  ],
-};
-
-function buildPricingFeatures(plano: ComparacaoPlanoDto) {
-  return PRICING_PLAN_FEATURES[plano.tipo] ?? ["Plano disponível para sua operação financeira"];
-}
-
 function Pricing() {
   const { data: planos = [], isLoading, isError } = useQuery<ComparacaoPlanoDto[]>({
     queryKey: ["landing", "planos"],
@@ -837,7 +804,7 @@ function Pricing() {
               const temPromocao = Boolean(
                 plano.promocaoAtiva && plano.precoBaseMensal > plano.precoMensal
               );
-              const features = buildPricingFeatures(plano);
+              const features = getPricingFeatures(plano.tipo);
 
               return (
                 <div
@@ -867,7 +834,7 @@ function Pricing() {
                     {plano.nome}
                   </h3>
                   <p className="text-sm text-stone-500 mb-8">
-                    {PRICING_PLAN_DESCRIPTIONS[plano.tipo] ?? "Escolha um plano para evoluir sua operação financeira."}
+                    {getPricingDescription(plano.tipo)}
                   </p>
                   <div className="mb-3">
                     {temPromocao && (

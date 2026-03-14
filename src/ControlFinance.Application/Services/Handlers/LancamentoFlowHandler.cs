@@ -22,6 +22,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
     private static readonly CultureInfo PtBrCulture = new("pt-BR");
 
     private readonly ICartaoCreditoRepository _cartaoRepo;
+    private readonly IContaBancariaRepository _contaRepo;
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ILancamentoService _lancamentoService;
     private readonly ILancamentoRepository _lancamentoRepo;
@@ -45,6 +46,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
     public LancamentoFlowHandler(
         ICartaoCreditoRepository cartaoRepo,
+        IContaBancariaRepository contaRepo,
         ICategoriaRepository categoriaRepo,
         ILancamentoService lancamentoService,
         ILancamentoRepository lancamentoRepo,
@@ -57,6 +59,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
         ILogger<LancamentoFlowHandler> logger)
     {
         _cartaoRepo = cartaoRepo;
+        _contaRepo = contaRepo;
         _categoriaRepo = categoriaRepo;
         _lancamentoService = lancamentoService;
         _lancamentoRepo = lancamentoRepo;
@@ -228,6 +231,8 @@ public class LancamentoFlowHandler : ILancamentoHandler
                 await ProcessarRespostaFormaPagamentoAsync(chatId, pendente, msg),
             EstadoPendente.AguardandoCartao =>
                 await ProcessarRespostaCartaoEscolhaAsync(chatId, pendente, msg),
+            EstadoPendente.AguardandoContaBancaria =>
+                await ProcessarRespostaContaBancariaAsync(chatId, pendente, msg),
             EstadoPendente.AguardandoParcelas =>
                 await ProcessarRespostaParcelasAsync(chatId, pendente, msg),
             EstadoPendente.AguardandoCategoria =>
@@ -318,7 +323,8 @@ public class LancamentoFlowHandler : ILancamentoHandler
             Origem = origem,
             Categoria = categoriaNome,
             NumeroParcelas = dados.NumeroParcelas > 0 ? dados.NumeroParcelas : 1,
-            CartaoCreditoId = cartaoId
+            CartaoCreditoId = cartaoId,
+            ContaBancariaId = formaPag == FormaPagamento.Credito ? null : dados.ContaBancariaId
         };
 
         var lancamento = await _lancamentoService.RegistrarAsync(usuario.Id, dto);
@@ -412,6 +418,8 @@ public class LancamentoFlowHandler : ILancamentoHandler
         // Recarregar entidades (podem ter mudado desde a persistência)
         if (pendente.CartoesDisponiveis?.Any() == true)
             pendente.CartoesDisponiveis = await _cartaoRepo.ObterPorUsuarioAsync(pendente.UsuarioId);
+        if (pendente.ContasBancariasDisponiveis?.Any() == true)
+            pendente.ContasBancariasDisponiveis = await _contaRepo.ObterPorUsuarioAsync(pendente.UsuarioId);
         if (pendente.CategoriasDisponiveis?.Any() == true)
             pendente.CategoriasDisponiveis = (await _categoriaRepo.ObterPorUsuarioAsync(pendente.UsuarioId)).ToList();
 
@@ -713,6 +721,9 @@ public class LancamentoFlowHandler : ILancamentoHandler
         }
 
         pendente.Dados.FormaPagamento = formaPag;
+        pendente.Dados.ContaBancariaId = null;
+        pendente.Dados.ContaBancariaNome = null;
+        pendente.ContasBancariasDisponiveis = null;
         pendente.CriadoEm = DateTime.UtcNow;
 
         if (formaPag == "credito")
@@ -748,6 +759,47 @@ public class LancamentoFlowHandler : ILancamentoHandler
             BotTecladoHelper.DefinirTeclado(chatId, botoesCartao);
             return texto;
         }
+
+        return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
+    }
+
+    private async Task<string?> ProcessarRespostaContaBancariaAsync(long chatId, LancamentoPendente pendente, string msg)
+    {
+        if (pendente.ContasBancariasDisponiveis == null || !pendente.ContasBancariasDisponiveis.Any())
+        {
+            _pendentes.TryRemove(chatId, out _);
+            return null;
+        }
+
+        ContaBancaria? contaEscolhida = null;
+
+        if (int.TryParse(msg, out var idx) && idx >= 1 && idx <= pendente.ContasBancariasDisponiveis.Count)
+        {
+            contaEscolhida = pendente.ContasBancariasDisponiveis[idx - 1];
+        }
+        else
+        {
+            contaEscolhida = pendente.ContasBancariasDisponiveis
+                .FirstOrDefault(c => c.Nome.Contains(msg, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (contaEscolhida == null)
+        {
+            pendente.CriadoEm = DateTime.UtcNow;
+            var texto = "⚠️ Não entendi. Escolha a conta bancária deste lançamento:\n";
+            for (int i = 0; i < pendente.ContasBancariasDisponiveis.Count; i++)
+                texto += $"\n{i + 1}. {pendente.ContasBancariasDisponiveis[i].Nome}";
+            texto += "\n\nOu digite *cancelar* para cancelar.";
+            var botoesConta = pendente.ContasBancariasDisponiveis.Select((c, i) => new (string, string)[] { ($"🏦 {c.Nome}", (i + 1).ToString()) })
+                .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+            BotTecladoHelper.DefinirTeclado(chatId, botoesConta);
+            return texto;
+        }
+
+        pendente.Dados.ContaBancariaId = contaEscolhida.Id;
+        pendente.Dados.ContaBancariaNome = contaEscolhida.Nome;
+        pendente.ContasBancariasDisponiveis = new List<ContaBancaria> { contaEscolhida };
+        pendente.CriadoEm = DateTime.UtcNow;
 
         return await AvancarParaCategoriaOuConfirmacaoAsync(chatId, pendente);
     }
@@ -1087,6 +1139,37 @@ public class LancamentoFlowHandler : ILancamentoHandler
             }
         }
 
+        if (formaPagAtual is "pix" or "debito" or "débito")
+        {
+            if (!pendente.Dados.ContaBancariaId.HasValue)
+            {
+                var contas = await _contaRepo.ObterPorUsuarioAsync(pendente.UsuarioId);
+
+                if (contas.Count == 1)
+                {
+                    pendente.Dados.ContaBancariaId = contas[0].Id;
+                    pendente.Dados.ContaBancariaNome = contas[0].Nome;
+                    pendente.ContasBancariasDisponiveis = new List<ContaBancaria> { contas[0] };
+                }
+                else if (contas.Count > 1)
+                {
+                    pendente.Estado = EstadoPendente.AguardandoContaBancaria;
+                    pendente.ContasBancariasDisponiveis = contas;
+                    pendente.CriadoEm = DateTime.UtcNow;
+                    _pendentes[chatId] = pendente;
+
+                    var texto = "🏦 Qual conta bancária foi usada neste lançamento?\n";
+                    for (int i = 0; i < contas.Count; i++)
+                        texto += $"\n{i + 1}️⃣ {contas[i].Nome}";
+
+                    var botoesConta = contas.Select((c, i) => new (string, string)[] { ($"🏦 {c.Nome}", (i + 1).ToString()) })
+                        .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+                    BotTecladoHelper.DefinirTeclado(chatId, botoesConta);
+                    return texto;
+                }
+            }
+        }
+
         var catNome = pendente.Dados.Categoria?.Trim();
         var ehReceita = pendente.Dados.Tipo?.ToLower() == "receita";
         var categoriaAusente = string.IsNullOrWhiteSpace(catNome) || catNome.Equals("Outros", StringComparison.OrdinalIgnoreCase);
@@ -1209,13 +1292,18 @@ public class LancamentoFlowHandler : ILancamentoHandler
          var data = dados.Data?.ToString("dd/MM/yyyy") ?? DateTime.UtcNow.ToString("dd/MM/yyyy");
          var descricao = NormalizarDescricao(dados.Descricao);
 
-        var linhaFormaPag = tipo == "Receita" ? "" : $"💳 *Pagamento:* {formaPag}\n";
+                var linhaFormaPag = tipo == "Receita" ? "" : $"💳 *Pagamento:* {formaPag}\n";
+                var linhaConta = dados.FormaPagamento?.ToLower() is "pix" or "debito" or "débito"
+                        && !string.IsNullOrWhiteSpace(dados.ContaBancariaNome)
+                        ? $"🏦 *Conta:* {dados.ContaBancariaNome}\n"
+                        : "";
         return $"{emoji} *Confirma este lançamento?*\n\n" +
              $"📝 *Descrição:* {descricao}\n" +
                $"💰 *Valor:* R$ {dados.Valor:N2}{parcelaInfo}\n" +
                (string.IsNullOrEmpty(linhaParcelaDetalhe) ? "" : $"    └ {linhaParcelaDetalhe}") +
                $"🏷️ *Categoria:* {dados.Categoria}\n" +
                linhaFormaPag +
+                             linhaConta +
                $"📅 *Data:* {data}";
     }
 
