@@ -4,6 +4,7 @@ import { unwrapMessageContent } from './message-handler.js'
 import {
   buildButtonsFallbackText,
   buildInteractiveMessage,
+  buildListInteractiveMessage,
   normalizeInteractivePrompt,
   prioritizeQuickReplyButtons,
 } from '../services/interactive-message.js'
@@ -95,6 +96,17 @@ test('normalizeInteractivePrompt removes numbered options that start with the bu
   assert.equal(result, 'Qual a forma de pagamento?')
 })
 
+test('normalizeInteractivePrompt removes numbered options prefixed with emoji icons', () => {
+  const result = normalizeInteractivePrompt('💸 Amigao Penapolis — R$ 10,90\n\n💳 Qual cartão?\n\n1️⃣ 💳 Picpay\n2️⃣ 💳 Renner\n3️⃣ 💳 Nubank\n4️⃣ 💳 Pernambucanas', [
+    { id: '1', title: '💳 Picpay' },
+    { id: '2', title: '💳 Renner' },
+    { id: '3', title: '💳 Nubank' },
+    { id: '4', title: '💳 Pernambucanas' },
+  ])
+
+  assert.equal(result, '💸 Amigao Penapolis — R$ 10,90\n\n💳 Qual cartão?')
+})
+
 test('prioritizeQuickReplyButtons preserves original button order', () => {
   const result = prioritizeQuickReplyButtons([
     { id: 'pix', title: 'PIX' },
@@ -127,4 +139,28 @@ test('buildInteractiveMessage keeps overflow text for real extra options', () =>
 
   assert.match(result.buttonsMessage?.contentText ?? '', /Outras opcoes:/)
   assert.match(result.buttonsMessage?.contentText ?? '', /Farmacia \(responda: farmacia\)/)
+})
+
+test('buildInteractiveMessage uses list message when there are more than three options', () => {
+  const result = buildInteractiveMessage('Qual cartão?', [
+    { id: '1', title: 'Picpay' },
+    { id: '2', title: 'Renner' },
+    { id: '3', title: 'Nubank' },
+    { id: '4', title: 'Pernambucanas' },
+  ])
+
+  assert.ok(result.listMessage)
+  assert.equal(result.listMessage?.buttonText, 'Selecionar opcao')
+  assert.equal(result.listMessage?.sections?.[0]?.rows?.length, 4)
+})
+
+test('buildListInteractiveMessage keeps cleaned prompt as title', () => {
+  const result = buildListInteractiveMessage('Qual cartão?\n\n1. Picpay\n2. Renner\n3. Nubank\n4. Pernambucanas', [
+    { id: '1', title: 'Picpay' },
+    { id: '2', title: 'Renner' },
+    { id: '3', title: 'Nubank' },
+    { id: '4', title: 'Pernambucanas' },
+  ])
+
+  assert.equal(result.listMessage?.title, 'Qual cartão?')
 })

@@ -26,7 +26,9 @@ export function prioritizeQuickReplyButtons(buttons: ButtonOption[]): ButtonOpti
 }
 
 function stripOptionMarker(line: string): string {
-  return line.replace(/^\s*(?:\d+\uFE0F?\u20E3|\d+)[\s.)-]*/u, '')
+  return line
+    .replace(/^\s*(?:\d+\uFE0F?\u20E3|\d+)[\s.)-]*/u, '')
+    .replace(/^[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{So}\s]+/gu, '')
 }
 
 function isDuplicatedOptionLine(line: string, buttons: ButtonOption[]): boolean {
@@ -122,12 +124,45 @@ function getLegacyQuickReplyButtons(buttons: ButtonOption[]) {
   )
 }
 
+function getListRows(buttons: ButtonOption[]) {
+  return prioritizeQuickReplyButtons(buttons).map((button) =>
+    proto.Message.ListMessage.Row.create({
+      rowId: button.id,
+      title: button.title,
+    })
+  )
+}
+
+export function buildListInteractiveMessage(text: string, buttons: ButtonOption[]) {
+  const orderedButtons = prioritizeQuickReplyButtons(buttons)
+
+  return proto.Message.create({
+    listMessage: proto.Message.ListMessage.create({
+      title: normalizeInteractivePrompt(text, orderedButtons),
+      buttonText: 'Selecionar opcao',
+      footerText: 'Ravier',
+      description: '',
+      listType: proto.Message.ListMessage.ListType.SINGLE_SELECT,
+      sections: [
+        proto.Message.ListMessage.Section.create({
+          title: 'Opcoes',
+          rows: getListRows(orderedButtons),
+        }),
+      ],
+    }),
+  })
+}
+
 /**
  * Builds a legacy ButtonsMessage with response buttons.
  * This format is old, but integrates with buttonsResponseMessage parsing already used by the bot.
  */
 export function buildInteractiveMessage(text: string, buttons: ButtonOption[]) {
   const orderedButtons = prioritizeQuickReplyButtons(buttons)
+
+  if (orderedButtons.length > 3) {
+    return buildListInteractiveMessage(text, orderedButtons)
+  }
 
   return proto.Message.create({
     buttonsMessage: proto.Message.ButtonsMessage.create({
