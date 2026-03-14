@@ -4,6 +4,7 @@ import { config } from '../config.js'
 import type { WhatsAppIncomingMessage } from '../types/index.js'
 import { sendToApi } from '../services/api-client.js'
 import { downloadMedia } from '../services/media.js'
+import { buildInteractiveMessage } from '../services/interactive-message.js'
 import { storeMessage } from './connection.js'
 import {
   calcReadDelay,
@@ -124,7 +125,18 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
   }
 
   // ── Texto simples ──
+  // ── Extract text / button response ──
+  const interactiveResponse = (content as any).interactiveResponseMessage
+  let nativeFlowId: string | undefined
+  if (interactiveResponse?.nativeFlowResponseMessage) {
+    try {
+      const params = JSON.parse(interactiveResponse.nativeFlowResponseMessage.paramsJson || '{}')
+      nativeFlowId = params.id
+    } catch { /* ignore parse errors */ }
+  }
+
   const textContent =
+    nativeFlowId ||
     content.conversation ||
     content.extendedTextMessage?.text ||
     content.buttonsResponseMessage?.selectedButtonId ||
@@ -264,33 +276,8 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
 
     if (response.success && response.reply) {
       if (response.buttons?.length) {
-        let sent: any
-        if (response.buttons.length <= 3) {
-          sent = await sock.sendMessage(jid, {
-            text: response.reply,
-            footer: 'Ravier',
-            buttons: response.buttons.slice(0, 3).map((button) => ({
-              buttonId: button.id,
-              buttonText: { displayText: button.title },
-              type: 1,
-            })),
-            headerType: 1,
-          } as any)
-        } else {
-          sent = await sock.sendMessage(jid, {
-            text: response.reply,
-            footer: 'Ravier',
-            title: '',
-            buttonText: 'Escolher',
-            sections: [{
-              title: 'Opções',
-              rows: response.buttons.map((button) => ({
-                title: button.title,
-                rowId: button.id,
-              })),
-            }],
-          } as any)
-        }
+        const interactiveMsg = buildInteractiveMessage(response.reply, response.buttons)
+        const sent = await sock.sendMessage(jid, interactiveMsg as any)
         recordSentMessage()
         recordSentTo(phoneNumber)
 

@@ -4,6 +4,7 @@ import pino from 'pino'
 import { config } from '../config.js'
 import { getSocket, getQRCode, getConnectionInfo, storeMessage } from '../baileys/connection.js'
 import { authMiddleware } from './middleware.js'
+import { buildInteractiveMessage } from '../services/interactive-message.js'
 import type { SendMessageRequest } from '../types/index.js'
 
 const logger = pino({ level: config.LOG_LEVEL })
@@ -33,31 +34,9 @@ router.post('/send', authMiddleware, async (req: Request, res: Response) => {
 
   try {
     let sent: any
-    if (buttons?.length && buttons.length <= 3) {
-      sent = await sock.sendMessage(jid, {
-        text: message,
-        footer: 'Ravier',
-        buttons: buttons.slice(0, 3).map((button) => ({
-          buttonId: button.id,
-          buttonText: { displayText: button.title },
-          type: 1,
-        })),
-        headerType: 1,
-      } as any)
-    } else if (buttons?.length) {
-      sent = await sock.sendMessage(jid, {
-        text: message,
-        footer: 'Ravier',
-        title: '',
-        buttonText: 'Escolher',
-        sections: [{
-          title: 'Opções',
-          rows: buttons.map((button) => ({
-            title: button.title,
-            rowId: button.id,
-          })),
-        }],
-      } as any)
+    if (buttons?.length) {
+      const interactiveMsg = buildInteractiveMessage(message, buttons)
+      sent = await sock.sendMessage(jid, interactiveMsg as any)
     } else {
       sent = await sock.sendMessage(jid, { text: message })
     }
