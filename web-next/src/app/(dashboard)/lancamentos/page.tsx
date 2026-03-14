@@ -102,6 +102,7 @@ function getCategoryColor(cat: string) {
 }
 
 function getOrigemLabel(origem?: string) {
+  if (origem === "Texto") return "Texto";
   if (origem === "Imagem") return "Foto";
   if (origem === "Audio") return "Áudio";
   if (origem === "Documento") return "Documento";
@@ -1139,7 +1140,7 @@ export default function LancamentosPage() {
                     <SelectTrigger className="h-11 rounded-xl border-border/40 bg-background focus:ring-1 focus:ring-primary/30">
                       <SelectValue placeholder="Selecione a categoria" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" sideOffset={6} className="max-h-72">
                       {categorias.map((c) => (
                         <SelectItem key={c.id} value={c.nome}>
                           <span className="flex items-center gap-2.5">
@@ -1469,7 +1470,7 @@ export default function LancamentosPage() {
                 <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" sideOffset={6} className="max-h-72">
                   {categorias.map((c) => (
                     <SelectItem key={c.id} value={c.nome}>
                       {c.nome}

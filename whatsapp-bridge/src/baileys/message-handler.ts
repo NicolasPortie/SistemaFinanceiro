@@ -4,7 +4,7 @@ import { config } from '../config.js'
 import type { WhatsAppIncomingMessage } from '../types/index.js'
 import { sendToApi } from '../services/api-client.js'
 import { downloadMedia } from '../services/media.js'
-import { buildInteractiveMessage } from '../services/interactive-message.js'
+import { buildButtonsFallbackText, sendInteractiveMessage } from '../services/interactive-message.js'
 import { storeMessage } from './connection.js'
 import {
   calcReadDelay,
@@ -19,6 +19,31 @@ import {
 } from '../services/anti-ban.js'
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' })
+
+async function sendReplyWithOptionalButtons(
+  sock: WASocket,
+  jid: string,
+  phoneNumber: string,
+  reply: string,
+  buttons?: Array<{ id: string; title: string }>
+) {
+  if (!buttons?.length) {
+    return await sock.sendMessage(jid, { text: reply })
+  }
+
+  try {
+    return await sendInteractiveMessage(sock, jid, reply, buttons)
+  } catch (err) {
+    logger.warn(
+      { err, phone: phoneNumber, buttons: buttons.length },
+      'Falha ao enviar mensagem interativa; usando fallback em texto'
+    )
+
+    return await sock.sendMessage(jid, {
+      text: buildButtonsFallbackText(reply, buttons),
+    })
+  }
+}
 
 /**
  * Extrai o número de telefone do JID do WhatsApp.
@@ -276,8 +301,7 @@ export async function handleIncomingMessage(sock: WASocket, msg: WAMessage): Pro
 
     if (response.success && response.reply) {
       if (response.buttons?.length) {
-        const interactiveMsg = buildInteractiveMessage(response.reply, response.buttons)
-        const sent = await sock.sendMessage(jid, interactiveMsg as any)
+        const sent = await sendReplyWithOptionalButtons(sock, jid, phoneNumber, response.reply, response.buttons)
         recordSentMessage()
         recordSentTo(phoneNumber)
 

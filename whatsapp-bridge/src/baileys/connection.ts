@@ -33,6 +33,37 @@ const logger = pino({
   ...(config.NODE_ENV === 'development' ? { transport: { target: 'pino-pretty' } } : {}),
 })
 
+function shouldPatchInteractiveMessage(message: proto.IMessage): boolean {
+  return Boolean(
+    message.buttonsMessage ||
+    message.templateMessage ||
+    message.listMessage ||
+    message.interactiveMessage
+  )
+}
+
+function patchMessageBeforeSending(message: proto.IMessage): proto.IMessage {
+  if (!shouldPatchInteractiveMessage(message)) {
+    return message
+  }
+
+  if (message.viewOnceMessage?.message || message.viewOnceMessageV2?.message) {
+    return message
+  }
+
+  return proto.Message.fromObject({
+    viewOnceMessage: {
+      message: {
+        messageContextInfo: {
+          deviceListMetadata: {},
+          deviceListMetadataVersion: 2,
+        },
+        ...message,
+      },
+    },
+  })
+}
+
 /**
  * Conecta ao WhatsApp via Baileys.
  * Gerencia reconexão automática com backoff exponencial.
@@ -64,6 +95,7 @@ export async function connectToWhatsApp(): Promise<void> {
       const msg = messageStore.get(key.id!)
       return msg || undefined
     },
+    patchMessageBeforeSending,
   })
 
   // Pairing Code — alternativa ao QR para deploy headless

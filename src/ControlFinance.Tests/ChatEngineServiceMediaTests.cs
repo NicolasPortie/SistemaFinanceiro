@@ -140,6 +140,44 @@ public class ChatEngineServiceMediaTests
         Assert.Contains("consigo analisar fotos e imagens", resultado, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task ProcessarMensagemAsync_ReceitaCurtaViaTexto_IniciaFluxoDeLancamento()
+    {
+        var usuario = new Usuario { Id = 102, Nome = "Nicolas", Email = "nicolas@ravier.app" };
+
+        _chatExclusaoLancamentoService
+            .Setup(s => s.ProcessarConfirmacaoAsync(It.IsAny<long>(), It.IsAny<string>()))
+            .ReturnsAsync((string?)null);
+        _chatExclusaoLancamentoService
+            .Setup(s => s.ProcessarSelecaoAsync(It.IsAny<long>(), It.IsAny<string>()))
+            .ReturnsAsync((string?)null);
+        _lancamentoHandler
+            .Setup(s => s.ProcessarEtapaPendenteAsync(It.IsAny<long>(), usuario, It.IsAny<string>()))
+            .ReturnsAsync((string?)null);
+        _lancamentoHandler
+            .Setup(s => s.IniciarFluxoAsync(
+                It.IsAny<long>(),
+                usuario,
+                It.Is<DadosLancamento>(d =>
+                    d.Tipo == "receita" &&
+                    d.Valor == 1749m &&
+                    d.Descricao == "pixcredito" &&
+                    d.Categoria == "Outros"),
+                OrigemDado.Texto))
+            .ReturnsAsync("✅ *Receita registrada!*");
+
+        var service = CreateService();
+
+        var resultado = await service.ProcessarMensagemAsync(usuario, "recebi 1749 categoria pixcredito", OrigemDado.Texto);
+
+        Assert.Contains("Receita registrada", resultado, StringComparison.OrdinalIgnoreCase);
+        _lancamentoHandler.Verify(s => s.IniciarFluxoAsync(
+            It.IsAny<long>(),
+            usuario,
+            It.IsAny<DadosLancamento>(),
+            OrigemDado.Texto), Times.Once);
+    }
+
     private ChatEngineService CreateService() => new(
         _usuarioRepo.Object,
         _categoriaRepo.Object,

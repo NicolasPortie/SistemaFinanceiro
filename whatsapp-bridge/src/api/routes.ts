@@ -4,7 +4,7 @@ import pino from 'pino'
 import { config } from '../config.js'
 import { getSocket, getQRCode, getConnectionInfo, storeMessage } from '../baileys/connection.js'
 import { authMiddleware } from './middleware.js'
-import { buildInteractiveMessage } from '../services/interactive-message.js'
+import { buildButtonsFallbackText, sendInteractiveMessage } from '../services/interactive-message.js'
 import type { SendMessageRequest } from '../types/index.js'
 
 const logger = pino({ level: config.LOG_LEVEL })
@@ -35,12 +35,20 @@ router.post('/send', authMiddleware, async (req: Request, res: Response) => {
   try {
     let sent: any
     if (buttons?.length) {
-      const interactiveMsg = buildInteractiveMessage(message, buttons)
-      sent = await sock.sendMessage(jid, interactiveMsg as any)
+      try {
+        sent = await sendInteractiveMessage(sock, jid, message, buttons)
+      } catch (err: any) {
+        logger.warn(
+          { err: err?.message, phone: phoneNumber, buttons: buttons.length },
+          'Falha ao enviar mensagem interativa proativa; usando fallback em texto'
+        )
+        sent = await sock.sendMessage(jid, { text: buildButtonsFallbackText(message, buttons) })
+      }
     } else {
       sent = await sock.sendMessage(jid, { text: message })
     }
-  logger.info({ phone: phoneNumber, msgLen: message.length, buttons: buttons?.length || 0 }, '📤 Mensagem proativa enviada')
+
+    logger.info({ phone: phoneNumber, msgLen: message.length, buttons: buttons?.length || 0 }, '📤 Mensagem proativa enviada')
 
     // Salvar no store para retry (getMessage callback)
     if (sent?.key?.id && sent?.message) {

@@ -19,6 +19,8 @@ namespace ControlFinance.Application.Services.Handlers;
 /// </summary>
 public class LancamentoFlowHandler : ILancamentoHandler
 {
+    private static readonly CultureInfo PtBrCulture = new("pt-BR");
+
     private readonly ICartaoCreditoRepository _cartaoRepo;
     private readonly ICategoriaRepository _categoriaRepo;
     private readonly ILancamentoService _lancamentoService;
@@ -83,6 +85,8 @@ public class LancamentoFlowHandler : ILancamentoHandler
         if (!string.IsNullOrEmpty(dados.Descricao) && dados.Descricao.Length > 200)
             dados.Descricao = dados.Descricao[..200];
 
+        dados.Descricao = NormalizarDescricao(dados.Descricao);
+
         var descricaoAusente = string.IsNullOrWhiteSpace(dados.Descricao)
             || dados.Descricao.Equals("Gasto não especificado", StringComparison.OrdinalIgnoreCase)
             || dados.Descricao.Equals("gasto", StringComparison.OrdinalIgnoreCase)
@@ -132,7 +136,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             pendente.Estado = EstadoPendente.AguardandoFormaPagamento;
             _pendentes[chatId] = pendente;
 
-            var texto = $"📝 *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n" +
+            var texto = $"📝 *{NormalizarDescricao(dados.Descricao)}* — R$ {dados.Valor:N2}\n\n" +
                         "💳 Qual a forma de pagamento?\n\n" +
                         "1️⃣ PIX\n" +
                         "2️⃣ Débito\n";
@@ -173,7 +177,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
                 pendente.CartoesDisponiveis = cartoes;
                 _pendentes[chatId] = pendente;
 
-                var texto = $"📝 *{dados.Descricao}* — R$ {dados.Valor:N2}\n\n💳 Qual cartão?\n";
+                var texto = $"📝 *{NormalizarDescricao(dados.Descricao)}* — R$ {dados.Valor:N2}\n\n💳 Qual cartão?\n";
                 for (int i = 0; i < cartoes.Count; i++)
                     texto += $"\n{i + 1}️⃣ {cartoes[i].Nome}";
                 var botoesCard = cartoes.Select((c, i) => new (string, string)[] { ($"💳 {c.Nome}", (i + 1).ToString()) })
@@ -429,7 +433,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
         if (descricao.Length > 200)
             descricao = descricao[..200];
 
-        pendente.Dados.Descricao = descricao;
+        pendente.Dados.Descricao = NormalizarDescricao(descricao);
         pendente.CriadoEm = DateTime.UtcNow;
 
         var ehReceita = pendente.Dados.Tipo?.ToLower() == "receita";
@@ -458,7 +462,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
             _pendentes[chatId] = pendente;
 
             var usuario = await _usuarioRepo.ObterPorIdAsync(pendente.UsuarioId);
-            var texto = $"💰 Registrar: *{pendente.Dados.Descricao}* — R$ {pendente.Dados.Valor:N2}\n\n💳 Qual a forma de pagamento?\n\n1️⃣ PIX\n2️⃣ Débito\n";
+            var texto = $"💰 Registrar: *{NormalizarDescricao(pendente.Dados.Descricao)}* — R$ {pendente.Dados.Valor:N2}\n\n💳 Qual a forma de pagamento?\n\n1️⃣ PIX\n2️⃣ Débito\n";
             var cartoes = await _cartaoRepo.ObterPorUsuarioAsync(pendente.UsuarioId);
             if (cartoes.Any())
             {
@@ -594,7 +598,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
         // Se digitou texto que não é número nem data, pode ser nova descrição (atalho direto)
         if (msg.Length >= 2 && !msg.All(c => char.IsDigit(c) || c == ',' || c == '.' || c == '/'))
         {
-            pendente.Dados.Descricao = msg.Length > 200 ? msg[..200] : msg;
+            pendente.Dados.Descricao = NormalizarDescricao(msg.Length > 200 ? msg[..200] : msg);
             pendente.CriadoEm = DateTime.UtcNow;
             pendente.Estado = EstadoPendente.AguardandoConfirmacao;
             pendente.CorrigindoCampo = CampoCorrecao.Nenhum;
@@ -632,7 +636,7 @@ public class LancamentoFlowHandler : ILancamentoHandler
         if (descricao.Length > 200)
             descricao = descricao[..200];
 
-        pendente.Dados.Descricao = descricao;
+        pendente.Dados.Descricao = NormalizarDescricao(descricao);
         pendente.CriadoEm = DateTime.UtcNow;
         pendente.Estado = EstadoPendente.AguardandoConfirmacao;
         pendente.CorrigindoCampo = CampoCorrecao.Nenhum;
@@ -1111,27 +1115,34 @@ public class LancamentoFlowHandler : ILancamentoHandler
             else
             {
                 var sugerida = await SugerirCategoriaAsync(pendente.UsuarioId, pendente.Dados.Descricao, categorias);
-
-                pendente.Estado = EstadoPendente.AguardandoCategoria;
                 pendente.CategoriasDisponiveis = categorias;
                 pendente.CriadoEm = DateTime.UtcNow;
 
-                var texto = "Qual a categoria deste lançamento?\n";
-                for (int i = 0; i < categorias.Count; i++)
+                if (pendente.CorrigindoCampo == CampoCorrecao.Categoria)
                 {
-                    var marcador = categorias[i].Nome.Equals(sugerida, StringComparison.OrdinalIgnoreCase) ? " *" : "";
-                    texto += $"\n{i + 1}. {categorias[i].Nome}{marcador}";
+                    pendente.Estado = EstadoPendente.AguardandoCategoria;
+
+                    var texto = "Qual categoria deseja usar neste lançamento?\n";
+                    for (int i = 0; i < categorias.Count; i++)
+                    {
+                        var marcador = categorias[i].Nome.Equals(sugerida, StringComparison.OrdinalIgnoreCase) ? " *" : "";
+                        texto += $"\n{i + 1}. {categorias[i].Nome}{marcador}";
+                    }
+
+                    if (!string.IsNullOrEmpty(sugerida))
+                        texto += $"\n\nSugestão: *{sugerida}*";
+                    else
+                        texto += "\n\nOu *digite o nome* para criar uma nova categoria";
+
+                    var linhasCat = categorias.Select((c, i) => new (string, string)[] { ($"{c.Nome}", (i + 1).ToString()) })
+                        .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
+                    BotTecladoHelper.DefinirTeclado(chatId, linhasCat);
+                    return texto;
                 }
 
-                if (!string.IsNullOrEmpty(sugerida))
-                    texto += $"\n\nSugestão: *{sugerida}*";
-                else
-                    texto += "\n\nOu *digite o nome* para criar uma nova categoria";
-
-                var linhasCat = categorias.Select((c, i) => new (string, string)[] { ($"{c.Nome}", (i + 1).ToString()) })
-                    .Append(new (string, string)[] { ("❌ Cancelar", "cancelar") }).ToArray();
-                BotTecladoHelper.DefinirTeclado(chatId, linhasCat);
-                return texto;
+                pendente.Dados.Categoria = !string.IsNullOrWhiteSpace(sugerida)
+                    ? sugerida
+                    : ehReceita ? "Renda Extra" : "Outros";
             }
         }
 
@@ -1164,6 +1175,18 @@ public class LancamentoFlowHandler : ILancamentoHandler
         return $"{cabecalho}\n\n{complemento}\n\nLink: *{_sistemaWebUrl}*";
     }
 
+    private static string NormalizarDescricao(string? descricao)
+    {
+        if (string.IsNullOrWhiteSpace(descricao))
+            return descricao?.Trim() ?? string.Empty;
+
+        var texto = descricao.Trim();
+        if (texto.Length == 1)
+            return char.ToUpper(texto[0], PtBrCulture).ToString();
+
+        return char.ToUpper(texto[0], PtBrCulture) + texto[1..];
+    }
+
     private static string MontarPreviewLancamento(DadosLancamento dados, string? nomeCartao = null)
     {
         var tipo = dados.Tipo?.ToLower() == "receita" ? "Receita" : "Gasto";
@@ -1183,11 +1206,12 @@ public class LancamentoFlowHandler : ILancamentoHandler
             var valorParcela = dados.Valor / dados.NumeroParcelas;
             linhaParcelaDetalhe = $"{dados.NumeroParcelas}x de R$ {valorParcela:N2}\n";
         }
-        var data = dados.Data?.ToString("dd/MM/yyyy") ?? DateTime.UtcNow.ToString("dd/MM/yyyy");
+         var data = dados.Data?.ToString("dd/MM/yyyy") ?? DateTime.UtcNow.ToString("dd/MM/yyyy");
+         var descricao = NormalizarDescricao(dados.Descricao);
 
         var linhaFormaPag = tipo == "Receita" ? "" : $"💳 *Pagamento:* {formaPag}\n";
         return $"{emoji} *Confirma este lançamento?*\n\n" +
-               $"📝 *Descrição:* {dados.Descricao}\n" +
+             $"📝 *Descrição:* {descricao}\n" +
                $"💰 *Valor:* R$ {dados.Valor:N2}{parcelaInfo}\n" +
                (string.IsNullOrEmpty(linhaParcelaDetalhe) ? "" : $"    └ {linhaParcelaDetalhe}") +
                $"🏷️ *Categoria:* {dados.Categoria}\n" +

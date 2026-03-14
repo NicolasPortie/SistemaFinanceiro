@@ -289,6 +289,15 @@ public class ChatEngineService : IChatEngineService
             return isInApp ? await HumanizarSeNecessarioAsync(textoLimpo, orientacaoReducao) : orientacaoReducao;
         }
 
+        var respostaLancamentoDeterministico = await TentarRegistrarLancamentoDeterministicoAsync(
+            pseudoId,
+            usuario,
+            textoLimpo,
+            msgLower,
+            origem);
+        if (respostaLancamentoDeterministico != null)
+            return isInApp ? await HumanizarSeNecessarioAsync(textoLimpo, respostaLancamentoDeterministico) : respostaLancamentoDeterministico;
+
         // Groq-first para mensagens nÃ£o triviais: parser fica sÃ³ para comandos curtos e repetitivos.
         if (DevePriorizarGroq(msgLower, msgNormalizado))
         {
@@ -325,6 +334,52 @@ public class ChatEngineService : IChatEngineService
             _logger.LogError(ex, "Erro ao processar mensagem via IA | UsuÃ¡rio: {Nome}", usuario.Nome);
             return "âš ï¸ Estou com dificuldades para processar sua mensagem agora.\nTente novamente em alguns instantes.";
         }
+    }
+
+    private async Task<string?> TentarRegistrarLancamentoDeterministicoAsync(
+        long pseudoId,
+        Usuario usuario,
+        string textoLimpo,
+        string msgLower,
+        OrigemDado origem)
+    {
+        if (origem is OrigemDado.Imagem or OrigemDado.Documento or OrigemDado.Importacao)
+            return null;
+
+        if (textoLimpo.Contains('?'))
+            return null;
+
+        if (!Regex.IsMatch(msgLower, @"^(recebi|ganhei|entrou|caiu|faturei|vendi)\b"))
+            return null;
+
+        var match = Regex.Match(
+            textoLimpo,
+            @"^(?<verbo>recebi|ganhei|entrou|caiu|faturei|vendi)\s+(?<valor>(?:r\$\s*)?[\d.,]+)\s*(?<resto>.*)$",
+            RegexOptions.IgnoreCase);
+
+        if (!match.Success)
+            return null;
+
+        if (!BotParseHelper.TryParseValor(match.Groups["valor"].Value, out var valor) || valor <= 0)
+            return null;
+
+        var resto = match.Groups["resto"].Value.Trim();
+        resto = Regex.Replace(resto, @"^(de|da|do)\s+", "", RegexOptions.IgnoreCase);
+        resto = Regex.Replace(resto, @"^(categoria|cat)\s+", "", RegexOptions.IgnoreCase);
+        resto = resto.Trim(' ', '-', ':');
+
+        var lancamento = new DadosLancamento
+        {
+            Valor = valor,
+            Descricao = string.IsNullOrWhiteSpace(resto) ? "Recebimento" : resto,
+            Categoria = "Outros",
+            FormaPagamento = "pix",
+            Tipo = "receita",
+            NumeroParcelas = 1,
+            Data = DateTime.UtcNow
+        };
+
+        return await _lancamentoHandler.IniciarFluxoAsync(pseudoId, usuario, lancamento, origem);
     }
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

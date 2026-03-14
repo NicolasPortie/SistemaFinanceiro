@@ -798,7 +798,9 @@ function Pricing() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const orderedPlanos = [...planos].sort((a, b) => a.ordem - b.ordem);
+  const orderedPlanos = [...planos]
+    .filter((plano) => plano.tipo !== "Gratuito")
+    .sort((a, b) => a.ordem - b.ordem);
 
   return (
     <section id="planos" className="py-20 sm:py-24 bg-white">
