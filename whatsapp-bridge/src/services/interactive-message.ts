@@ -161,13 +161,10 @@ export function buildListInteractiveMessage(text: string, buttons: ButtonOption[
 /**
  * Builds a legacy ButtonsMessage with response buttons.
  * This format is old, but integrates with buttonsResponseMessage parsing already used by the bot.
+ * Max 3 visible buttons; overflow options appear as plain text in the message body.
  */
 export function buildInteractiveMessage(text: string, buttons: ButtonOption[]) {
   const orderedButtons = prioritizeQuickReplyButtons(buttons)
-
-  if (orderedButtons.length > 3) {
-    return buildListInteractiveMessage(text, orderedButtons)
-  }
 
   return proto.Message.create({
     buttonsMessage: proto.Message.ButtonsMessage.create({

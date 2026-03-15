@@ -151,8 +151,10 @@ test('buildInteractiveMessage uses list for 4+ options with overflow text', () =
     { id: 'farmacia', title: 'Farmacia' },
   ])
 
-  assert.ok(result.listMessage)
-  assert.equal(result.listMessage?.sections?.[0]?.rows?.length, 4)
+  assert.ok(result.buttonsMessage)
+  assert.match(result.buttonsMessage?.contentText ?? '', /Outras opcoes:/)
+  assert.match(result.buttonsMessage?.contentText ?? '', /Farmacia/)
+  assert.equal(result.buttonsMessage?.buttons?.length, 3)
 })
 
 test('buildInteractiveMessage uses list message when there are more than three options', () => {
@@ -163,9 +165,11 @@ test('buildInteractiveMessage uses list message when there are more than three o
     { id: '4', title: 'Pernambucanas' },
   ])
 
-  assert.ok(result.listMessage)
-  assert.equal(result.listMessage?.buttonText, 'Selecionar opcao')
-  assert.equal(result.listMessage?.sections?.[0]?.rows?.length, 4)
+  assert.ok(result.buttonsMessage)
+  // first 3 as buttons
+  assert.equal(result.buttonsMessage?.buttons?.length, 3)
+  // 4th appears in overflow text
+  assert.match(result.buttonsMessage?.contentText ?? '', /Pernambucanas/)
 })
 
 test('buildListInteractiveMessage keeps cleaned prompt as title', () => {
