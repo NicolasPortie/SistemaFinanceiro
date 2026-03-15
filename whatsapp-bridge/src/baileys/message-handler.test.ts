@@ -71,9 +71,10 @@ test('buildButtonsFallbackText includes button ids when text fallback is needed'
     { id: 'cancelar', title: 'Cancelar' },
   ])
 
-  assert.match(result, /Tem certeza\?/) 
-  assert.match(result, /1\. Sim, desvincular \(responda: \*sim\*\)/)
+  assert.match(result, /Tem certeza\?/)
+  assert.match(result, /1\. Sim, desvincular$/m)
   assert.match(result, /2\. Cancelar$/m)
+  assert.doesNotMatch(result, /responda/)
 })
 
 test('normalizeInteractivePrompt removes duplicated numbered options from button text', () => {
@@ -118,7 +119,8 @@ test('buildButtonsFallbackText omits id when it matches 1-based index', () => {
   assert.match(result, /1\. 💳 Picpay$/m)
   assert.match(result, /2\. 💳 Renner$/m)
   assert.match(result, /3\. 💳 Nubank$/m)
-  assert.match(result, /4\. ❌ Cancelar \(responda: \*cancelar\*\)/)
+  assert.match(result, /4\. ❌ Cancelar$/m)
+  assert.doesNotMatch(result, /responda/)
   assert.doesNotMatch(result, /Opcoes:/)
 })
 

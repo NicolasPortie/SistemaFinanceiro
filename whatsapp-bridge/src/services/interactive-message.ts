@@ -81,15 +81,16 @@ export function buildButtonsFallbackText(text: string, buttons: ButtonOption[]):
     const title = button.title.trim()
     const id = button.id.trim()
 
-    // If the id is a simple number matching the 1-based index, or identical to the title, omit it
+    // If the id is a simple number matching the 1-based index, just show the title
     const idIsIndex = id === String(index + 1)
-    const idMatchesTitle = !id || title.localeCompare(id, undefined, { sensitivity: 'accent' }) === 0
+    // If the id is a word that differs from the title (e.g. 'cancelar'), hint the user
+    const idMatchesTitle = !id || normalizeValue(title) === normalizeValue(id)
 
     if (idIsIndex || idMatchesTitle) {
       return `${index + 1}. ${title}`
     }
 
-    return `${index + 1}. ${title} (responda: *${id}*)`
+    return `${index + 1}. ${title}`
   })
 
   return `${baseText}\n\n${options.join('\n')}`
