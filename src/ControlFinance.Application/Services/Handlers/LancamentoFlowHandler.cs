@@ -935,6 +935,15 @@ public class LancamentoFlowHandler : ILancamentoHandler
 
     private async Task<string?> ProcessarConfirmacaoFinalAsync(long chatId, LancamentoPendente pendente, Usuario usuario, string msg)
     {
+        // Map numbered text replies to button data (text-only delivery shows 1/2/3)
+        msg = msg switch
+        {
+            "1" => "sim",
+            "2" => "corrigir",
+            "3" => "cancelar",
+            _ => msg
+        };
+
         if (BotParseHelper.EhConfirmacao(msg))
         {
             _pendentes.TryRemove(chatId, out _);
