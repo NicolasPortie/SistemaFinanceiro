@@ -72,8 +72,8 @@ test('buildButtonsFallbackText includes button ids when text fallback is needed'
   ])
 
   assert.match(result, /Tem certeza\?/) 
-  assert.match(result, /1\. Sim, desvincular \(responda: sim\)/)
-  assert.match(result, /2\. Cancelar \(responda: cancelar\)/)
+  assert.match(result, /1\. Sim, desvincular \(responda: \*sim\*\)/)
+  assert.match(result, /2\. Cancelar$/m)
 })
 
 test('normalizeInteractivePrompt removes duplicated numbered options from button text', () => {
@@ -107,6 +107,21 @@ test('normalizeInteractivePrompt removes numbered options prefixed with emoji ic
   assert.equal(result, '💸 Amigao Penapolis — R$ 10,90\n\n💳 Qual cartão?')
 })
 
+test('buildButtonsFallbackText omits id when it matches 1-based index', () => {
+  const result = buildButtonsFallbackText('💳 Qual cartão?', [
+    { id: '1', title: '💳 Picpay' },
+    { id: '2', title: '💳 Renner' },
+    { id: '3', title: '💳 Nubank' },
+    { id: 'cancelar', title: '❌ Cancelar' },
+  ])
+
+  assert.match(result, /1\. 💳 Picpay$/m)
+  assert.match(result, /2\. 💳 Renner$/m)
+  assert.match(result, /3\. 💳 Nubank$/m)
+  assert.match(result, /4\. ❌ Cancelar \(responda: \*cancelar\*\)/)
+  assert.doesNotMatch(result, /Opcoes:/)
+})
+
 test('prioritizeQuickReplyButtons preserves original button order', () => {
   const result = prioritizeQuickReplyButtons([
     { id: 'pix', title: 'PIX' },
@@ -123,13 +138,12 @@ test('buildInteractiveMessage omits overflow text when only cancel remains outsi
     { id: 'pix', title: 'PIX' },
     { id: 'debito', title: 'Debito' },
     { id: 'credito', title: 'Credito' },
-    { id: 'cancelar', title: 'Cancelar' },
   ])
 
   assert.equal(result.buttonsMessage?.contentText, 'Qual a forma de pagamento?')
 })
 
-test('buildInteractiveMessage keeps overflow text for real extra options', () => {
+test('buildInteractiveMessage uses list for 4+ options with overflow text', () => {
   const result = buildInteractiveMessage('Escolha a categoria:', [
     { id: 'saude', title: 'Saude' },
     { id: 'mercado', title: 'Mercado' },
@@ -137,8 +151,8 @@ test('buildInteractiveMessage keeps overflow text for real extra options', () =>
     { id: 'farmacia', title: 'Farmacia' },
   ])
 
-  assert.match(result.buttonsMessage?.contentText ?? '', /Outras opcoes:/)
-  assert.match(result.buttonsMessage?.contentText ?? '', /Farmacia \(responda: farmacia\)/)
+  assert.ok(result.listMessage)
+  assert.equal(result.listMessage?.sections?.[0]?.rows?.length, 4)
 })
 
 test('buildInteractiveMessage uses list message when there are more than three options', () => {

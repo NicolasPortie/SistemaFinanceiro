@@ -10,6 +10,7 @@ function normalizeValue(value: string): string {
   return value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{So}]/gu, '')
     .toLowerCase()
     .trim()
 }
@@ -80,14 +81,18 @@ export function buildButtonsFallbackText(text: string, buttons: ButtonOption[]):
     const title = button.title.trim()
     const id = button.id.trim()
 
-    if (!id || title.localeCompare(id, undefined, { sensitivity: 'accent' }) === 0) {
+    // If the id is a simple number matching the 1-based index, or identical to the title, omit it
+    const idIsIndex = id === String(index + 1)
+    const idMatchesTitle = !id || title.localeCompare(id, undefined, { sensitivity: 'accent' }) === 0
+
+    if (idIsIndex || idMatchesTitle) {
       return `${index + 1}. ${title}`
     }
 
-    return `${index + 1}. ${title} (responda: ${id})`
+    return `${index + 1}. ${title} (responda: *${id}*)`
   })
 
-  return `${baseText}\n\nOpcoes:\n${options.join('\n')}`
+  return `${baseText}\n\n${options.join('\n')}`
 }
 
 function buildLegacyButtonText(text: string, buttons: ButtonOption[]): string {
